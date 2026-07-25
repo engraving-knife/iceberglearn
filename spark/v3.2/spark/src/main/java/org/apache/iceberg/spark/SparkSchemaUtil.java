@@ -44,37 +44,24 @@ import org.apache.spark.sql.catalog.Column;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructType;
 
-/** Helper methods for working with Spark/Hive metadata. */
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkSchemaUtil。
+ */
 public class SparkSchemaUtil {
+  /** 构造 SparkSchemaUtil 实例。 */
   private SparkSchemaUtil() {}
 
-  /**
-   * Returns a {@link Schema} for the given table with fresh field ids.
-   *
-   * <p>This creates a Schema for an existing table by looking up the table's schema with Spark and
-   * converting that schema. Spark/Hive partition columns are included in the schema.
-   *
-   * @param spark a Spark session
-   * @param name a table name and (optional) database
-   * @return a Schema for the table, if found
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Schema schemaForTable(SparkSession spark, String name) {
     StructType sparkType = spark.table(name).schema();
     Type converted = SparkTypeVisitor.visit(sparkType, new SparkTypeToType(sparkType));
+    /** 执行该方法的具体逻辑。 */
     return new Schema(converted.asNestedType().asStructType().fields());
   }
 
-  /**
-   * Returns a {@link PartitionSpec} for the given table.
-   *
-   * <p>This creates a partition spec for an existing table by looking up the table's schema and
-   * creating a spec with identity partitions for each partition column.
-   *
-   * @param spark a Spark session
-   * @param name a table name and (optional) database
-   * @return a PartitionSpec for the table
-   * @throws AnalysisException if thrown by the Spark catalog
-   */
+  /** 执行该方法的具体逻辑。 */
   public static PartitionSpec specForTable(SparkSession spark, String name)
       throws AnalysisException {
     List<String> parts = Lists.newArrayList(Splitter.on('.').limit(2).split(name));
@@ -87,64 +74,22 @@ public class SparkSchemaUtil {
     return spec == null ? PartitionSpec.unpartitioned() : spec;
   }
 
-  /**
-   * Convert a {@link Schema} to a {@link DataType Spark type}.
-   *
-   * @param schema a Schema
-   * @return the equivalent Spark type
-   * @throws IllegalArgumentException if the type cannot be converted to Spark
-   */
+  /** 把输入转换为另一种表示。 */
   public static StructType convert(Schema schema) {
     return (StructType) TypeUtil.visit(schema, new TypeToSparkType());
   }
 
-  /**
-   * Convert a {@link Type} to a {@link DataType Spark type}.
-   *
-   * @param type a Type
-   * @return the equivalent Spark type
-   * @throws IllegalArgumentException if the type cannot be converted to Spark
-   */
+  /** 把输入转换为另一种表示。 */
   public static DataType convert(Type type) {
     return TypeUtil.visit(type, new TypeToSparkType());
   }
 
-  /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} with new field ids.
-   *
-   * <p>This conversion assigns fresh ids.
-   *
-   * <p>Some data types are represented as the same Spark type. These are converted to a default
-   * type.
-   *
-   * <p>To convert using a reference schema for field ids and ambiguous types, use {@link
-   * #convert(Schema, StructType)}.
-   *
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted
-   */
+  /** 把输入转换为另一种表示。 */
   public static Schema convert(StructType sparkType) {
     return convert(sparkType, false);
   }
 
-  /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} with new field ids.
-   *
-   * <p>This conversion assigns fresh ids.
-   *
-   * <p>Some data types are represented as the same Spark type. These are converted to a default
-   * type.
-   *
-   * <p>To convert using a reference schema for field ids and ambiguous types, use {@link
-   * #convert(Schema, StructType)}.
-   *
-   * @param sparkType a Spark StructType
-   * @param useTimestampWithoutZone boolean flag indicates that timestamp should be stored without
-   *     timezone
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted
-   */
+  /** 把输入转换为另一种表示。 */
   public static Schema convert(StructType sparkType, boolean useTimestampWithoutZone) {
     Type converted = SparkTypeVisitor.visit(sparkType, new SparkTypeToType(sparkType));
     Schema schema = new Schema(converted.asNestedType().asStructType().fields());
@@ -154,38 +99,12 @@ public class SparkSchemaUtil {
     return schema;
   }
 
-  /**
-   * Convert a Spark {@link DataType struct} to a {@link Type} with new field ids.
-   *
-   * <p>This conversion assigns fresh ids.
-   *
-   * <p>Some data types are represented as the same Spark type. These are converted to a default
-   * type.
-   *
-   * <p>To convert using a reference schema for field ids and ambiguous types, use {@link
-   * #convert(Schema, StructType)}.
-   *
-   * @param sparkType a Spark DataType
-   * @return the equivalent Type
-   * @throws IllegalArgumentException if the type cannot be converted
-   */
+  /** 把输入转换为另一种表示。 */
   public static Type convert(DataType sparkType) {
     return SparkTypeVisitor.visit(sparkType, new SparkTypeToType());
   }
 
-  /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
-   *
-   * <p>This conversion does not assign new ids; it uses ids from the base schema.
-   *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
-   */
+  /** 把输入转换为另一种表示。 */
   public static Schema convert(Schema baseSchema, StructType sparkType) {
     // convert to a type with fresh ids
     Types.StructType struct =
@@ -196,19 +115,7 @@ public class SparkSchemaUtil {
     return SparkFixupTypes.fixup(schema, baseSchema);
   }
 
-  /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
-   *
-   * <p>This conversion will assign new ids for fields that are not found in the base schema.
-   *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
-   */
+  /** 把输入转换为另一种表示。 */
   public static Schema convertWithFreshIds(Schema baseSchema, StructType sparkType) {
     // convert to a type with fresh ids
     Types.StructType struct =
@@ -219,18 +126,9 @@ public class SparkSchemaUtil {
     return SparkFixupTypes.fixup(schema, baseSchema);
   }
 
-  /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
-   *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
-   *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Schema prune(Schema schema, StructType requestedType) {
+    /** 执行该方法的具体逻辑。 */
     return new Schema(
         TypeUtil.visit(schema, new PruneColumnsWithoutReordering(requestedType, ImmutableSet.of()))
             .asNestedType()
@@ -238,23 +136,10 @@ public class SparkSchemaUtil {
             .fields());
   }
 
-  /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
-   *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
-   *
-   * <p>The filters list of {@link Expression} is used to ensure that columns referenced by filters
-   * are projected.
-   *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @param filters a list of filters
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Schema prune(Schema schema, StructType requestedType, List<Expression> filters) {
     Set<Integer> filterRefs = Binder.boundReferences(schema.asStruct(), filters, true);
+    /** 执行该方法的具体逻辑。 */
     return new Schema(
         TypeUtil.visit(schema, new PruneColumnsWithoutReordering(requestedType, filterRefs))
             .asNestedType()
@@ -262,26 +147,13 @@ public class SparkSchemaUtil {
             .fields());
   }
 
-  /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
-   *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
-   *
-   * <p>The filters list of {@link Expression} is used to ensure that columns referenced by filters
-   * are projected.
-   *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @param filter a filters
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Schema prune(
       Schema schema, StructType requestedType, Expression filter, boolean caseSensitive) {
     Set<Integer> filterRefs =
         Binder.boundReferences(schema.asStruct(), Collections.singletonList(filter), caseSensitive);
 
+    /** 执行该方法的具体逻辑。 */
     return new Schema(
         TypeUtil.visit(schema, new PruneColumnsWithoutReordering(requestedType, filterRefs))
             .asNestedType()
@@ -289,6 +161,7 @@ public class SparkSchemaUtil {
             .fields());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PartitionSpec identitySpec(Schema schema, Collection<Column> columns) {
     List<String> names = Lists.newArrayList();
     for (Column column : columns) {
@@ -300,6 +173,7 @@ public class SparkSchemaUtil {
     return identitySpec(schema, names);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PartitionSpec identitySpec(Schema schema, List<String> partitionNames) {
     if (partitionNames == null || partitionNames.isEmpty()) {
       return null;
@@ -313,13 +187,7 @@ public class SparkSchemaUtil {
     return builder.build();
   }
 
-  /**
-   * Estimate approximate table size based on Spark schema and total records.
-   *
-   * @param tableSchema Spark schema
-   * @param totalRecords total records in the table
-   * @return approximate size based on table schema
-   */
+  /** 执行该方法的具体逻辑。 */
   public static long estimateSize(StructType tableSchema, long totalRecords) {
     if (totalRecords == Long.MAX_VALUE) {
       return totalRecords;
@@ -334,6 +202,7 @@ public class SparkSchemaUtil {
     return result;
   }
 
+  /** 校验前置条件或参数。 */
   public static void validateMetadataColumnReferences(Schema tableSchema, Schema readSchema) {
     List<String> conflictingColumnNames =
         readSchema.columns().stream()
@@ -350,6 +219,7 @@ public class SparkSchemaUtil {
         conflictingColumnNames);
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static Map<Integer, String> indexQuotedNameById(Schema schema) {
     Function<String, String> quotingFunc = name -> String.format("`%s`", name.replace("`", "``"));
     return TypeUtil.indexQuotedNameById(schema.asStruct(), quotingFunc);

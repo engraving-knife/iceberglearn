@@ -31,12 +31,11 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that rollbacks a table to a given point in time.
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 RollbackToTimestampProcedure。
  *
- * @see org.apache.iceberg.ManageSnapshots#rollbackToTime(long)
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
  */
 class RollbackToTimestampProcedure extends BaseProcedure {
 
@@ -53,29 +52,49 @@ class RollbackToTimestampProcedure extends BaseProcedure {
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
 
+  /** 构造并返回目标对象。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RollbackToTimestampProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected RollbackToTimestampProcedure doBuild() {
+        /** 执行该方法的具体逻辑。 */
         return new RollbackToTimestampProcedure(tableCatalog());
       }
     };
   }
 
+  /** 构造 RollbackToTimestampProcedure 实例。 */
   private RollbackToTimestampProcedure(TableCatalog catalog) {
     super(catalog);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -97,6 +116,11 @@ class RollbackToTimestampProcedure extends BaseProcedure {
         });
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "RollbackToTimestampProcedure";

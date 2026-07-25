@@ -32,8 +32,6 @@ import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynMethods;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
@@ -50,6 +48,35 @@ import software.amazon.awssdk.services.glue.model.DatabaseInput;
 import software.amazon.awssdk.services.glue.model.StorageDescriptor;
 import software.amazon.awssdk.services.glue.model.TableInput;
 
+/**
+ * Iceberg 元数据到 AWS Glue 格式的转换工具类。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成模块，处于引擎层之下）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 Iceberg 命名空间校验/转换为 Glue 数据库名，表名校验/转换为 Glue 表名。
+ *   <li>将 Iceberg 命名空间属性转换为 Glue DatabaseInput。
+ *   <li>将 Iceberg 表元数据（schema、location）设置到 Glue TableInput，供 Glue UI/CLI 展示。
+ *   <li>将 Iceberg 类型映射为 Glue 可显示的类型字符串。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Glue 对数据库名/表名有严格命名规范（小写字母、数字、下划线，长度限制）， 本类通过正则校验确保 Iceberg 标识符符合 Glue 要求，可通过
+ *       skipNameValidation 跳过。
+ *   <li>setTableInputInformation 做的是"尽力转换"（best-effort），仅用于人类通过 Glue UI/CLI 查看表信息，不应被查询引擎用于推断
+ *       schema 或分区。真正的 source of truth 在 Iceberg 元数据文件中（由 metadata_location 指定）。
+ *   <li>列转换时对历史 schema 中的字段做去重（按字段名），优先保留 current schema 的字段， 并通过 iceberg.field.* 参数保留字段
+ *       ID、optional、是否当前等元信息。
+ *   <li>使用 DynMethods 反射调用 additionalLocations，兼容不同 AWS SDK 版本。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link GlueTableOperations} 和 GlueCatalog 调用， 用于在提交表时构建 Glue TableInput 和
+ * DatabaseInput。
+ */
 class IcebergToGlueConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(IcebergToGlueConverter.class);
@@ -80,12 +107,12 @@ class IcebergToGlueConverter {
           .build();
 
   /**
-   * A Glue database name cannot be longer than 252 characters. The only acceptable characters are
-   * lowercase letters, numbers, and the underscore character. More details:
-   * https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html
+   * 判断命名空间是否可作为 Glue 数据库名。
    *
-   * @param namespace namespace
-   * @return if namespace can be accepted by Glue
+   * <p>Glue 数据库名不超过 252 字符，仅允许小写字母、数字和下划线， 且命名空间必须为单层（详见 Glue 最佳实践）。
+   *
+   * @param namespace 命名空间
+   * @return true 表示可被 Glue 接受
    */
   static boolean isValidNamespace(Namespace namespace) {
     if (namespace.levels().length != 1) {
@@ -96,10 +123,10 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Validate if an Iceberg namespace is valid in Glue
+   * 校验命名空间在 Glue 中是否合法，不合法则抛 ValidationException。
    *
-   * @param namespace namespace
-   * @throws NoSuchNamespaceException if namespace is not valid in Glue
+   * @param namespace 命名空间
+   * @throws org.apache.iceberg.exceptions.ValidationException 命名空间不符合 Glue 命名规范
    */
   static void validateNamespace(Namespace namespace) {
     ValidationException.check(
@@ -110,11 +137,11 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Validate and convert Iceberg namespace to Glue database name
+   * 将 Iceberg 命名空间转换为 Glue 数据库名（可选校验）。
    *
-   * @param namespace Iceberg namespace
-   * @param skipNameValidation should skip name validation
-   * @return database name
+   * @param namespace Iceberg 命名空间
+   * @param skipNameValidation 是否跳过名称校验
+   * @return 数据库名
    */
   static String toDatabaseName(Namespace namespace, boolean skipNameValidation) {
     if (!skipNameValidation) {
@@ -125,22 +152,25 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Validate and get Glue database name from Iceberg TableIdentifier
+   * 从 Iceberg 表标识符中提取 Glue 数据库名（可选校验）。
    *
-   * @param tableIdentifier Iceberg table identifier
-   * @param skipNameValidation should skip name validation
-   * @return database name
+   * @param tableIdentifier Iceberg 表标识符
+   * @param skipNameValidation 是否跳过名称校验
+   * @return 数据库名
    */
   static String getDatabaseName(TableIdentifier tableIdentifier, boolean skipNameValidation) {
     return toDatabaseName(tableIdentifier.namespace(), skipNameValidation);
   }
 
   /**
-   * Validate and convert Iceberg name to Glue DatabaseInput
+   * 将 Iceberg 命名空间及其属性转换为 Glue DatabaseInput。
    *
-   * @param namespace Iceberg namespace
-   * @param metadata metadata map
-   * @param skipNameValidation should skip name validation
+   * <p>逻辑：name 取自命名空间转换；属性中 "comment" 映射为 description， "location" 映射为 locationUri，其余作为 parameters
+   * 保留。
+   *
+   * @param namespace Iceberg 命名空间
+   * @param metadata 属性 Map
+   * @param skipNameValidation 是否跳过名称校验
    * @return Glue DatabaseInput
    */
   static DatabaseInput toDatabaseInput(
@@ -163,22 +193,22 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * A Glue table name cannot be longer than 255 characters. The only acceptable characters are
-   * lowercase letters, numbers, and the underscore character. More details:
-   * https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html
+   * 判断表名是否可作为 Glue 表名。
    *
-   * @param tableName table name
-   * @return if a table name can be accepted by Glue
+   * <p>Glue 表名不超过 255 字符，仅允许小写字母、数字和下划线。
+   *
+   * @param tableName 表名
+   * @return true 表示可被 Glue 接受
    */
   static boolean isValidTableName(String tableName) {
     return tableName != null && GLUE_TABLE_PATTERN.matcher(tableName).find();
   }
 
   /**
-   * Validate if a table name is valid in Glue
+   * 校验表名在 Glue 中是否合法，不合法则抛 ValidationException。
    *
-   * @param tableName table name
-   * @throws NoSuchTableException if table name not valid in Glue
+   * @param tableName 表名
+   * @throws org.apache.iceberg.exceptions.ValidationException 表名不符合 Glue 命名规范
    */
   static void validateTableName(String tableName) {
     ValidationException.check(
@@ -189,11 +219,11 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Validate and get Glue table name from Iceberg TableIdentifier
+   * 从 Iceberg 表标识符中提取 Glue 表名（可选校验）。
    *
-   * @param tableIdentifier table identifier
-   * @param skipNameValidation should skip name validation
-   * @return table name
+   * @param tableIdentifier 表标识符
+   * @param skipNameValidation 是否跳过名称校验
+   * @return 表名
    */
   static String getTableName(TableIdentifier tableIdentifier, boolean skipNameValidation) {
     if (!skipNameValidation) {
@@ -204,16 +234,16 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Set Glue table input information based on Iceberg table metadata.
+   * 基于 Iceberg 表元数据设置 Glue TableInput 的 StorageDescriptor（location + columns）。
    *
-   * <p>A best-effort conversion of Iceberg metadata to Glue table is performed to display Iceberg
-   * information in Glue, but such information is only intended for informational human read access
-   * through tools like UI or CLI, and should never be used by any query processing engine to infer
-   * information like schema, partition spec, etc. The source of truth is stored in the actual
-   * Iceberg metadata file defined by the metadata_location table property.
+   * <p>这是"尽力转换"（best-effort），仅用于通过 Glue UI/CLI 展示 Iceberg 表信息， 不应被查询引擎用于推断 schema、分区等信息。真正的 source
+   * of truth 存储在 Iceberg 元数据文件中（由 metadata_location 表属性指定）。
    *
-   * @param tableInputBuilder Glue TableInput builder
-   * @param metadata Iceberg table metadata
+   * <p>逻辑：构建 StorageDescriptor，设置 location 和 columns，若 SDK 版本支持则设置
+   * additionalLocations（写入数据/元数据的额外路径）。转换异常时仅记录警告不中断。
+   *
+   * @param tableInputBuilder Glue TableInput 构建器
+   * @param metadata Iceberg 表元数据
    */
   static void setTableInputInformation(
       TableInput.Builder tableInputBuilder, TableMetadata metadata) {
@@ -238,13 +268,13 @@ class IcebergToGlueConverter {
   }
 
   /**
-   * Converting from an Iceberg type to a type string that can be displayed in Glue.
+   * 将 Iceberg 类型映射为 Glue 可显示的类型字符串（仅用于展示，不可用于实际数据处理）。
    *
-   * <p>Such conversion is only used for informational purpose, DO NOT reference this method for any
-   * actual data processing type conversion.
+   * <p>逻辑：按 typeId 逐类型映射，如 INTEGER→int、LONG→bigint、DECIMAL→decimal(p,s)、
+   * STRUCT→struct&lt;...&gt;、LIST→array&lt;...&gt;、MAP→map&lt;...,...&gt; 等， 复合类型递归调用。
    *
-   * @param type Iceberg type
-   * @return type string
+   * @param type Iceberg 类型
+   * @return Glue 类型字符串
    */
   private static String toTypeString(Type type) {
     switch (type.typeId()) {
@@ -291,6 +321,14 @@ class IcebergToGlueConverter {
     }
   }
 
+  /**
+   * 将 Iceberg 表元数据的 schema 转换为 Glue Column 列表（按字段名去重）。
+   *
+   * <p>逻辑：先添加 current schema 的字段（标记为 current=true）， 再遍历历史 schema 中的非当前字段（current=false），按字段名去重。
+   *
+   * @param metadata Iceberg 表元数据
+   * @return Glue Column 列表
+   */
   private static List<Column> toColumns(TableMetadata metadata) {
     List<Column> columns = Lists.newArrayList();
     Set<String> addedNames = Sets.newHashSet();
@@ -310,6 +348,14 @@ class IcebergToGlueConverter {
     return columns;
   }
 
+  /**
+   * 向列列表添加一个字段（若字段名未出现过），并附带 Iceberg 字段元信息参数。
+   *
+   * @param columns 列列表
+   * @param dedupe 已添加字段名集合
+   * @param field Iceberg 字段
+   * @param isCurrent 是否属于当前 schema
+   */
   private static void addColumnWithDedupe(
       List<Column> columns, Set<String> dedupe, NestedField field, boolean isCurrent) {
     if (!dedupe.contains(field.name())) {

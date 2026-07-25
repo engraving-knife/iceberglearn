@@ -47,6 +47,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestOrcDataReader 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestOrcDataReader 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOrcDataReader implements WithAssertions {
 
   @TempDir private static File temp;
@@ -61,6 +68,7 @@ public class TestOrcDataReader implements WithAssertions {
   private static DataFile dataFile;
   private static OutputFile outputFile;
 
+  /** 辅助方法：createDataFile。 */
   @BeforeAll
   public static void createDataFile() throws IOException {
     GenericRecord bufferRecord = GenericRecord.create(SCHEMA);
@@ -101,6 +109,11 @@ public class TestOrcDataReader implements WithAssertions {
     dataFile = dataWriter.toDataFile();
   }
 
+  /**
+   * 测试场景：Write。
+   *
+   * <p>验证该方法在 Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testWrite() {
     assertThat(dataFile.format()).isEqualTo(FileFormat.ORC);
@@ -110,6 +123,7 @@ public class TestOrcDataReader implements WithAssertions {
     assertThat(dataFile.keyMetadata()).isNull();
   }
 
+  /** 辅助方法：validateAllRecords。 */
   private void validateAllRecords(List<Record> records) {
     assertThat(records).hasSize(5);
     long id = 1;
@@ -123,6 +137,11 @@ public class TestOrcDataReader implements WithAssertions {
     }
   }
 
+  /**
+   * 测试场景：Row Reader。
+   *
+   * <p>验证该方法在 Row Reader 条件下的行为是否符合预期。
+   */
   @Test
   public void testRowReader() throws IOException {
     try (CloseableIterable<Record> reader =
@@ -135,6 +154,11 @@ public class TestOrcDataReader implements WithAssertions {
     }
   }
 
+  /**
+   * 测试场景：Row Reader With Filter。
+   *
+   * <p>验证该方法在 Row Reader With Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testRowReaderWithFilter() throws IOException {
     try (CloseableIterable<Record> reader =
@@ -148,6 +172,11 @@ public class TestOrcDataReader implements WithAssertions {
     }
   }
 
+  /**
+   * 测试场景：Row Reader With Filter With Selected。
+   *
+   * <p>验证该方法在 Row Reader With Filter With Selected 条件下的行为是否符合预期。
+   */
   @Test
   public void testRowReaderWithFilterWithSelected() throws IOException {
     List<Record> readRecords;

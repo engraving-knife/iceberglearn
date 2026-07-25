@@ -52,9 +52,17 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSnapshotSelection 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 快照selection 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSnapshotSelection {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "planningMode = {0}")
   public static Object[] parameters() {
     return new Object[] {LOCAL, DISTRIBUTED};
@@ -71,6 +79,7 @@ public class TestSnapshotSelection {
 
   private final Map<String, String> properties;
 
+  /** 测试快照selection。 */
   public TestSnapshotSelection(PlanningMode planningMode) {
     this.properties =
         ImmutableMap.of(
@@ -78,11 +87,13 @@ public class TestSnapshotSelection {
             TableProperties.DELETE_PLANNING_MODE, planningMode.modeName());
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSnapshotSelection.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSnapshotSelection.spark;
@@ -90,6 +101,7 @@ public class TestSnapshotSelection {
     currentSpark.stop();
   }
 
+  /** 测试快照selection通过id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionById() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -135,6 +147,7 @@ public class TestSnapshotSelection {
         "Previous snapshot rows should match", firstBatchRecords, previousSnapshotRecords);
   }
 
+  /** 测试快照selection通过时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByTimestamp() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -185,6 +198,7 @@ public class TestSnapshotSelection {
         "Previous snapshot rows should match", firstBatchRecords, previousSnapshotRecords);
   }
 
+  /** 测试快照selection通过invalid快照id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByInvalidSnapshotId() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -200,6 +214,7 @@ public class TestSnapshotSelection {
         .hasMessage("Cannot find snapshot with ID -10");
   }
 
+  /** 测试快照selection通过invalid时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByInvalidTimestamp() throws IOException {
     long timestamp = System.currentTimeMillis();
@@ -220,6 +235,7 @@ public class TestSnapshotSelection {
         .hasMessageContaining("Cannot find a snapshot older than");
   }
 
+  /** 测试快照selection通过快照id与时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionBySnapshotIdAndTimestamp() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -252,6 +268,7 @@ public class TestSnapshotSelection {
         .hasMessageContaining("tag");
   }
 
+  /** 测试快照selection通过标签场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByTag() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -287,6 +304,7 @@ public class TestSnapshotSelection {
         "Current snapshot rows should match", expectedRecords, currentSnapshotRecords);
   }
 
+  /** 测试快照selection通过分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByBranch() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -322,6 +340,7 @@ public class TestSnapshotSelection {
         "Current snapshot rows should match", expectedRecords, currentSnapshotRecords);
   }
 
+  /** 测试快照selection通过分支与标签fails场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByBranchAndTagFails() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -353,6 +372,7 @@ public class TestSnapshotSelection {
         .hasMessageStartingWith("Can specify only one of snapshot-id");
   }
 
+  /** 测试快照selection通过时间戳与分支或标签fails场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByTimestampAndBranchOrTagFails() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -396,6 +416,7 @@ public class TestSnapshotSelection {
         .hasMessageStartingWith("Can specify only one of snapshot-id");
   }
 
+  /** 测试快照selection通过分支带模式change场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByBranchWithSchemaChange() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -437,6 +458,7 @@ public class TestSnapshotSelection {
         "Current snapshot rows should match", expectedRecords, deletedColumnBranchSnapshotRecords);
   }
 
+  /** 测试快照selection通过标签带模式change场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotSelectionByTagWithSchemaChange() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();

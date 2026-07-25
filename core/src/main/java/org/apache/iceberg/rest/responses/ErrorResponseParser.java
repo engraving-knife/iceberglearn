@@ -25,6 +25,15 @@ import java.util.List;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：{@link ErrorResponse} 的 JSON 序列化/反序列化工具类。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 序列化层）。
+ *
+ * <p>职责：将 ErrorResponse 与 JSON 互转，字段包括 code、type、message、stack。
+ *
+ * <p>设计意图：手动 JSON 读写以精确控制字段名格式与可选字段处理。
+ */
 public class ErrorResponseParser {
 
   private ErrorResponseParser() {}

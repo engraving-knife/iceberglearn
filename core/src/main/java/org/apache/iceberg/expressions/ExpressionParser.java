@@ -38,6 +38,30 @@ import org.apache.iceberg.transforms.Transforms;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：表达式（{@link Expression}）与 JSON 之间的序列化器。
+ *
+ * <p>所属模块：iceberg-core（expressions 包），为 REST Catalog 等场景提供谓词表达式的 JSON 编解码，位于序列化工具层。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link Expression} 树序列化为 JSON（含 and/or/not、谓词、引用与变换）。
+ *   <li>将符合 REST 协议的 JSON 反序列化为未绑定（{@link UnboundPredicate}）表达式树， 可选地结合 {@link Schema} 把值转换为正确类型。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>序列化用访问者：通过 {@link ExpressionVisitors.CustomOrderExpressionVisitor} 按表达式 原始顺序遍历并写
+ *       JSON，保持表达式结构；IO 受检异常统一包装为 {@link UncheckedIOException}。
+ *   <li>反序列化按 type 字段分发：支持 boolean 常量、literal 常量、not/and/or 逻辑节点， 以及各种谓词（一元/单值/集合值），并对字段存在性做严格校验。
+ *   <li>解耦 schema：无 schema 时按 JSON 节点推断 Java 对象；有 schema 时绑定 term 获取精确类型， 便于后续绑定校验。
+ * </ul>
+ *
+ * <p>上下游关系：依赖 {@link JsonUtil}、{@link SingleValueParser}、{@link Transforms}； 被 REST Catalog /
+ * 协议层在表达式编解码时调用。
+ */
 public class ExpressionParser {
 
   private static final String TYPE = "type";

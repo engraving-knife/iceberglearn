@@ -51,6 +51,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestMetadataTableReadableMetrics 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 元数据表readable指标 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
@@ -78,19 +85,23 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
           optional(8, "fixedCol", Types.FixedType.ofLength(3)),
           optional(9, "binaryCol", Types.BinaryType.get()));
 
+  /** 测试元数据表readable指标。 */
   public TestMetadataTableReadableMetrics() {
     // only SparkCatalog supports metadata table sql queries
     super(SparkCatalogConfig.HIVE);
   }
 
+  /** 表name。 */
   protected String tableName() {
     return tableName.split("\\.")[2];
   }
 
+  /** 数据库。 */
   protected String database() {
     return tableName.split("\\.")[1];
   }
 
+  /** 创建基础表。 */
   private Table createPrimitiveTable() throws IOException {
     Table table =
         catalog.createTable(
@@ -130,6 +141,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
     return table;
   }
 
+  /** 创建嵌套表。 */
   private Pair<Table, DataFile> createNestedTable() throws IOException {
     Table table =
         catalog.createTable(
@@ -149,15 +161,18 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
     return Pair.of(table, dataFile);
   }
 
+  /** 删除表。 */
   @After
   public void dropTable() {
     sql("DROP TABLE %s", tableName);
   }
 
+  /** 文件df。 */
   private Dataset<Row> filesDf() {
     return spark.read().format("iceberg").load(database() + "." + tableName() + ".files");
   }
 
+  /** 创建基础记录。 */
   protected GenericRecord createPrimitiveRecord(
       boolean booleanCol,
       int intCol,
@@ -181,6 +196,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
     return record;
   }
 
+  /** 创建嵌套记录。 */
   private GenericRecord createNestedRecord(Long longCol, Double doubleCol) {
     GenericRecord record = GenericRecord.create(NESTED_SCHEMA);
     GenericRecord nested = GenericRecord.create(NESTED_STRUCT_TYPE);
@@ -192,6 +208,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
     return record;
   }
 
+  /** 测试基础列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPrimitiveColumns() throws Exception {
     Table table = createPrimitiveTable();
@@ -289,6 +306,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
         sql("SELECT readable_metrics FROM %s.files", tableName));
   }
 
+  /** 测试select基础值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSelectPrimitiveValues() throws Exception {
     createPrimitiveTable();
@@ -311,6 +329,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
         sql("SELECT readable_metrics.longCol.value_count, content FROM %s.files", tableName));
   }
 
+  /** 测试select嵌套值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSelectNestedValues() throws Exception {
     createNestedTable();
@@ -324,6 +343,7 @@ public class TestMetadataTableReadableMetrics extends SparkTestBaseWithCatalog {
             tableName));
   }
 
+  /** 测试嵌套值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedValues() throws Exception {
     Pair<Table, DataFile> table = createNestedTable();

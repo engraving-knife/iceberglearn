@@ -71,8 +71,16 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestMerge 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 合并 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
 
+  /** 测试合并。 */
   public TestMerge(
       String catalogName,
       String implementation,
@@ -84,17 +92,20 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     super(catalogName, implementation, config, fileFormat, vectorized, distributionMode, branch);
   }
 
+  /** 初始化Spark配置。 */
   @BeforeClass
   public static void setupSparkConf() {
     spark.conf().set("spark.sql.shuffle.partitions", "4");
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS source");
   }
 
+  /** 测试合并conditionsplit插入target谓词与连接condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeConditionSplitIntoTargetPredicateAndJoinCondition() {
     createAndInitTable(
@@ -144,6 +155,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带静态谓词下推场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithStaticPredicatePushDown() {
     createAndInitTable("id BIGINT, dep STRING");
@@ -197,6 +209,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", selectTarget()));
   }
 
+  /** 测试合并插入空target插入所有不存在的matching行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeIntoEmptyTargetInsertAllNonMatchingRows() {
     Assume.assumeFalse("Custom branch does not exist for empty table", "test".equals(branch));
@@ -228,6 +241,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并插入空target插入onlymatching行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeIntoEmptyTargetInsertOnlyMatchingRows() {
     Assume.assumeFalse("Custom branch does not exist for empty table", "test".equals(branch));
@@ -258,6 +272,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带only更新clause场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithOnlyUpdateClause() {
     createAndInitTable(
@@ -289,6 +304,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带only更新clause与空值值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithOnlyUpdateClauseAndNullValues() {
     createAndInitTable(
@@ -322,6 +338,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带only删除clause场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithOnlyDeleteClause() {
     createAndInitTable(
@@ -352,6 +369,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带所有causes场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithAllCauses() {
     createAndInitTable(
@@ -387,6 +405,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带所有causes带explicit列specification场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithAllCausesWithExplicitColumnSpecification() {
     createAndInitTable(
@@ -422,6 +441,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带源cte场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithSourceCTE() {
     createAndInitTable(
@@ -458,6 +478,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带源从集合ops场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithSourceFromSetOps() {
     createAndInitTable(
@@ -498,6 +519,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带多个更新用于target行smalltargetlarge源场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleUpdatesForTargetRowSmallTargetLargeSource() {
     createAndInitTable(
@@ -578,6 +600,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", selectTarget()));
   }
 
+  /** 测试合并带多个更新用于target行smalltargetlarge源no等值condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleUpdatesForTargetRowSmallTargetLargeSourceNoEqualityCondition() {
     createAndInitTable("id INT, dep STRING", "{ \"id\": 1, \"dep\": \"emp-id-one\" }");
@@ -618,6 +641,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", selectTarget()));
   }
 
+  /** 测试合并带多个更新用于target行smalltargetlarge源no非matched动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleUpdatesForTargetRowSmallTargetLargeSourceNoNotMatchedActions() {
     createAndInitTable(
@@ -687,6 +711,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", selectTarget()));
   }
 
+  /** 测试合并带多个更新用于target行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleUpdatesForTargetRow() {
     createAndInitTable(
@@ -725,6 +750,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", selectTarget()));
   }
 
+  /** 测试合并带unconditional删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithUnconditionalDelete() {
     createAndInitTable(
@@ -758,6 +784,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带单个conditional删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithSingleConditionalDelete() {
     createAndInitTable(
@@ -794,6 +821,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", selectTarget()));
   }
 
+  /** 测试合并带恒等转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithIdentityTransform() {
     for (DistributionMode mode : DistributionMode.values()) {
@@ -840,6 +868,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试合并带days转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithDaysTransform() {
     for (DistributionMode mode : DistributionMode.values()) {
@@ -888,6 +917,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试合并带桶转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithBucketTransform() {
     for (DistributionMode mode : DistributionMode.values()) {
@@ -934,6 +964,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试合并带截断转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithTruncateTransform() {
     for (DistributionMode mode : DistributionMode.values()) {
@@ -980,6 +1011,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试合并插入分区与有序表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeIntoPartitionedAndOrderedTable() {
     for (DistributionMode mode : DistributionMode.values()) {
@@ -1027,6 +1059,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试自身合并场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSelfMerge() {
     createAndInitTable(
@@ -1050,6 +1083,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试自身合并带caching场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSelfMergeWithCaching() {
     createAndInitTable(
@@ -1075,6 +1109,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", commitTarget()));
   }
 
+  /** 测试合并带源作为自身subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithSourceAsSelfSubquery() {
     createAndInitTable(
@@ -1100,6 +1135,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带serializable隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testMergeWithSerializableIsolation() throws InterruptedException {
     // cannot run tests with concurrency for Hadoop tables without atomic renames
@@ -1193,6 +1229,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试合并带快照隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testMergeWithSnapshotIsolation()
       throws InterruptedException, ExecutionException {
@@ -1282,6 +1319,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试合并带extra列在源场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithExtraColumnsInSource() {
     createAndInitTable(
@@ -1312,6 +1350,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带空值在target与源场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNullsInTargetAndSource() {
     createAndInitTable(
@@ -1340,6 +1379,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY v", selectTarget()));
   }
 
+  /** 测试合并带空值safeequals场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNullSafeEquals() {
     createAndInitTable(
@@ -1367,6 +1407,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY v", selectTarget()));
   }
 
+  /** 测试合并带空值condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNullCondition() {
     createAndInitTable(
@@ -1395,6 +1436,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY v", selectTarget()));
   }
 
+  /** 测试合并带空值动作conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNullActionConditions() {
     createAndInitTable(
@@ -1446,6 +1488,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows2, sql("SELECT * FROM %s ORDER BY v", selectTarget()));
   }
 
+  /** 测试合并带多个matching动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleMatchingActions() {
     createAndInitTable(
@@ -1475,6 +1518,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY v", selectTarget()));
   }
 
+  /** 测试合并带多个行分组Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleRowGroupsParquet() throws NoSuchTableException {
     Assume.assumeTrue(fileFormat.equalsIgnoreCase("parquet"));
@@ -1514,6 +1558,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     Assert.assertEquals(200, spark.table(commitTarget()).count());
   }
 
+  /** 测试合并插入only场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeInsertOnly() {
     createAndInitTable(
@@ -1546,6 +1591,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并插入only带condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeInsertOnlyWithCondition() {
     createAndInitTable("id INTEGER, v INTEGER", "{ \"id\": 1, \"v\": 1 }");
@@ -1572,6 +1618,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         "Output should match", expectedRows, sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并对齐更新与插入动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeAlignsUpdateAndInsertActions() {
     createAndInitTable("id INT, a INT, b STRING", "{ \"id\": 1, \"a\": 2, \"b\": \"str\" }");
@@ -1595,6 +1642,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并mixed场景对齐更新与插入动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeMixedCaseAlignsUpdateAndInsertActions() {
     createAndInitTable("id INT, a INT, b STRING", "{ \"id\": 1, \"a\": 2, \"b\": \"str\" }");
@@ -1627,6 +1675,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s WHERE b = 'new_str_2'ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并更新嵌套结构体字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeUpdatesNestedStructFields() {
     createAndInitTable(
@@ -1674,6 +1723,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带inferred转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithInferredCasts() {
     createAndInitTable("id INT, s STRING", "{ \"id\": 1, \"s\": \"value\" }");
@@ -1693,6 +1743,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并modifies空值结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeModifiesNullStruct() {
     createAndInitTable("id INT, s STRUCT<n1:INT,n2:INT>", "{ \"id\": 1, \"s\": null }");
@@ -1711,6 +1762,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", selectTarget()));
   }
 
+  /** 测试合并refreshesrelationcache场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeRefreshesRelationCache() {
     createAndInitTable("id INT, name STRING", "{ \"id\": 1, \"name\": \"n1\" }");
@@ -1737,6 +1789,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     spark.sql("UNCACHE TABLE tmp");
   }
 
+  /** 测试合并带多个非matched动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleNotMatchedActions() {
     createAndInitTable("id INT, dep STRING", "{ \"id\": 0, \"dep\": \"emp-id-0\" }");
@@ -1770,6 +1823,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带多个conditional非matched动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithMultipleConditionalNotMatchedActions() {
     createAndInitTable("id INT, dep STRING", "{ \"id\": 0, \"dep\": \"emp-id-0\" }");
@@ -1802,6 +1856,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并resolves列通过name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeResolvesColumnsByName() {
     createAndInitTable(
@@ -1837,6 +1892,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT id, badge, dep FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并应resolve当therearenounresolved表达式或列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeShouldResolveWhenThereAreNoUnresolvedExpressionsOrColumns() {
     // ensures that MERGE INTO will resolve into the correct action even if no columns
@@ -1872,6 +1928,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带表带不存在的可空列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithTableWithNonNullableColumn() {
     createAndInitTable(
@@ -1906,6 +1963,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试合并带不存在的已存在的列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNonExistingColumns() {
     createAndInitTable(
@@ -1955,6 +2013,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带invalid列在插入场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithInvalidColumnsInInsert() {
     createAndInitTable(
@@ -2006,6 +2065,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带invalid更新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithInvalidUpdates() {
     createAndInitTable(
@@ -2040,6 +2100,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带conflicting更新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithConflictingUpdates() {
     createAndInitTable(
@@ -2087,6 +2148,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带invalid赋值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithInvalidAssignments() {
     createAndInitTable(
@@ -2169,6 +2231,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试合并带不存在的deterministicconditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNonDeterministicConditions() {
     createAndInitTable(
@@ -2229,6 +2292,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带聚合表达式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithAggregateExpressions() {
     createAndInitTable(
@@ -2289,6 +2353,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带subqueries在conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithSubqueriesInConditions() {
     createAndInitTable(
@@ -2349,6 +2414,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带target列在插入conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithTargetColumnsInInsertConditions() {
     createAndInitTable("id INT, c2 INT", "{ \"id\": 1, \"c2\": 2 }");
@@ -2368,6 +2434,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并带不存在的Icebergtarget表非supported场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeWithNonIcebergTargetTableNotSupported() {
     createOrReplaceView("target", "{ \"c1\": -100, \"c2\": -200 }");
@@ -2386,6 +2453,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并单个分区partitioning场景：验证该方法在对应输入下的行为与断言结果。 */
   /**
    * Tests a merge where both the source and target are evaluated to be partitioned by
    * SingePartition at planning time but DynamicFileFilterExec will return an empty target.
@@ -2411,6 +2479,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     assertEquals("Should correctly add the non-matching rows", expectedRows, result);
   }
 
+  /** 测试合并空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeEmptyTable() {
     Assume.assumeFalse("Custom branch does not exist for empty table", "test".equals(branch));
@@ -2432,6 +2501,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
     assertEquals("Should correctly add the non-matching rows", expectedRows, result);
   }
 
+  /** 测试合并不存在的已存在的分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeNonExistingBranch() {
     Assume.assumeTrue("Test only applicable to custom branch", "test".equals(branch));
@@ -2450,6 +2520,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         .hasMessage("Cannot use branch (does not exist): test");
   }
 
+  /** 测试合并到wap分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeToWapBranch() {
     Assume.assumeTrue("WAP branch only works for table identifier without branch", branch == null);
@@ -2511,6 +2582,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试合并到wap分支带表分支标识符场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeToWapBranchWithTableBranchIdentifier() {
     Assume.assumeTrue("Test must have branch name part in table identifier", branch != null);
@@ -2540,6 +2612,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
                         branch)));
   }
 
+  /** 检查连接与过滤器conditions。 */
   private void checkJoinAndFilterConditions(String query, String join, String icebergFilters) {
     // disable runtime filtering for easier validation
     withSQLConf(
@@ -2556,6 +2629,7 @@ public abstract class TestMerge extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 模式。 */
   private RowLevelOperationMode mode(Table table) {
     String modeName = table.properties().getOrDefault(MERGE_MODE, MERGE_MODE_DEFAULT);
     return RowLevelOperationMode.fromName(modeName);

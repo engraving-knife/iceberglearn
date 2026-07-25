@@ -26,13 +26,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkDaysFunction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkdays函数 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkDaysFunction extends SparkTestBaseWithCatalog {
 
+  /** use目录。 */
   @Before
   public void useCatalog() {
     sql("USE %s", catalogName);
   }
 
+  /** 测试日期场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDates() {
     Assert.assertEquals(
@@ -50,6 +59,7 @@ public class TestSparkDaysFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.days(CAST(null AS DATE))"));
   }
 
+  /** 测试时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestamps() {
     Assert.assertEquals(
@@ -67,6 +77,7 @@ public class TestSparkDaysFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.days(CAST(null AS DATE))"));
   }
 
+  /** 测试wrongnumber的参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWrongNumberOfArguments() {
     AssertHelpers.assertThrows(
@@ -82,6 +93,7 @@ public class TestSparkDaysFunction extends SparkTestBaseWithCatalog {
         () -> scalarSql("SELECT system.days(date('1969-12-31'), date('1969-12-31'))"));
   }
 
+  /** 测试invalidinput类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidInputTypes() {
     AssertHelpers.assertThrows(

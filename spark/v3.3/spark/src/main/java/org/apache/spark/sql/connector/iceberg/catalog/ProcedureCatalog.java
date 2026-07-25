@@ -23,18 +23,13 @@ import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 import org.apache.spark.sql.connector.catalog.Identifier;
 
 /**
- * A catalog API for working with stored procedures.
+ * Spark DataSource V2 连接器扩展，封装为可通过 SQL CALL 调用的存储过程。
  *
- * <p>Implementations should implement this interface if they expose stored procedures that can be
- * called via CALL statements.
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 ProcedureCatalog。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 public interface ProcedureCatalog extends CatalogPlugin {
-  /**
-   * Load a {@link Procedure stored procedure} by {@link Identifier identifier}.
-   *
-   * @param ident a stored procedure identifier
-   * @return the stored procedure's metadata
-   * @throws NoSuchProcedureException if there is no matching stored procedure
-   */
+  /** 执行该方法的具体逻辑。 */
   Procedure loadProcedure(Identifier ident) throws NoSuchProcedureException;
 }

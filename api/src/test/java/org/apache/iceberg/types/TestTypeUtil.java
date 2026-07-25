@@ -31,7 +31,19 @@ import org.apache.iceberg.types.Types.IntegerType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTypeUtil 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTypeUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTypeUtil {
+  /**
+   * 测试场景：Reassign Ids Duplicate Columns。
+   *
+   * <p>验证该方法在 Reassign Ids Duplicate Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testReassignIdsDuplicateColumns() {
     Schema schema =
@@ -44,6 +56,11 @@ public class TestTypeUtil {
     assertThat(actualSchema.asStruct()).isEqualTo(sourceSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Reassign Ids With Identifier。
+   *
+   * <p>验证该方法在 Reassign Ids With Identifier 条件下的行为是否符合预期。
+   */
   @Test
   public void testReassignIdsWithIdentifier() {
     Schema schema =
@@ -65,6 +82,11 @@ public class TestTypeUtil {
         .isEqualTo(sourceSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：Assign Increasing Fresh Id With Identifier。
+   *
+   * <p>验证该方法在 Assign Increasing Fresh Id With Identifier 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssignIncreasingFreshIdWithIdentifier() {
     Schema schema =
@@ -86,6 +108,11 @@ public class TestTypeUtil {
         .isEqualTo(expectedSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：Assign Increasing Fresh Id New Identifier。
+   *
+   * <p>验证该方法在 Assign Increasing Fresh Id New Identifier 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssignIncreasingFreshIdNewIdentifier() {
     Schema schema =
@@ -106,6 +133,11 @@ public class TestTypeUtil {
         .isEqualTo(Sets.newHashSet(sourceSchema.findField("a").fieldId()));
   }
 
+  /**
+   * 测试场景：Project。
+   *
+   * <p>验证该方法在 Project 条件下的行为是否符合预期。
+   */
   @Test
   public void testProject() {
     Schema schema =
@@ -162,6 +194,11 @@ public class TestTypeUtil {
     assertThat(actualDepthTwoChildren.asStruct()).isEqualTo(expectedDepthTwo.asStruct());
   }
 
+  /**
+   * 测试场景：Project Naturally Empty。
+   *
+   * <p>验证该方法在 Project Naturally Empty 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectNaturallyEmpty() {
     Schema schema =
@@ -211,6 +248,11 @@ public class TestTypeUtil {
     assertThat(actualDepthThreeChildren.asStruct()).isEqualTo(expectedDepthThree.asStruct());
   }
 
+  /**
+   * 测试场景：Project Empty。
+   *
+   * <p>验证该方法在 Project Empty 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectEmpty() {
     Schema schema =
@@ -249,6 +291,11 @@ public class TestTypeUtil {
     assertThat(actualDepthTwo.asStruct()).isEqualTo(expectedDepthTwo.asStruct());
   }
 
+  /**
+   * 测试场景：Select。
+   *
+   * <p>验证该方法在 Select 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelect() {
     Schema schema =
@@ -311,6 +358,11 @@ public class TestTypeUtil {
     assertThat(actualDepthTwo.asStruct()).isEqualTo(expectedDepthTwo.asStruct());
   }
 
+  /**
+   * 测试场景：Project Map。
+   *
+   * <p>验证该方法在 Project Map 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectMap() {
     // We can't partially project keys because it changes key equality
@@ -398,6 +450,11 @@ public class TestTypeUtil {
     assertThat(actualDepthTwo.asStruct()).isEqualTo(expectedDepthTwo.asStruct());
   }
 
+  /**
+   * 测试场景：Get Projected Ids。
+   *
+   * <p>验证该方法在 Get Projected Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetProjectedIds() {
     Schema schema =
@@ -425,6 +482,11 @@ public class TestTypeUtil {
     assertThat(actualIds).isEqualTo(expectedIds);
   }
 
+  /**
+   * 测试场景：Project List Nested。
+   *
+   * <p>验证该方法在 Project List Nested 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectListNested() {
     Schema schema =
@@ -474,6 +536,11 @@ public class TestTypeUtil {
     assertThat(actual.asStruct()).isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：Project Map Nested。
+   *
+   * <p>验证该方法在 Project Map Nested 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectMapNested() {
     Schema schema =
@@ -528,6 +595,11 @@ public class TestTypeUtil {
     assertThat(actual.asStruct()).isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：Reassign Ids Illegal Argument Exception。
+   *
+   * <p>验证该方法在 Reassign Ids Illegal Argument Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testReassignIdsIllegalArgumentException() {
     Schema schema =
@@ -539,6 +611,11 @@ public class TestTypeUtil {
         .hasMessage("Field b not found in source schema");
   }
 
+  /**
+   * 测试场景：Validate Schema Via Index By Name。
+   *
+   * <p>验证该方法在 Validate Schema Via Index By Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidateSchemaViaIndexByName() {
     Types.NestedField nestedType =
@@ -554,6 +631,11 @@ public class TestTypeUtil {
         .hasMessageContaining("Invalid schema: multiple fields for name a.b.c");
   }
 
+  /**
+   * 测试场景：Select Not。
+   *
+   * <p>验证该方法在 Select Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelectNot() {
     Schema schema =
@@ -590,6 +672,11 @@ public class TestTypeUtil {
     assertThat(actualNoStruct.asStruct()).isEqualTo(schema.asStruct());
   }
 
+  /**
+   * 测试场景：Reassign Or Refresh Ids。
+   *
+   * <p>验证该方法在 Reassign Or Refresh Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testReassignOrRefreshIds() {
     Schema schema =
@@ -614,6 +701,11 @@ public class TestTypeUtil {
     assertThat(actualSchema.asStruct()).isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Reassign Or Refresh Ids Case Insensitive。
+   *
+   * <p>验证该方法在 Reassign Or Refresh Ids Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testReassignOrRefreshIdsCaseInsensitive() {
     Schema schema =

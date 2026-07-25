@@ -25,17 +25,22 @@ import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.logical.RowType;
 
 /**
- * This is a small util class that try to hide calls to Flink Internal or PublicEvolve interfaces as
- * Flink can change those APIs during minor version release.
+ * 兼容性工具类，封装对 Flink 内部或 PublicEvolve 接口的调用。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：屏蔽 Flink 内部 API 在小版本间的差异， 集中调用点便于适配不同 Flink 版本。
+ *
+ * <p>设计意图：工具类 + 静态方法；当 Flink 升级时仅需修改本类。
  */
 public class FlinkCompatibilityUtil {
 
   private FlinkCompatibilityUtil() {}
 
+  /** 把 RowType 转换为 Flink 的 TypeInformation（基于 InternalTypeInfo）。 */
   public static TypeInformation<RowData> toTypeInfo(RowType rowType) {
     return InternalTypeInfo.of(rowType);
   }
 
+  /** 判断 TableColumn 是否为物理列。 */
   public static boolean isPhysicalColumn(TableColumn column) {
     return column.isPhysical();
   }

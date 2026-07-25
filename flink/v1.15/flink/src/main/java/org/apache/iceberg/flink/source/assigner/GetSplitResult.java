@@ -23,6 +23,13 @@ import org.apache.flink.util.Preconditions;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 
 @Internal
+/**
+ * 分片分配结果，封装分配状态（可用/无分片/已完成）。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：承载分配结果供 enumerator 判断。
+ *
+ * <p>设计意图：值对象；被 SplitAssigner 返回。
+ */
 public class GetSplitResult {
 
   public enum Status {

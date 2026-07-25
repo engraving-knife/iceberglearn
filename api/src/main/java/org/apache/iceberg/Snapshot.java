@@ -24,117 +24,125 @@ import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 
 /**
- * A snapshot of the data in a table at a point in time.
+ * 表在某一时刻的数据快照。
  *
- * <p>A snapshot consist of one or more file manifests, and the complete table contents is the union
- * of all the data files in those manifests.
+ * <p>所属模块：iceberg-api（表元数据核心抽象层）。
  *
- * <p>Snapshots are created by table operations, like {@link AppendFiles} and {@link RewriteFiles}.
+ * <p>职责：表示表在某个时间点的完整数据状态，由一个或多个文件 manifest 组成，表的完整 内容即这些 manifest 中所有数据文件的并集。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>快照由表操作（如 {@link AppendFiles}、{@link RewriteFiles}）创建并提交，每个快照 持有唯一的快照 ID 与单调递增的序列号。
+ *   <li>通过 parentId 形成快照链，支持时间旅行与增量扫描。
+ *   <li>实现 {@link Serializable} 以支持序列化传递。
+ * </ul>
+ *
+ * <p>上下游关系：由表元数据持有；被扫描、过期、回滚等操作使用。
  */
 public interface Snapshot extends Serializable {
   /**
-   * Return this snapshot's sequence number.
+   * 返回本快照的序列号。
    *
-   * <p>Sequence numbers are assigned when a snapshot is committed.
+   * <p>设计要点：序列号在快照提交时分配，用于增量扫描与数据/文件序列号过滤。
    *
-   * @return a long sequence number
+   * @return 快照序列号
    */
   long sequenceNumber();
 
   /**
-   * Return this snapshot's ID.
+   * 返回本快照的 ID。
    *
-   * @return a long ID
+   * @return 快照 ID
    */
   long snapshotId();
 
   /**
-   * Return this snapshot's parent ID or null.
+   * 返回本快照的父快照 ID。
    *
-   * @return a long ID for this snapshot's parent, or null if it has no parent
+   * @return 父快照 ID，无父快照时返回 null
    */
   Long parentId();
 
   /**
-   * Return this snapshot's timestamp.
+   * 返回本快照的时间戳（毫秒）。
    *
-   * <p>This timestamp is the same as those produced by {@link System#currentTimeMillis()}.
+   * <p>设计要点：时间戳由 {@link System#currentTimeMillis()} 产生，用于过期判断与时间旅行。
    *
-   * @return a long timestamp in milliseconds
+   * @return 毫秒时间戳
    */
   long timestampMillis();
 
   /**
-   * Return all {@link ManifestFile} instances for either data or delete manifests in this snapshot.
+   * 返回本快照中所有数据与删除 manifest 的 {@link ManifestFile} 列表。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return a list of ManifestFile
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return manifest 文件列表
    */
   List<ManifestFile> allManifests(FileIO io);
 
   /**
-   * Return a {@link ManifestFile} for each data manifest in this snapshot.
+   * 返回本快照中所有数据 manifest 的 {@link ManifestFile} 列表。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return a list of ManifestFile
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 数据 manifest 文件列表
    */
   List<ManifestFile> dataManifests(FileIO io);
 
   /**
-   * Return a {@link ManifestFile} for each delete manifest in this snapshot.
+   * 返回本快照中所有删除 manifest 的 {@link ManifestFile} 列表。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return a list of ManifestFile
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 删除 manifest 文件列表
    */
   List<ManifestFile> deleteManifests(FileIO io);
 
   /**
-   * Return the name of the {@link DataOperations data operation} that produced this snapshot.
+   * 返回生成本快照的 {@link DataOperations 数据操作} 名称。
    *
-   * @return the operation that produced this snapshot, or null if the operation is unknown
+   * @return 操作名，未知时返回 null
    * @see DataOperations
    */
   String operation();
 
   /**
-   * Return a string map of summary data for the operation that produced this snapshot.
+   * 返回生成本快照的操作的概要信息映射。
    *
-   * @return a string map of summary data.
+   * @return 字符串键值对概要
    */
   Map<String, String> summary();
 
   /**
-   * Return all data files added to the table in this snapshot.
+   * 返回本快照中新增的所有数据文件。
    *
-   * <p>The files returned include the following columns: file_path, file_format, partition,
-   * record_count, and file_size_in_bytes. Data and file sequence number are populated. Other
-   * columns will be null.
+   * <p>设计要点：返回的文件含 file_path、file_format、partition、record_count、 file_size_in_bytes
+   * 列，数据/文件序列号已填充，其余列为 null。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return all data files added to the table in this snapshot.
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 本快照新增的数据文件迭代器
    */
   Iterable<DataFile> addedDataFiles(FileIO io);
 
   /**
-   * Return all data files removed from the table in this snapshot.
+   * 返回本快照中移除的所有数据文件。
    *
-   * <p>The files returned include the following columns: file_path, file_format, partition,
-   * record_count, and file_size_in_bytes. Data and file sequence number are populated. Other
-   * columns will be null.
+   * <p>设计要点：返回的文件含 file_path、file_format、partition、record_count、 file_size_in_bytes
+   * 列，数据/文件序列号已填充，其余列为 null。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return all data files removed from the table in this snapshot.
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 本快照移除的数据文件迭代器
    */
   Iterable<DataFile> removedDataFiles(FileIO io);
 
   /**
-   * Return all delete files added to the table in this snapshot.
+   * 返回本快照中新增的所有删除文件。
    *
-   * <p>The files returned include the following columns: file_path, file_format, partition,
-   * record_count, and file_size_in_bytes. Other columns will be null.
+   * <p>设计要点：返回的文件含 file_path、file_format、partition、record_count、 file_size_in_bytes 列，其余列为 null。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return all delete files added to the table in this snapshot
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
+   *
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 本快照新增的删除文件迭代器
    */
   default Iterable<DeleteFile> addedDeleteFiles(FileIO io) {
     throw new UnsupportedOperationException(
@@ -142,13 +150,14 @@ public interface Snapshot extends Serializable {
   }
 
   /**
-   * Return all delete files removed from the table in this snapshot.
+   * 返回本快照中移除的所有删除文件。
    *
-   * <p>The files returned include the following columns: file_path, file_format, partition,
-   * record_count, and file_size_in_bytes. Other columns will be null.
+   * <p>设计要点：返回的文件含 file_path、file_format、partition、record_count、 file_size_in_bytes 列，其余列为 null。
    *
-   * @param io a {@link FileIO} instance used for reading files from storage
-   * @return all delete files removed from the table in this snapshot
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
+   *
+   * @param io 用于读取存储文件的 {@link FileIO}
+   * @return 本快照移除的删除文件迭代器
    */
   default Iterable<DeleteFile> removedDeleteFiles(FileIO io) {
     throw new UnsupportedOperationException(
@@ -156,17 +165,18 @@ public interface Snapshot extends Serializable {
   }
 
   /**
-   * Return the location of this snapshot's manifest list, or null if it is not separate.
+   * 返回本快照 manifest 列表文件的存储位置。
    *
-   * @return the location of the manifest list for this Snapshot
+   * @return manifest 列表文件位置，无独立文件时返回 null
    */
   String manifestListLocation();
 
   /**
-   * Return the id of the schema used when this snapshot was created, or null if this information is
-   * not available.
+   * 返回创建本快照时所用 schema 的 ID。
    *
-   * @return schema id associated with this snapshot
+   * <p>默认实现：返回 null（信息不可用时）。
+   *
+   * @return 与本快照关联的 schema ID
    */
   default Integer schemaId() {
     return null;

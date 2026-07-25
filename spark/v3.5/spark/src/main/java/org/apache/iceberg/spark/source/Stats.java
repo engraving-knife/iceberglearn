@@ -21,20 +21,28 @@ package org.apache.iceberg.spark.source;
 import java.util.OptionalLong;
 import org.apache.spark.sql.connector.read.Statistics;
 
+/**
+ * Spark 读取统计信息实现：携带字节数与行数。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），source 子包。
+ *
+ * <p>职责：实现 {@link Statistics} 把 Iceberg 扫描得到的 sizeInBytes 与 numRows 暴露给 Spark 优化器。
+ */
 class Stats implements Statistics {
   private final OptionalLong sizeInBytes;
   private final OptionalLong numRows;
 
+  /** 构造统计信息，指定字节数与行数。 */
   Stats(long sizeInBytes, long numRows) {
     this.sizeInBytes = OptionalLong.of(sizeInBytes);
     this.numRows = OptionalLong.of(numRows);
   }
-
+  /** 执行 sizeInBytes 相关操作。 */
   @Override
   public OptionalLong sizeInBytes() {
     return sizeInBytes;
   }
-
+  /** 执行 numRows 相关操作。 */
   @Override
   public OptionalLong numRows() {
     return numRows;

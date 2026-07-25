@@ -38,7 +38,31 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.orc.storage.ql.io.sarg.SearchArgument;
 
-/** Iterable used to read rows from ORC. */
+/**
+ * ORC 文件读取的可迭代结果集：实现 {@link CloseableIterable}，按行或批量迭代 ORC 数据。
+ *
+ * <p>所属模块：iceberg-orc。是 {@link ORC.ReadBuilder#build()} 的产物， 封装了 ORC Reader 的创建、schema
+ * 投影、谓词下推与迭代逻辑。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>创建 ORC Reader，根据文件 schema 是否有 id 选择投影或 NameMapping 回溯。
+ *   <li>把 Iceberg 过滤表达式绑定后转为 ORC SearchArgument 做谓词下推。
+ *   <li>根据是否提供 batchReaderFunction 返回向量化迭代器或逐行迭代器。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link CloseableGroup} 统一管理 ORC Reader 等资源的关闭。
+ *   <li>alwaysTrue 过滤在构造时被置 null，避免无谓的 SearchArgument 构建。
+ *   <li>OrcRowIterator 处理 batch 内逐行推进与 selected 向量兼容。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link ORC.ReadBuilder#build()} 创建；内部依赖 {@link ORC.newFileReader}、 {@link
+ * ORCSchemaUtil}、{@link ExpressionToSearchArgument}、{@link VectorizedRowBatchIterator}。
+ */
 class OrcIterable<T> extends CloseableGroup implements CloseableIterable<T> {
   private final Configuration config;
   private final Schema schema;
@@ -52,6 +76,11 @@ class OrcIterable<T> extends CloseableGroup implements CloseableIterable<T> {
   private final int recordsPerBatch;
   private NameMapping nameMapping;
 
+  /**
+   * 构造 ORC 读取迭代器。
+   *
+   * <p>设计要点：alwaysTrue 过滤在构造时置 null，避免无谓的 SearchArgument 构建。
+   */
   OrcIterable(
       InputFile file,
       Configuration config,
@@ -77,6 +106,18 @@ class OrcIterable<T> extends CloseableGroup implements CloseableIterable<T> {
     this.recordsPerBatch = recordsPerBatch;
   }
 
+  /**
+   * 创建读取迭代器。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>创建 ORC Reader 并注册到 CloseableGroup。
+   *   <li>获取文件 schema；若含 Iceberg id 则直接投影，否则用 NameMapping 回溯 id 后投影。
+   *   <li>若有过滤表达式，绑定后转为 SearchArgument。
+   *   <li>创建 VectorizedRowBatchIterator；若提供 batchReaderFunction 则返回向量化迭代器， 否则返回逐行 OrcRowIterator。
+   * </ol>
+   */
   @SuppressWarnings("unchecked")
   @Override
   public CloseableIterator<T> iterator() {
@@ -117,6 +158,12 @@ class OrcIterable<T> extends CloseableGroup implements CloseableIterable<T> {
     }
   }
 
+  /**
+   * 创建底层 ORC 行批迭代器。
+   *
+   * <p>逻辑：配置 Reader.Options 的 range（split）、schema、searchArgument（谓词下推）， 用
+   * orcFileReader.rows(options) 创建 RecordReader，包装为 VectorizedRowBatchIterator。
+   */
   private static VectorizedRowBatchIterator newOrcIterator(
       InputFile file,
       TypeDescription readerSchema,
@@ -140,6 +187,11 @@ class OrcIterable<T> extends CloseableGroup implements CloseableIterable<T> {
     }
   }
 
+  /**
+   * 逐行迭代器：在 VectorizedRowBatchIterator 之上逐行推进，委托 OrcRowReader 解码。
+   *
+   * <p>设计要点：兼容 ORC 的 selected 向量（isSelectedInUse 时从 selected 数组取行号）， 把 batch 偏移透传给 reader。
+   */
   private static class OrcRowIterator<T> implements CloseableIterator<T> {
 
     private int nextRow;

@@ -39,23 +39,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * An implementation of StagedTable that mimics the behavior of Spark's non-atomic CTAS and RTAS.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>A Spark catalog can implement StagingTableCatalog to support atomic operations by producing
- * StagedTable. But if a catalog implements StagingTableCatalog, Spark expects the catalog to be
- * able to produce a StagedTable for any table loaded by the catalog. This assumption doesn't always
- * work, as in the case of {@link SparkSessionCatalog}, which supports atomic operations can produce
- * a StagedTable for Iceberg tables, but wraps the session catalog and cannot necessarily produce a
- * working StagedTable implementation for tables that it loads.
+ * <p>职责：可回滚的暂存表实现，在 CREATE TABLE AS SELECT 等场景中暂存表并在失败时回滚元数据。
  *
- * <p>The work-around is this class, which implements the StagedTable interface but does not have
- * atomic behavior. Instead, the StagedTable interface is used to implement the behavior of the
- * non-atomic SQL plans that will create a table, write, and will drop the table to roll back.
+ * <p>设计意图：包装 StagedSparkTable，捕获创建过程以支持失败回滚，保证原子性。
  *
- * <p>This StagedTable implements SupportsRead, SupportsWrite, and SupportsDelete by passing the
- * calls to the real table. Implementing those interfaces is safe because Spark will not use them
- * unless the table supports them and returns the corresponding capabilities from {@link
- * #capabilities()}.
+ * <p>上下游关系：由 SparkCatalog 在分阶段建表流程中使用。
  */
 public class RollbackStagedTable
     implements StagedTable, SupportsRead, SupportsWrite, SupportsDelete {
@@ -68,53 +58,53 @@ public class RollbackStagedTable
     this.ident = ident;
     this.table = table;
   }
-
+  /** 执行 commitStagedChanges 相关操作。 */
   @Override
   public void commitStagedChanges() {
     // the changes have already been committed to the table at the end of the write
   }
-
+  /** 执行 abortStagedChanges 相关操作。 */
   @Override
   public void abortStagedChanges() {
     // roll back changes by dropping the table
     catalog.dropTable(ident);
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return table.name();
   }
-
+  /** 返回 Schema。 */
   @Override
   public StructType schema() {
     return table.schema();
   }
-
+  /** 返回分区信息。 */
   @Override
   public Transform[] partitioning() {
     return table.partitioning();
   }
-
+  /** 返回属性。 */
   @Override
   public Map<String, String> properties() {
     return table.properties();
   }
-
+  /** 返回能力集。 */
   @Override
   public Set<TableCapability> capabilities() {
     return table.capabilities();
   }
-
+  /** 执行 deleteWhere 相关操作。 */
   @Override
   public void deleteWhere(Filter[] filters) {
     call(SupportsDelete.class, t -> t.deleteWhere(filters));
   }
-
+  /** 创建 ScanBuilder 实例。 */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     return callReturning(SupportsRead.class, t -> t.newScanBuilder(options));
   }
-
+  /** 创建 WriteBuilder 实例。 */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     return callReturning(SupportsWrite.class, t -> t.newWriteBuilder(info));

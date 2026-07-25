@@ -23,8 +23,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestSnapshotRef 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestSnapshotRef 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestSnapshotRef {
 
+  /**
+   * 测试场景：Tag Default。
+   *
+   * <p>验证该方法在 Tag Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testTagDefault() {
     SnapshotRef ref = SnapshotRef.tagBuilder(1L).build();
@@ -35,6 +47,11 @@ public class TestSnapshotRef {
     assertThat(ref.maxRefAgeMs()).isNull();
   }
 
+  /**
+   * 测试场景：Branch Default。
+   *
+   * <p>验证该方法在 Branch Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testBranchDefault() {
     SnapshotRef ref = SnapshotRef.branchBuilder(1L).build();
@@ -44,6 +61,11 @@ public class TestSnapshotRef {
     assertThat(ref.maxSnapshotAgeMs()).isNull();
   }
 
+  /**
+   * 测试场景：Tag With Override。
+   *
+   * <p>验证该方法在 Tag With Override 条件下的行为是否符合预期。
+   */
   @Test
   public void testTagWithOverride() {
     SnapshotRef ref = SnapshotRef.branchBuilder(1L).maxRefAgeMs(10L).build();
@@ -52,6 +74,11 @@ public class TestSnapshotRef {
     assertThat((long) ref.maxRefAgeMs()).isEqualTo(10L);
   }
 
+  /**
+   * 测试场景：Branch With Override。
+   *
+   * <p>验证该方法在 Branch With Override 条件下的行为是否符合预期。
+   */
   @Test
   public void testBranchWithOverride() {
     SnapshotRef ref =
@@ -67,6 +94,11 @@ public class TestSnapshotRef {
     assertThat((long) ref.maxRefAgeMs()).isEqualTo(30L);
   }
 
+  /**
+   * 测试场景：No Type Failure。
+   *
+   * <p>验证该方法在 No Type Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoTypeFailure() {
     Assertions.assertThatThrownBy(() -> SnapshotRef.builderFor(1L, null).build())
@@ -74,6 +106,11 @@ public class TestSnapshotRef {
         .hasMessage("Snapshot reference type must not be null");
   }
 
+  /**
+   * 测试场景：Tag Build Failures。
+   *
+   * <p>验证该方法在 Tag Build Failures 条件下的行为是否符合预期。
+   */
   @Test
   public void testTagBuildFailures() {
     Assertions.assertThatThrownBy(() -> SnapshotRef.tagBuilder(1L).maxRefAgeMs(-1L).build())
@@ -89,6 +126,11 @@ public class TestSnapshotRef {
         .hasMessage("Tags do not support setting maxSnapshotAgeMs");
   }
 
+  /**
+   * 测试场景：Branch Build Failures。
+   *
+   * <p>验证该方法在 Branch Build Failures 条件下的行为是否符合预期。
+   */
   @Test
   public void testBranchBuildFailures() {
     Assertions.assertThatThrownBy(() -> SnapshotRef.branchBuilder(1L).maxSnapshotAgeMs(-1L).build())

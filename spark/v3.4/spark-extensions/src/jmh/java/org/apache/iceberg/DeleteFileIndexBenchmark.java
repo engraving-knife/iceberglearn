@@ -63,13 +63,12 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * A benchmark that evaluates the delete file index build and lookup performance.
+ * 文件级说明：DeleteFileIndexBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.4: <code>
- *   ./gradlew -DsparkVersions=3.4 :iceberg-spark:iceberg-spark-extensions-3.4_2.12:jmh
- *       -PjmhIncludeRegex=DeleteFileIndexBenchmark
- *       -PjmhOutputPath=benchmark/iceberg-delete-file-index-benchmark.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.4）。职责：对 删除文件index 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 @Fork(1)
 @State(Scope.Benchmark)
@@ -94,6 +93,7 @@ public class DeleteFileIndexBenchmark {
 
   private List<DataFile> dataFiles;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() throws NoSuchTableException, ParseException {
     setupSpark();
@@ -102,12 +102,18 @@ public class DeleteFileIndexBenchmark {
     loadDataFiles();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() {
     dropTable();
     tearDownSpark();
   }
 
+  /**
+   * 基准测试场景：构建indexandlookup。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void buildIndexAndLookup(Blackhole blackhole) {
@@ -118,6 +124,7 @@ public class DeleteFileIndexBenchmark {
     }
   }
 
+  /** 辅助方法：加载数据文件。 */
   private void loadDataFiles() {
     table.refresh();
 
@@ -137,6 +144,7 @@ public class DeleteFileIndexBenchmark {
     }
   }
 
+  /** 辅助方法：构建删除。 */
   private DeleteFileIndex buildDeletes() {
     table.refresh();
 
@@ -148,6 +156,7 @@ public class DeleteFileIndexBenchmark {
         .build();
   }
 
+  /** 辅助方法：加载added数据文件。 */
   private DataFile loadAddedDataFile() {
     table.refresh();
 
@@ -155,6 +164,7 @@ public class DeleteFileIndexBenchmark {
     return Iterables.getOnlyElement(addedDataFiles);
   }
 
+  /** 辅助方法：加载added删除文件。 */
   private DeleteFile loadAddedDeleteFile() {
     table.refresh();
 
@@ -162,6 +172,7 @@ public class DeleteFileIndexBenchmark {
     return Iterables.getOnlyElement(addedDeleteFiles);
   }
 
+  /** 辅助方法：init数据and删除。 */
   private void initDataAndDeletes() throws NoSuchTableException {
     Schema schema = table.schema();
     PartitionSpec spec = table.spec();
@@ -215,10 +226,12 @@ public class DeleteFileIndexBenchmark {
     }
   }
 
+  /** 辅助方法：追加as文件。 */
   private void appendAsFile(Dataset<Row> df) throws NoSuchTableException {
     df.coalesce(1).writeTo(TABLE_NAME).append();
   }
 
+  /** 辅助方法：random数据df。 */
   private Dataset<Row> randomDataDF(Schema schema, int numRows) {
     Iterable<InternalRow> rows = RandomData.generateSpark(schema, numRows, 0);
     JavaSparkContext context = JavaSparkContext.fromSparkContext(spark.sparkContext());
@@ -227,6 +240,7 @@ public class DeleteFileIndexBenchmark {
     return spark.internalCreateDataFrame(JavaRDD.toRDD(rowRDD), rowSparkType, false);
   }
 
+  /** 辅助方法：初始化Spark。 */
   private void setupSpark() {
     this.spark =
         SparkSession.builder()
@@ -240,10 +254,12 @@ public class DeleteFileIndexBenchmark {
             .getOrCreate();
   }
 
+  /** 辅助方法：tear下推Spark。 */
   private void tearDownSpark() {
     spark.stop();
   }
 
+  /** 辅助方法：init表。 */
   private void initTable() throws NoSuchTableException, ParseException {
     sql(
         "CREATE TABLE %s ( "
@@ -289,14 +305,17 @@ public class DeleteFileIndexBenchmark {
     this.table = Spark3Util.loadIcebergTable(spark, TABLE_NAME);
   }
 
+  /** 辅助方法：删除表。 */
   private void dropTable() {
     sql("DROP TABLE IF EXISTS %s PURGE", TABLE_NAME);
   }
 
+  /** 辅助方法：新建warehousedir。 */
   private String newWarehouseDir() {
     return hadoopConf.get("hadoop.tmp.dir") + UUID.randomUUID();
   }
 
+  /** 辅助方法：SQL。 */
   @FormatMethod
   private void sql(@FormatString String query, Object... args) {
     spark.sql(String.format(query, args));

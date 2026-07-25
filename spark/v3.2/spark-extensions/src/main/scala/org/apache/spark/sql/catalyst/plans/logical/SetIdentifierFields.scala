@@ -22,6 +22,13 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 SetIdentifierFields。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class SetIdentifierFields(
     table: Seq[String],
     fields: Seq[String]) extends LeafCommand {
@@ -29,6 +36,10 @@ case class SetIdentifierFields(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"SetIdentifierFields ${table.quoted} (${fields.quoted})"
   }

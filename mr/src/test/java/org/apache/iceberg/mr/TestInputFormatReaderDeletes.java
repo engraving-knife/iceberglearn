@@ -41,6 +41,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestInputFormatReaderDeletes 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestInputFormatReaderDeletes 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestInputFormatReaderDeletes extends DeleteReadTests {
   private final Configuration conf = new Configuration();
   private final HadoopTables tables = new HadoopTables(conf);
@@ -50,6 +57,7 @@ public class TestInputFormatReaderDeletes extends DeleteReadTests {
   private final String inputFormat;
   private final FileFormat fileFormat;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "inputFormat = {0}, fileFormat={1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -62,6 +70,7 @@ public class TestInputFormatReaderDeletes extends DeleteReadTests {
     };
   }
 
+  /** 辅助方法：writeTestDataFile。 */
   @Before
   @Override
   public void writeTestDataFile() throws IOException {
@@ -69,11 +78,13 @@ public class TestInputFormatReaderDeletes extends DeleteReadTests {
     super.writeTestDataFile();
   }
 
+  /** 辅助方法：TestInputFormatReaderDeletes。 */
   public TestInputFormatReaderDeletes(String inputFormat, FileFormat fileFormat) {
     this.inputFormat = inputFormat;
     this.fileFormat = fileFormat;
   }
 
+  /** 辅助方法：createTable。 */
   @Override
   protected Table createTable(String name, Schema schema, PartitionSpec spec) throws IOException {
     Table table;
@@ -90,11 +101,13 @@ public class TestInputFormatReaderDeletes extends DeleteReadTests {
     return table;
   }
 
+  /** 辅助方法：dropTable。 */
   @Override
   protected void dropTable(String name) {
     tables.dropTable(helper.table().location());
   }
 
+  /** 辅助方法：rowSet。 */
   @Override
   public StructLikeSet rowSet(String name, Table table, String... columns) {
     InputFormatConfig.ConfigBuilder builder =
@@ -115,6 +128,7 @@ public class TestInputFormatReaderDeletes extends DeleteReadTests {
     return set;
   }
 
+  /** 辅助方法：expectPruned。 */
   @Override
   protected boolean expectPruned() {
     return false;

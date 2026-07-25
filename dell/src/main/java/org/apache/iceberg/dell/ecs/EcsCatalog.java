@@ -62,16 +62,46 @@ import org.apache.iceberg.util.LocationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Dell EMC ECS 对象存储的 Catalog 实现，以对象本身作为元数据载体，无需外部 metastore。
+ *
+ * <p>所属模块：iceberg-dell（Dell EMC ECS 对象存储集成模块，ecs 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>管理 namespace 与 table：以 {@code .namespace}/{@code .table} 后缀对象作为 元数据标记，namespace/table
+ *       的属性（含表 metadata location）序列化存于对象内容。
+ *   <li>提供 list/create/drop/rename 等 namespace 与 table 操作。
+ *   <li>提供基于 E-Tag 的属性读写（CAS）能力，供 {@link EcsTableOperations} 做乐观并发提交。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>对象即目录：表/命名空间不存在独立元数据库，直接以约定后缀对象表达存在性， 属性以 {@link PropertiesSerDesUtil} 序列化进对象体，版本号进 user
+ *       metadata。 这使 catalog 完全无状态、可随存储迁移。
+ *   <li>CAS 并发控制：创建用 {@code If-None-Match: *}（对象不存在），更新用 {@code If-Match: <eTag>}（E-Tag
+ *       匹配），实现乐观锁，失败返回 false 由上层重试。
+ *   <li>边界校验：所有 properties 对象必须位于 warehouse 所在 bucket 与前缀下 （{@link #checkURI(EcsURI)}），防止越权操作。
+ *   <li>继承 {@link BaseMetastoreCatalog}：复用建表/加载表的公共流程，仅需实现 {@link #newTableOps}、{@link
+ *       #defaultWarehouseLocation} 等。
+ *   <li>资源统一关闭：用 {@link CloseableGroup} 聚合 S3 客户端与 FileIO 的关闭。
+ * </ul>
+ *
+ * <p>上下游关系：被引擎侧通过 {@code CatalogUtil.loadCatalog} 加载；内部创建 {@link EcsTableOperations} 与 {@link
+ * EcsFileIO}；依赖 {@link DellClientFactories} 获取 S3 客户端；属性读写依赖 {@link PropertiesSerDesUtil}。
+ */
 public class EcsCatalog extends BaseMetastoreCatalog
     implements Closeable, SupportsNamespaces, Configurable<Object> {
 
-  /** Suffix of table metadata object */
+  /** 表元数据对象的后缀。 */
   private static final String TABLE_OBJECT_SUFFIX = ".table";
 
-  /** Suffix of namespace metadata object */
+  /** 命名空间元数据对象的后缀。 */
   private static final String NAMESPACE_OBJECT_SUFFIX = ".namespace";
 
-  /** Key of properties version in ECS object user metadata. */
+  /** ECS 对象 user metadata 中记录属性序列化版本号的键。 */
   private static final String PROPERTIES_VERSION_USER_METADATA_KEY = "iceberg_properties_version";
 
   private static final Logger LOG = LoggerFactory.getLogger(EcsCatalog.class);
@@ -80,7 +110,7 @@ public class EcsCatalog extends BaseMetastoreCatalog
   private Object hadoopConf;
   private String catalogName;
 
-  /** Warehouse is unified with other catalog that without delimiter. */
+  /** 仓库根 location，与其他 catalog 一致不含末尾分隔符。 */
   private EcsURI warehouseLocation;
 
   private FileIO fileIO;
@@ -88,12 +118,28 @@ public class EcsCatalog extends BaseMetastoreCatalog
   private Map<String, String> catalogProperties;
 
   /**
-   * No-arg constructor to load the catalog dynamically.
+   * 无参构造，供动态加载 catalog 使用。
    *
-   * <p>All fields are initialized by calling {@link EcsCatalog#initialize(String, Map)} later.
+   * <p>所有字段随后通过 {@link #initialize(String, Map)} 注入。
    */
   public EcsCatalog() {}
 
+  /**
+   * 初始化 catalog：解析仓库路径、创建 S3 客户端与 FileIO、聚合可关闭资源。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>拷贝配置为不可变 Map，校验 warehouse 非空。
+   *   <li>规范化 warehouse（去末尾斜杠）转为 {@link EcsURI}。
+   *   <li>通过 {@link DellClientFactories} 创建 S3 客户端。
+   *   <li>初始化 FileIO（默认 {@link EcsFileIO}，或按 {@code file-io-impl} 自定义）。
+   *   <li>用 {@link CloseableGroup} 聚合 client 与 fileIO 的关闭，并允许部分失败不抛错。
+   * </ol>
+   *
+   * @param name catalog 名称
+   * @param properties catalog 配置属性
+   */
   @Override
   public void initialize(String name, Map<String, String> properties) {
     this.catalogProperties = ImmutableMap.copyOf(properties);
@@ -113,6 +159,12 @@ public class EcsCatalog extends BaseMetastoreCatalog
     closeableGroup.setSuppressCloseFailure(true);
   }
 
+  /**
+   * 初始化 FileIO：未指定 {@code file-io-impl} 时默认使用 {@link EcsFileIO}， 否则按指定实现加载（可注入 Hadoop 配置）。
+   *
+   * @param properties catalog 配置属性
+   * @return 已初始化的 FileIO
+   */
   private FileIO initializeFileIO(Map<String, String> properties) {
     String fileIOImpl = properties.get(CatalogProperties.FILE_IO_IMPL);
     if (fileIOImpl == null) {
@@ -124,6 +176,12 @@ public class EcsCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /**
+   * 为指定表创建 {@link TableOperations}。
+   *
+   * @param tableIdentifier 表标识
+   * @return 绑定到该表对象的 {@link EcsTableOperations}
+   */
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
     return new EcsTableOperations(
@@ -133,13 +191,28 @@ public class EcsCatalog extends BaseMetastoreCatalog
         this);
   }
 
+  /**
+   * 返回表的默认仓库 location：namespace 前缀 + 表名。
+   *
+   * @param tableIdentifier 表标识
+   * @return 默认 location 字符串
+   */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
     return String.format(
         "%s/%s", namespacePrefix(tableIdentifier.namespace()), tableIdentifier.name());
   }
 
-  /** Iterate all table objects with the namespace prefix. */
+  /**
+   * 列出命名空间下的所有表。
+   *
+   * <p>逻辑：以 namespace 前缀加分隔符做 delimiter 列举，分页跟进 marker， 仅保留以 {@code .table} 结尾的对象，并解析出表名。namespace
+   * 不存在时抛异常。
+   *
+   * @param namespace 命名空间
+   * @return 表标识列表
+   * @throws NoSuchNamespaceException 当 namespace 不存在时抛出
+   */
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     if (!namespace.isEmpty() && !namespaceExists(namespace)) {
@@ -148,7 +221,7 @@ public class EcsCatalog extends BaseMetastoreCatalog
 
     String marker = null;
     List<TableIdentifier> results = Lists.newArrayList();
-    // Add the end slash when delimiter listing
+    // delimiter 列举时需要末尾斜杠
     EcsURI prefix = new EcsURI(String.format("%s/", namespacePrefix(namespace)));
     do {
       ListObjectsResult listObjectsResult =
@@ -169,17 +242,27 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return results;
   }
 
-  /** Get object prefix of namespace without the end slash. */
+  /** 返回命名空间对应的对象前缀（不含末尾斜杠）。 */
   private String namespacePrefix(Namespace namespace) {
     if (namespace.isEmpty()) {
       return warehouseLocation.location();
     } else {
-      // If the warehouseLocation.name is empty, the leading slash will be ignored
+      // warehouseLocation.name 为空时前导斜杠会被忽略
       return String.format(
           "%s/%s", warehouseLocation.location(), String.join("/", namespace.levels()));
     }
   }
 
+  /**
+   * 从列举结果的对象 key 解析出表标识。
+   *
+   * <p>逻辑：去掉前缀与 {@code .table} 后缀得到表名，结合 namespace 构造 {@link TableIdentifier}。
+   *
+   * @param namespace 所属命名空间
+   * @param prefix 列举前缀
+   * @param s3Object 列举到的对象
+   * @return 表标识
+   */
   private TableIdentifier parseTableId(Namespace namespace, EcsURI prefix, S3Object s3Object) {
     String key = s3Object.getKey();
     Preconditions.checkArgument(
@@ -190,7 +273,15 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return TableIdentifier.of(namespace, tableName);
   }
 
-  /** Remove table object. If the purge flag is set, remove all data objects. */
+  /**
+   * 删除表。purge 为 true 时一并删除数据文件。
+   *
+   * <p>逻辑：表不存在直接返回 false；purge 时加载当前元数据并删除其引用的所有数据文件， 最后删除表对象本身。
+   *
+   * @param identifier 表标识
+   * @param purge 是否清理数据文件
+   * @return 删除成功返回 true，表不存在返回 false
+   */
   @Override
   public boolean dropTable(TableIdentifier identifier, boolean purge) {
     if (!tableExists(identifier)) {
@@ -199,7 +290,7 @@ public class EcsCatalog extends BaseMetastoreCatalog
 
     EcsURI tableObjectURI = tableURI(identifier);
     if (purge) {
-      // if re-use the same instance, current() will throw exception.
+      // 复用同一实例时 current() 会抛异常，故新建 ops
       TableOperations ops = newTableOps(identifier);
       TableMetadata current = ops.current();
       if (current == null) {
@@ -213,16 +304,23 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return true;
   }
 
+  /** 构造表元数据对象 location：namespace 前缀 + 表名 + {@code .table}。 */
   private EcsURI tableURI(TableIdentifier id) {
     return new EcsURI(
         String.format("%s/%s%s", namespacePrefix(id.namespace()), id.name(), TABLE_OBJECT_SUFFIX));
   }
 
   /**
-   * Table rename will only move table object, the data objects will still be in-place.
+   * 重命名表：仅移动表对象，数据对象原地保留。
    *
-   * @param from identifier of the table to rename
-   * @param to new table name
+   * <p>逻辑：校验目标 namespace 存在且目标表不存在、源表存在后，加载源表属性， 用 {@code putNewProperties} 在目标位置创建表对象（CAS 保证不存在），
+   * 成功后删除源表对象。
+   *
+   * @param from 源表标识
+   * @param to 目标表标识
+   * @throws NoSuchNamespaceException 目标 namespace 不存在
+   * @throws AlreadyExistsException 目标表已存在
+   * @throws NoSuchTableException 源表不存在
    */
   @Override
   public void renameTable(TableIdentifier from, TableIdentifier to) {
@@ -253,6 +351,16 @@ public class EcsCatalog extends BaseMetastoreCatalog
     LOG.info("Rename table {} to {}", from, to);
   }
 
+  /**
+   * 创建命名空间，附带属性。
+   *
+   * <p>逻辑：用 {@code putNewProperties}（{@code If-None-Match: *}）创建 namespace 对象， 已存在则抛 {@link
+   * AlreadyExistsException}。
+   *
+   * @param namespace 命名空间
+   * @param properties 命名空间属性
+   * @throws AlreadyExistsException 命名空间已存在
+   */
   @Override
   public void createNamespace(Namespace namespace, Map<String, String> properties) {
     EcsURI namespaceObject = namespaceURI(namespace);
@@ -262,10 +370,20 @@ public class EcsCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /** 构造命名空间元数据对象 location：namespace 前缀 + {@code .namespace}。 */
   private EcsURI namespaceURI(Namespace namespace) {
     return new EcsURI(String.format("%s%s", namespacePrefix(namespace), NAMESPACE_OBJECT_SUFFIX));
   }
 
+  /**
+   * 列出命名空间下的子命名空间。
+   *
+   * <p>逻辑：以 namespace 前缀加分隔符做 delimiter 列举，分页跟进 marker， 仅保留以 {@code .namespace} 结尾的对象，解析出下一级命名空间名。
+   *
+   * @param namespace 父命名空间
+   * @return 子命名空间列表
+   * @throws NoSuchNamespaceException 父命名空间不存在
+   */
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
     if (!namespace.isEmpty() && !namespaceExists(namespace)) {
@@ -274,7 +392,7 @@ public class EcsCatalog extends BaseMetastoreCatalog
 
     String marker = null;
     List<Namespace> results = Lists.newArrayList();
-    // Add the end slash when delimiter listing
+    // delimiter 列举时需要末尾斜杠
     EcsURI prefix = new EcsURI(String.format("%s/", namespacePrefix(namespace)));
     do {
       ListObjectsResult listObjectsResult =
@@ -295,6 +413,16 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return results;
   }
 
+  /**
+   * 从列举结果的对象 key 解析出子命名空间。
+   *
+   * <p>逻辑：去掉前缀与 {@code .namespace} 后缀得到本级命名空间名，拼接到父级 levels 之后。
+   *
+   * @param parent 父命名空间
+   * @param prefix 列举前缀
+   * @param s3Object 列举到的对象
+   * @return 子命名空间
+   */
   private Namespace parseNamespace(Namespace parent, EcsURI prefix, S3Object s3Object) {
     String key = s3Object.getKey();
     Preconditions.checkArgument(
@@ -307,7 +435,15 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return Namespace.of(namespace);
   }
 
-  /** Load namespace properties. */
+  /**
+   * 加载命名空间属性。
+   *
+   * <p>逻辑：namespace 对象不存在则抛异常，否则读取其序列化属性返回。
+   *
+   * @param namespace 命名空间
+   * @return 属性 Map
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
@@ -323,6 +459,16 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return result;
   }
 
+  /**
+   * 删除命名空间。非空时抛 {@link NamespaceNotEmptyException}。
+   *
+   * <p>逻辑：校验存在性后，若仍有子命名空间或表则报错，否则删除 namespace 对象。
+   *
+   * @param namespace 命名空间
+   * @return 删除成功返回 true
+   * @throws NamespaceNotEmptyException 命名空间非空
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
     if (!namespace.isEmpty() && !namespaceExists(namespace)) {
@@ -339,41 +485,74 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return true;
   }
 
+  /**
+   * 设置命名空间属性（合并写入）。
+   *
+   * @param namespace 命名空间
+   * @param properties 待设置属性
+   * @return 更新成功返回 true
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException {
     return updateProperties(namespace, r -> r.putAll(properties));
   }
 
+  /**
+   * 移除命名空间属性。
+   *
+   * @param namespace 命名空间
+   * @param properties 待移除的属性键集合
+   * @return 更新成功返回 true
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
     return updateProperties(namespace, r -> r.keySet().removeAll(properties));
   }
 
+  /**
+   * 通用属性更新：读取旧属性、应用变更函数、CAS 写回。
+   *
+   * <p>逻辑：加载旧属性与 E-Tag，复制为可变 Map 后应用 {@code propertiesFn}， 再以旧 E-Tag 做条件更新；返回是否成功（CAS 失败返回 false）。
+   *
+   * @param namespace 命名空间
+   * @param propertiesFn 对属性 Map 的变更操作
+   * @return 更新成功返回 true
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   public boolean updateProperties(Namespace namespace, Consumer<Map<String, String>> propertiesFn)
       throws NoSuchNamespaceException {
 
-    // Load old properties
+    // 读取旧属性
     Properties oldProperties = loadProperties(namespaceURI(namespace));
 
-    // Put new properties
+    // 写入新属性
     Map<String, String> newProperties = new LinkedHashMap<>(oldProperties.content());
     propertiesFn.accept(newProperties);
     LOG.debug("Successfully set properties {} for {}", newProperties.keySet(), namespace);
     return updatePropertiesObject(namespaceURI(namespace), oldProperties.eTag(), newProperties);
   }
 
+  /** 判断命名空间是否存在（依据 namespace 对象是否存在）。 */
   @Override
   public boolean namespaceExists(Namespace namespace) {
     return objectMetadata(namespaceURI(namespace)).isPresent();
   }
 
+  /** 判断表是否存在（依据 table 对象是否存在）。 */
   @Override
   public boolean tableExists(TableIdentifier identifier) {
     return objectMetadata(tableURI(identifier)).isPresent();
   }
 
+  /**
+   * 校验 properties 对象 location 必须与 warehouse 同 bucket 且位于其前缀之下， 防止越权操作仓库外对象。
+   *
+   * @param uri 待校验 location
+   */
   private void checkURI(EcsURI uri) {
     Preconditions.checkArgument(
         uri.bucket().equals(warehouseLocation.bucket()),
@@ -387,7 +566,14 @@ public class EcsCatalog extends BaseMetastoreCatalog
         warehouseLocation.name());
   }
 
-  /** Get S3 object metadata which include E-Tag, user metadata and so on. */
+  /**
+   * 获取 S3 对象元数据（含 E-Tag、user metadata 等），对象不存在返回 empty。
+   *
+   * <p>逻辑：先 {@link #checkURI(EcsURI)} 校验边界，再发起 HEAD 请求； HTTP 404 视为不存在，其他异常向上抛出。
+   *
+   * @param uri 对象 location
+   * @return 元数据 Optional，不存在为 empty
+   */
   public Optional<S3ObjectMetadata> objectMetadata(EcsURI uri) {
     checkURI(uri);
     try {
@@ -401,7 +587,11 @@ public class EcsCatalog extends BaseMetastoreCatalog
     }
   }
 
-  /** Record class of properties content and E-Tag */
+  /**
+   * 属性内容与 E-Tag 的记录类，作为读取 properties 对象的统一返回值。
+   *
+   * <p>设计要点：把对象体反序列化后的属性 Map 与对象 E-Tag 一起携带， 便于后续 CAS 更新使用。
+   */
   static class Properties {
     private final String eTag;
     private final Map<String, String> content;
@@ -411,16 +601,26 @@ public class EcsCatalog extends BaseMetastoreCatalog
       this.content = content;
     }
 
+    /** 返回对象 E-Tag，用于 CAS 更新。 */
     public String eTag() {
       return eTag;
     }
 
+    /** 返回反序列化后的属性内容。 */
     public Map<String, String> content() {
       return content;
     }
   }
 
-  /** Parse object content and metadata as properties. */
+  /**
+   * 读取对象的属性内容与 E-Tag。
+   *
+   * <p>逻辑：{@link #checkURI(EcsURI)} 后 GET 对象，从 user metadata 取版本号， 用 {@link
+   * PropertiesSerDesUtil#read(byte[], String)} 反序列化对象体为属性 Map， 连同 E-Tag 一并返回。
+   *
+   * @param uri 对象 location
+   * @return 属性记录（content + eTag）
+   */
   Properties loadProperties(EcsURI uri) {
     checkURI(uri);
     GetObjectResult<InputStream> result = client.getObject(uri.bucket(), uri.name());
@@ -436,7 +636,16 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return new Properties(objectMetadata.getETag(), content);
   }
 
-  /** Create a new object to store properties. */
+  /**
+   * 创建新对象存储属性，使用 {@code If-None-Match: *} 保证对象不存在。
+   *
+   * <p>逻辑：序列化属性为字节，附带版本号 user metadata，设置 {@code If-None-Match: *} 后 PUT。若返回 {@code
+   * PreconditionFailed} 表示对象已存在，返回 false；其他异常向上抛出。
+   *
+   * @param uri 对象 location
+   * @param properties 属性内容
+   * @return 创建成功返回 true，对象已存在返回 false
+   */
   boolean putNewProperties(EcsURI uri, Map<String, String> properties) {
     checkURI(uri);
     PutObjectRequest request =
@@ -458,13 +667,23 @@ public class EcsCatalog extends BaseMetastoreCatalog
     }
   }
 
-  /** Update a exist object to store properties. */
+  /**
+   * 更新已存在对象的属性，使用 {@code If-Match: <eTag>} 做乐观并发控制。
+   *
+   * <p>逻辑：序列化新属性为字节，附带版本号 user metadata，设置 {@code If-Match} 为传入 E-Tag 后 PUT。若返回 {@code
+   * PreconditionFailed} 表示 E-Tag 失配（被并发修改）， 返回 false；其他异常向上抛出。
+   *
+   * @param uri 对象 location
+   * @param eTag 期望的旧 E-Tag
+   * @param properties 新属性内容
+   * @return 更新成功返回 true，CAS 失败返回 false
+   */
   boolean updatePropertiesObject(EcsURI uri, String eTag, Map<String, String> properties) {
     checkURI(uri);
-    // Exclude some keys
+    // 排除部分内部键
     Map<String, String> newProperties = new LinkedHashMap<>(properties);
 
-    // Replace properties object
+    // 替换 properties 对象
     PutObjectRequest request =
         new PutObjectRequest(uri.bucket(), uri.name(), PropertiesSerDesUtil.toBytes(newProperties));
     request.setObjectMetadata(
@@ -489,11 +708,21 @@ public class EcsCatalog extends BaseMetastoreCatalog
     return catalogName;
   }
 
+  /**
+   * 关闭 catalog，统一释放 S3 客户端与 FileIO 资源。
+   *
+   * @throws IOException 当关闭过程发生 IO 异常时抛出
+   */
   @Override
   public void close() throws IOException {
     closeableGroup.close();
   }
 
+  /**
+   * 注入 Hadoop 配置，供自定义 FileIO 实现使用。
+   *
+   * @param conf Hadoop 配置对象
+   */
   @Override
   public void setConf(Object conf) {
     this.hadoopConf = conf;

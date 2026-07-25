@@ -26,7 +26,19 @@ import java.util.stream.IntStream;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestNumericLiteralConversions 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestNumericLiteralConversions 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNumericLiteralConversions {
+  /**
+   * 测试场景：Integer To Long Conversion。
+   *
+   * <p>验证该方法在 Integer To Long Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerToLongConversion() {
     Literal<Integer> lit = Literal.of(34);
@@ -35,6 +47,11 @@ public class TestNumericLiteralConversions {
     assertThat((long) longLit.value()).isEqualTo(34L);
   }
 
+  /**
+   * 测试场景：Integer To Float Conversion。
+   *
+   * <p>验证该方法在 Integer To Float Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerToFloatConversion() {
     Literal<Integer> lit = Literal.of(34);
@@ -43,6 +60,11 @@ public class TestNumericLiteralConversions {
     assertThat(floatLit.value()).isCloseTo(34.0F, offset(0.0000000001F));
   }
 
+  /**
+   * 测试场景：Integer To Double Conversion。
+   *
+   * <p>验证该方法在 Integer To Double Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerToDoubleConversion() {
     Literal<Integer> lit = Literal.of(34);
@@ -51,6 +73,11 @@ public class TestNumericLiteralConversions {
     assertThat(doubleLit.value()).isCloseTo(34.0D, offset(0.0000000001D));
   }
 
+  /**
+   * 测试场景：Integer To Decimal Conversion。
+   *
+   * <p>验证该方法在 Integer To Decimal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerToDecimalConversion() {
     Literal<Integer> lit = Literal.of(34);
@@ -60,6 +87,11 @@ public class TestNumericLiteralConversions {
     assertThat(lit.to(Types.DecimalType.of(9, 4)).value()).isEqualTo(new BigDecimal("34.0000"));
   }
 
+  /**
+   * 测试场景：Long To Integer Conversion。
+   *
+   * <p>验证该方法在 Long To Integer Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToIntegerConversion() {
     Literal<Long> lit = Literal.of(34L);
@@ -75,6 +107,11 @@ public class TestNumericLiteralConversions {
         .isEqualTo(Literals.belowMin());
   }
 
+  /**
+   * 测试场景：Long To Float Conversion。
+   *
+   * <p>验证该方法在 Long To Float Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToFloatConversion() {
     Literal<Long> lit = Literal.of(34L);
@@ -83,6 +120,11 @@ public class TestNumericLiteralConversions {
     assertThat(floatLit.value()).isCloseTo(34.0F, offset(0.0000000001F));
   }
 
+  /**
+   * 测试场景：Long To Double Conversion。
+   *
+   * <p>验证该方法在 Long To Double Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToDoubleConversion() {
     Literal<Long> lit = Literal.of(34L);
@@ -91,6 +133,11 @@ public class TestNumericLiteralConversions {
     assertThat(doubleLit.value()).isCloseTo(34.0D, offset(0.0000000001D));
   }
 
+  /**
+   * 测试场景：Long To Decimal Conversion。
+   *
+   * <p>验证该方法在 Long To Decimal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToDecimalConversion() {
     Literal<Long> lit = Literal.of(34L);
@@ -100,6 +147,11 @@ public class TestNumericLiteralConversions {
     assertThat(lit.to(Types.DecimalType.of(9, 4)).value()).isEqualTo(new BigDecimal("34.0000"));
   }
 
+  /**
+   * 测试场景：Float To Double Conversion。
+   *
+   * <p>验证该方法在 Float To Double Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatToDoubleConversion() {
     Literal<Float> lit = Literal.of(34.56F);
@@ -108,6 +160,11 @@ public class TestNumericLiteralConversions {
     assertThat(doubleLit.value()).isCloseTo(34.56D, offset(0.001D));
   }
 
+  /**
+   * 测试场景：Float To Decimal Conversion。
+   *
+   * <p>验证该方法在 Float To Decimal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatToDecimalConversion() {
     Literal<Float> lit = Literal.of(34.56F);
@@ -119,6 +176,11 @@ public class TestNumericLiteralConversions {
     assertThat(lit.to(Types.DecimalType.of(9, 4)).value()).isEqualTo(new BigDecimal("34.5600"));
   }
 
+  /**
+   * 测试场景：Double To Float Conversion。
+   *
+   * <p>验证该方法在 Double To Float Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleToFloatConversion() {
     Literal<Double> lit = Literal.of(34.56D);
@@ -136,6 +198,11 @@ public class TestNumericLiteralConversions {
         .isEqualTo(Literals.belowMin());
   }
 
+  /**
+   * 测试场景：Double To Decimal Conversion。
+   *
+   * <p>验证该方法在 Double To Decimal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleToDecimalConversion() {
     Literal<Double> lit = Literal.of(34.56D);
@@ -147,6 +214,11 @@ public class TestNumericLiteralConversions {
     assertThat(lit.to(Types.DecimalType.of(9, 4)).value()).isEqualTo(new BigDecimal("34.5600"));
   }
 
+  /**
+   * 测试场景：Decimal To Decimal Conversion。
+   *
+   * <p>验证该方法在 Decimal To Decimal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalToDecimalConversion() {
     Literal<BigDecimal> lit = Literal.of(new BigDecimal("34.11"));
@@ -163,6 +235,11 @@ public class TestNumericLiteralConversions {
             });
   }
 
+  /**
+   * 测试场景：Integer To Date Conversion。
+   *
+   * <p>验证该方法在 Integer To Date Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerToDateConversion() {
     Literal<Integer> lit = Literal.of(0);
@@ -171,6 +248,11 @@ public class TestNumericLiteralConversions {
     assertThat(new Literals.DateLiteral(365 * 50)).isEqualTo(lit.to(Types.DateType.get()));
   }
 
+  /**
+   * 测试场景：Long To Date Conversion。
+   *
+   * <p>验证该方法在 Long To Date Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToDateConversion() {
     Literal<Long> lit = Literal.of(0L);

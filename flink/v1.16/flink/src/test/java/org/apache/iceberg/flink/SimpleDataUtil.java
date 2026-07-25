@@ -72,8 +72,16 @@ import org.apache.iceberg.util.StructLikeSet;
 import org.apache.iceberg.util.StructLikeWrapper;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 SimpleDataUtil 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 SimpleDataUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class SimpleDataUtil {
 
+  /** 辅助方法：SimpleDataUtil，Simple Data Util。 */
   private SimpleDataUtil() {}
 
   public static final Schema SCHEMA =
@@ -88,6 +96,7 @@ public class SimpleDataUtil {
 
   public static final Record RECORD = GenericRecord.create(SCHEMA);
 
+  /** 辅助方法：createTable，create Table。 */
   public static Table createTable(
       String path, Map<String, String> properties, boolean partitioned) {
     PartitionSpec spec;
@@ -99,6 +108,7 @@ public class SimpleDataUtil {
     return new HadoopTables().create(SCHEMA, spec, properties, path);
   }
 
+  /** 辅助方法：createRecord，create Record。 */
   public static Record createRecord(Integer id, String data) {
     Record record = RECORD.copy();
     record.setField("id", id);
@@ -106,26 +116,32 @@ public class SimpleDataUtil {
     return record;
   }
 
+  /** 辅助方法：createRowData，create Row Data。 */
   public static RowData createRowData(Integer id, String data) {
     return GenericRowData.of(id, StringData.fromString(data));
   }
 
+  /** 辅助方法：createInsert，create Insert。 */
   public static RowData createInsert(Integer id, String data) {
     return GenericRowData.ofKind(RowKind.INSERT, id, StringData.fromString(data));
   }
 
+  /** 辅助方法：createDelete，create Delete。 */
   public static RowData createDelete(Integer id, String data) {
     return GenericRowData.ofKind(RowKind.DELETE, id, StringData.fromString(data));
   }
 
+  /** 辅助方法：createUpdateBefore，create Update Before。 */
   public static RowData createUpdateBefore(Integer id, String data) {
     return GenericRowData.ofKind(RowKind.UPDATE_BEFORE, id, StringData.fromString(data));
   }
 
+  /** 辅助方法：createUpdateAfter，create Update After。 */
   public static RowData createUpdateAfter(Integer id, String data) {
     return GenericRowData.ofKind(RowKind.UPDATE_AFTER, id, StringData.fromString(data));
   }
 
+  /** 辅助方法：writeFile，write File。 */
   public static DataFile writeFile(
       Table table,
       Schema schema,
@@ -175,6 +191,7 @@ public class SimpleDataUtil {
     return builder.build();
   }
 
+  /** 辅助方法：writeEqDeleteFile，write Eq Delete File。 */
   public static DeleteFile writeEqDeleteFile(
       Table table,
       FileFormat format,
@@ -195,6 +212,7 @@ public class SimpleDataUtil {
     return eqWriter.toDeleteFile();
   }
 
+  /** 辅助方法：writePosDeleteFile，write Pos Delete File。 */
   public static DeleteFile writePosDeleteFile(
       Table table,
       FileFormat format,
@@ -218,6 +236,7 @@ public class SimpleDataUtil {
     return posWriter.toDeleteFile();
   }
 
+  /** 辅助方法：convertToRecords，convert To Records。 */
   private static List<Record> convertToRecords(List<RowData> rows) {
     List<Record> records = Lists.newArrayList();
     for (RowData row : rows) {
@@ -228,15 +247,18 @@ public class SimpleDataUtil {
     return records;
   }
 
+  /** 辅助方法：assertTableRows，assert Table Rows。 */
   public static void assertTableRows(String tablePath, List<RowData> expected, String branch)
       throws IOException {
     assertTableRecords(tablePath, convertToRecords(expected), branch);
   }
 
+  /** 辅助方法：assertTableRows，assert Table Rows。 */
   public static void assertTableRows(Table table, List<RowData> expected) throws IOException {
     assertTableRecords(table, convertToRecords(expected), SnapshotRef.MAIN_BRANCH);
   }
 
+  /** 辅助方法：assertTableRows，assert Table Rows。 */
   public static void assertTableRows(Table table, List<RowData> expected, String branch)
       throws IOException {
     assertTableRecords(table, convertToRecords(expected), branch);
@@ -254,6 +276,7 @@ public class SimpleDataUtil {
     return records;
   }
 
+  /** 辅助方法：equalsRecords，equals Records。 */
   public static boolean equalsRecords(List<Record> expected, List<Record> actual, Schema schema) {
     if (expected.size() != actual.size()) {
       return false;
@@ -266,6 +289,7 @@ public class SimpleDataUtil {
     return expectedSet.equals(actualSet);
   }
 
+  /** 辅助方法：assertRecordsEqual，assert Records Equal。 */
   public static void assertRecordsEqual(List<Record> expected, List<Record> actual, Schema schema) {
     Assert.assertEquals(expected.size(), actual.size());
     Types.StructType type = schema.asStruct();
@@ -294,10 +318,12 @@ public class SimpleDataUtil {
     assertRecordsEqual(expected, tableRecords(table), table.schema());
   }
 
+  /** 辅助方法：assertTableRecords，assert Table Records。 */
   public static void assertTableRecords(Table table, List<Record> expected) throws IOException {
     assertTableRecords(table, expected, SnapshotRef.MAIN_BRANCH);
   }
 
+  /** 辅助方法：assertTableRecords，assert Table Records。 */
   public static void assertTableRecords(Table table, List<Record> expected, String branch)
       throws IOException {
     table.refresh();
@@ -325,6 +351,7 @@ public class SimpleDataUtil {
   }
 
   // Returns the latest snapshot of the given branch in the table
+  /** 辅助方法：latestSnapshot，latest Snapshot。 */
   public static Snapshot latestSnapshot(Table table, String branch) {
     // For the main branch, currentSnapshot() is used to validate that the API behavior has
     // not changed since that was the API used for validation prior to addition of branches.
@@ -335,18 +362,21 @@ public class SimpleDataUtil {
     return table.snapshot(branch);
   }
 
+  /** 辅助方法：assertTableRecords，assert Table Records。 */
   public static void assertTableRecords(String tablePath, List<Record> expected)
       throws IOException {
     Preconditions.checkArgument(expected != null, "expected records shouldn't be null");
     assertTableRecords(new HadoopTables().load(tablePath), expected, SnapshotRef.MAIN_BRANCH);
   }
 
+  /** 辅助方法：assertTableRecords，assert Table Records。 */
   public static void assertTableRecords(String tablePath, List<Record> expected, String branch)
       throws IOException {
     Preconditions.checkArgument(expected != null, "expected records shouldn't be null");
     assertTableRecords(new HadoopTables().load(tablePath), expected, branch);
   }
 
+  /** 辅助方法：expectedRowSet，expected Row Set。 */
   public static StructLikeSet expectedRowSet(Table table, Record... records) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     InternalRecordWrapper wrapper = new InternalRecordWrapper(table.schema().asStruct());
@@ -356,10 +386,12 @@ public class SimpleDataUtil {
     return set;
   }
 
+  /** 辅助方法：actualRowSet，actual Row Set。 */
   public static StructLikeSet actualRowSet(Table table, String... columns) throws IOException {
     return actualRowSet(table, null, columns);
   }
 
+  /** 辅助方法：actualRowSet，actual Row Set。 */
   public static StructLikeSet actualRowSet(Table table, Long snapshotId, String... columns)
       throws IOException {
     table.refresh();
@@ -375,6 +407,7 @@ public class SimpleDataUtil {
     return set;
   }
 
+  /** 辅助方法：partitionDataFiles，partition Data Files。 */
   public static List<DataFile> partitionDataFiles(Table table, Map<String, Object> partitionValues)
       throws IOException {
     table.refresh();
@@ -399,6 +432,7 @@ public class SimpleDataUtil {
     return dataFiles;
   }
 
+  /** 辅助方法：snapshotToDataFiles，snapshot To Data Files。 */
   public static Map<Long, List<DataFile>> snapshotToDataFiles(Table table) throws IOException {
     table.refresh();
 
@@ -429,6 +463,7 @@ public class SimpleDataUtil {
     return result;
   }
 
+  /** 辅助方法：matchingPartitions，matching Partitions。 */
   public static List<DataFile> matchingPartitions(
       List<DataFile> dataFiles, PartitionSpec partitionSpec, Map<String, Object> partitionValues) {
     Types.StructType partitionType = partitionSpec.partitionType();

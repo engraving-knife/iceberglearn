@@ -23,13 +23,17 @@ import org.apache.spark.sql.connector.write.LogicalWriteInfo;
 import org.apache.spark.sql.connector.write.RowLevelOperation;
 
 /**
- * A mix-in interface for RowLevelOperation. Data sources can implement this interface to indicate
- * they support handling deltas of rows.
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 SupportsDelta。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 public interface SupportsDelta extends RowLevelOperation {
+  /** 执行该方法的具体逻辑。 */
   @Override
   DeltaWriteBuilder newWriteBuilder(LogicalWriteInfo info);
 
-  /** Returns the row ID column references that should be used for row equality. */
+  /** 执行该方法的具体逻辑。 */
   NamedReference[] rowId();
 }

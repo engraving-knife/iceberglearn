@@ -37,6 +37,13 @@ import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.TypeUtil;
 
+/**
+ * 增量写入任务的基础抽象类，为分区/非分区 delta writer 提供公共逻辑。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：管理写文件、行投影、_DELETE 文件集合等公共状态， 并定义抽象方法供子类按分区策略写入数据。
+ *
+ * <p>设计意图：模板方法模式；上下游：被 RowDataTaskWriterFactory 创建，被 IcebergStreamWriter 调用。
+ */
 abstract class BaseDeltaTaskWriter extends BaseTaskWriter<RowData> {
 
   private final Schema schema;

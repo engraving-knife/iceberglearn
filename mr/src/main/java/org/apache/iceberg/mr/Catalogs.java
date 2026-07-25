@@ -41,31 +41,42 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Streams;
 
 /**
- * Class for catalog resolution and accessing the common functions for {@link Catalog} API.
+ * 文件级说明：Iceberg Catalog 解析与统一访问入口，为 Hive/MR 集成层提供 catalog 加载、表 CRUD 能力。
  *
- * <p>If the catalog name is provided, get the catalog type from iceberg.catalog.<code>catalogName
- * </code>.type config.
+ * <p>所属模块：iceberg-mr（Iceberg 与 Hive/MapReduce 集成模块；本类是该模块中 catalog 相关的 公共门面，位于
+ * iceberg-api/iceberg-core 之上，桥接 Hive 配置与 Iceberg Catalog API）。
  *
- * <p>In case the catalog name is {@link #ICEBERG_HADOOP_TABLE_NAME location_based_table}, type is
- * ignored and tables will be loaded using {@link HadoopTables}.
- *
- * <p>In case the value of catalog type is null, iceberg.catalog.<code>catalogName</code>
- * .catalog-impl config is used to determine the catalog implementation class.
- *
- * <p>If catalog name is null, get the catalog type from {@link CatalogUtil#ICEBERG_CATALOG_TYPE
- * catalog type} config:
+ * <p>职责：
  *
  * <ul>
- *   <li>hive: HiveCatalog
- *   <li>location: HadoopTables
- *   <li>hadoop: HadoopCatalog
+ *   <li>根据 Hadoop Configuration / Properties 解析出应使用的 catalog 类型与实现。
+ *   <li>提供统一的 {@link Table} 加载、创建、删除接口，屏蔽底层 catalog 实现差异。
+ *   <li>区分“命名 catalog”（hive/hadoop/catalog-impl）与“基于路径的表”（location_based_table） 两种寻址方式。
  * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>类型解析优先级：若指定了 catalogName，则从 {@code iceberg.catalog.<catalogName>.type} 读取类型；当 catalogName 为
+ *       {@link #ICEBERG_HADOOP_TABLE_NAME} 时视为“无 catalog”，直接走 {@link HadoopTables} 按路径加载；type 为
+ *       null 时再回退到 {@code catalog-impl} 指定的实现类。
+ *   <li>未指定 catalogName 时，从全局 {@link CatalogUtil#ICEBERG_CATALOG_TYPE} 读取类型： hive={@code
+ *       HiveCatalog}，location={@code HadoopTables}，hadoop={@code HadoopCatalog}。
+ *   <li>把控制属性（schema/spec/location/name/catalogName）从最终交给 Iceberg 的属性表中剔除， 避免污染表属性。
+ * </ul>
+ *
+ * <p>上下游关系：上游被 HiveIcebergSerDe、HiveIcebergStorageHandler、HiveIcebergInputFormat 等 Hive 集成类调用；下游依赖
+ * iceberg-core 的 {@link CatalogUtil}、{@link HadoopTables} 与 各 {@link Catalog} 实现。
  */
 public final class Catalogs {
 
+  /** 默认 catalog 名称，当配置中未显式指定 catalogName 时使用。 */
   public static final String ICEBERG_DEFAULT_CATALOG_NAME = "default_iceberg";
+  /** 特殊 catalog 名称，表示“基于路径的表”，将跳过 catalog 直接用 {@link HadoopTables} 加载。 */
   public static final String ICEBERG_HADOOP_TABLE_NAME = "location_based_table";
+  /** Properties 中的表标识符键（catalog 寻址时使用）。 */
   public static final String NAME = "name";
+  /** Properties 中的表路径键（基于路径寻址时使用）。 */
   public static final String LOCATION = "location";
 
   private static final String NO_CATALOG_TYPE = "no catalog";
@@ -80,11 +91,13 @@ public final class Catalogs {
   private Catalogs() {}
 
   /**
-   * Load an Iceberg table using the catalog and table identifier (or table path) specified by the
-   * configuration.
+   * 根据 Configuration 中的配置加载 Iceberg 表。
    *
-   * @param conf a Hadoop conf
-   * @return an Iceberg table
+   * <p>从 conf 中分别读取表标识符、表路径、catalog 名称，委托给三参数的 {@link #loadTable(Configuration, String, String,
+   * String)} 执行实际加载。
+   *
+   * @param conf Hadoop 配置，需包含 table.identifier / table.location / catalog.name 等键
+   * @return 加载到的 Iceberg 表
    */
   public static Table loadTable(Configuration conf) {
     return loadTable(
@@ -95,17 +108,14 @@ public final class Catalogs {
   }
 
   /**
-   * Load an Iceberg table using the catalog specified by the configuration.
+   * 根据 Properties 中的配置加载 Iceberg 表（Hive SerDe/StorageHandler 入口）。
    *
-   * <p>The table identifier ({@link Catalogs#NAME}) and the catalog name ({@link
-   * InputFormatConfig#CATALOG_NAME}), or table path ({@link Catalogs#LOCATION}) should be specified
-   * by the controlling properties.
+   * <p>需在 props 中提供表标识符（{@link #NAME}）+ catalog 名称 （{@link
+   * InputFormatConfig#CATALOG_NAME}），或仅提供表路径（{@link #LOCATION}）。
    *
-   * <p>Used by HiveIcebergSerDe and HiveIcebergStorageHandler
-   *
-   * @param conf a Hadoop
-   * @param props the controlling properties
-   * @return an Iceberg table
+   * @param conf Hadoop 配置
+   * @param props 控制属性，至少包含 name 或 location
+   * @return 加载到的 Iceberg 表
    */
   public static Table loadTable(Configuration conf, Properties props) {
     return loadTable(
@@ -115,6 +125,24 @@ public final class Catalogs {
         props.getProperty(InputFormatConfig.CATALOG_NAME));
   }
 
+  /**
+   * 实际执行表加载的内部方法。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>先按 catalogName 加载 {@link Catalog}（可能为空 Optional）。
+   *   <li>若 catalog 存在：要求 tableIdentifier 非空，按 {@link TableIdentifier} 解析后调用 {@link
+   *       Catalog#loadTable(TableIdentifier)}。
+   *   <li>若 catalog 不存在：要求 tableLocation 非空，回退到 {@link HadoopTables#load(String)}。
+   * </ol>
+   *
+   * @param conf Hadoop 配置
+   * @param tableIdentifier 表标识符字符串，catalog 模式下必填
+   * @param tableLocation 表路径，无 catalog 模式下必填
+   * @param catalogName catalog 名称，可为 null
+   * @return 加载到的 Iceberg 表
+   */
   private static Table loadTable(
       Configuration conf, String tableIdentifier, String tableLocation, String catalogName) {
     Optional<Catalog> catalog = loadCatalog(conf, catalogName);
@@ -129,24 +157,28 @@ public final class Catalogs {
   }
 
   /**
-   * Creates an Iceberg table using the catalog specified by the configuration.
+   * 创建一张 Iceberg 表。
    *
-   * <p>The properties should contain the following values:
+   * <p>props 需包含：
    *
    * <ul>
-   *   <li>Table identifier ({@link Catalogs#NAME}) or table path ({@link Catalogs#LOCATION}) is
-   *       required
-   *   <li>Table schema ({@link InputFormatConfig#TABLE_SCHEMA}) is required
-   *   <li>Partition specification ({@link InputFormatConfig#PARTITION_SPEC}) is optional. Table
-   *       will be unpartitioned if not provided
+   *   <li>表标识符（{@link #NAME}）或表路径（{@link #LOCATION}），二者至少一个。
+   *   <li>表 schema（{@link InputFormatConfig#TABLE_SCHEMA}），必填。
+   *   <li>分区规格（{@link InputFormatConfig#PARTITION_SPEC}），可选，缺省为非分区表。
    * </ul>
    *
-   * <p>Other properties will be handled over to the Table creation. The controlling properties
-   * above will not be propagated.
+   * <p>逻辑：
    *
-   * @param conf a Hadoop conf
-   * @param props the controlling properties
-   * @return the created Iceberg table
+   * <ol>
+   *   <li>解析 schema 与 partition spec。
+   *   <li>构造表属性 map，剔除 schema/spec/location/name/catalogName 等控制属性。
+   *   <li>若 catalog 存在：按 {@link TableIdentifier} 走 {@link Catalog#createTable}。
+   *   <li>否则回退到 {@link HadoopTables#create}，要求 location 非空。
+   * </ol>
+   *
+   * @param conf Hadoop 配置
+   * @param props 控制属性
+   * @return 创建好的 Iceberg 表
    */
   public static Table createTable(Configuration conf, Properties props) {
     String schemaString = props.getProperty(InputFormatConfig.TABLE_SCHEMA);
@@ -183,14 +215,13 @@ public final class Catalogs {
   }
 
   /**
-   * Drops an Iceberg table using the catalog specified by the configuration.
+   * 删除一张 Iceberg 表。
    *
-   * <p>The table identifier ({@link Catalogs#NAME}) or table path ({@link Catalogs#LOCATION})
-   * should be specified by the controlling properties.
+   * <p>逻辑：若 catalog 存在则按表标识符调用 {@link Catalog#dropTable}；否则按路径调用 {@link HadoopTables#dropTable}。
    *
-   * @param conf a Hadoop conf
-   * @param props the controlling properties
-   * @return the created Iceberg table
+   * @param conf Hadoop 配置
+   * @param props 控制属性，需包含 name 或 location
+   * @return 是否删除成功
    */
   public static boolean dropTable(Configuration conf, Properties props) {
     String location = props.getProperty(LOCATION);
@@ -209,11 +240,14 @@ public final class Catalogs {
   }
 
   /**
-   * Returns true if HiveCatalog is used
+   * 判断当前配置是否使用 HiveCatalog。
    *
-   * @param conf a Hadoop conf
-   * @param props the controlling properties
-   * @return true if the Catalog is HiveCatalog
+   * <p>逻辑：依次按 catalogName、默认 catalogName 查找 type；若 type 非空则判断是否为 {@code hive}；若 type 为 null，则再判断
+   * catalog 属性中是否未指定 catalog-impl （未指定时默认走 HiveCatalog）。
+   *
+   * @param conf Hadoop 配置
+   * @param props 控制属性，需包含 catalogName
+   * @return true 表示当前使用 HiveCatalog
    */
   public static boolean hiveCatalog(Configuration conf, Properties props) {
     String catalogName = props.getProperty(InputFormatConfig.CATALOG_NAME);
@@ -229,6 +263,16 @@ public final class Catalogs {
         == null;
   }
 
+  /**
+   * 加载 catalog 实例，返回 Optional。
+   *
+   * <p>逻辑：若 catalogType 为 {@link #NO_CATALOG_TYPE}（基于路径的表），返回 empty； 否则用 {@link
+   * CatalogUtil#buildIcebergCatalog} 构建 catalog，name 缺省时使用 {@link #ICEBERG_DEFAULT_CATALOG_NAME}。
+   *
+   * @param conf Hadoop 配置
+   * @param catalogName catalog 名称，可为 null
+   * @return catalog 实例的 Optional，无 catalog 时为 empty
+   */
   @VisibleForTesting
   static Optional<Catalog> loadCatalog(Configuration conf, String catalogName) {
     String catalogType = getCatalogType(conf, catalogName);
@@ -243,12 +287,14 @@ public final class Catalogs {
   }
 
   /**
-   * Collect all the catalog specific configuration from the global hive configuration.
+   * 从全局 Hadoop 配置中收集指定 catalog 的属性。
    *
-   * @param conf a Hadoop configuration
-   * @param catalogName name of the catalog
-   * @param catalogType type of the catalog
-   * @return complete map of catalog properties
+   * <p>逻辑：扫描 conf 中以 {@code iceberg.catalog.<catalogName>.} 为前缀的所有键，去掉前缀后组装成属性 map。
+   *
+   * @param conf Hadoop 配置
+   * @param catalogName catalog 名称
+   * @param catalogType catalog 类型
+   * @return catalog 属性 map
    */
   private static Map<String, String> getCatalogProperties(
       Configuration conf, String catalogName, String catalogType) {
@@ -262,13 +308,20 @@ public final class Catalogs {
   }
 
   /**
-   * Return the catalog type based on the catalog name.
+   * 根据 catalogName 解析 catalog 类型。
    *
-   * <p>See {@link Catalogs} documentation for catalog type resolution strategy.
+   * <p>逻辑：
    *
-   * @param conf global hive configuration
-   * @param catalogName name of the catalog
-   * @return type of the catalog, can be null
+   * <ul>
+   *   <li>catalogName 非空：读取 {@code iceberg.catalog.<catalogName>.type}；若 catalogName 为 {@link
+   *       #ICEBERG_HADOOP_TABLE_NAME}，返回 {@link #NO_CATALOG_TYPE}。
+   *   <li>catalogName 为 null：读取全局 {@link CatalogUtil#ICEBERG_CATALOG_TYPE}； 若值为 {@link
+   *       #LOCATION}，返回 {@link #NO_CATALOG_TYPE}。
+   * </ul>
+   *
+   * @param conf 全局 Hive 配置
+   * @param catalogName catalog 名称，可为 null
+   * @return catalog 类型字符串，可为 null
    */
   private static String getCatalogType(Configuration conf, String catalogName) {
     if (catalogName != null) {

@@ -36,18 +36,28 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRewriteManifestsProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 重写清单存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
 
+  /** 测试重写清单存储过程。 */
   public TestRewriteManifestsProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试重写清单在空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsInEmptyTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -55,6 +65,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
     assertEquals("Procedure output must match", ImmutableList.of(row(0, 0)), output);
   }
 
+  /** 测试重写large清单场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteLargeManifests() {
     sql(
@@ -78,6 +89,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         "Must have 4 manifests", 4, table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /** 测试重写清单noop场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsNoOp() {
     sql(
@@ -100,6 +112,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         "Must have 1 manifests", 1, table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /** 测试重写large清单上日期分区表带Java8apienabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteLargeManifestsOnDatePartitionedTableWithJava8APIEnabled() {
     withSQLConf(
@@ -144,6 +157,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         });
   }
 
+  /** 测试重写large清单上时间戳分区表带Java8apienabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteLargeManifestsOnTimestampPartitionedTableWithJava8APIEnabled() {
     withSQLConf(
@@ -192,6 +206,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         });
   }
 
+  /** 测试重写small清单带快照idinheritance场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteSmallManifestsWithSnapshotIdInheritance() {
     sql(
@@ -222,6 +237,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         "Must have 1 manifests", 1, table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /** 测试重写small清单无caching场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteSmallManifestsWithoutCaching() {
     sql(
@@ -248,6 +264,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         "Must have 1 manifests", 1, table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /** 测试重写清单场景insensitive参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsCaseInsensitiveArgs() {
     sql(
@@ -274,6 +291,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         "Must have 1 manifests", 1, table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /** 测试invalid重写清单场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidRewriteManifestsCases() {
     AssertHelpers.assertThrows(
@@ -313,6 +331,7 @@ public class TestRewriteManifestsProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.rewrite_manifests('')", catalogName));
   }
 
+  /** 测试替换分区字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplacePartitionField() {
     sql(

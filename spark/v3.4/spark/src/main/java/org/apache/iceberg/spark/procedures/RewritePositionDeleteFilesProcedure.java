@@ -19,7 +19,6 @@
 package org.apache.iceberg.spark.procedures;
 
 import java.util.Map;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.RewritePositionDeleteFiles;
 import org.apache.iceberg.actions.RewritePositionDeleteFiles.Result;
 import org.apache.iceberg.expressions.Expression;
@@ -34,9 +33,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that rewrites position delete files in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * @see org.apache.iceberg.spark.actions.SparkActions#rewritePositionDeletes(Table)
+ * <p>职责：重写位置删除文件的存储过程，合并分散的删除文件。
+ *
+ * <p>设计意图：委托 RewritePositionDeleteFilesSparkAction 执行。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 public class RewritePositionDeleteFilesProcedure extends BaseProcedure {
 
@@ -60,9 +63,10 @@ public class RewritePositionDeleteFilesProcedure extends BaseProcedure {
             new StructField("rewritten_bytes_count", DataTypes.LongType, false, Metadata.empty()),
             new StructField("added_bytes_count", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new Builder<RewritePositionDeleteFilesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RewritePositionDeleteFilesProcedure doBuild() {
         return new RewritePositionDeleteFilesProcedure(tableCatalog());
@@ -73,17 +77,17 @@ public class RewritePositionDeleteFilesProcedure extends BaseProcedure {
   private RewritePositionDeleteFilesProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -106,7 +110,7 @@ public class RewritePositionDeleteFilesProcedure extends BaseProcedure {
           return new InternalRow[] {toOutputRow(result)};
         });
   }
-
+  /** 转换为 OutputRow。 */
   private InternalRow toOutputRow(Result result) {
     return newInternalRow(
         result.rewrittenDeleteFilesCount(),
@@ -114,7 +118,7 @@ public class RewritePositionDeleteFilesProcedure extends BaseProcedure {
         result.rewrittenBytesCount(),
         result.addedBytesCount());
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RewritePositionDeleteFilesProcedure";

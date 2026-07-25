@@ -29,6 +29,16 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 import org.apache.spark.sql.connector.read.streaming.Offset;
 
+/**
+ * Iceberg 表的结构化流偏移量。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。继承 Spark {@link Offset}，跟踪结构化流读取 Iceberg 表的进度：当前处理的快照
+ * ID、已扫描文件位置以及是否扫描全部文件。
+ *
+ * <p>设计意图：以快照 + 位置定位消费进度，支持增量与全量（启动时扫描全部文件）两种模式； 提供 JSON 序列化以便 Spark 持久化 checkpoint。
+ *
+ * <p>上下游关系：由 {@link SparkMicroBatchStream} 使用，Spark 通过其 JSON 持久化与恢复偏移。
+ */
 class StreamingOffset extends Offset {
   static final StreamingOffset START_OFFSET = new StreamingOffset(-1L, -1, false);
 
@@ -43,13 +53,11 @@ class StreamingOffset extends Offset {
   private final boolean scanAllFiles;
 
   /**
-   * An implementation of Spark Structured Streaming Offset, to track the current processed files of
-   * Iceberg table.
+   * 构造偏移量。
    *
-   * @param snapshotId The current processed snapshot id.
-   * @param position The position of last scanned file in snapshot.
-   * @param scanAllFiles whether to scan all files in a snapshot; for example, to read all data when
-   *     starting a stream.
+   * @param snapshotId 当前处理的快照 ID
+   * @param position 快照内最后扫描文件的位置
+   * @param scanAllFiles 是否扫描快照内全部文件（如启动流时读取全部数据）
    */
   StreamingOffset(long snapshotId, long position, boolean scanAllFiles) {
     this.snapshotId = snapshotId;
@@ -57,6 +65,7 @@ class StreamingOffset extends Offset {
     this.scanAllFiles = scanAllFiles;
   }
 
+  /** 从 JSON 字符串反序列化为偏移量。 */
   static StreamingOffset fromJson(String json) {
     Preconditions.checkNotNull(json, "Cannot parse StreamingOffset JSON: null");
 
@@ -69,6 +78,7 @@ class StreamingOffset extends Offset {
     }
   }
 
+  /** 从输入流反序列化为偏移量。 */
   static StreamingOffset fromJson(InputStream inputStream) {
     Preconditions.checkNotNull(inputStream, "Cannot parse StreamingOffset from inputStream: null");
 
@@ -82,6 +92,7 @@ class StreamingOffset extends Offset {
     return fromJsonNode(node);
   }
 
+  /** 序列化为 JSON（含版本、快照 ID、位置、是否全扫描）。 */
   @Override
   public String json() {
     StringWriter writer = new StringWriter();
@@ -102,18 +113,21 @@ class StreamingOffset extends Offset {
     return writer.toString();
   }
 
+  /** 返回快照 ID。 */
   long snapshotId() {
     return snapshotId;
   }
 
+  /** 返回位置。 */
   long position() {
     return position;
   }
 
+  /** 是否扫描全部文件。 */
   boolean shouldScanAllFiles() {
     return scanAllFiles;
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StreamingOffset) {
@@ -125,12 +139,12 @@ class StreamingOffset extends Offset {
       return false;
     }
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hashCode(snapshotId, position, scanAllFiles);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -138,6 +152,7 @@ class StreamingOffset extends Offset {
         snapshotId, position, scanAllFiles);
   }
 
+  /** 由 JsonNode 解析偏移量，校验版本号一致。 */
   private static StreamingOffset fromJsonNode(JsonNode node) {
     // The version of StreamingOffset. The offset was created with a version number
     // used to validate when deserializing from json string.

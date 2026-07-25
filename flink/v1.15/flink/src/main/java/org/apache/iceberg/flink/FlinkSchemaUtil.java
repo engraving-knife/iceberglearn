@@ -33,29 +33,30 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
 /**
- * Converter between Flink types and Iceberg type. The conversion is not a 1:1 mapping that not
- * allows back-and-forth conversion. So some information might get lost during the back-and-forth
- * conversion.
+ * Flink 类型与 Iceberg 类型之间的转换工具类。
  *
- * <p>This inconsistent types:
+ * <p>所属模块：iceberg-flink v1.15。职责：在 Flink {@link TableSchema}/{@link RowType} 与 Iceberg {@link
+ * Schema}/{@link Type} 之间双向转换。注意转换并非 1:1 可逆， 部分信息（如精度、UUID 与 Fixed 的区别）可能在往返转换中丢失。
+ *
+ * <p>设计意图：工具类 + 静态方法；内部委托给 {@link FlinkTypeToType} 与 {@link TypeToFlinkType}。
+ *
+ * <p>不一致的类型映射：
  *
  * <ul>
- *   <li>map Iceberg UUID type to Flink BinaryType(16)
- *   <li>map Flink VarCharType(_) and CharType(_) to Iceberg String type
- *   <li>map Flink VarBinaryType(_) to Iceberg Binary type
- *   <li>map Flink TimeType(_) to Iceberg Time type (microseconds)
- *   <li>map Flink TimestampType(_) to Iceberg Timestamp without zone type (microseconds)
- *   <li>map Flink LocalZonedTimestampType(_) to Iceberg Timestamp with zone type (microseconds)
- *   <li>map Flink MultiSetType to Iceberg Map type(element, int)
+ *   <li>Iceberg UUID -> Flink BinaryType(16)
+ *   <li>Flink VarCharType(_)/CharType(_) -> Iceberg String
+ *   <li>Flink VarBinaryType(_) -> Iceberg Binary
+ *   <li>Flink TimeType(_) -> Iceberg Time（微秒）
+ *   <li>Flink TimestampType(_) -> Iceberg Timestamp 不带时区（微秒）
+ *   <li>Flink LocalZonedTimestampType(_) -> Iceberg Timestamp 带时区（微秒）
+ *   <li>Flink MultiSetType -> Iceberg Map(element, int)
  * </ul>
- *
- * <p>
  */
 public class FlinkSchemaUtil {
 
   private FlinkSchemaUtil() {}
 
-  /** Convert the flink table schema to apache iceberg schema. */
+  /** 将 Flink TableSchema 转换为 Iceberg Schema，并保留主键作为 identifier 字段。 */
   public static Schema convert(TableSchema schema) {
     LogicalType schemaType = schema.toRowDataType().getLogicalType();
     Preconditions.checkArgument(
@@ -68,6 +69,7 @@ public class FlinkSchemaUtil {
     return freshIdentifierFieldIds(iSchema, schema);
   }
 
+  /** 将 Flink 主键列转换为 Iceberg 的 identifier 字段 id 集合，构造新 Schema。 */
   private static Schema freshIdentifierFieldIds(Schema iSchema, TableSchema schema) {
     // Locate the identifier field id list.
     Set<Integer> identifierFieldIds = Sets.newHashSet();
@@ -87,17 +89,15 @@ public class FlinkSchemaUtil {
   }
 
   /**
-   * Convert a Flink {@link TableSchema} to a {@link Schema} based on the given schema.
+   * 基于 baseSchema 的字段 id，把 Flink TableSchema 转换为 Iceberg Schema。
    *
-   * <p>This conversion does not assign new ids; it uses ids from the base schema.
+   * <p>逻辑：先转换为全新 id 的 schema，再按 baseSchema 重分配 id 与 doc， 最后通过 {@link FlinkFixupTypes} 修正 UUID/Fixed
+   * 类型。可能产生与 baseSchema 不兼容的 schema。
    *
-   * <p>Data types, field order, and nullability will match the Flink type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param flinkSchema a Flink TableSchema
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
+   * @param baseSchema 作为 id 来源的基线 schema
+   * @param flinkSchema Flink TableSchema
+   * @return 等价的 Iceberg Schema
+   * @throws IllegalArgumentException 类型不可转换或缺少 id
    */
   public static Schema convert(Schema baseSchema, TableSchema flinkSchema) {
     // convert to a type with fresh ids
@@ -113,31 +113,31 @@ public class FlinkSchemaUtil {
   }
 
   /**
-   * Convert a {@link Schema} to a {@link RowType Flink type}.
+   * 将 Iceberg {@link Schema} 转换为 Flink {@link RowType}。
    *
-   * @param schema a Schema
-   * @return the equivalent Flink type
-   * @throws IllegalArgumentException if the type cannot be converted to Flink
+   * @param schema Iceberg Schema
+   * @return 等价的 Flink RowType
+   * @throws IllegalArgumentException 类型无法转换为 Flink
    */
   public static RowType convert(Schema schema) {
     return (RowType) TypeUtil.visit(schema, new TypeToFlinkType());
   }
 
   /**
-   * Convert a {@link Type} to a {@link LogicalType Flink type}.
+   * 将 Iceberg {@link Type} 转换为 Flink {@link LogicalType}。
    *
-   * @param type a Type
-   * @return the equivalent Flink type
-   * @throws IllegalArgumentException if the type cannot be converted to Flink
+   * @param type Iceberg Type
+   * @return 等价的 Flink LogicalType
+   * @throws IllegalArgumentException 类型无法转换为 Flink
    */
   public static LogicalType convert(Type type) {
     return TypeUtil.visit(type, new TypeToFlinkType());
   }
 
   /**
-   * Convert a {@link RowType} to a {@link TableSchema}.
+   * 将 Flink {@link RowType} 转换为 {@link TableSchema}。
    *
-   * @param rowType a RowType
+   * @param rowType Flink RowType
    * @return Flink TableSchema
    */
   public static TableSchema toSchema(RowType rowType) {
@@ -149,10 +149,10 @@ public class FlinkSchemaUtil {
   }
 
   /**
-   * Convert a {@link Schema} to a {@link TableSchema}.
+   * 将 Iceberg {@link Schema} 转换为 {@link TableSchema}，并把 identifier 字段映射为主键。
    *
-   * @param schema iceberg schema to convert.
-   * @return Flink TableSchema.
+   * @param schema Iceberg Schema
+   * @return Flink TableSchema
    */
   public static TableSchema toSchema(Schema schema) {
     TableSchema.Builder builder = TableSchema.builder();

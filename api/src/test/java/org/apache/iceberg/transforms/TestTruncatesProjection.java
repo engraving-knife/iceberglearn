@@ -45,8 +45,16 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTruncatesProjection 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTruncatesProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTruncatesProjection {
 
+  /** 辅助方法：assertProjectionStrict。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionStrict(
       PartitionSpec spec,
@@ -81,6 +89,7 @@ public class TestTruncatesProjection {
     }
   }
 
+  /** 辅助方法：assertProjectionStrictValue。 */
   public void assertProjectionStrictValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -88,6 +97,7 @@ public class TestTruncatesProjection {
     assertThat(expectedOp).isEqualTo(projection.op());
   }
 
+  /** 辅助方法：assertProjectionInclusiveValue。 */
   public void assertProjectionInclusiveValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -95,6 +105,7 @@ public class TestTruncatesProjection {
     assertThat(expectedOp).isEqualTo(projection.op());
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionInclusive(
       PartitionSpec spec,
@@ -129,6 +140,11 @@ public class TestTruncatesProjection {
     }
   }
 
+  /**
+   * 测试场景：Integer Strict Lower Bound。
+   *
+   * <p>验证该方法在 Integer Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerStrictLowerBound() {
     Integer value = 100;
@@ -150,6 +166,11 @@ public class TestTruncatesProjection {
     assertProjectionStrictValue(spec, in("value", value, value + 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Integer Strict Upper Bound。
+   *
+   * <p>验证该方法在 Integer Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerStrictUpperBound() {
     Integer value = 99;
@@ -171,6 +192,11 @@ public class TestTruncatesProjection {
     assertProjectionStrictValue(spec, in("value", value, value - 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Integer Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Integer Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerInclusiveLowerBound() {
     Integer value = 100;
@@ -192,6 +218,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value + 1), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Integer Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Integer Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerInclusiveUpperBound() {
     Integer value = 99;
@@ -213,6 +244,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value - 1), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Long Strict Lower Bound。
+   *
+   * <p>验证该方法在 Long Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongStrictLowerBound() {
     Long value = 100L;
@@ -234,6 +270,11 @@ public class TestTruncatesProjection {
     assertProjectionStrictValue(spec, in("value", value, value + 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Long Strict Upper Bound。
+   *
+   * <p>验证该方法在 Long Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongStrictUpperBound() {
     Long value = 99L;
@@ -255,6 +296,11 @@ public class TestTruncatesProjection {
     assertProjectionStrictValue(spec, in("value", value, value - 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Long Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Long Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongInclusiveLowerBound() {
     Long value = 100L;
@@ -276,6 +322,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value + 1), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Long Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Long Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongInclusiveUpperBound() {
     Long value = 99L;
@@ -297,6 +348,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value - 1), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Decimal Strict Lower Bound。
+   *
+   * <p>验证该方法在 Decimal Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalStrictLowerBound() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -323,6 +379,11 @@ public class TestTruncatesProjection {
         spec, in("value", value, value.add(delta)), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Decimal Strict Upper Bound。
+   *
+   * <p>验证该方法在 Decimal Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalStrictUpperBound() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -349,6 +410,11 @@ public class TestTruncatesProjection {
         spec, in("value", value, value.subtract(delta)), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Decimal Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Decimal Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalInclusiveLowerBound() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -376,6 +442,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value.add(delta)), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Decimal Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Decimal Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalInclusiveUpperBound() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -403,6 +474,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value.subtract(delta)), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：String Strict。
+   *
+   * <p>验证该方法在 String Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringStrict() {
     String value = "abcdefg";
@@ -423,6 +499,11 @@ public class TestTruncatesProjection {
         spec, in("value", value, value + "abc"), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：String Inclusive。
+   *
+   * <p>验证该方法在 String Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringInclusive() {
     String value = "abcdefg";
@@ -445,6 +526,11 @@ public class TestTruncatesProjection {
         spec, notIn("value", value, value + "abc"), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Binary Strict。
+   *
+   * <p>验证该方法在 Binary Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBinaryStrict() throws Exception {
     ByteBuffer value = ByteBuffer.wrap("abcdefg".getBytes("UTF-8"));
@@ -472,6 +558,11 @@ public class TestTruncatesProjection {
     assertProjectionStrictValue(spec, in("value", value, anotherValue), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Binary Inclusive。
+   *
+   * <p>验证该方法在 Binary Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBinaryInclusive() throws Exception {
     ByteBuffer value = ByteBuffer.wrap("abcdefg".getBytes("UTF-8"));

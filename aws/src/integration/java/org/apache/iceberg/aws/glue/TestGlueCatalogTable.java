@@ -68,8 +68,20 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.Tag;
 
+/**
+ * 文件级说明：TestGlueCatalogTable 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 Glue目录表 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestGlueCatalogTable extends GlueTestBase {
 
+  /**
+   * 测试场景：创建表。
+   *
+   * <p>验证该方法在 创建表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTable() {
     String namespace = createNamespace();
@@ -108,6 +120,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(schema.toString(), table.schema().toString());
   }
 
+  /**
+   * 测试场景：创建表duplicate。
+   *
+   * <p>验证该方法在 创建表duplicate 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableDuplicate() {
     String namespace = createNamespace();
@@ -121,6 +138,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
                 TableIdentifier.of(namespace, tableName), schema, partitionSpec));
   }
 
+  /**
+   * 测试场景：创建表badname。
+   *
+   * <p>验证该方法在 创建表badname 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableBadName() {
     String namespace = createNamespace();
@@ -133,6 +155,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
                 TableIdentifier.of(namespace, "table-1"), schema, partitionSpec));
   }
 
+  /**
+   * 测试场景：创建and加载表无warehouse路径。
+   *
+   * <p>验证该方法在 创建and加载表无warehouse路径 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateAndLoadTableWithoutWarehouseLocation() {
     GlueCatalog glueCatalogWithoutWarehouse = new GlueCatalog();
@@ -156,6 +183,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     }
   }
 
+  /**
+   * 测试场景：列表表。
+   *
+   * <p>验证该方法在 列表表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testListTables() {
     String namespace = createNamespace();
@@ -168,6 +200,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(TableIdentifier.of(namespace, tableName), tables.get(0));
   }
 
+  /**
+   * 测试场景：表存在。
+   *
+   * <p>验证该方法在 表存在 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testTableExists() {
     String namespace = createNamespace();
@@ -175,6 +212,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertTrue(glueCatalog.tableExists(TableIdentifier.of(namespace, tableName)));
   }
 
+  /**
+   * 测试场景：更新表。
+   *
+   * <p>验证该方法在 更新表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testUpdateTable() {
     String namespace = createNamespace();
@@ -211,6 +253,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(partitionSpec.fields().size(), response.table().partitionKeys().size());
   }
 
+  /**
+   * 测试场景：重命名表。
+   *
+   * <p>验证该方法在 重命名表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRenameTable() {
     String namespace = createNamespace();
@@ -227,6 +274,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(table.currentSnapshot(), renamedTable.currentSnapshot());
   }
 
+  /**
+   * 测试场景：重命名表fails到创建新建表。
+   *
+   * <p>验证该方法在 重命名表fails到创建新建表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRenameTableFailsToCreateNewTable() {
     String namespace = createNamespace();
@@ -256,6 +308,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(table.currentSnapshot(), oldTable.currentSnapshot());
   }
 
+  /**
+   * 测试场景：重命名表fails到删除旧表。
+   *
+   * <p>验证该方法在 重命名表fails到删除旧表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRenameTableFailsToDeleteOldTable() {
     String namespace = createNamespace();
@@ -286,6 +343,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
                 GetTableRequest.builder().databaseName(namespace).name(newTableName).build()));
   }
 
+  /**
+   * 测试场景：删除表无purge。
+   *
+   * <p>验证该方法在 删除表无purge 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteTableWithoutPurge() {
     String namespace = createNamespace();
@@ -316,6 +378,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertTrue("metadata json file exists after delete without purge", hasMetaFile);
   }
 
+  /**
+   * 测试场景：删除表带purge。
+   *
+   * <p>验证该方法在 删除表带purge 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteTableWithPurge() {
     String namespace = createNamespace();
@@ -366,6 +433,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     }
   }
 
+  /**
+   * 测试场景：提交表skiparchive。
+   *
+   * <p>验证该方法在 提交表skiparchive 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCommitTableSkipArchive() {
     // create ns
@@ -422,6 +494,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
             .size());
   }
 
+  /**
+   * 测试场景：提交表skipname校验。
+   *
+   * <p>验证该方法在 提交表skipname校验 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCommitTableSkipNameValidation() {
     String namespace = "dd-dd";
@@ -436,6 +513,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals(tableName, response.table().name());
   }
 
+  /**
+   * 测试场景：列commentsand参数。
+   *
+   * <p>验证该方法在 列commentsand参数 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testColumnCommentsAndParameters() {
     String namespace = createNamespace();
@@ -508,6 +590,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assert.assertEquals("Columns do not match", expectedColumns, actualColumns);
   }
 
+  /**
+   * 测试场景：表属性definedat目录级别。
+   *
+   * <p>验证该方法在 表属性definedat目录级别 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testTablePropsDefinedAtCatalogLevel() {
     String namespace = createNamespace();
@@ -561,6 +648,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
         table.properties().get("key5"));
   }
 
+  /**
+   * 测试场景：register表。
+   *
+   * <p>验证该方法在 register表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRegisterTable() {
     String namespace = createNamespace();
@@ -580,6 +672,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assertions.assertThat(glueCatalog.dropNamespace(Namespace.of(namespace))).isTrue();
   }
 
+  /**
+   * 测试场景：register表already存在。
+   *
+   * <p>验证该方法在 register表already存在 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRegisterTableAlreadyExists() {
     String namespace = createNamespace();
@@ -594,6 +691,11 @@ public class TestGlueCatalogTable extends GlueTestBase {
     Assertions.assertThat(glueCatalog.dropNamespace(Namespace.of(namespace))).isTrue();
   }
 
+  /**
+   * 测试场景：表级别s3标签。
+   *
+   * <p>验证该方法在 表级别s3标签 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testTableLevelS3Tags() {
     String testBucketPath = "s3://" + testBucketName + "/" + testPathPrefix;

@@ -25,6 +25,13 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.io.CloseableIterator;
 
 @FunctionalInterface
+/**
+ * 读取函数接口，定义按 split 读取记录的契约。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：抽象 split 到迭代器的转换逻辑。
+ *
+ * <p>设计意图：策略接口；被 IcebergSourceSplitReader 调用。
+ */
 public interface ReaderFunction<T>
     extends Serializable,
         Function<

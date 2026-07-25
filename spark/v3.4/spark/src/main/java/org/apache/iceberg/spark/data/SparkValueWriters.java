@@ -37,18 +37,27 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 值写入器工厂集合，提供各类型的通用写入器构建方法。
+ *
+ * <p>设计意图：以工厂方法集中创建写入器，复用公共逻辑。
+ *
+ * <p>上下游关系：由 SparkParquetWriters / SparkOrcWriter / SparkAvroWriter 使用。
+ */
 public class SparkValueWriters {
 
   private SparkValueWriters() {}
-
+  /** 执行 strings 相关操作。 */
   static ValueWriter<UTF8String> strings() {
     return StringWriter.INSTANCE;
   }
-
+  /** 执行 uuids 相关操作。 */
   static ValueWriter<UTF8String> uuids() {
     return UUIDWriter.INSTANCE;
   }
-
+  /** 执行 decimal 相关操作。 */
   static ValueWriter<Decimal> decimal(int precision, int scale) {
     return new DecimalWriter(precision, scale);
   }
@@ -66,7 +75,7 @@ public class SparkValueWriters {
       ValueWriter<K> keyWriter, DataType keyType, ValueWriter<V> valueWriter, DataType valueType) {
     return new MapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
-
+  /** 执行 struct 相关操作。 */
   static ValueWriter<InternalRow> struct(List<ValueWriter<?>> writers, List<DataType> types) {
     return new StructWriter(writers, types);
   }

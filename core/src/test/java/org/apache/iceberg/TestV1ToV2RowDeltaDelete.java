@@ -29,8 +29,17 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：TestV1ToV2RowDeltaDelete，用于验证 1 To 2 Row Delta Delete 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 1 To 2 Row Delta Delete 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestV1ToV2RowDeltaDelete extends TableTestBase {
 
+  /** 辅助方法：1 to 2 row delta delete。 */
   public TestV1ToV2RowDeltaDelete() {
     super(1 /* table format version */);
   }
@@ -53,6 +62,7 @@ public class TestV1ToV2RowDeltaDelete extends TableTestBase {
           .withRecordCount(1)
           .build();
 
+  /** 辅助方法：verify manifest sequence number。 */
   private void verifyManifestSequenceNumber(
       ManifestFile mf, long sequenceNum, long minSequenceNum) {
     Assert.assertEquals(
@@ -61,6 +71,11 @@ public class TestV1ToV2RowDeltaDelete extends TableTestBase {
         "min sequence number should be " + minSequenceNum, mf.minSequenceNumber(), minSequenceNum);
   }
 
+  /**
+   * 测试场景：partitioned table with partition eq deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithPartitionEqDeletes() {
     table.newAppend().appendFile(FILE_A).appendFile(FILE_B).appendFile(FILE_C).commit();
@@ -130,6 +145,11 @@ public class TestV1ToV2RowDeltaDelete extends TableTestBase {
     Assert.assertEquals("Should have one associated delete file", 1, task.get().deletes().size());
   }
 
+  /**
+   * 测试场景：partitioned table with unrelated partition deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithUnrelatedPartitionDeletes() {
     table.newAppend().appendFile(FILE_B).appendFile(FILE_C).appendFile(FILE_D).commit();
@@ -161,6 +181,11 @@ public class TestV1ToV2RowDeltaDelete extends TableTestBase {
         "Should have zero associated delete file", 0, tasks.get(0).deletes().size());
   }
 
+  /**
+   * 测试场景：partitioned table with existing delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithExistingDeleteFile() {
     table.updateProperties().set(TableProperties.MANIFEST_MERGE_ENABLED, "false").commit();
@@ -226,6 +251,11 @@ public class TestV1ToV2RowDeltaDelete extends TableTestBase {
         Sets.newHashSet(Iterables.transform(task.deletes(), ContentFile::path)));
   }
 
+  /**
+   * 测试场景：sequence numbers in upgraded tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSequenceNumbersInUpgradedTables() {
     // add initial data

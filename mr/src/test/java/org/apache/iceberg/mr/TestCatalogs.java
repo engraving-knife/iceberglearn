@@ -46,6 +46,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestCatalogs 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestCatalogs 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestCatalogs {
 
   private static final Schema SCHEMA = new Schema(required(1, "foo", Types.StringType.get()));
@@ -56,11 +63,17 @@ public class TestCatalogs {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：before。 */
   @Before
   public void before() {
     conf = new Configuration();
   }
 
+  /**
+   * 测试场景：Load Table From Location。
+   *
+   * <p>验证该方法在 Load Table From Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadTableFromLocation() throws IOException {
     conf.set(CatalogUtil.ICEBERG_CATALOG_TYPE, Catalogs.LOCATION);
@@ -77,6 +90,11 @@ public class TestCatalogs {
     Assert.assertEquals(hadoopTable.location(), Catalogs.loadTable(conf).location());
   }
 
+  /**
+   * 测试场景：Load Table From Catalog。
+   *
+   * <p>验证该方法在 Load Table From Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadTableFromCatalog() throws IOException {
     String defaultCatalogName = "default";
@@ -95,6 +113,11 @@ public class TestCatalogs {
     Assert.assertEquals(hadoopCatalogTable.location(), Catalogs.loadTable(conf).location());
   }
 
+  /**
+   * 测试场景：Create Drop Table To Location。
+   *
+   * <p>验证该方法在 Create Drop Table To Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateDropTableToLocation() throws IOException {
     Properties missingSchema = new Properties();
@@ -141,6 +164,11 @@ public class TestCatalogs {
         .hasMessage("Table does not exist at location: " + properties.getProperty("location"));
   }
 
+  /**
+   * 测试场景：Create Drop Table To Catalog。
+   *
+   * <p>验证该方法在 Create Drop Table To Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateDropTableToCatalog() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("test", "table");
@@ -194,6 +222,11 @@ public class TestCatalogs {
         .hasMessage("Table does not exist: test.table");
   }
 
+  /**
+   * 测试场景：Load Catalog Default。
+   *
+   * <p>验证该方法在 Load Catalog Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogDefault() {
     String catalogName = "barCatalog";
@@ -205,6 +238,11 @@ public class TestCatalogs {
     Assert.assertTrue(Catalogs.hiveCatalog(conf, properties));
   }
 
+  /**
+   * 测试场景：Load Catalog Hive。
+   *
+   * <p>验证该方法在 Load Catalog Hive 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogHive() {
     String catalogName = "barCatalog";
@@ -219,6 +257,11 @@ public class TestCatalogs {
     Assert.assertTrue(Catalogs.hiveCatalog(conf, properties));
   }
 
+  /**
+   * 测试场景：Load Catalog Hadoop。
+   *
+   * <p>验证该方法在 Load Catalog Hadoop 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogHadoop() {
     String catalogName = "barCatalog";
@@ -239,6 +282,11 @@ public class TestCatalogs {
     Assert.assertFalse(Catalogs.hiveCatalog(conf, properties));
   }
 
+  /**
+   * 测试场景：Load Catalog Custom。
+   *
+   * <p>验证该方法在 Load Catalog Custom 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogCustom() {
     String catalogName = "barCatalog";
@@ -257,11 +305,21 @@ public class TestCatalogs {
     Assert.assertFalse(Catalogs.hiveCatalog(conf, properties));
   }
 
+  /**
+   * 测试场景：Load Catalog Location。
+   *
+   * <p>验证该方法在 Load Catalog Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogLocation() {
     Assert.assertFalse(Catalogs.loadCatalog(conf, Catalogs.ICEBERG_HADOOP_TABLE_NAME).isPresent());
   }
 
+  /**
+   * 测试场景：Load Catalog Unknown。
+   *
+   * <p>验证该方法在 Load Catalog Unknown 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogUnknown() {
     String catalogName = "barCatalog";
@@ -276,13 +334,16 @@ public class TestCatalogs {
 
   public static class CustomHadoopCatalog extends HadoopCatalog {
 
+    /** 辅助方法：CustomHadoopCatalog。 */
     public CustomHadoopCatalog() {}
 
+    /** 辅助方法：CustomHadoopCatalog。 */
     public CustomHadoopCatalog(Configuration conf, String warehouseLocation) {
       super(conf, warehouseLocation);
     }
   }
 
+  /** 辅助方法：setCustomCatalogProperties。 */
   private void setCustomCatalogProperties(String catalogName, String warehouseLocation) {
     conf.set(
         InputFormatConfig.catalogPropertyConfigKey(

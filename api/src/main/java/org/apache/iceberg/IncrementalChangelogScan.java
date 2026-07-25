@@ -18,7 +18,18 @@
  */
 package org.apache.iceberg;
 
-/** API for configuring a scan for table changes. */
+/**
+ * 增量变更日志扫描 API：用于规划表的行级变更（insert/delete）。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：作为 {@link IncrementalScan} 的特化接口，固定产出 {@link ChangelogScanTask} 及其任务组，用于支持 CDC 风格的增量同步。
+ *
+ * <p>设计意图：通过继承 {@link IncrementalScan} 复用扫描区间与任务组规划通用能力， 仅在泛型参数上把任务类型收敛为 {@link
+ * ChangelogScanTask}，使接口简洁且类型安全。
+ *
+ * <p>上下游关系：由 {@link Table#newIncrementalChangelogScan()} 创建，被引擎层用于 行级变更同步、增量物化视图等场景。
+ */
 public interface IncrementalChangelogScan
     extends IncrementalScan<
         IncrementalChangelogScan, ChangelogScanTask, ScanTaskGroup<ChangelogScanTask>> {}

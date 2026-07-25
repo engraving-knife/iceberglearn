@@ -47,6 +47,11 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampType;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 PruneColumnsWithReordering。
+ */
 public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final StructType requestedType;
   private final Set<Integer> filterRefs;
@@ -57,6 +62,13 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     this.filterRefs = filterRefs;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param schema 参数
+   * @param structResult 参数
+   * @return 结果对象
+   */
   @Override
   public Type schema(Schema schema, Supplier<Type> structResult) {
     this.current = requestedType;
@@ -67,6 +79,13 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param struct 参数
+   * @param fieldResults 参数
+   * @return 结果对象
+   */
   @Override
   public Type struct(Types.StructType struct, Iterable<Type> fieldResults) {
     Preconditions.checkNotNull(
@@ -128,6 +147,13 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     return struct;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param field 参数
+   * @param fieldResult 参数
+   * @return 结果对象
+   */
   @Override
   public Type field(Types.NestedField field, Supplier<Type> fieldResult) {
     Preconditions.checkArgument(current instanceof StructType, "Not a struct: %s", current);
@@ -161,6 +187,13 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param list 参数
+   * @param elementResult 参数
+   * @return 结果对象
+   */
   @Override
   public Type list(Types.ListType list, Supplier<Type> elementResult) {
     Preconditions.checkArgument(current instanceof ArrayType, "Not an array: %s", current);
@@ -189,6 +222,14 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param map 参数
+   * @param keyResult 参数
+   * @param valueResult 参数
+   * @return 结果对象
+   */
   @Override
   public Type map(Types.MapType map, Supplier<Type> keyResult, Supplier<Type> valueResult) {
     Preconditions.checkArgument(current instanceof MapType, "Not a map: %s", current);
@@ -220,6 +261,12 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param primitive 参数
+   * @return 结果对象
+   */
   @Override
   public Type primitive(Type.PrimitiveType primitive) {
     Class<? extends DataType> expectedType = TYPES.get(primitive.typeId());

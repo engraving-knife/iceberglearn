@@ -25,14 +25,23 @@ import org.apache.spark.sql.vectorized.ArrowColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarArray;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark 向量化读取 Iceberg 数据的列式访问组件，提供对向量元素的访问能力。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ArrowVectorAccessors。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class ArrowVectorAccessors {
 
   private static final ArrowVectorAccessorFactory factory = new ArrowVectorAccessorFactory();
 
+  /** 返回vectoraccessor。 */
   static ArrowVectorAccessor<Decimal, UTF8String, ColumnarArray, ArrowColumnVector>
       getVectorAccessor(VectorHolder holder) {
     return factory.getVectorAccessor(holder);
   }
 
+  /** 构造 ArrowVectorAccessors 实例。 */
   private ArrowVectorAccessors() {}
 }

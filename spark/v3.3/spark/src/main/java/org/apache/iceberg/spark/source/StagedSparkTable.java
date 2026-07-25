@@ -21,19 +21,29 @@ package org.apache.iceberg.spark.source;
 import org.apache.iceberg.Transaction;
 import org.apache.spark.sql.connector.catalog.StagedTable;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 StagedSparkTable。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class StagedSparkTable extends SparkTable implements StagedTable {
   private final Transaction transaction;
 
+  /** 构造 StagedSparkTable 实例。 */
   public StagedSparkTable(Transaction transaction) {
     super(transaction.table(), false);
     this.transaction = transaction;
   }
 
+  /** 提交事务或写入结果。 */
   @Override
   public void commitStagedChanges() {
     transaction.commitTransaction();
   }
 
+  /** 中止并回滚当前操作。 */
   @Override
   public void abortStagedChanges() {
     // TODO: clean up

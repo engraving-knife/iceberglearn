@@ -43,11 +43,45 @@ import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * Flink 版本的文件写入器工厂，负责为数据/删除文件创建对应格式（Avro/Parquet/ORC）的写入器。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），继承 Iceberg core 的 {@link BaseFileWriterFactory}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>持有数据、equality delete、position delete 三类 RowType（Flink 逻辑类型）。
+ *   <li>为每种文件格式配置 createWriterFunc，桥接 Flink {@link RowData} 与 Iceberg 写入器。
+ *   <li>对 position delete 的路径字段做 StringData 转换（Parquet/ORC）。
+ * </ul>
+ *
+ * <p>设计意图：Flink 类型在需要时才从 Iceberg schema 懒转换（{@code dataFlinkType()} 等）， 避免不必要的转换开销；通过 Builder
+ * 收集众多参数保证构造清晰。
+ *
+ * <p>上下游关系：被 {@link FlinkSink} 写入流程调用，产出具体文件写入器。
+ */
 class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements Serializable {
   private RowType dataFlinkType;
   private RowType equalityDeleteFlinkType;
   private RowType positionDeleteFlinkType;
 
+  /**
+   * 构造工厂实例，参数较多，通常通过 {@link #builderFor(Table)} 构建。
+   *
+   * @param table Iceberg 表
+   * @param dataFileFormat 数据文件格式
+   * @param dataSchema 数据 schema
+   * @param dataFlinkType 数据 Flink RowType（可为 null，懒推导）
+   * @param dataSortOrder 数据排序规则
+   * @param deleteFileFormat 删除文件格式
+   * @param equalityFieldIds equality 字段 id 数组
+   * @param equalityDeleteRowSchema equality delete 行 schema
+   * @param equalityDeleteFlinkType equality delete Flink RowType
+   * @param equalityDeleteSortOrder equality delete 排序规则
+   * @param positionDeleteRowSchema position delete 行 schema
+   * @param positionDeleteFlinkType position delete Flink RowType
+   */
   FlinkFileWriterFactory(
       Table table,
       FileFormat dataFileFormat,
@@ -78,20 +112,29 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     this.positionDeleteFlinkType = positionDeleteFlinkType;
   }
 
+  /**
+   * 创建 {@link Builder} 构建工厂实例。
+   *
+   * @param table Iceberg 表
+   * @return Builder
+   */
   static Builder builderFor(Table table) {
     return new Builder(table);
   }
 
+  /** 为 Avro 数据写入配置 Flink Avro writer。 */
   @Override
   protected void configureDataWrite(Avro.DataWriteBuilder builder) {
     builder.createWriterFunc(ignore -> new FlinkAvroWriter(dataFlinkType()));
   }
 
+  /** 为 Avro equality delete 写入配置 Flink Avro writer。 */
   @Override
   protected void configureEqualityDelete(Avro.DeleteWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new FlinkAvroWriter(equalityDeleteFlinkType()));
   }
 
+  /** 为 Avro position delete 写入配置 Flink Avro writer（仅写 row 字段，忽略 path/pos）。 */
   @Override
   protected void configurePositionDelete(Avro.DeleteWriteBuilder builder) {
     int rowFieldIndex = positionDeleteFlinkType().getFieldIndex(DELETE_FILE_ROW_FIELD_NAME);
@@ -103,17 +146,20 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     }
   }
 
+  /** 为 Parquet 数据写入配置 Flink Parquet writer。 */
   @Override
   protected void configureDataWrite(Parquet.DataWriteBuilder builder) {
     builder.createWriterFunc(msgType -> FlinkParquetWriters.buildWriter(dataFlinkType(), msgType));
   }
 
+  /** 为 Parquet equality delete 写入配置 Flink Parquet writer。 */
   @Override
   protected void configureEqualityDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
         msgType -> FlinkParquetWriters.buildWriter(equalityDeleteFlinkType(), msgType));
   }
 
+  /** 为 Parquet position delete 写入配置 Flink Parquet writer，并将路径转为 StringData。 */
   @Override
   protected void configurePositionDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -121,18 +167,21 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     builder.transformPaths(path -> StringData.fromString(path.toString()));
   }
 
+  /** 为 ORC 数据写入配置 Flink ORC writer。 */
   @Override
   protected void configureDataWrite(ORC.DataWriteBuilder builder) {
     builder.createWriterFunc(
         (iSchema, typDesc) -> FlinkOrcWriter.buildWriter(dataFlinkType(), iSchema));
   }
 
+  /** 为 ORC equality delete 写入配置 Flink ORC writer。 */
   @Override
   protected void configureEqualityDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
         (iSchema, typDesc) -> FlinkOrcWriter.buildWriter(equalityDeleteFlinkType(), iSchema));
   }
 
+  /** 为 ORC position delete 写入配置 Flink ORC writer，并将路径转为 StringData。 */
   @Override
   protected void configurePositionDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -140,6 +189,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     builder.transformPaths(path -> StringData.fromString(path.toString()));
   }
 
+  /** 懒推导并返回数据 Flink RowType；未设置时由 dataSchema 转换得到。 */
   private RowType dataFlinkType() {
     if (dataFlinkType == null) {
       Preconditions.checkNotNull(dataSchema(), "Data schema must not be null");
@@ -149,6 +199,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     return dataFlinkType;
   }
 
+  /** 懒推导并返回 equality delete Flink RowType。 */
   private RowType equalityDeleteFlinkType() {
     if (equalityDeleteFlinkType == null) {
       Preconditions.checkNotNull(
@@ -159,6 +210,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     return equalityDeleteFlinkType;
   }
 
+  /** 懒推导并返回 position delete Flink RowType（包装 path/pos 与 row）。 */
   private RowType positionDeleteFlinkType() {
     if (positionDeleteFlinkType == null) {
       // wrap the optional row schema into the position delete schema that contains path and
@@ -170,6 +222,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
     return positionDeleteFlinkType;
   }
 
+  /** {@link FlinkFileWriterFactory} 的构建器，从表属性推导默认文件格式，并收集各类 schema/类型/排序参数。 */
   static class Builder {
     private final Table table;
     private FileFormat dataFileFormat;
@@ -208,11 +261,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
       return this;
     }
 
-    /**
-     * Sets a Flink type for data.
-     *
-     * <p>If not set, the value is derived from the provided Iceberg schema.
-     */
+    /** 设置数据文件的 Flink RowType；未设置时由 Iceberg schema 推导。 */
     Builder dataFlinkType(RowType newDataFlinkType) {
       this.dataFlinkType = newDataFlinkType;
       return this;
@@ -238,11 +287,7 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
       return this;
     }
 
-    /**
-     * Sets a Flink type for equality deletes.
-     *
-     * <p>If not set, the value is derived from the provided Iceberg schema.
-     */
+    /** 设置 equality delete 文件的 Flink RowType；未设置时由 Iceberg schema 推导。 */
     Builder equalityDeleteFlinkType(RowType newEqualityDeleteFlinkType) {
       this.equalityDeleteFlinkType = newEqualityDeleteFlinkType;
       return this;
@@ -258,16 +303,19 @@ class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements S
       return this;
     }
 
-    /**
-     * Sets a Flink type for position deletes.
-     *
-     * <p>If not set, the value is derived from the provided Iceberg schema.
-     */
+    /** 设置 position delete 文件的 Flink RowType；未设置时由 Iceberg schema 推导。 */
     Builder positionDeleteFlinkType(RowType newPositionDeleteFlinkType) {
       this.positionDeleteFlinkType = newPositionDeleteFlinkType;
       return this;
     }
 
+    /**
+     * 构建工厂实例。
+     *
+     * <p>逻辑：校验 equality 字段 id 与 equality delete schema 必须同时设置或同时缺省，随后构造 FlinkFileWriterFactory。
+     *
+     * @return 工厂实例
+     */
     FlinkFileWriterFactory build() {
       boolean noEqualityDeleteConf = equalityFieldIds == null && equalityDeleteRowSchema == null;
       boolean fullEqualityDeleteConf = equalityFieldIds != null && equalityDeleteRowSchema != null;

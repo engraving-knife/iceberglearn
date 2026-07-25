@@ -38,6 +38,12 @@ import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：赋值对齐支持工具，提供赋值表达式与目标列对齐的公共方法。
+ * <p>设计意图：抽取公共对齐逻辑，供分析规则复用。
+ * <p>上下游关系：由 AlignRowLevelCommandAssignments / RewriteUpdateTable 等使用。
+ */
 
 trait AssignmentAlignmentSupport extends CastSupport {
 
@@ -73,6 +79,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
       case (expr, attr) => handleCharVarcharLimits(Assignment(attr, expr))
     }
   }
+  /** 执行 applyUpdates 相关操作。 */
 
   private def applyUpdates(
       cols: Seq[NamedExpression],
@@ -133,6 +140,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
       }
     }
   }
+  /** 转换为 NamedStruct。 */
 
   private def toNamedStruct(fields: Seq[StructField], fieldExprs: Seq[Expression]): Expression = {
     val namedStructExprs = fields.zip(fieldExprs).flatMap { case (field, expr) =>
@@ -140,6 +148,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
     }
     CreateNamedStruct(namedStructExprs)
   }
+  /** 判断是否存在 ExactMatch。 */
 
   private def hasExactMatch(
       updates: Seq[ColumnUpdate],
@@ -148,6 +157,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
 
     updates.exists(assignment => isExactMatch(assignment, col, resolver))
   }
+  /** 判断是否 ExactMatch。 */
 
   private def isExactMatch(
       update: ColumnUpdate,
@@ -159,6 +169,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
       case _ => false
     }
   }
+  /** 执行 castIfNeeded 相关操作。 */
 
   protected def castIfNeeded(
       tableAttr: NamedExpression,

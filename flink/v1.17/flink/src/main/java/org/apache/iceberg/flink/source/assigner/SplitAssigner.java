@@ -28,55 +28,60 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 
 /**
- * SplitAssigner interface is extracted out as a separate component so that we can plug in different
- * split assignment strategy for different requirements. E.g.
+ * 文件级说明：Split 分配器接口，可插拔的 split 分配策略。
+ *
+ * <p>所属模块：iceberg-flink（source/assigner 子包），由 source enumerator 调用。
+ *
+ * <p>职责：
  *
  * <ul>
- *   <li>Simple assigner with no ordering guarantee or locality aware optimization.
- *   <li>Locality aware assigner that prefer splits that are local.
- *   <li>Snapshot aware assigner that assign splits based on the order they are committed.
- *   <li>Event time alignment assigner that assign splits satisfying certain time ordering within a
- *       single source or across sources.
+ *   <li>向 enumerator 提供 split 分配（getNext）。
+ *   <li>接收 enumerator 发现的新 split（onDiscoveredSplits）。
+ *   <li>接收 reader 失败后退回的 split（onUnassignedSplits）。
+ *   <li>跟踪已完成 split（onCompletedSplits），用于 event time 对齐等场景。
  * </ul>
  *
- * <p>Assigner implementation needs to be thread safe. Enumerator call the assigner APIs mostly from
- * the coordinator thread. But enumerator may call the {@link SplitAssigner#pendingSplitCount()}
- * from the I/O threads.
+ * <p>设计意图：将分配策略从 enumerator 中解耦，支持多种策略：
+ *
+ * <ul>
+ *   <li>简单分配器：无顺序保证，无本地性优化。
+ *   <li>本地性感知分配器：优先分配本地 split。
+ *   <li>快照感知分配器：按提交顺序分配 split。
+ *   <li>Event time 对齐分配器：满足时间顺序约束的分配。
+ * </ul>
+ *
+ * <p>线程安全：Assigner 实现需线程安全。Enumerator 主要从协调器线程调用 API， 但可能从 I/O 线程调用 {@link #pendingSplitCount()}。
+ *
+ * <p>上下游关系：被 source enumerator（如 {@link AbstractIcebergEnumerator}）调用； 管理 {@link
+ * IcebergSourceSplit} 的分配生命周期。
  */
 public interface SplitAssigner extends Closeable {
 
-  /**
-   * Some assigners may need to start background threads or perform other activity such as
-   * registering as listeners to updates from other event sources e.g., watermark tracker.
-   */
+  /** 启动 assigner（如启动后台线程或注册事件监听器），默认空实现。 */
   default void start() {}
 
-  /**
-   * Some assigners may need to perform certain actions when their corresponding enumerators are
-   * closed
-   */
+  /** 关闭 assigner，默认空实现。 */
   @Override
   default void close() {}
 
   /**
-   * Request a new split from the assigner when enumerator trying to assign splits to awaiting
-   * readers.
+   * 请求分配一个新的 split。
    *
-   * <p>If enumerator wasn't able to assign the split (e.g., reader disconnected), enumerator should
-   * call {@link SplitAssigner#onUnassignedSplits} to return the split.
+   * <p>逻辑：enumerator 在尝试为等待中的 reader 分配 split 时调用。若无法分配（如 reader 断开）， enumerator 应通过 {@link
+   * #onUnassignedSplits} 将 split 退回。
+   *
+   * @param hostname reader 所在主机名（可用于本地性优化，可为 null）
+   * @return 分配结果
    */
   GetSplitResult getNext(@Nullable String hostname);
 
-  /** Add new splits discovered by enumerator */
+  /** 添加 enumerator 新发现的 split。 */
   void onDiscoveredSplits(Collection<IcebergSourceSplit> splits);
 
-  /** Forward addSplitsBack event (for failed reader) to assigner */
+  /** 将退回的 split（来自失败的 reader）转发给 assigner。 */
   void onUnassignedSplits(Collection<IcebergSourceSplit> splits);
 
-  /**
-   * Some assigner (like event time alignment) may rack in-progress splits to advance watermark upon
-   * completed splits
-   */
+  /** 通知 assigner 已完成的 split（用于 event time 对齐等场景推进 watermark），默认空实现。 */
   default void onCompletedSplits(Collection<String> completedSplitIds) {}
 
   /**

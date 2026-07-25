@@ -39,6 +39,14 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestLoadTableResponse，用于验证 Load Table Response 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Load Table Response 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResponse> {
 
   private static final String TEST_METADATA_LOCATION =
@@ -70,11 +78,13 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
 
   private static final Map<String, String> CONFIG = ImmutableMap.of("foo", "bar");
 
+  /** 辅助方法：all fields from spec。 */
   @Override
   public String[] allFieldsFromSpec() {
     return new String[] {"metadata-location", "metadata", "config"};
   }
 
+  /** 辅助方法：create example instance。 */
   @Override
   public LoadTableResponse createExampleInstance() {
     TableMetadata metadata =
@@ -88,6 +98,7 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
     return LoadTableResponse.builder().withTableMetadata(metadata).addAllConfig(CONFIG).build();
   }
 
+  /** 辅助方法：deserialize。 */
   @Override
   public LoadTableResponse deserialize(String json) throws JsonProcessingException {
     LoadTableResponse resp = mapper().readValue(json, LoadTableResponse.class);
@@ -95,6 +106,11 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
     return resp;
   }
 
+  /**
+   * 测试场景：failures。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailures() {
     Assertions.assertThatThrownBy(() -> LoadTableResponse.builder().build())
@@ -102,6 +118,11 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
         .hasMessage("Invalid metadata: null");
   }
 
+  /**
+   * 测试场景：round trip serde with 1 table metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRoundTripSerdeWithV1TableMetadata() throws Exception {
     String tableMetadataJson = readTableMetadataInputFile("TableMetadataV1Valid.json");
@@ -119,6 +140,11 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
     assertRoundTripSerializesEquallyFrom(json, resp);
   }
 
+  /**
+   * 测试场景：missing schema type。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMissingSchemaType() throws Exception {
     // When the schema type (struct) is missing
@@ -129,6 +155,11 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
         .hasMessageContaining("Cannot parse type from json:");
   }
 
+  /**
+   * 测试场景：round trip serde with 2 table metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRoundTripSerdeWithV2TableMetadata() throws Exception {
     String tableMetadataJson = readTableMetadataInputFile("TableMetadataV2Valid.json");
@@ -146,6 +177,11 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
     assertRoundTripSerializesEquallyFrom(json, resp);
   }
 
+  /**
+   * 测试场景：can deserialize without default values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCanDeserializeWithoutDefaultValues() throws Exception {
     String metadataJson = readTableMetadataInputFile("TableMetadataV1Valid.json");
@@ -162,6 +198,7 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
         .isEqualTo(ImmutableMap.of());
   }
 
+  /** 辅助方法：assert equals。 */
   @Override
   public void assertEquals(LoadTableResponse actual, LoadTableResponse expected) {
     Assertions.assertThat(actual.config())
@@ -173,6 +210,7 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
         .isEqualTo(expected.metadataLocation());
   }
 
+  /** 辅助方法：assert equal table metadata。 */
   private void assertEqualTableMetadata(TableMetadata actual, TableMetadata expected) {
     Assertions.assertThat(actual.formatVersion())
         .as("Format version should match")
@@ -258,6 +296,7 @@ public class TestLoadTableResponse extends RequestResponseTestBase<LoadTableResp
     Assertions.assertThat(actual.refs()).as("Refs map should match").isEqualTo(expected.refs());
   }
 
+  /** 辅助方法：read table metadata input file。 */
   private String readTableMetadataInputFile(String fileName) throws Exception {
     Path path = Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
     return String.join("", java.nio.file.Files.readAllLines(path));

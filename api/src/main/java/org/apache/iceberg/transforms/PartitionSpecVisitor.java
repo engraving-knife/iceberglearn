@@ -24,79 +24,228 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 分区规约（PartitionSpec）访问者接口：按分区字段的变换类型分派回调。
+ *
+ * <p>所属模块：iceberg-api（被 core 与各引擎用于遍历分区字段并生成引擎特定的表达式/输出）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>为 identity/bucket/truncate/year/month/day/hour/alwaysNull/unknown 各类变换提供回调方法。
+ *   <li>提供静态 {@link #visit(PartitionSpec, PartitionSpecVisitor)} 遍历分区规约的所有字段。
+ * </ul>
+ *
+ * <p>设计意图：访问者模式把"变换类型"与"对变换的处理"解耦，调用方只需实现关心的回调， 其余走默认抛异常实现。每个变换提供带 fieldId 与不带 fieldId
+ * 两套重载，便于不同场景使用。
+ *
+ * <p>上下游关系：被 core 的扫描规划、各引擎的分区下推、元数据序列化等使用；输入依赖 {@link PartitionSpec}、{@link PartitionField}、{@link
+ * Schema}。
+ *
+ * @param <T> 访问者回调的返回类型
+ */
 public interface PartitionSpecVisitor<T> {
+  /**
+   * 访问 identity 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T identity(int fieldId, String sourceName, int sourceId) {
     return identity(sourceName, sourceId);
   }
 
+  /**
+   * 访问 identity 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T identity(String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Identity transform is not supported");
   }
 
+  /**
+   * 访问 bucket 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @param numBuckets 桶数量
+   * @return 回调结果
+   */
   default T bucket(int fieldId, String sourceName, int sourceId, int numBuckets) {
     return bucket(sourceName, sourceId, numBuckets);
   }
 
+  /**
+   * 访问 bucket 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @param numBuckets 桶数量
+   * @return 回调结果
+   */
   default T bucket(String sourceName, int sourceId, int numBuckets) {
     throw new UnsupportedOperationException("Bucket transform is not supported");
   }
 
+  /**
+   * 访问 truncate 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @param width 截断宽度
+   * @return 回调结果
+   */
   default T truncate(int fieldId, String sourceName, int sourceId, int width) {
     return truncate(sourceName, sourceId, width);
   }
 
+  /**
+   * 访问 truncate 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @param width 截断宽度
+   * @return 回调结果
+   */
   default T truncate(String sourceName, int sourceId, int width) {
     throw new UnsupportedOperationException("Truncate transform is not supported");
   }
 
+  /**
+   * 访问 year 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T year(int fieldId, String sourceName, int sourceId) {
     return year(sourceName, sourceId);
   }
 
+  /**
+   * 访问 year 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T year(String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Year transform is not supported");
   }
 
+  /**
+   * 访问 month 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T month(int fieldId, String sourceName, int sourceId) {
     return month(sourceName, sourceId);
   }
 
+  /**
+   * 访问 month 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T month(String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Month transform is not supported");
   }
 
+  /**
+   * 访问 day 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T day(int fieldId, String sourceName, int sourceId) {
     return day(sourceName, sourceId);
   }
 
+  /**
+   * 访问 day 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T day(String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Day transform is not supported");
   }
 
+  /**
+   * 访问 hour 分区字段（带 fieldId）。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T hour(int fieldId, String sourceName, int sourceId) {
     return hour(sourceName, sourceId);
   }
 
+  /**
+   * 访问 hour 分区字段（不带 fieldId），默认抛异常。
+   *
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T hour(String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Hour transform is not supported");
   }
 
+  /**
+   * 访问 alwaysNull（void）分区字段，默认抛异常。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @return 回调结果
+   */
   default T alwaysNull(int fieldId, String sourceName, int sourceId) {
     throw new UnsupportedOperationException("Void transform is not supported");
   }
 
+  /**
+   * 访问未知变换的分区字段，默认抛异常。
+   *
+   * @param fieldId 分区字段 ID
+   * @param sourceName 源列名
+   * @param sourceId 源列 ID
+   * @param transform 变换的字符串表示
+   * @return 回调结果
+   */
   default T unknown(int fieldId, String sourceName, int sourceId, String transform) {
     throw new UnsupportedOperationException(
         String.format("Unknown transform %s is not supported", transform));
   }
 
   /**
-   * Visit the fields of a {@link PartitionSpec}.
+   * 遍历分区规约的所有字段并收集访问结果。
    *
-   * @param spec a partition spec to visit
-   * @param visitor a partition spec visitor
-   * @param <R> return type of the visitor
-   * @return a list of the result produced by visiting each partition field
+   * <p>逻辑：按 spec.fields() 顺序逐个调用 {@link #visit(Schema, PartitionField, PartitionSpecVisitor)}，
+   * 把结果收集到 List 返回。
+   *
+   * @param spec 待遍历的分区规约
+   * @param visitor 访问者
+   * @param <R> 返回类型
+   * @return 每个字段访问结果的列表
    */
   static <R> List<R> visit(PartitionSpec spec, PartitionSpecVisitor<R> visitor) {
     List<R> results = Lists.newArrayListWithExpectedSize(spec.fields().size());
@@ -108,6 +257,18 @@ public interface PartitionSpecVisitor<T> {
     return results;
   }
 
+  /**
+   * 访问单个分区字段，按变换类型分派到对应回调。
+   *
+   * <p>逻辑：先查源列名，再按 transform 的实际类型（Identity/Bucket/Truncate/Dates.YEAR/Timestamps.YEAR/
+   * Years/.../VoidTransform/UnknownTransform）分派到 visitor 的对应方法；都不匹配抛 UnsupportedOperationException。
+   *
+   * @param schema 表 schema
+   * @param field 分区字段
+   * @param visitor 访问者
+   * @param <R> 返回类型
+   * @return 访问结果
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   static <R> R visit(Schema schema, PartitionField field, PartitionSpecVisitor<R> visitor) {
     String sourceName = schema.findColumnName(field.sourceId());

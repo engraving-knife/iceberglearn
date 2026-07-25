@@ -32,6 +32,22 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.base.Splitter;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 
+/**
+ * 文件级说明：JDBC Catalog 的工具类，定义表结构、SQL 模板和辅助方法。
+ *
+ * <p>所属模块：iceberg-core（jdbc 子包）。职责：集中定义 JDBC catalog 的数据库表名、 列名、建表/查表/插入/更新/删除 SQL
+ * 模板，以及结果集解析、命名空间校验等工具方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>把所有 SQL 和表结构定义集中在一处，便于维护和多数据库适配。
+ *   <li>提供 RowProducer 函数式接口，支持流式处理结果集。
+ *   <li>命名空间和表名校验逻辑统一，保证与 Iceberg 标识符规则一致。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link JdbcCatalog} 和 {@link JdbcTableOperations} 大量引用。
+ */
 final class JdbcUtil {
   // property to control strict-mode (aka check if namespace exists when creating a table)
   static final String STRICT_MODE_PROPERTY = JdbcCatalog.PROPERTY_PREFIX + "strict-mode";
@@ -280,11 +296,23 @@ final class JdbcUtil {
 
   private JdbcUtil() {}
 
+  /**
+   * 把字符串转换为 Namespace 对象。
+   *
+   * @param namespace 命名空间字符串（点分隔）
+   * @return Namespace 对象
+   */
   public static Namespace stringToNamespace(String namespace) {
     Preconditions.checkArgument(namespace != null, "Invalid namespace %s", namespace);
     return Namespace.of(Iterables.toArray(SPLITTER_DOT.split(namespace), String.class));
   }
 
+  /**
+   * 把 Namespace 对象转换为字符串。
+   *
+   * @param namespace Namespace 对象
+   * @return 点分隔的命名空间字符串
+   */
   public static String namespaceToString(Namespace namespace) {
     return JOINER_DOT.join(namespace.levels());
   }
@@ -305,6 +333,13 @@ final class JdbcUtil {
     return result;
   }
 
+  /**
+   * 生成更新表属性的 SQL 语句。
+   *
+   * @param catalogName Catalog 名称
+   * @param tableIdentifier 表标识符
+   * @return SQL UPDATE 语句
+   */
   public static String updatePropertiesStatement(int size) {
     StringBuilder sqlStatement =
         new StringBuilder(
@@ -331,6 +366,13 @@ final class JdbcUtil {
     return sqlStatement.toString();
   }
 
+  /**
+   * 生成插入表属性的 SQL 语句。
+   *
+   * @param catalogName Catalog 名称
+   * @param tableIdentifier 表标识符
+   * @return SQL INSERT 语句
+   */
   public static String insertPropertiesStatement(int size) {
     StringBuilder sqlStatement = new StringBuilder(JdbcUtil.INSERT_NAMESPACE_PROPERTIES_SQL);
 
@@ -344,6 +386,13 @@ final class JdbcUtil {
     return sqlStatement.toString();
   }
 
+  /**
+   * 生成删除表属性的 SQL 语句。
+   *
+   * @param catalogName Catalog 名称
+   * @param tableIdentifier 表标识符
+   * @return SQL DELETE 语句
+   */
   public static String deletePropertiesStatement(Set<String> properties) {
     StringBuilder sqlStatement = new StringBuilder(JdbcUtil.DELETE_NAMESPACE_PROPERTIES_SQL);
     String values = String.join(",", Collections.nCopies(properties.size(), String.valueOf('?')));

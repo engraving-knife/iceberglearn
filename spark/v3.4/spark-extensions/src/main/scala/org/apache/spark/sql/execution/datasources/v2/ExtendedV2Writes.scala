@@ -35,11 +35,15 @@ import org.apache.spark.sql.connector.write.WriteBuilder
 import org.apache.spark.sql.types.StructType
 
 /**
- * A rule that is inspired by V2Writes in Spark but supports Iceberg specific plans.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：扩展的 V2 写入规则对象，为 Iceberg 写命令配置分布与排序并接入提交。
+ * <p>设计意图：在物理计划阶段注入写入分布/排序与提交信息。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 object ExtendedV2Writes extends Rule[LogicalPlan] with PredicateHelper {
 
   import DataSourceV2Implicits._
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     case rd @ ReplaceIcebergData(r: DataSourceV2Relation, query, _, None) =>
@@ -55,6 +59,7 @@ object ExtendedV2Writes extends Rule[LogicalPlan] with PredicateHelper {
       val newQuery = DistributionAndOrderingUtils.prepareQuery(deltaWrite, query, r.funCatalog)
       wd.copy(write = Some(deltaWrite), query = newQuery)
   }
+  /** 创建 WriteBuilder 实例。 */
 
   private def newWriteBuilder(
       table: Table,
@@ -65,6 +70,7 @@ object ExtendedV2Writes extends Rule[LogicalPlan] with PredicateHelper {
     val info = LogicalWriteInfoImpl(queryId, rowSchema, writeOptions.asOptions)
     table.asWritable.newWriteBuilder(info)
   }
+  /** 创建 DeltaWriteBuilder 实例。 */
 
   private def newDeltaWriteBuilder(
       table: Table,

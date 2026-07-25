@@ -23,6 +23,13 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
 
+/**
+ * IcebergEnumeratorPosition 的序列化器，用于 checkpoint 持久化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把枚举位置序列化为字节流。
+ *
+ * <p>设计意图：实现 SimpleVersionedSerializer；被 enumerator 使用。
+ */
 class IcebergEnumeratorPositionSerializer
     implements SimpleVersionedSerializer<IcebergEnumeratorPosition> {
 

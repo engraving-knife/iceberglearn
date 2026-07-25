@@ -30,10 +30,19 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+/**
+ * 文件级说明：测试 SparkDistributedDataScanTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkdistributed数据扫描
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class SparkDistributedDataScanTestBase
     extends DataTableScanTestBase<BatchScan, ScanTask, ScanTaskGroup<ScanTask>> {
 
+  /** 参数。 */
   @Parameters(name = "formatVersion = {0}, dataMode = {1}, deleteMode = {2}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -53,6 +62,7 @@ public abstract class SparkDistributedDataScanTestBase
   private final PlanningMode dataMode;
   private final PlanningMode deleteMode;
 
+  /** Sparkdistributed数据扫描测试基类。 */
   public SparkDistributedDataScanTestBase(
       int formatVersion, PlanningMode dataPlanningMode, PlanningMode deletePlanningMode) {
     super(formatVersion);
@@ -60,6 +70,7 @@ public abstract class SparkDistributedDataScanTestBase
     this.deleteMode = deletePlanningMode;
   }
 
+  /** configure规划模式。 */
   @Before
   public void configurePlanningModes() {
     table
@@ -69,27 +80,32 @@ public abstract class SparkDistributedDataScanTestBase
         .commit();
   }
 
+  /** 辅助方法：useRef。 */
   @Override
   protected BatchScan useRef(BatchScan scan, String ref) {
     return scan.useRef(ref);
   }
 
+  /** use快照。 */
   @Override
   protected BatchScan useSnapshot(BatchScan scan, long snapshotId) {
     return scan.useSnapshot(snapshotId);
   }
 
+  /** 作为的时间。 */
   @Override
   protected BatchScan asOfTime(BatchScan scan, long timestampMillis) {
     return scan.asOfTime(timestampMillis);
   }
 
+  /** 新建扫描。 */
   @Override
   protected BatchScan newScan() {
     SparkReadConf readConf = new SparkReadConf(spark, table, ImmutableMap.of());
     return new SparkDistributedDataScan(spark, table, readConf);
   }
 
+  /** initSpark。 */
   protected static SparkSession initSpark(String serializer) {
     return SparkSession.builder()
         .master("local[2]")

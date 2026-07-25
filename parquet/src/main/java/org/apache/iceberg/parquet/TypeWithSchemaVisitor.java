@@ -30,14 +30,51 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
- * Visitor for traversing a Parquet type with a companion Iceberg type.
+ * 文件级说明：Iceberg 类型与 Parquet 类型联合遍历访问器。
  *
- * @param <T> the Java class returned by the visitor
+ * <p>所属模块：iceberg-parquet（schema 联合遍历框架，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：同时遍历 Iceberg {@link org.apache.iceberg.types.Type} 和 Parquet {@link Type}，
+ * 在每个对应节点调用访问器的对应方法（message/struct/list/map/primitive）， 使子类能基于两个 schema 的联合信息构建读取器/写入器树。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>双 schema 对齐：Iceberg 以字段 ID 为核心，Parquet 以字段名为核心，本类在遍历时 按字段 ID 将两者的字段对齐（visitFields 中通过
+ *       field.getId() 匹配）。
+ *   <li>路径追踪：fieldNames 栈维护当前字段路径，供子类计算 definition/repetition level。
+ *   <li>List 兼容：处理 Parquet 2-level 和 3-level LIST 编码（visitTwoLevelList/visitThreeLevelList）。
+ *   <li>Map key/value 投影：repeatedKeyValue 可能只有 1 个字段（只投影 key 或 value）。
+ * </ul>
+ *
+ * <p>上下游关系：被 BaseParquetReaders/ParquetAvroValueReaders 等读取器构建器继承； 依赖 ParquetSchemaUtil（List
+ * 元素类型判断）。
+ *
+ * @param <T> 访问器返回的 Java 类型
  */
 public class TypeWithSchemaVisitor<T> {
   @SuppressWarnings("checkstyle:VisibilityModifier")
   protected ArrayDeque<String> fieldNames = new ArrayDeque<>();
 
+  /**
+   * 联合遍历入口：按 Parquet 类型结构分派到 visitor 的对应方法。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>MessageType → visitor.message（遍历顶层字段）；
+   *   <li>原始类型 → visitor.primitive；
+   *   <li>GroupType + LIST 标注 → visitor.list（处理 2-level/3-level）；
+   *   <li>GroupType + MAP 标注 → visitor.map（处理 key/value 投影）；
+   *   <li>其他 GroupType → visitor.struct。
+   * </ul>
+   *
+   * @param iType Iceberg 类型（可为 null 表示投影中缺失）
+   * @param type Parquet 类型
+   * @param visitor 访问器
+   * @param <T> 返回类型
+   * @return 访问器返回值
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public static <T> T visit(
       org.apache.iceberg.types.Type iType, Type type, TypeWithSchemaVisitor<T> visitor) {
@@ -222,10 +259,12 @@ public class TypeWithSchemaVisitor<T> {
     return null;
   }
 
+  /** 返回当前字段名路径（从根到当前节点），基于 fieldNames 栈。 */
   protected String[] currentPath() {
     return Lists.newArrayList(fieldNames.descendingIterator()).toArray(new String[0]);
   }
 
+  /** 返回当前路径附加指定名称后的路径数组。 */
   protected String[] path(String name) {
     List<String> list = Lists.newArrayList(fieldNames.descendingIterator());
     list.add(name);

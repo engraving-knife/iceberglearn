@@ -24,6 +24,23 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspe
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.Text;
 
+/**
+ * 文件级说明：Iceberg TIME 类型在 Hive 侧的 ObjectInspector。
+ *
+ * <p>所属模块：iceberg-mr（hive 子包 serde/objectinspector 下）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>读取呈现：把 Iceberg {@link LocalTime} 转为 Hive 期望的字符串 / {@link Text}。
+ *   <li>写入转换：实现 {@link WriteObjectInspector}，把 Hive 字符串解析为 {@link LocalTime}。
+ *   <li>对象拷贝：深拷贝 {@link Text}。
+ * </ul>
+ *
+ * <p>设计意图：Hive 没有原生 TIME 类型，用字符串承载；本类在两端做 LocalTime <-> String 互转。 单例模式。
+ *
+ * <p>上下游关系：被 {@link IcebergObjectInspector#primitive} 在 TIME 分支创建；被 Hive SerDe 在读写 TIME 字段时调用。
+ */
 public class IcebergTimeObjectInspector extends AbstractPrimitiveJavaObjectInspector
     implements StringObjectInspector, WriteObjectInspector {
 
@@ -33,26 +50,51 @@ public class IcebergTimeObjectInspector extends AbstractPrimitiveJavaObjectInspe
     super(TypeInfoFactory.stringTypeInfo);
   }
 
+  /** 返回单例实例。 */
   public static IcebergTimeObjectInspector get() {
     return INSTANCE;
   }
 
+  /**
+   * 把 {@link LocalTime} 转为字符串。
+   *
+   * @param o LocalTime 对象，可为 null
+   * @return 字符串表示；o 为 null 时返回 null
+   */
   @Override
   public String getPrimitiveJavaObject(Object o) {
     return o == null ? null : o.toString();
   }
 
+  /**
+   * 把 {@link LocalTime} 转为 {@link Text}。
+   *
+   * @param o LocalTime 对象，可为 null
+   * @return Text；o 为 null 时返回 null
+   */
   @Override
   public Text getPrimitiveWritableObject(Object o) {
     String value = getPrimitiveJavaObject(o);
     return value == null ? null : new Text(value);
   }
 
+  /**
+   * 写入转换：把 Hive 字符串解析为 {@link LocalTime}。
+   *
+   * @param o Hive 侧字符串
+   * @return LocalTime；o 为 null 时返回 null
+   */
   @Override
   public LocalTime convert(Object o) {
     return o == null ? null : LocalTime.parse((String) o);
   }
 
+  /**
+   * 深拷贝 {@link Text}；其他类型原样返回。
+   *
+   * @param o 待拷贝对象
+   * @return 拷贝结果；o 为 null 时返回 null
+   */
   @Override
   public Object copyObject(Object o) {
     if (o == null) {

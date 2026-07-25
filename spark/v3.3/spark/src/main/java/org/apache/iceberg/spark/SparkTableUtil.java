@@ -100,8 +100,9 @@ import scala.collection.mutable.Builder;
 import scala.runtime.AbstractPartialFunction;
 
 /**
- * Java version of the original SparkTableUtil.scala
- * https://github.com/apache/iceberg/blob/apache-iceberg-0.8.0-incubating/spark/src/main/scala/org/apache/iceberg/spark/SparkTableUtil.scala
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkTableUtil。
  */
 public class SparkTableUtil {
 
@@ -111,18 +112,10 @@ public class SparkTableUtil {
           + "This is disabled by default as Iceberg is not designed for multiple references to the same file"
           + " within the same table.  If you are sure, you may set 'check_duplicate_files' to false to force the import.";
 
+  /** 构造 SparkTableUtil 实例。 */
   private SparkTableUtil() {}
 
-  /**
-   * Returns a DataFrame with a row for each partition in the table.
-   *
-   * <p>The DataFrame has 3 columns, partition key (a=1/b=2), partition location, and format (avro
-   * or parquet).
-   *
-   * @param spark a Spark session
-   * @param table a table name and (optional) database
-   * @return a DataFrame of the table's partitions
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Dataset<Row> partitionDF(SparkSession spark, String table) {
     List<SparkPartition> partitions = getPartitions(spark, table);
     return spark
@@ -130,14 +123,7 @@ public class SparkTableUtil {
         .toDF("partition", "uri", "format");
   }
 
-  /**
-   * Returns a DataFrame with a row for each partition that matches the specified 'expression'.
-   *
-   * @param spark a Spark session.
-   * @param table name of the table.
-   * @param expression The expression whose matching partitions are returned.
-   * @return a DataFrame of the table partitions.
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Dataset<Row> partitionDFByFilter(
       SparkSession spark, String table, String expression) {
     List<SparkPartition> partitions = getPartitionsByFilter(spark, table, expression);
@@ -146,13 +132,7 @@ public class SparkTableUtil {
         .toDF("partition", "uri", "format");
   }
 
-  /**
-   * Returns all partitions in the table.
-   *
-   * @param spark a Spark session
-   * @param table a table name and (optional) database
-   * @return all table's partitions
-   */
+  /** 返回partitions。 */
   public static List<SparkPartition> getPartitions(SparkSession spark, String table) {
     try {
       TableIdentifier tableIdent = spark.sessionState().sqlParser().parseTableIdentifier(table);
@@ -163,14 +143,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Returns all partitions in the table.
-   *
-   * @param spark a Spark session
-   * @param tableIdent a table identifier
-   * @param partitionFilter partition filter, or null if no filter
-   * @return all table's partitions
-   */
+  /** 返回partitions。 */
   public static List<SparkPartition> getPartitions(
       SparkSession spark, TableIdentifier tableIdent, Map<String, String> partitionFilter) {
     try {
@@ -200,14 +173,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Returns partitions that match the specified 'predicate'.
-   *
-   * @param spark a Spark session
-   * @param table a table name and (optional) database
-   * @param predicate a predicate on partition columns
-   * @return matching table's partitions
-   */
+  /** 返回partitionsbyfilter。 */
   public static List<SparkPartition> getPartitionsByFilter(
       SparkSession spark, String table, String predicate) {
     TableIdentifier tableIdent;
@@ -230,14 +196,7 @@ public class SparkTableUtil {
     return getPartitionsByFilter(spark, tableIdent, resolvedPredicateExpr);
   }
 
-  /**
-   * Returns partitions that match the specified 'predicate'.
-   *
-   * @param spark a Spark session
-   * @param tableIdent a table identifier
-   * @param predicateExpr a predicate expression on partition columns
-   * @return matching table's partitions
-   */
+  /** 返回partitionsbyfilter。 */
   public static List<SparkPartition> getPartitionsByFilter(
       SparkSession spark, TableIdentifier tableIdent, Expression predicateExpr) {
     try {
@@ -271,17 +230,9 @@ public class SparkTableUtil {
   }
 
   /**
-   * Returns the data files in a partition by listing the partition location.
+   * 执行该方法的具体逻辑。
    *
-   * <p>For Parquet and ORC partitions, this will read metrics from the file footer. For Avro
-   * partitions, metrics are set to null.
-   *
-   * @param partition a partition
-   * @param conf a serializable Hadoop conf
-   * @param metricsConfig a metrics conf
-   * @return a List of DataFile
-   * @deprecated use {@link TableMigrationUtil#listPartition(Map, String, String, PartitionSpec,
-   *     Configuration, MetricsConfig, NameMapping)}
+   * @deprecated 使用 {@link TableMigrationUtil#listPartition} 替代
    */
   @Deprecated
   public static List<DataFile> listPartition(
@@ -293,18 +244,9 @@ public class SparkTableUtil {
   }
 
   /**
-   * Returns the data files in a partition by listing the partition location.
+   * 执行该方法的具体逻辑。
    *
-   * <p>For Parquet and ORC partitions, this will read metrics from the file footer. For Avro
-   * partitions, metrics are set to null.
-   *
-   * @param partition a partition
-   * @param conf a serializable Hadoop conf
-   * @param metricsConfig a metrics conf
-   * @param mapping a name mapping
-   * @return a List of DataFile
-   * @deprecated use {@link TableMigrationUtil#listPartition(Map, String, String, PartitionSpec,
-   *     Configuration, MetricsConfig, NameMapping)}
+   * @deprecated 使用 {@link TableMigrationUtil#listPartition} 替代
    */
   @Deprecated
   public static List<DataFile> listPartition(
@@ -323,6 +265,7 @@ public class SparkTableUtil {
         mapping);
   }
 
+  /** 转换为sparkpartition。 */
   private static SparkPartition toSparkPartition(
       CatalogTablePartition partition, CatalogTable table) {
     Option<URI> locationUri = partition.storage().locationUri();
@@ -337,14 +280,22 @@ public class SparkTableUtil {
 
     Map<String, String> partitionSpec =
         JavaConverters.mapAsJavaMapConverter(partition.spec()).asJava();
+    /** 执行该方法的具体逻辑。 */
     return new SparkPartition(partitionSpec, uri, format);
   }
 
+  /** 解析引用或表达式。 */
   private static Expression resolveAttrs(SparkSession spark, String table, Expression expr) {
     Function2<String, String, Object> resolver = spark.sessionState().analyzer().resolver();
     LogicalPlan plan = spark.table(table).queryExecution().analyzed();
     return expr.transform(
         new AbstractPartialFunction<Expression, Expression>() {
+          /**
+           * 执行核心逻辑。
+           *
+           * @param attr 参数
+           * @return 结果对象
+           */
           @Override
           public Expression apply(Expression attr) {
             UnresolvedAttribute unresolvedAttribute = (UnresolvedAttribute) attr;
@@ -358,6 +309,7 @@ public class SparkTableUtil {
             }
           }
 
+          /** 判断是否definedat。 */
           @Override
           public boolean isDefinedAt(Expression attr) {
             return attr instanceof UnresolvedAttribute;
@@ -365,6 +317,7 @@ public class SparkTableUtil {
         });
   }
 
+  /** 构造并返回目标对象。 */
   private static Iterator<ManifestFile> buildManifest(
       SerializableConfiguration conf,
       PartitionSpec spec,
@@ -396,20 +349,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Import files from an existing Spark table to an Iceberg table.
-   *
-   * <p>The import uses the Spark session to get table metadata. It assumes no operation is going on
-   * the original and target table and thus is not thread-safe.
-   *
-   * @param spark a Spark session
-   * @param sourceTableIdent an identifier of the source Spark table
-   * @param targetTable an Iceberg table where to import the data
-   * @param stagingDir a staging directory to store temporary manifest files
-   * @param partitionFilter only import partitions whose values match those in the map, can be
-   *     partially defined
-   * @param checkDuplicateFiles if true, throw exception if import results in a duplicate data file
-   */
+  /** 执行该方法的具体逻辑。 */
   public static void importSparkTable(
       SparkSession spark,
       TableIdentifier sourceTableIdent,
@@ -454,18 +394,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Import files from an existing Spark table to an Iceberg table.
-   *
-   * <p>The import uses the Spark session to get table metadata. It assumes no operation is going on
-   * the original and target table and thus is not thread-safe.
-   *
-   * @param spark a Spark session
-   * @param sourceTableIdent an identifier of the source Spark table
-   * @param targetTable an Iceberg table where to import the data
-   * @param stagingDir a staging directory to store temporary manifest files
-   * @param checkDuplicateFiles if true, throw exception if import results in a duplicate data file
-   */
+  /** 执行该方法的具体逻辑。 */
   public static void importSparkTable(
       SparkSession spark,
       TableIdentifier sourceTableIdent,
@@ -481,23 +410,14 @@ public class SparkTableUtil {
         checkDuplicateFiles);
   }
 
-  /**
-   * Import files from an existing Spark table to an Iceberg table.
-   *
-   * <p>The import uses the Spark session to get table metadata. It assumes no operation is going on
-   * the original and target table and thus is not thread-safe.
-   *
-   * @param spark a Spark session
-   * @param sourceTableIdent an identifier of the source Spark table
-   * @param targetTable an Iceberg table where to import the data
-   * @param stagingDir a staging directory to store temporary manifest files
-   */
+  /** 执行该方法的具体逻辑。 */
   public static void importSparkTable(
       SparkSession spark, TableIdentifier sourceTableIdent, Table targetTable, String stagingDir) {
     importSparkTable(
         spark, sourceTableIdent, targetTable, stagingDir, Collections.emptyMap(), false);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static void importUnpartitionedSparkTable(
       SparkSession spark,
       TableIdentifier sourceTableIdent,
@@ -558,16 +478,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Import files from given partitions to an Iceberg table.
-   *
-   * @param spark a Spark session
-   * @param partitions partitions to import
-   * @param targetTable an Iceberg table where to import the data
-   * @param spec a partition spec
-   * @param stagingDir a staging directory to store temporary manifest files
-   * @param checkDuplicateFiles if true, throw exception if import results in a duplicate data file
-   */
+  /** 执行该方法的具体逻辑。 */
   public static void importSparkPartitions(
       SparkSession spark,
       List<SparkPartition> partitions,
@@ -653,15 +564,7 @@ public class SparkTableUtil {
     }
   }
 
-  /**
-   * Import files from given partitions to an Iceberg table.
-   *
-   * @param spark a Spark session
-   * @param partitions partitions to import
-   * @param targetTable an Iceberg table where to import the data
-   * @param spec a partition spec
-   * @param stagingDir a staging directory to store temporary manifest files
-   */
+  /** 执行该方法的具体逻辑。 */
   public static void importSparkPartitions(
       SparkSession spark,
       List<SparkPartition> partitions,
@@ -671,6 +574,7 @@ public class SparkTableUtil {
     importSparkPartitions(spark, partitions, targetTable, spec, stagingDir, false);
   }
 
+  /** 按条件过滤。 */
   public static List<SparkPartition> filterPartitions(
       List<SparkPartition> partitions, Map<String, String> partitionFilter) {
     if (partitionFilter.isEmpty()) {
@@ -682,6 +586,7 @@ public class SparkTableUtil {
     }
   }
 
+  /** 删除数据或文件。 */
   private static void deleteManifests(FileIO io, List<ManifestFile> manifests) {
     Tasks.foreach(manifests)
         .executeWith(ThreadPools.getWorkerPool())
@@ -691,10 +596,9 @@ public class SparkTableUtil {
   }
 
   /**
-   * Loads a metadata table.
+   * 执行该方法的具体逻辑。
    *
-   * @deprecated since 0.14.0, will be removed in 0.15.0; use {@link
-   *     #loadMetadataTable(SparkSession, Table, MetadataTableType)}.
+   * @deprecated 使用 {@link #loadMetadataTable(SparkSession, Table, MetadataTableType)} 替代
    */
   @Deprecated
   public static Dataset<Row> loadCatalogMetadataTable(
@@ -702,11 +606,13 @@ public class SparkTableUtil {
     return loadMetadataTable(spark, table, type);
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static Dataset<Row> loadMetadataTable(
       SparkSession spark, Table table, MetadataTableType type) {
     return loadMetadataTable(spark, table, type, ImmutableMap.of());
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static Dataset<Row> loadMetadataTable(
       SparkSession spark, Table table, MetadataTableType type, Map<String, String> extraOptions) {
     SparkTable metadataTable =
@@ -716,15 +622,7 @@ public class SparkTableUtil {
         spark, DataSourceV2Relation.create(metadataTable, Some.empty(), Some.empty(), options));
   }
 
-  /**
-   * Determine the write branch.
-   *
-   * <p>Validate wap config and determine the write branch.
-   *
-   * @param spark a Spark Session
-   * @param branch write branch if there is no WAP branch configured
-   * @return branch for write operation
-   */
+  /** 执行该方法的具体逻辑。 */
   public static String determineWriteBranch(SparkSession spark, String branch) {
     String wapId = spark.conf().get(SparkSQLProperties.WAP_ID, null);
     String wapBranch = spark.conf().get(SparkSQLProperties.WAP_BRANCH, null);
@@ -746,6 +644,7 @@ public class SparkTableUtil {
     return branch;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static boolean wapEnabled(Table table) {
     return PropertyUtil.propertyAsBoolean(
         table.properties(),
@@ -753,30 +652,39 @@ public class SparkTableUtil {
         Boolean.getBoolean(TableProperties.WRITE_AUDIT_PUBLISH_ENABLED_DEFAULT));
   }
 
-  /** Class representing a table partition. */
+  /**
+   * Iceberg Spark 集成相关组件。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPartition。
+   */
   public static class SparkPartition implements Serializable {
     private final Map<String, String> values;
     private final String uri;
     private final String format;
 
+    /** 构造 SparkPartition 实例。 */
     public SparkPartition(Map<String, String> values, String uri, String format) {
       this.values = Maps.newHashMap(values);
       this.uri = uri;
       this.format = format;
     }
 
+    /** 返回values。 */
     public Map<String, String> getValues() {
       return values;
     }
 
+    /** 返回uri。 */
     public String getUri() {
       return uri;
     }
 
+    /** 返回format。 */
     public String getFormat() {
       return format;
     }
 
+    /** 返回该对象的字符串表示。 */
     @Override
     public String toString() {
       return MoreObjects.toStringHelper(this)
@@ -786,6 +694,7 @@ public class SparkTableUtil {
           .toString();
     }
 
+    /** 判断是否与给定对象相等。 */
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -800,6 +709,7 @@ public class SparkTableUtil {
           && Objects.equal(format, that.format);
     }
 
+    /** 返回该对象的哈希码。 */
     @Override
     public int hashCode() {
       return Objects.hashCode(values, uri, format);

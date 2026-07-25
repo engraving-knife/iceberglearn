@@ -41,12 +41,23 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.StructProjection;
 
 /**
- * A {@link Table} implementation that exposes a table's valid manifest files as rows.
+ * 元数据表：将表当前所有快照引用到的 manifest 文件以行形式暴露出来。
  *
- * <p>A valid manifest file is one that is referenced from any snapshot currently tracked by the
- * table.
+ * <p>所属模块：iceberg-core。Iceberg 元数据表体系的一部分，用于让计算引擎像扫描普通表一样 查询表的 manifest 列表，便于排查与统计 manifest 情况。
  *
- * <p>This table may return duplicate rows.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义 manifest 文件作为行的 schema（含 content、path、长度、分区摘要、引用快照 ID 等）。
+ *   <li>遍历当前表所有快照，把每个快照 manifest list 中的 manifest 转换为行。
+ *   <li>支持按 {@code reference_snapshot_id} 进行表达式下推过滤，跳过不匹配的快照。
+ * </ul>
+ *
+ * <p>设计意图：manifest 是 Iceberg 元数据的核心载体，通过元数据表形式暴露可以复用 SQL 引擎的 扫描/过滤能力；同一 manifest
+ * 可能被多个快照引用，因此结果允许重复行。{@link SnapshotEvaluator} 实现了"谓词下推到快照级"的过滤优化，避免读取无关快照的 manifest list。
+ *
+ * <p>上下游关系：继承 {@link BaseMetadataTable}，被各引擎通过 {@code table.all_manifests} 元数据表 名访问；底层依赖 {@link
+ * FileIO} 读取 manifest list 文件。
  */
 public class AllManifestsTable extends BaseMetadataTable {
   public static final Types.NestedField REF_SNAPSHOT_ID =
@@ -77,10 +88,21 @@ public class AllManifestsTable extends BaseMetadataTable {
                       Types.NestedField.optional(13, "upper_bound", Types.StringType.get())))),
           REF_SNAPSHOT_ID);
 
+  /**
+   * 构造 {@code table.all_manifests} 元数据表，使用默认表名后缀。
+   *
+   * @param table 底层真实表
+   */
   AllManifestsTable(Table table) {
     this(table, table.name() + ".all_manifests");
   }
 
+  /**
+   * 构造 AllManifestsTable，允许自定义表名（用于元数据表的派生场景）。
+   *
+   * @param table 底层真实表
+   * @param name 元数据表名
+   */
   AllManifestsTable(Table table, String name) {
     super(table, name);
   }
@@ -100,6 +122,11 @@ public class AllManifestsTable extends BaseMetadataTable {
     return MetadataTableType.ALL_MANIFESTS;
   }
 
+  /**
+   * AllManifestsTable 的扫描实现：负责把表的快照集合转换为 manifest 行扫描任务。
+   *
+   * <p>设计意图：复用 {@link BaseAllMetadataTableScan} 的"全量快照视图"语义， 跨所有快照（而非仅当前快照）枚举 manifest，因而命名为 All*。
+   */
   public static class AllManifestsTableScan extends BaseAllMetadataTableScan {
 
     AllManifestsTableScan(Table table, Schema fileSchema) {
@@ -115,6 +142,18 @@ public class AllManifestsTable extends BaseMetadataTable {
       return new AllManifestsTableScan(table, schema, context);
     }
 
+    /**
+     * 规划文件扫描任务，每个快照对应一个 manifest 读取任务。
+     *
+     * <p>逻辑：
+     *
+     * <ol>
+     *   <li>若忽略残留谓词则使用 alwaysTrue，否则保留用户过滤器。
+     *   <li>用 {@link SnapshotEvaluator} 把行过滤器绑定到 schema 上，对快照集合做谓词下推过滤。
+     *   <li>对每个命中快照：若存在 manifest list 文件则构造 {@link ManifestListReadTask}； 否则回退到基于 {@link
+     *       StaticDataTask} 的内存行（用于无 manifest list 的旧版本快照）。
+     * </ol>
+     */
     @Override
     protected CloseableIterable<FileScanTask> doPlanFiles() {
       FileIO io = table().io();
@@ -148,6 +187,11 @@ public class AllManifestsTable extends BaseMetadataTable {
     }
   }
 
+  /**
+   * 读取单个 manifest list 文件并按 schema 投影返回行的 {@link DataTask}。
+   *
+   * <p>设计要点：manifest list 本身是 Avro 文件，本任务直接读取其记录并转换为元数据表行； 不真正分裂文件，因此 {@link #split(long)} 返回自身。
+   */
   static class ManifestListReadTask implements DataTask {
     private final FileIO io;
     private final Schema schema;
@@ -177,6 +221,21 @@ public class AllManifestsTable extends BaseMetadataTable {
       return ImmutableList.of();
     }
 
+    /**
+     * 读取 manifest list Avro 文件，把每条 manifest 记录转换成元数据表行。
+     *
+     * <p>逻辑：
+     *
+     * <ol>
+     *   <li>通过 {@link Avro} 读取 manifest list 文件，并把 Avro schema 中的 {@code manifest_file}、{@code
+     *       partitions} 等名称重映射到 Iceberg 的 {@link GenericManifestFile}/{@link
+     *       GenericPartitionFieldSummary} 类。
+     *   <li>关闭容器复用（reuseContainers=false），避免返回的行对象被后续迭代覆盖。
+     *   <li>用 {@link StructProjection} 把完整 schema 投影到用户请求的 schema 上。
+     * </ol>
+     *
+     * @return manifest 行的可关闭迭代器
+     */
     @Override
     public CloseableIterable<StructLike> rows() {
       try (CloseableIterable<ManifestFile> manifests =
@@ -204,6 +263,11 @@ public class AllManifestsTable extends BaseMetadataTable {
       }
     }
 
+    /**
+     * 懒构造代表本 manifest list 文件的 {@link DataFile}，作为扫描任务的"载体文件"。
+     *
+     * <p>设计要点：recordCount 仅置 1（不实际统计），因为引擎只关心文件存在性与格式。
+     */
     @Override
     public DataFile file() {
       if (lazyDataFile == null) {
@@ -228,6 +292,11 @@ public class AllManifestsTable extends BaseMetadataTable {
       return 0;
     }
 
+    /**
+     * 返回固定长度，避免真实查询文件长度带来的远程 IO 开销。
+     *
+     * @return 固定 8192 字节
+     */
     @Override
     public long length() {
       // return a generic length to avoid looking up the actual length
@@ -246,6 +315,17 @@ public class AllManifestsTable extends BaseMetadataTable {
     }
   }
 
+  /**
+   * 把单个 {@link ManifestFile} 转换为元数据表中的一行。
+   *
+   * <p>设计要点：根据 manifest 的 content 类型（DATA/DELETES）分别填充对应计数列， 另一种类型的计数列置
+   * 0，从而让单条记录同时反映"数据文件计数"和"删除文件计数"。
+   *
+   * @param spec manifest 所用的分区规则
+   * @param manifest 待转换的 manifest
+   * @param referenceSnapshotId 引用此 manifest 的快照 ID
+   * @return 转换后的行
+   */
   static StaticDataTask.Row manifestFileToRow(
       PartitionSpec spec, ManifestFile manifest, long referenceSnapshotId) {
     return StaticDataTask.Row.of(
@@ -264,6 +344,12 @@ public class AllManifestsTable extends BaseMetadataTable {
         referenceSnapshotId);
   }
 
+  /**
+   * 快照级谓词评估器：把行过滤器绑定到 manifest 表 schema 上，针对单个快照判定其是否可能命中。
+   *
+   * <p>设计意图：实现"谓词下推到快照级"，避免对每个快照都读取 manifest list； 只有当过滤器涉及 {@code reference_snapshot_id}
+   * 时才会真正下推，其余条件按"可能命中"放行。
+   */
   private static class SnapshotEvaluator {
 
     private final Expression boundExpr;
@@ -276,6 +362,11 @@ public class AllManifestsTable extends BaseMetadataTable {
       return new SnapshotEvalVisitor().eval(snapshot);
     }
 
+    /**
+     * 表达式访问器：在 {@code reference_snapshot_id} 上做比较，其他字段一律按"可能命中"返回。
+     *
+     * <p>设计要点：返回值语义为"快照是否可能匹配"，遵循三值逻辑的保守版本—— 当无法判断时返回 true，避免错误剪枝。
+     */
     private class SnapshotEvalVisitor extends BoundExpressionVisitor<Boolean> {
 
       private long snapshotId;
@@ -401,14 +492,12 @@ public class AllManifestsTable extends BaseMetadataTable {
       }
 
       /**
-       * Comparison of snapshot reference and literal, using long comparator.
+       * 在 {@code reference_snapshot_id} 字段上做比较，使用 long 比较器判定快照是否满足条件。
        *
-       * @param ref bound reference, comparison attempted only if reference is for
-       *     reference_snapshot_id
-       * @param lit literal value to compare with snapshot id.
-       * @param desiredResult function to apply to long comparator result, returns true if result is
-       *     as expected.
-       * @return false if comparator does not achieve desired result, true otherwise
+       * @param ref 已绑定的引用；仅当其指向 {@code reference_snapshot_id} 时才进行比较
+       * @param lit 待比较的字面量
+       * @param desiredResult 对比较结果应用的判定函数，返回 true 表示满足预期
+       * @return 若比较结果不满足预期则返回 false（不可命中），否则返回 true（可能命中）
        */
       private <T> Boolean compareSnapshotRef(
           BoundReference<T> ref, Literal<T> lit, Function<Integer, Boolean> desiredResult) {
@@ -422,6 +511,7 @@ public class AllManifestsTable extends BaseMetadataTable {
         return ROWS_MIGHT_MATCH;
       }
 
+      /** 判断引用是否指向 {@code reference_snapshot_id} 字段。 */
       private <T> boolean isSnapshotRef(BoundReference<T> ref) {
         return ref.fieldId() == REF_SNAPSHOT_ID.fieldId();
       }

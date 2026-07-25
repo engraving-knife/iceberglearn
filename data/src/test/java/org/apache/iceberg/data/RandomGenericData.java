@@ -43,25 +43,37 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.RandomUtil;
 
+/**
+ * 文件级说明：测试 RandomGenericData 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 RandomGenericData 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class RandomGenericData {
+  /** 辅助方法：RandomGenericData。 */
   private RandomGenericData() {}
 
+  /** 辅助方法：generate。 */
   public static List<Record> generate(Schema schema, int numRecords, long seed) {
     return Lists.newArrayList(
         generateIcebergGenerics(schema, numRecords, () -> new RandomRecordGenerator(seed)));
   }
 
+  /** 辅助方法：generateFallbackRecords。 */
   public static Iterable<Record> generateFallbackRecords(
       Schema schema, int numRecords, long seed, long numDictRows) {
     return generateIcebergGenerics(
         schema, numRecords, () -> new FallbackGenerator(seed, numDictRows));
   }
 
+  /** 辅助方法：generateDictionaryEncodableRecords。 */
   public static Iterable<Record> generateDictionaryEncodableRecords(
       Schema schema, int numRecords, long seed) {
     return generateIcebergGenerics(schema, numRecords, () -> new DictionaryEncodedGenerator(seed));
   }
 
+  /** 辅助方法：generateIcebergGenerics。 */
   private static Iterable<Record> generateIcebergGenerics(
       Schema schema, int numRecords, Supplier<RandomDataGenerator<Record>> supplier) {
     return () ->
@@ -69,11 +81,13 @@ public class RandomGenericData {
           private final RandomDataGenerator<Record> generator = supplier.get();
           private int count = 0;
 
+          /** 辅助方法：hasNext。 */
           @Override
           public boolean hasNext() {
             return count < numRecords;
           }
 
+          /** 辅助方法：next。 */
           @Override
           public Record next() {
             if (!hasNext()) {
@@ -86,15 +100,18 @@ public class RandomGenericData {
   }
 
   private static class RandomRecordGenerator extends RandomDataGenerator<Record> {
+    /** 辅助方法：RandomRecordGenerator。 */
     private RandomRecordGenerator(long seed) {
       super(seed);
     }
 
+    /** 辅助方法：schema。 */
     @Override
     public Record schema(Schema schema, Supplier<Object> structResult) {
       return (Record) structResult.get();
     }
 
+    /** 辅助方法：struct。 */
     @Override
     public Record struct(Types.StructType struct, Iterable<Object> fieldResults) {
       Record rec = GenericRecord.create(struct);
@@ -113,6 +130,7 @@ public class RandomGenericData {
       super(seed);
     }
 
+    /** 辅助方法：getMaxEntries。 */
     @Override
     protected int getMaxEntries() {
       // Here we limited the max entries in LIST or MAP to be 3, because we have the mechanism to
@@ -125,6 +143,7 @@ public class RandomGenericData {
       return 3;
     }
 
+    /** 辅助方法：randomValue。 */
     @Override
     protected Object randomValue(Type.PrimitiveType primitive, Random random) {
       return RandomUtil.generateDictionaryEncodablePrimitive(primitive, random);
@@ -140,6 +159,7 @@ public class RandomGenericData {
       this.dictionaryEncodedRows = numDictionaryEncoded;
     }
 
+    /** 辅助方法：randomValue。 */
     @Override
     protected Object randomValue(Type.PrimitiveType primitive, Random rand) {
       this.rowCount += 1;
@@ -156,20 +176,25 @@ public class RandomGenericData {
     private final Random random;
     private static final int MAX_ENTRIES = 20;
 
+    /** 辅助方法：RandomDataGenerator。 */
     protected RandomDataGenerator(long seed) {
       this.random = new Random(seed);
     }
 
+    /** 辅助方法：getMaxEntries。 */
     protected int getMaxEntries() {
       return MAX_ENTRIES;
     }
 
+    /** 辅助方法：schema。 */
     @Override
     public abstract T schema(Schema schema, Supplier<Object> structResult);
 
+    /** 辅助方法：struct。 */
     @Override
     public abstract T struct(Types.StructType struct, Iterable<Object> fieldResults);
 
+    /** 辅助方法：field。 */
     @Override
     public Object field(Types.NestedField field, Supplier<Object> fieldResult) {
       // return null 5% of the time when the value is optional
@@ -179,6 +204,7 @@ public class RandomGenericData {
       return fieldResult.get();
     }
 
+    /** 辅助方法：list。 */
     @Override
     public Object list(Types.ListType list, Supplier<Object> elementResult) {
       int numElements = random.nextInt(getMaxEntries());
@@ -196,6 +222,7 @@ public class RandomGenericData {
       return result;
     }
 
+    /** 辅助方法：map。 */
     @Override
     public Object map(Types.MapType map, Supplier<Object> keyResult, Supplier<Object> valueResult) {
       int numEntries = random.nextInt(getMaxEntries());
@@ -229,6 +256,7 @@ public class RandomGenericData {
       return result;
     }
 
+    /** 辅助方法：primitive。 */
     @Override
     public Object primitive(Type.PrimitiveType primitive) {
       Object result = randomValue(primitive, random);
@@ -253,6 +281,7 @@ public class RandomGenericData {
       }
     }
 
+    /** 辅助方法：randomValue。 */
     protected Object randomValue(Type.PrimitiveType primitive, Random rand) {
       return RandomUtil.generatePrimitive(primitive, rand);
     }

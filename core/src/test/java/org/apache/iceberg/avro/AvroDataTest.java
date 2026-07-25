@@ -32,8 +32,16 @@ import org.apache.iceberg.types.Types.MapType;
 import org.apache.iceberg.types.Types.StructType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：AvroDataTest，用于验证 Avro Data 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Avro Data 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class AvroDataTest {
 
+  /** 辅助方法：write and validate。 */
   protected abstract void writeAndValidate(Schema schema) throws IOException;
 
   private static final StructType SUPPORTED_PRIMITIVES =
@@ -56,11 +64,21 @@ public abstract class AvroDataTest {
           required(116, "dec_38_10", Types.DecimalType.of(38, 10)), // maximum precision
           required(117, "time", Types.TimeType.get()));
 
+  /**
+   * 测试场景：simple struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSimpleStruct() throws IOException {
     writeAndValidate(new Schema(SUPPORTED_PRIMITIVES.fields()));
   }
 
+  /**
+   * 测试场景：array。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testArray() throws IOException {
     Schema schema =
@@ -71,6 +89,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：array of structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testArrayOfStructs() throws IOException {
     Schema schema =
@@ -81,6 +104,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：map。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMap() throws IOException {
     Schema schema =
@@ -94,6 +122,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：numeric map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNumericMapKey() throws IOException {
     Schema schema =
@@ -105,6 +138,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：complex map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testComplexMapKey() throws IOException {
     Schema schema =
@@ -124,6 +162,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：map of structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfStructs() throws IOException {
     Schema schema =
@@ -135,6 +178,11 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：mixed types。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMixedTypes() throws IOException {
     StructType structType =

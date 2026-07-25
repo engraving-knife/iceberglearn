@@ -34,6 +34,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.runtime.BoxedUnit;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：迁移表的存储过程，将外部表就地迁移为 Iceberg 表。
+ *
+ * <p>设计意图：委托 MigrateTableSparkAction 执行无拷贝迁移。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
+ */
 class MigrateTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -52,26 +61,27 @@ class MigrateTableProcedure extends BaseProcedure {
   private MigrateTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<MigrateTableProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected MigrateTableProcedure doBuild() {
         return new MigrateTableProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     String tableName = args.getString(0);
@@ -108,7 +118,7 @@ class MigrateTableProcedure extends BaseProcedure {
     MigrateTable.Result result = migrateTableSparkAction.execute();
     return new InternalRow[] {newInternalRow(result.migratedDataFilesCount())};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "MigrateTableProcedure";

@@ -26,7 +26,20 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：TestNameMapping，用于验证 Name Mapping 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Name Mapping 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestNameMapping {
+  /**
+   * 测试场景：flat schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFlatSchemaToMapping() {
     Schema schema =
@@ -39,6 +52,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：nested struct schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNestedStructSchemaToMapping() {
     Schema schema =
@@ -65,6 +83,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：map schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapSchemaToMapping() {
     Schema schema =
@@ -87,6 +110,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：complex key map schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testComplexKeyMapSchemaToMapping() {
     Schema schema =
@@ -120,6 +148,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：complex value map schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testComplexValueMapSchemaToMapping() {
     Schema schema =
@@ -155,6 +188,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：list schema to mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListSchemaToMapping() {
     Schema schema =
@@ -173,6 +211,11 @@ public class TestNameMapping {
     Assert.assertEquals(expected, mapping.asMappedFields());
   }
 
+  /**
+   * 测试场景：fails duplicate id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailsDuplicateId() {
     // the schema can be created because ID indexing is lazy
@@ -185,6 +228,11 @@ public class TestNameMapping {
         .hasMessage("Multiple entries with same key: 1=id and 1=data");
   }
 
+  /**
+   * 测试场景：fails duplicate name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailsDuplicateName() {
     Assertions.assertThatThrownBy(
@@ -193,6 +241,11 @@ public class TestNameMapping {
         .hasMessage("Multiple entries with same key: x=2 and x=1");
   }
 
+  /**
+   * 测试场景：allows duplicate names in separate contexts。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllowsDuplicateNamesInSeparateContexts() {
     new NameMapping(
@@ -201,6 +254,11 @@ public class TestNameMapping {
             MappedField.of(2, "y", MappedFields.of(MappedField.of(4, "x")))));
   }
 
+  /**
+   * 测试场景：mapping find by id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMappingFindById() {
     Schema schema =
@@ -240,6 +298,11 @@ public class TestNameMapping {
         mapping.find(10));
   }
 
+  /**
+   * 测试场景：mapping find by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMappingFindByName() {
     Schema schema =

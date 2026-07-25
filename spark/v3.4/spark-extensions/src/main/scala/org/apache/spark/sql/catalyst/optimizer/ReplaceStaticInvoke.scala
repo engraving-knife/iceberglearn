@@ -33,11 +33,13 @@ import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 
 /**
- * Spark analyzes the Iceberg system function to {@link StaticInvoke} which could not be pushed
- * down to datasource. This rule will replace {@link StaticInvoke} to
- * {@link ApplyFunctionExpression} for Iceberg system function in a filter condition.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：替换 StaticInvoke 的优化规则，将 Spark StaticInvoke 调用替换为具体函数调用。
+ * <p>设计意图：用于将元数据相关静态调用折叠优化，避免运行时反射。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 object ReplaceStaticInvoke extends Rule[LogicalPlan] {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan =
     plan.transformWithPruning (_.containsAllPatterns(BINARY_COMPARISON, FILTER)) {
@@ -56,6 +58,7 @@ object ReplaceStaticInvoke extends Rule[LogicalPlan] {
           filter.copy(condition = newCondition)
         }
   }
+  /** 执行 replaceStaticInvoke 相关操作。 */
 
   private def replaceStaticInvoke(invoke: StaticInvoke): Expression = {
     // Adaptive from `resolveV2Function` in org.apache.spark.sql.catalyst.analysis.ResolveFunctions
@@ -85,6 +88,7 @@ object ReplaceStaticInvoke extends Rule[LogicalPlan] {
       case _ => invoke
     }
   }
+  /** 执行 canReplace 相关操作。 */
 
   @inline
   private def canReplace(invoke: StaticInvoke): Boolean = {

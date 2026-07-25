@@ -53,6 +53,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkV2Filters 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkv2过滤器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkV2Filters {
 
   private static final Types.StructType STRUCT =
@@ -63,6 +70,7 @@ public class TestSparkV2Filters {
           Types.NestedField.optional(4, "intCol", Types.IntegerType.get()),
           Types.NestedField.optional(5, "strCol", Types.StringType.get()));
 
+  /** 测试v2过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:MethodLength")
   @Test
   public void testV2Filters() {
@@ -226,6 +234,7 @@ public class TestSparkV2Filters {
         });
   }
 
+  /** 测试equal到空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEqualToNull() {
     String col = "col";
@@ -257,6 +266,7 @@ public class TestSparkV2Filters {
     Assertions.assertThat(actualEqNullSafe2.toString()).isEqualTo(expectedEqNullSafe.toString());
   }
 
+  /** 测试equal到nan场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEqualToNaN() {
     String col = "col";
@@ -278,6 +288,7 @@ public class TestSparkV2Filters {
     Assertions.assertThat(actualEqNaN2.toString()).isEqualTo(expectedEqNaN.toString());
   }
 
+  /** 测试非equal到空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotEqualToNull() {
     String col = "col";
@@ -300,6 +311,7 @@ public class TestSparkV2Filters {
         .hasMessageContaining("Expression is always false");
   }
 
+  /** 测试非equal到nan场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotEqualToNaN() {
     String col = "col";
@@ -321,6 +333,7 @@ public class TestSparkV2Filters {
     Assertions.assertThat(actualNotEqNaN2.toString()).isEqualTo(expectedNotEqNaN.toString());
   }
 
+  /** 测试在值contain空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInValuesContainNull() {
     String col = "strCol";
@@ -341,6 +354,7 @@ public class TestSparkV2Filters {
     assertEquals(expectedIn, actualIn);
   }
 
+  /** 测试非在空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotInNull() {
     String col = "strCol";
@@ -364,6 +378,7 @@ public class TestSparkV2Filters {
     assertEquals(expectedNotIn, actualNotIn);
   }
 
+  /** 测试时间戳过滤器conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampFilterConversion() {
     Instant instant = Instant.parse("2018-10-18T00:00:57.907Z");
@@ -384,6 +399,7 @@ public class TestSparkV2Filters {
         tsExpression.toString());
   }
 
+  /** 测试日期过滤器conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateFilterConversion() {
     LocalDate localDate = LocalDate.parse("2018-10-18");
@@ -404,6 +420,7 @@ public class TestSparkV2Filters {
         dateExpression.toString());
   }
 
+  /** 测试嵌套在inside非场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedInInsideNot() {
     NamedReference namedReference1 = FieldReference.apply("col1");
@@ -423,6 +440,7 @@ public class TestSparkV2Filters {
     Assert.assertNull("Expression should not be converted", converted);
   }
 
+  /** 测试非在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotIn() {
     NamedReference namedReference = FieldReference.apply("col");
@@ -440,6 +458,7 @@ public class TestSparkV2Filters {
     Assert.assertEquals("Expressions should match", expected.toString(), actual.toString());
   }
 
+  /** 测试日期到years场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateToYears() {
     ScalarFunction<Integer> dateToYearsFunc = new YearsFunction.DateToYearsFunction();
@@ -451,6 +470,7 @@ public class TestSparkV2Filters {
     testUDF(udf, Expressions.year("dateCol"), dateToYears("2023-06-25"), DataTypes.IntegerType);
   }
 
+  /** 测试ts到years场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsToYears() {
     ScalarFunction<Integer> tsToYearsFunc = new YearsFunction.TimestampToYearsFunction();
@@ -466,6 +486,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试tsntz到years场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsNtzToYears() {
     ScalarFunction<Integer> tsNtzToYearsFunc = new YearsFunction.TimestampNtzToYearsFunction();
@@ -481,6 +502,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试日期到months场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateToMonths() {
     ScalarFunction<Integer> dateToMonthsFunc = new MonthsFunction.DateToMonthsFunction();
@@ -492,6 +514,7 @@ public class TestSparkV2Filters {
     testUDF(udf, Expressions.month("dateCol"), dateToMonths("2023-06-25"), DataTypes.IntegerType);
   }
 
+  /** 测试ts到months场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsToMonths() {
     ScalarFunction<Integer> tsToMonthsFunc = new MonthsFunction.TimestampToMonthsFunction();
@@ -507,6 +530,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试tsntz到months场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsNtzToMonths() {
     ScalarFunction<Integer> tsNtzToMonthsFunc = new MonthsFunction.TimestampNtzToMonthsFunction();
@@ -522,6 +546,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试日期到days场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateToDays() {
     ScalarFunction<Integer> dateToDayFunc = new DaysFunction.DateToDaysFunction();
@@ -533,6 +558,7 @@ public class TestSparkV2Filters {
     testUDF(udf, Expressions.day("dateCol"), dateToDays("2023-06-25"), DataTypes.IntegerType);
   }
 
+  /** 测试ts到days场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsToDays() {
     ScalarFunction<Integer> tsToDaysFunc = new DaysFunction.TimestampToDaysFunction();
@@ -548,6 +574,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试tsntz到days场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsNtzToDays() {
     ScalarFunction<Integer> tsNtzToDaysFunc = new DaysFunction.TimestampNtzToDaysFunction();
@@ -563,6 +590,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试ts到hours场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsToHours() {
     ScalarFunction<Integer> tsToHourFunc = new HoursFunction.TimestampToHoursFunction();
@@ -578,6 +606,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试tsntz到hours场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTsNtzToHours() {
     ScalarFunction<Integer> tsNtzToHourFunc = new HoursFunction.TimestampNtzToHoursFunction();
@@ -593,6 +622,7 @@ public class TestSparkV2Filters {
         DataTypes.IntegerType);
   }
 
+  /** 测试桶场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucket() {
     ScalarFunction<Integer> bucketInt = new BucketFunction.BucketInt(DataTypes.IntegerType);
@@ -605,6 +635,7 @@ public class TestSparkV2Filters {
     testUDF(udf, Expressions.bucket("intCol", 4), 2, DataTypes.IntegerType);
   }
 
+  /** 测试截断场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncate() {
     ScalarFunction<UTF8String> truncate = new TruncateFunction.TruncateString();
@@ -617,6 +648,7 @@ public class TestSparkV2Filters {
     testUDF(udf, Expressions.truncate("strCol", 6), "prefix", DataTypes.StringType);
   }
 
+  /** 测试不支持的UDF转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnsupportedUDFConvert() {
     ScalarFunction<UTF8String> icebergVersionFunc =
@@ -633,6 +665,7 @@ public class TestSparkV2Filters {
     Assertions.assertThat(icebergExpr).isNull();
   }
 
+  /** 测试UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   private <T> void testUDF(
       org.apache.spark.sql.connector.expressions.Expression udf,
       UnboundTerm<T> expectedTerm,
@@ -763,55 +796,68 @@ public class TestSparkV2Filters {
     assertEquals(expectedNot, actualNot);
   }
 
+  /** 断言equals。 */
   private static void assertEquals(Expression expected, Expression actual) {
     Assertions.assertThat(ExpressionUtil.equivalent(expected, actual, STRUCT, true)).isTrue();
   }
 
+  /** 表达式。 */
   private org.apache.spark.sql.connector.expressions.Expression[] expressions(
       org.apache.spark.sql.connector.expressions.Expression... expressions) {
     return expressions;
   }
 
+  /** 日期到years。 */
   private static int dateToYears(String dateString) {
     return DateTimeUtil.daysToYears(DateTimeUtil.isoDateToDays(dateString));
   }
 
+  /** 时间戳到years。 */
   private static int timestampToYears(String timestampString) {
     return DateTimeUtil.microsToYears(DateTimeUtil.isoTimestamptzToMicros(timestampString));
   }
 
+  /** 时间戳ntz到years。 */
   private static int timestampNtzToYears(String timestampNtzString) {
     return DateTimeUtil.microsToYears(DateTimeUtil.isoTimestampToMicros(timestampNtzString));
   }
 
+  /** 日期到months。 */
   private static int dateToMonths(String dateString) {
     return DateTimeUtil.daysToMonths(DateTimeUtil.isoDateToDays(dateString));
   }
 
+  /** 时间戳到months。 */
   private static int timestampToMonths(String timestampString) {
     return DateTimeUtil.microsToMonths(DateTimeUtil.isoTimestamptzToMicros(timestampString));
   }
 
+  /** 时间戳ntz到months。 */
   private static int timestampNtzToMonths(String timestampNtzString) {
     return DateTimeUtil.microsToMonths(DateTimeUtil.isoTimestampToMicros(timestampNtzString));
   }
 
+  /** 日期到days。 */
   private static int dateToDays(String dateString) {
     return DateTimeUtil.isoDateToDays(dateString);
   }
 
+  /** 时间戳到days。 */
   private static int timestampToDays(String timestampString) {
     return DateTimeUtil.microsToDays(DateTimeUtil.isoTimestamptzToMicros(timestampString));
   }
 
+  /** 时间戳ntz到days。 */
   private static int timestampNtzToDays(String timestampNtzString) {
     return DateTimeUtil.microsToDays(DateTimeUtil.isoTimestampToMicros(timestampNtzString));
   }
 
+  /** 时间戳到hours。 */
   private static int timestampToHours(String timestampString) {
     return DateTimeUtil.microsToHours(DateTimeUtil.isoTimestamptzToMicros(timestampString));
   }
 
+  /** 时间戳ntz到hours。 */
   private static int timestampNtzToHours(String timestampNtzString) {
     return DateTimeUtil.microsToHours(DateTimeUtil.isoTimestampToMicros(timestampNtzString));
   }

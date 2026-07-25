@@ -42,8 +42,20 @@ import org.apache.iceberg.util.DateTimeUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestHiveIcebergFilterFactory 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergFilterFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergFilterFactory {
 
+  /**
+   * 测试场景：Equals Operand。
+   *
+   * <p>验证该方法在 Equals Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualsOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -57,6 +69,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Equals Operand Rewrite。
+   *
+   * <p>验证该方法在 Equals Operand Rewrite 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualsOperandRewrite() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -70,6 +87,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Not Equals Operand。
+   *
+   * <p>验证该方法在 Not Equals Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotEqualsOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -88,6 +110,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(childExpressionActual.literal(), childExpressionExpected.literal());
   }
 
+  /**
+   * 测试场景：Less Than Operand。
+   *
+   * <p>验证该方法在 Less Than Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThanOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -103,6 +130,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.ref().name(), expected.ref().name());
   }
 
+  /**
+   * 测试场景：Less Than Equals Operand。
+   *
+   * <p>验证该方法在 Less Than Equals Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThanEqualsOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -116,6 +148,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：In Operand。
+   *
+   * <p>验证该方法在 In Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testInOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -131,6 +168,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.ref().name(), expected.ref().name());
   }
 
+  /**
+   * 测试场景：Between Operand。
+   *
+   * <p>验证该方法在 Between Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testBetweenOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -149,6 +191,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.right().op(), expected.right().op());
   }
 
+  /**
+   * 测试场景：Unsupported Between Operand Empty Leaves。
+   *
+   * <p>验证该方法在 Unsupported Between Operand Empty Leaves 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnsupportedBetweenOperandEmptyLeaves() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -164,6 +211,11 @@ public class TestHiveIcebergFilterFactory {
         .hasMessage("Missing leaf literals: Leaf[empty]");
   }
 
+  /**
+   * 测试场景：Is Null Operand。
+   *
+   * <p>验证该方法在 Is Null Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNullOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -177,6 +229,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.ref().name(), expected.ref().name());
   }
 
+  /**
+   * 测试场景：And Operand。
+   *
+   * <p>验证该方法在 And Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testAndOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -198,6 +255,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.right().op(), expected.right().op());
   }
 
+  /**
+   * 测试场景：Or Operand。
+   *
+   * <p>验证该方法在 Or Operand 条件下的行为是否符合预期。
+   */
   @Test
   public void testOrOperand() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -218,6 +280,11 @@ public class TestHiveIcebergFilterFactory {
     assertEquals(actual.right().op(), expected.right().op());
   }
 
+  /**
+   * 测试场景：String Type。
+   *
+   * <p>验证该方法在 String Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringType() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -231,6 +298,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Float Type。
+   *
+   * <p>验证该方法在 Float Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatType() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -244,6 +316,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Boolean Type。
+   *
+   * <p>验证该方法在 Boolean Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testBooleanType() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -257,6 +334,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Date Type。
+   *
+   * <p>验证该方法在 Date Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateType() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -272,6 +354,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Timestamp Type。
+   *
+   * <p>验证该方法在 Timestamp Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampType() {
     Literal<Long> timestampLiteral =
@@ -290,6 +377,11 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /**
+   * 测试场景：Decimal Type。
+   *
+   * <p>验证该方法在 Decimal Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalType() {
     SearchArgument.Builder builder = SearchArgumentFactory.newBuilder();
@@ -307,6 +399,7 @@ public class TestHiveIcebergFilterFactory {
     assertPredicatesMatch(expected, actual);
   }
 
+  /** 辅助方法：assertPredicatesMatch。 */
   private void assertPredicatesMatch(UnboundPredicate expected, UnboundPredicate actual) {
     assertEquals(expected.op(), actual.op());
     assertEquals(expected.literal(), actual.literal());
@@ -321,45 +414,54 @@ public class TestHiveIcebergFilterFactory {
       delegate = original;
     }
 
+    /** 辅助方法：getExpression。 */
     @Override
     public ExpressionTree getExpression() {
       return delegate.getExpression();
     }
 
+    /** 辅助方法：evaluate。 */
     @Override
     public TruthValue evaluate(TruthValue[] leaves) {
       return delegate.evaluate(leaves);
     }
 
+    /** 辅助方法：getLeaves。 */
     @Override
     public List<PredicateLeaf> getLeaves() {
       return Collections.singletonList(
           new PredicateLeaf() {
+            /** 辅助方法：getOperator。 */
             @Override
             public Operator getOperator() {
               return Operator.BETWEEN;
             }
 
+            /** 辅助方法：getType。 */
             @Override
             public Type getType() {
               return Type.LONG;
             }
 
+            /** 辅助方法：getColumnName。 */
             @Override
             public String getColumnName() {
               return "salary";
             }
 
+            /** 辅助方法：getLiteral。 */
             @Override
             public Object getLiteral() {
               return null;
             }
 
+            /** 辅助方法：getLiteralList。 */
             @Override
             public List<Object> getLiteralList() {
               return Collections.emptyList();
             }
 
+            /** 辅助方法：toString。 */
             @Override
             public String toString() {
               return "Leaf[empty]";

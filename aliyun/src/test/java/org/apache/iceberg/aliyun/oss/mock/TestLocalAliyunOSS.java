@@ -42,6 +42,13 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestLocalAliyunOSS 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestLocalAliyunOSS 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestLocalAliyunOSS {
 
   @ClassRule public static final AliyunOSSTestRule OSS_TEST_RULE = TestUtility.initialize();
@@ -50,6 +57,7 @@ public class TestLocalAliyunOSS {
   private final String bucketName = OSS_TEST_RULE.testBucketName();
   private final Random random = new Random(1);
 
+  /** 辅助方法：assertThrows。 */
   private static void assertThrows(Runnable runnable, String expectedErrorCode) {
     Assertions.assertThatThrownBy(runnable::run)
         .isInstanceOf(OSSException.class)
@@ -58,16 +66,23 @@ public class TestLocalAliyunOSS {
         .isEqualTo(expectedErrorCode);
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() {
     OSS_TEST_RULE.setUpBucket(bucketName);
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() {
     OSS_TEST_RULE.tearDownBucket(bucketName);
   }
 
+  /**
+   * 测试场景：Buckets。
+   *
+   * <p>验证该方法在 Buckets 条件下的行为是否符合预期。
+   */
   @Test
   public void testBuckets() {
     Assume.assumeTrue(
@@ -84,6 +99,11 @@ public class TestLocalAliyunOSS {
     Assert.assertTrue(doesBucketExist(bucketName));
   }
 
+  /**
+   * 测试场景：Delete Bucket。
+   *
+   * <p>验证该方法在 Delete Bucket 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteBucket() {
     Assume.assumeTrue(
@@ -112,6 +132,11 @@ public class TestLocalAliyunOSS {
     oss.createBucket(bucketName);
   }
 
+  /**
+   * 测试场景：Put Object。
+   *
+   * <p>验证该方法在 Put Object 条件下的行为是否符合预期。
+   */
   @Test
   public void testPutObject() throws IOException {
     byte[] bytes = new byte[4 * 1024];
@@ -125,6 +150,11 @@ public class TestLocalAliyunOSS {
     Assert.assertEquals(AliyunOSSMockLocalStore.md5sum(wrap(bytes)), result.getETag());
   }
 
+  /**
+   * 测试场景：Does Object Exist。
+   *
+   * <p>验证该方法在 Does Object Exist 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoesObjectExist() {
     Assert.assertFalse(oss.doesObjectExist(bucketName, "key"));
@@ -137,6 +167,11 @@ public class TestLocalAliyunOSS {
     oss.deleteObject(bucketName, "key");
   }
 
+  /**
+   * 测试场景：Get Object。
+   *
+   * <p>验证该方法在 Get Object 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetObject() throws IOException {
     String bucketNotExist = String.format("bucket-not-existing-%s", UUID.randomUUID());
@@ -157,6 +192,11 @@ public class TestLocalAliyunOSS {
     oss.deleteObject(bucketName, "key");
   }
 
+  /**
+   * 测试场景：Get Object With Range。
+   *
+   * <p>验证该方法在 Get Object With Range 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetObjectWithRange() throws IOException {
 
@@ -197,6 +237,11 @@ public class TestLocalAliyunOSS {
     oss.deleteObject(bucketName, "key");
   }
 
+  /**
+   * 测试场景：Range。
+   *
+   * <p>验证该方法在 Range 条件下的行为是否符合预期。
+   */
   private void testRange(byte[] bytes, int start, int end) throws IOException {
     byte[] testBytes;
     byte[] actual;
@@ -232,10 +277,12 @@ public class TestLocalAliyunOSS {
     Assert.assertArrayEquals(testBytes, actual);
   }
 
+  /** 辅助方法：wrap。 */
   private InputStream wrap(byte[] data) {
     return new ByteArrayInputStream(data);
   }
 
+  /** 辅助方法：doesBucketExist。 */
   private boolean doesBucketExist(String bucket) {
     try {
       oss.createBucket(bucket);

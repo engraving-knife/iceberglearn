@@ -25,23 +25,26 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.ExceptionUtil;
 
-/** utility class to accept thread local commit properties */
+/**
+ * Iceberg Spark 集成相关组件，封装提交或表元数据。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 CommitMetadata。
+ */
 public class CommitMetadata {
 
+  /** 构造 CommitMetadata 实例。 */
   private CommitMetadata() {}
 
   private static final ThreadLocal<Map<String, String>> COMMIT_PROPERTIES =
       ThreadLocal.withInitial(ImmutableMap::of);
 
   /**
-   * running the code wrapped as a caller, and any snapshot committed within the callable object
-   * will be attached with the metadata defined in properties
+   * 返回带新设置的副本。
    *
-   * @param properties extra commit metadata to attach to the snapshot committed within callable.
-   *     The prefix will be removed for properties starting with {@link
-   *     SnapshotSummary#EXTRA_METADATA_PREFIX}
-   * @param callable the code to be executed
-   * @param exClass the expected type of exception which would be thrown from callable
+   * @param properties 参数
+   * @param callable 参数
+   * @param exClass 参数
+   * @return 结果对象
    */
   public static <R, E extends Exception> R withCommitProperties(
       Map<String, String> properties, Callable<R> callable, Class<E> exClass) throws E {
@@ -60,6 +63,7 @@ public class CommitMetadata {
     }
   }
 
+  /** 提交事务或写入结果。 */
   public static Map<String, String> commitProperties() {
     return COMMIT_PROPERTIES.get();
   }

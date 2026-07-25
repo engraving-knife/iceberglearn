@@ -25,6 +25,21 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.SeekableInputStream;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 文件级说明：内存版 InputFile 实现，把文件内容保存在字节缓冲区中。
+ *
+ * <p>所属模块：iceberg-core（inmemory 子包）。职责：实现 {@link org.apache.iceberg.io.InputFile}
+ * 接口，从内存字节缓冲区读取文件内容，提供长度查询和输入流创建。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>不依赖磁盘 IO，所有读取在内存完成，适合测试。
+ *   <li>内部用 InMemorySeekableInputStream 支持随机定位读取。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link InMemoryFileIO} 创建；被读取链路当作普通 InputFile 使用。
+ */
 public class InMemoryInputFile implements InputFile {
 
   private final String location;
@@ -42,21 +57,43 @@ public class InMemoryInputFile implements InputFile {
   }
 
   @Override
+  /**
+   * 返回文件内容长度。
+   *
+   * @return 文件字节数
+   */
   public long getLength() {
     return contents.length;
   }
 
   @Override
+  /**
+   * 创建支持随机定位的输入流。
+   *
+   * <p>设计要点：返回 InMemorySeekableInputStream，包装字节数组提供 seek 能力。
+   *
+   * @return 可定位输入流
+   */
   public SeekableInputStream newStream() {
     return new InMemorySeekableInputStream(contents);
   }
 
   @Override
+  /**
+   * 返回文件路径标识。
+   *
+   * @return 文件路径字符串
+   */
   public String location() {
     return location;
   }
 
   @Override
+  /**
+   * 检查文件是否存在（内存中始终存在）。
+   *
+   * @return true
+   */
   public boolean exists() {
     return true;
   }

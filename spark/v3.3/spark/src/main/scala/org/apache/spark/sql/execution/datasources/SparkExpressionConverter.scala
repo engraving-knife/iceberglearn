@@ -29,8 +29,20 @@ import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.catalyst.plans.logical.LeafNode
 import org.apache.spark.sql.catalyst.plans.logical.LocalRelation
 
+/**
+ * Spark 物理执行相关组件，负责类型或表达式转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：对象 SparkExpressionConverter。
+ * <p>设计意图：适配器模式，桥接两套 API。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 object SparkExpressionConverter {
 
+  /**
+   * 把输入转换为另一种表示。
+   * @return 结果对象
+   */
   def convertToIcebergExpression(sparkExpression: Expression): org.apache.iceberg.expressions.Expression = {
     // Currently, it is a double conversion as we are converting Spark expression to Spark filter
     // and then converting Spark filter to Iceberg expression.
@@ -48,6 +60,10 @@ object SparkExpressionConverter {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   @throws[AnalysisException]
   def collectResolvedSparkExpression(session: SparkSession, tableName: String, where: String): Expression = {
     val tableAttrs = session.table(tableName).queryExecution.analyzed.output
@@ -61,5 +77,12 @@ object SparkExpressionConverter {
     }.getOrElse(throw new AnalysisException("Failed to find filter expression"))
   }
 
+  /**
+   * Spark 物理执行相关组件。
+   *
+   * <p>所属模块：iceberg-spark v3.3。
+   * 类型：样例类 DummyRelation。
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   case class DummyRelation(output: Seq[Attribute]) extends LeafNode
 }

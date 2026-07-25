@@ -27,9 +27,11 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.flink.RowDataWrapper;
 
 /**
- * Create a {@link KeySelector} to shuffle by partition key, then each partition/bucket will be
- * wrote by only one task. That will reduce lots of small files in partitioned fanout write policy
- * for {@link FlinkSink}.
+ * 分区键选择器，按分区列计算分区路径字符串。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：从 RowData 提取分区列并构造分区值字符串。
+ *
+ * <p>设计意图：实现 Flink KeySelector；被 FlinkSink 用于分区路由。
  */
 class PartitionKeySelector implements KeySelector<RowData, String> {
 

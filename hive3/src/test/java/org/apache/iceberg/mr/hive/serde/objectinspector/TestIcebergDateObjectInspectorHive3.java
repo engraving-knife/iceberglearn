@@ -28,8 +28,32 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 Hive3 的日期 ObjectInspector（{@link IcebergDateObjectInspectorHive3}）。
+ *
+ * <p>所属模块：iceberg-hive3。职责：验证 Iceberg 的日期类型（{@link LocalDate}）与 Hive3 的
+ * {@link Date}/{@link DateWritableV2} 之间的双向转换正确性，包括类型分类、TypeInfo、
+ * Java/Writable 类映射、null 处理、日期值转换与对象拷贝。
+ *
+ * <p>测试策略：构造已知 epochDays 的 {@link LocalDate}，断言转换后得到对应的 Hive {@link Date}；
+ * 验证 copyObject 返回独立副本、preferWritable 返回 false。
+ */
 public class TestIcebergDateObjectInspectorHive3 {
 
+  /**
+   * 测试日期 ObjectInspector 的全部行为。
+   *
+   * <p>逻辑：
+   * <ol>
+   *   <li>断言 Category=PRIMITIVE、PrimitiveCategory=DATE；</li>
+   *   <li>断言 TypeInfo/TypeName 正确；</li>
+   *   <li>断言 Java 类={@link Date}、Writable 类={@link DateWritableV2}；</li>
+   *   <li>断言 null 输入返回 null（copyObject/getPrimitiveJavaObject/getPrimitiveWritableObject）；</li>
+   *   <li>构造 epochDays=5005 的 LocalDate，断言转换后得到对应的 Hive Date；</li>
+   *   <li>断言 copyObject 返回值相等但非同一对象；</li>
+   *   <li>断言 preferWritable=false。</li>
+   * </ol>
+   */
   @Test
   public void testIcebergDateObjectInspector() {
     DateObjectInspector oi = IcebergDateObjectInspectorHive3.get();

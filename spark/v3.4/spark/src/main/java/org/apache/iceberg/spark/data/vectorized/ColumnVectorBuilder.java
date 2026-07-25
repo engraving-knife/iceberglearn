@@ -24,16 +24,25 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.spark.sql.vectorized.ColumnVector;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：列向量构建器，按 Spark 列结构构建对应的列式向量读取器。
+ *
+ * <p>设计意图：集中管理列向量的创建与对齐。
+ *
+ * <p>上下游关系：由 ColumnarBatchReader 使用。
+ */
 class ColumnVectorBuilder {
   private boolean[] isDeleted;
   private int[] rowIdMapping;
-
+  /** 返回带 DeletedRows 设置的副本。 */
   public ColumnVectorBuilder withDeletedRows(int[] rowIdMappingArray, boolean[] isDeletedArray) {
     this.rowIdMapping = rowIdMappingArray;
     this.isDeleted = isDeletedArray;
     return this;
   }
-
+  /** 构建目标对象。 */
   public ColumnVector build(VectorHolder holder, int numRows) {
     if (holder.isDummy()) {
       if (holder instanceof VectorHolder.DeletedVectorHolder) {

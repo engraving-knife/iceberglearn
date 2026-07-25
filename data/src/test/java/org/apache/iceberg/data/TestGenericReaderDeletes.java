@@ -29,8 +29,16 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.util.StructLikeSet;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestGenericReaderDeletes 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericReaderDeletes 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericReaderDeletes extends DeleteReadTests {
 
+  /** 辅助方法：createTable。 */
   @Override
   protected Table createTable(String name, Schema schema, PartitionSpec spec) throws IOException {
     File tableDir = temp.newFolder();
@@ -39,11 +47,13 @@ public class TestGenericReaderDeletes extends DeleteReadTests {
     return TestTables.create(tableDir, name, schema, spec, 2);
   }
 
+  /** 辅助方法：dropTable。 */
   @Override
   protected void dropTable(String name) {
     TestTables.clearTables();
   }
 
+  /** 辅助方法：rowSet。 */
   @Override
   public StructLikeSet rowSet(String name, Table table, String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
@@ -56,6 +66,7 @@ public class TestGenericReaderDeletes extends DeleteReadTests {
     return set;
   }
 
+  /** 辅助方法：expectPruned。 */
   @Override
   protected boolean expectPruned() {
     return false;

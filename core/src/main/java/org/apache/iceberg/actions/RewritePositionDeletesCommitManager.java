@@ -30,8 +30,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Functionality used by {@link RewritePositionDeleteFiles} from different platforms to handle
- * commits.
+ * 位置删除文件重写动作的提交管理器。
+ *
+ * <p>所属模块：iceberg-core 的 actions 包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将若干 {@link RewritePositionDeletesGroup} 的重写结果合并为一次 {@link RewriteFiles} 提交：
+ *       删除旧的位置删除文件、添加新的位置删除文件。
+ *   <li>提供提交失败后的文件清理（abort）能力，以及提交或清理的组合入口 {@link #commitOrClean(Set)}。
+ *   <li>提供异步批量提交服务 {@link CommitService}（基于 {@link BaseCommitService}）。
+ * </ul>
+ *
+ * <p>设计意图：与 {@link RewriteDataFilesCommitManager} 类似，把"如何提交位置删除重写结果"与
+ * "如何执行重写"解耦，供不同平台复用。新删除文件以组的最大重写数据序列号写入，保证删除文件 仅对序列号不超过该值的快照可见，维持正确性。
+ *
+ * <p>上下游关系：被各平台的 {@link RewritePositionDeleteFiles} 动作调用；内部使用 {@link Table#newRewrite()} 生成提交操作。
  */
 public class RewritePositionDeletesCommitManager {
   private static final Logger LOG =
@@ -40,16 +55,23 @@ public class RewritePositionDeletesCommitManager {
   private final Table table;
   private final long startingSnapshotId;
 
+  /**
+   * 构造提交管理器，以表当前快照作为起始快照。
+   *
+   * @param table 目标表
+   */
   public RewritePositionDeletesCommitManager(Table table) {
     this.table = table;
     this.startingSnapshotId = table.currentSnapshot().snapshotId();
   }
 
   /**
-   * Perform a commit operation on the table adding and removing files as required for this set of
-   * file groups.
+   * 将一组文件组的重写结果合并为一次提交：删除旧的位置删除文件、添加新写入的位置删除文件。
    *
-   * @param fileGroups file groups to commit
+   * <p>逻辑：以 {@code startingSnapshotId} 校验创建 {@link RewriteFiles}；遍历每个组，将其 rewrittenDeleteFiles
+   * 标记为删除、addedDeleteFiles 以组的最大重写数据序列号添加；最后提交。
+   *
+   * @param fileGroups 待提交的文件组集合
    */
   public void commit(Set<RewritePositionDeletesGroup> fileGroups) {
     RewriteFiles rewriteFiles = table.newRewrite().validateFromSnapshot(startingSnapshotId);
@@ -68,10 +90,11 @@ public class RewritePositionDeletesCommitManager {
   }
 
   /**
-   * Clean up a specified file set by removing any files created for that operation, should not
-   * throw any exceptions.
+   * 清理指定文件组产生的新位置删除文件，不应抛出异常。
    *
-   * @param fileGroup group of files which has already been rewritten
+   * <p>逻辑：将 addedDeleteFiles 路径收集后，委托 {@link CatalogUtil#deleteFiles} 批量删除。
+   *
+   * @param fileGroup 已重写的文件组
    */
   public void abort(RewritePositionDeletesGroup fileGroup) {
     Preconditions.checkState(
@@ -82,6 +105,13 @@ public class RewritePositionDeletesCommitManager {
     CatalogUtil.deleteFiles(table.io(), filePaths, "position delete", true);
   }
 
+  /**
+   * 提交一组文件组，失败时清理已写入的新文件。
+   *
+   * <p>逻辑：尝试提交；遇到 {@link CommitStateUnknownException}（提交状态未知，可能已成功）时不清理 直接抛出；遇到其他异常则清理所有组的新文件后重新抛出。
+   *
+   * @param rewriteGroups 待提交的文件组集合
+   */
   public void commitOrClean(Set<RewritePositionDeletesGroup> rewriteGroups) {
     try {
       commit(rewriteGroups);
@@ -99,17 +129,19 @@ public class RewritePositionDeletesCommitManager {
   }
 
   /**
-   * An async service which allows for committing multiple file groups as their rewrites complete.
-   * The service also allows for partial-progress since commits can fail. Once the service has been
-   * closed no new file groups should not be offered.
+   * 创建一个异步提交服务，支持部分进度：各文件组重写完成后陆续提交，提交失败不影响其他组。
    *
-   * @param rewritesPerCommit number of file groups to include in a commit
-   * @return the service for handling commits
+   * @param rewritesPerCommit 单次提交包含的文件组数量
+   * @return 异步提交服务 {@link CommitService}
    */
   public CommitService service(int rewritesPerCommit) {
     return new CommitService(rewritesPerCommit);
   }
 
+  /**
+   * 位置删除文件重写的异步提交服务，继承 {@link BaseCommitService}，将提交与清理委托给 外层 {@link
+   * RewritePositionDeletesCommitManager}。
+   */
   public class CommitService extends BaseCommitService<RewritePositionDeletesGroup> {
 
     CommitService(int rewritesPerCommit) {

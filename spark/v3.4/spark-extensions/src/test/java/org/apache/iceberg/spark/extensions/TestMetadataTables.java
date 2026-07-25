@@ -55,17 +55,27 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestMetadataTables 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 元数据表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestMetadataTables extends SparkExtensionsTestBase {
 
+  /** 测试元数据表。 */
   public TestMetadataTables(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTable() throws Exception {
     sql(
@@ -141,6 +151,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         TestHelpers.nonDerivedSchema(actualFilesDs), expectedFiles.get(1), actualFiles.get(1));
   }
 
+  /** 测试分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedTable() throws Exception {
     sql(
@@ -241,6 +252,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         TestHelpers.nonDerivedSchema(actualFilesDs), expectedFiles.get(1), actualFiles.get(1));
   }
 
+  /** 测试所有文件非分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllFilesUnpartitioned() throws Exception {
     sql(
@@ -316,6 +328,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         TestHelpers.nonDerivedSchema(actualFilesDs), expectedFiles, actualFiles);
   }
 
+  /** 测试所有文件分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllFilesPartitioned() throws Exception {
     // Create table and insert data
@@ -406,6 +419,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         TestHelpers.nonDerivedSchema(actualDataFilesDs), expectedFiles, actualFiles);
   }
 
+  /** 测试元数据日志条目场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataLogEntries() throws Exception {
     // Create table and insert data
@@ -493,6 +507,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         metadataLogWithProjection);
   }
 
+  /** 测试文件表时间旅行带模式演进场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesTableTimeTravelWithSchemaEvolution() throws Exception {
     // Create table and insert data
@@ -557,6 +572,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         expectedFiles.size());
   }
 
+  /** 测试快照referencesmetatable场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotReferencesMetatable() throws Exception {
     // Create table and insert data
@@ -680,6 +696,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
         Long.valueOf(10), testBranchProjection.get(0).getAs("max_reference_age_in_ms"));
   }
 
+  /** 期望条目。 */
   /**
    * Find matching manifest entries of an Iceberg table
    *
@@ -714,6 +731,7 @@ public class TestMetadataTables extends SparkExtensionsTestBase {
     return expected;
   }
 
+  /** 分区match。 */
   private boolean partitionMatch(Record file, String partValue) {
     if (partValue == null) {
       return true;

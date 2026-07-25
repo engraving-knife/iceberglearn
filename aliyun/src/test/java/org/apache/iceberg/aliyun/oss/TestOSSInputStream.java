@@ -31,9 +31,21 @@ import org.apache.iceberg.relocated.com.google.common.io.ByteStreams;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestOSSInputStream 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSInputStream 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSInputStream extends AliyunOSSTestBase {
   private final Random random = ThreadLocalRandom.current();
 
+  /**
+   * 测试场景：Read。
+   *
+   * <p>验证该方法在 Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRead() throws Exception {
     OSSURI uri = new OSSURI(location("read.dat"));
@@ -68,6 +80,7 @@ public class TestOSSInputStream extends AliyunOSSTestBase {
     }
   }
 
+  /** 辅助方法：readAndCheck。 */
   private void readAndCheck(
       SeekableInputStream in, long rangeStart, int size, byte[] original, boolean buffered)
       throws IOException {
@@ -94,6 +107,11 @@ public class TestOSSInputStream extends AliyunOSSTestBase {
         actual);
   }
 
+  /**
+   * 测试场景：Close。
+   *
+   * <p>验证该方法在 Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testClose() throws Exception {
     OSSURI uri = new OSSURI(location("closed.dat"));
@@ -104,6 +122,11 @@ public class TestOSSInputStream extends AliyunOSSTestBase {
         .hasMessageContaining("Cannot seek: already closed");
   }
 
+  /**
+   * 测试场景：Seek。
+   *
+   * <p>验证该方法在 Seek 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeek() throws Exception {
     OSSURI uri = new OSSURI(location("seek.dat"));
@@ -122,12 +145,14 @@ public class TestOSSInputStream extends AliyunOSSTestBase {
     }
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：writeOSSData。 */
   private void writeOSSData(OSSURI uri, byte[] data) {
     ossClient().get().putObject(uri.bucket(), uri.key(), new ByteArrayInputStream(data));
   }

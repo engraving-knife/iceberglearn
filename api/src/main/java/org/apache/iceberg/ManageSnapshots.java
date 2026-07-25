@@ -23,73 +23,80 @@ import org.apache.iceberg.exceptions.DuplicateWAPCommitException;
 import org.apache.iceberg.exceptions.ValidationException;
 
 /**
- * API for managing snapshots. Allows rolling table data back to a stated at an older table {@link
- * Snapshot snapshot}. Rollback:
+ * 快照管理 API：支持回滚、cherry-pick、分支与标签（refs）等表快照级操作。
  *
- * <p>This API does not allow conflicting calls to {@link #setCurrentSnapshot(long)} and {@link
- * #rollbackToTime(long)}.
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
  *
- * <p>When committing, these changes will be applied to the current table metadata. Commit conflicts
- * will not be resolved and will result in a {@link CommitFailedException}. Cherrypick:
+ * <p>职责：
  *
- * <p>In an audit workflow, new data is written to an orphan {@link Snapshot snapshot} that is not
- * committed as the table's current state until it is audited. After auditing a change, it may need
- * to be applied or cherry-picked on top of the latest snapshot instead of the one that was current
- * when the audited changes were created. This class adds support for cherry-picking the changes
- * from an orphan snapshot by applying them to the current snapshot. The output of the operation is
- * a new snapshot with the changes from cherry-picked snapshot.
+ * <ul>
+ *   <li>回滚（rollback / setCurrentSnapshot / rollbackToTime）：把表当前状态切回历史快照。
+ *   <li>Cherry-pick：把审计过的孤立快照的变更应用到当前快照之上，生成新快照。
+ *   <li>分支与标签管理：创建/删除/重命名/替换 branch 与 tag，以及设置保留策略。
+ * </ul>
  *
- * <p>
+ * <p>设计意图：本 API 不允许同时混用 {@link #setCurrentSnapshot(long)} 与 {@link
+ * #rollbackToTime(long)}，以避免语义冲突。提交时变更会应用到当前表元数据上， 但与追加类操作不同：本 API 在提交冲突时不会自动重试，而是直接抛出 {@link
+ * CommitFailedException}，由调用方决定后续处理。WAP（Write-Audit-Publish） 工作流中重复提交相同 wapId 会抛出 {@link
+ * DuplicateWAPCommitException}。
+ *
+ * <p>上下游关系：由 {@link Table#manageSnapshots()} 创建；下游实现位于 core 模块， 落地为表元数据中的 refs 与 current-snapshot
+ * 变更。
  */
 public interface ManageSnapshots extends PendingUpdate<Snapshot> {
 
   /**
-   * Roll this table's data back to a specific {@link Snapshot} identified by id.
+   * 把表的当前快照直接设置为指定 ID 的快照。
    *
-   * @param snapshotId long id of the snapshot to roll back table data to
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the table has no snapshot with the given id
+   * <p>注意：与 {@link #rollbackToTime(long)} 不可同时使用。
+   *
+   * @param snapshotId 目标快照 ID
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 表中不存在该 ID 的快照
    */
   ManageSnapshots setCurrentSnapshot(long snapshotId);
 
   /**
-   * Roll this table's data back to the last {@link Snapshot} before the given timestamp.
+   * 把表回滚到给定时间戳之前最近的快照。
    *
-   * @param timestampMillis a long timestamp, as returned by {@link System#currentTimeMillis()}
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the table has no old snapshot before the given timestamp
+   * @param timestampMillis 时间戳（毫秒），与 {@link System#currentTimeMillis()} 同基准
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 表中在该时间戳之前没有任何快照
    */
   ManageSnapshots rollbackToTime(long timestampMillis);
 
   /**
-   * Rollback table's state to a specific {@link Snapshot} identified by id.
+   * 把表状态回滚到指定 ID 的快照。
    *
-   * @param snapshotId long id of snapshot id to roll back table to. Must be an ancestor of the
-   *     current snapshot
-   * @throws IllegalArgumentException If the table has no snapshot with the given id
-   * @throws ValidationException If given snapshot id is not an ancestor of the current state
+   * <p>该快照必须是当前快照的祖先，否则抛出 {@link ValidationException}。
+   *
+   * @param snapshotId 目标快照 ID（必须是当前快照的祖先）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 表中不存在该 ID 的快照
+   * @throws ValidationException 该快照不是当前快照的祖先
    */
   ManageSnapshots rollbackTo(long snapshotId);
 
   /**
-   * Apply supported changes in given snapshot and create a new snapshot which will be set as the
-   * current snapshot on commit.
+   * Cherry-pick：把指定快照中支持的变更应用到当前快照之上，并在提交时把生成的新快照设为当前。
    *
-   * @param snapshotId a snapshotId whose changes to apply
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the table has no snapshot with the given id
-   * @throws DuplicateWAPCommitException In case of a WAP workflow and if the table has a duplicate
-   *     commit with same wapId
+   * <p>典型用于审计工作流：新数据先写入一个未发布的孤立快照，审计通过后再 cherry-pick 到 当前快照上发布。
+   *
+   * @param snapshotId 待应用变更的来源快照 ID
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 表中不存在该 ID 的快照
+   * @throws DuplicateWAPCommitException WAP 工作流下检测到重复的 wapId 提交
    */
   ManageSnapshots cherrypick(long snapshotId);
 
   /**
-   * Create a new branch. The branch will point to current snapshot if the current snapshot is not
-   * NULL. Otherwise, the branch will point to a newly created empty snapshot.
+   * 创建一个新分支。若当前快照非空则指向当前快照，否则指向一个新建的空快照。
    *
-   * @param name branch name
-   * @return this for method chaining
-   * @throws IllegalArgumentException if a branch with the given name already exists
+   * <p>这是带默认值的便捷重载，默认实现抛出 {@link UnsupportedOperationException}，由具体子类提供实现。
+   *
+   * @param name 分支名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 同名分支已存在
    */
   default ManageSnapshots createBranch(String name) {
     throw new UnsupportedOperationException(
@@ -97,120 +104,117 @@ public interface ManageSnapshots extends PendingUpdate<Snapshot> {
   }
 
   /**
-   * Create a new branch pointing to the given snapshot id.
+   * 创建一个指向指定快照 ID 的新分支。
    *
-   * @param name branch name
-   * @param snapshotId id of the snapshot which will be the head of the branch
-   * @return this for method chaining
-   * @throws IllegalArgumentException if a branch with the given name already exists
+   * @param name 分支名
+   * @param snapshotId 分支头指向的快照 ID
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 同名分支已存在
    */
   ManageSnapshots createBranch(String name, long snapshotId);
 
   /**
-   * Create a new tag pointing to the given snapshot id
+   * 创建一个指向指定快照 ID 的新标签。
    *
-   * @param name tag name
-   * @param snapshotId snapshotId for the head of the new branch.
-   * @return this for method chaining
-   * @throws IllegalArgumentException if a tag with the given name already exists
+   * @param name 标签名
+   * @param snapshotId 标签指向的快照 ID
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 同名标签已存在
    */
   ManageSnapshots createTag(String name, long snapshotId);
 
   /**
-   * Remove a branch by name
+   * 按名称删除分支。
    *
-   * @param name branch name
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the branch does not exist
+   * @param name 分支名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 该分支不存在
    */
   ManageSnapshots removeBranch(String name);
 
   /**
-   * Rename a branch
+   * 重命名分支。
    *
-   * @param name name of branch to rename
-   * @param newName the desired new name of the branch
-   * @throws IllegalArgumentException if the branch to rename does not exist or if there is already
-   *     a branch with the same name as the desired new name.
+   * @param name 待重命名的分支名
+   * @param newName 新分支名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 待重命名分支不存在，或新名称已被占用
    */
   ManageSnapshots renameBranch(String name, String newName);
 
   /**
-   * Remove the tag with the given name.
+   * 按名称删除标签。
    *
-   * @param name tag name
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the branch does not exist
+   * @param name 标签名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 该标签不存在
    */
   ManageSnapshots removeTag(String name);
 
   /**
-   * Replaces the tag with the given name to point to the specified snapshot.
+   * 把指定标签重置为指向另一个快照。
    *
-   * @param name Tag to replace
-   * @param snapshotId new snapshot id for the given tag
-   * @return this for method chaining
+   * @param name 待替换的标签名
+   * @param snapshotId 标签新指向的快照 ID
+   * @return this，便于链式调用
    */
   ManageSnapshots replaceTag(String name, long snapshotId);
 
   /**
-   * Replaces the branch with the given name to point to the specified snapshot
+   * 把指定分支重置为指向另一个快照。
    *
-   * @param name Branch to replace
-   * @param snapshotId new snapshot id for the given branch
-   * @return this for method chaining
+   * @param name 待替换的分支名
+   * @param snapshotId 分支新指向的快照 ID
+   * @return this，便于链式调用
    */
   ManageSnapshots replaceBranch(String name, long snapshotId);
 
   /**
-   * Replaces the branch with the given name to point to the source snapshot. The source branch will
-   * remain unchanged, the target branch will retain its retention properties.
+   * 把指定分支替换为指向某个源引用的当前快照，源引用保持不变，目标分支保留自身的保留策略。
    *
-   * @param name Branch to replace
-   * @param source Source reference for the target to be replaced with
-   * @return this for method chaining
+   * @param name 待替换的分支名
+   * @param source 源引用名
+   * @return this，便于链式调用
    */
   ManageSnapshots replaceBranch(String name, String source);
 
   /**
-   * Performs a fast-forward of the given target branch up to the source snapshot if target is an
-   * ancestor of source. The source branch will remain unchanged, the target branch will retain its
-   * retention properties.
+   * 快进：若目标分支是源引用的祖先，则把目标分支快进到源引用的快照，源引用保持不变， 目标分支保留自身的保留策略。
    *
-   * @param name Branch to fast-forward
-   * @param source Source reference for the target to be fast forwarded to
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the target branch is not an ancestor of source
+   * @param name 待快进的目标分支名
+   * @param source 源引用名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 目标分支不是源引用的祖先
    */
   ManageSnapshots fastForwardBranch(String name, String source);
 
   /**
-   * Updates the minimum number of snapshots to keep for a branch.
+   * 设置分支上保留的最小快照数。
    *
-   * @param branchName branch name
-   * @param minSnapshotsToKeep minimum number of snapshots to retain on the branch
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the branch does not exist
+   * @param branchName 分支名
+   * @param minSnapshotsToKeep 最小保留快照数
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 该分支不存在
    */
   ManageSnapshots setMinSnapshotsToKeep(String branchName, int minSnapshotsToKeep);
 
   /**
-   * Updates the max snapshot age for a branch.
+   * 设置分支上快照的最大保留时长（毫秒）。
    *
-   * @param branchName branch name
-   * @param maxSnapshotAgeMs maximum snapshot age in milliseconds to retain on branch
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the branch does not exist
+   * @param branchName 分支名
+   * @param maxSnapshotAgeMs 最大快照年龄（毫秒）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 该分支不存在
    */
   ManageSnapshots setMaxSnapshotAgeMs(String branchName, long maxSnapshotAgeMs);
 
   /**
-   * Updates the retention policy for a reference.
+   * 设置引用本身的最大保留时长（毫秒），到期后该引用会被清理。
    *
-   * @param name branch name
-   * @param maxRefAgeMs retention age in milliseconds of the tag reference itself
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the reference does not exist
+   * @param name 引用名（分支或标签）
+   * @param maxRefAgeMs 引用自身的保留年龄（毫秒）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 该引用不存在
    */
   ManageSnapshots setMaxRefAgeMs(String name, long maxRefAgeMs);
 }

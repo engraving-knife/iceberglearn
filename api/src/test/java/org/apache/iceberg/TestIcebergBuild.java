@@ -24,7 +24,19 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestIcebergBuild 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestIcebergBuild 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIcebergBuild {
+  /**
+   * 测试场景：Full Version。
+   *
+   * <p>验证该方法在 Full Version 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullVersion() {
     assertThat(IcebergBuild.fullVersion())
@@ -37,11 +49,21 @@ public class TestIcebergBuild {
                 + ")");
   }
 
+  /**
+   * 测试场景：Version。
+   *
+   * <p>验证该方法在 Version 条件下的行为是否符合预期。
+   */
   @Test
   public void testVersion() {
     assertThat(IcebergBuild.version()).as("Should not use unknown version").isNotEqualTo("unknown");
   }
 
+  /**
+   * 测试场景：Git Commit Id。
+   *
+   * <p>验证该方法在 Git Commit Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testGitCommitId() {
     assertThat(IcebergBuild.gitCommitId())

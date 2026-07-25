@@ -27,6 +27,15 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.LocalScan;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 本地扫描，描述扫描的统计信息（行数、文件数等）而不携带分区。
+ *
+ * <p>设计意图：实现 Spark Scan，提供扫描计划统计。
+ *
+ * <p>上下游关系：由 SparkScanBuilder 在仅统计场景返回。
+ */
 class SparkLocalScan implements LocalScan {
 
   private final Table table;
@@ -41,22 +50,22 @@ class SparkLocalScan implements LocalScan {
     this.rows = rows;
     this.filterExpressions = filterExpressions;
   }
-
+  /** 执行 rows 相关操作。 */
   @Override
   public InternalRow[] rows() {
     return rows;
   }
-
+  /** 执行 readSchema 相关操作。 */
   @Override
   public StructType readSchema() {
     return readSchema;
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return String.format("%s [filters=%s]", table, Spark3Util.describe(filterExpressions));
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(

@@ -35,18 +35,28 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchProcedureException;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestPublishChangesProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 发布变更存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestPublishChangesProcedure extends SparkExtensionsTestBase {
 
+  /** 测试发布变更存储过程。 */
   public TestPublishChangesProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试applywap变更使用位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testApplyWapChangesUsingPositionalArgs() {
     String wapId = "wap_id_1";
@@ -83,6 +93,7 @@ public class TestPublishChangesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试applywap变更使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testApplyWapChangesUsingNamedArgs() {
     String wapId = "wap_id_1";
@@ -121,6 +132,7 @@ public class TestPublishChangesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试applywap变更refreshesrelationcache场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testApplyWapChangesRefreshesRelationCache() {
     String wapId = "wap_id_1";
@@ -153,6 +165,7 @@ public class TestPublishChangesProcedure extends SparkExtensionsTestBase {
     sql("UNCACHE TABLE tmp");
   }
 
+  /** 测试 testApplyInvalidWapId 场景：验证 ApplyInvalidWapId 相关操作的行为与结果。 */
   @Test
   public void testApplyInvalidWapId() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -164,6 +177,7 @@ public class TestPublishChangesProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.publish_changes('%s', 'not_valid')", catalogName, tableIdent));
   }
 
+  /** 测试invalidapplywap变更场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidApplyWapChangesCases() {
     AssertHelpers.assertThrows(

@@ -22,11 +22,30 @@ import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 
+/**
+ * 将批记录发射到 Flink {@link SourceOutput} 并更新 split 位置的记录发射器。
+ *
+ * <p>所属模块：iceberg-flink（source reader 侧），实现 {@link RecordEmitter}。
+ *
+ * <p>职责：把 {@link RecordAndPosition} 中的记录 collect 到 SourceOutput， 并据其位置信息更新 split 的
+ * fileOffset/recordOffset 以支持断点续读。
+ *
+ * <p>设计意图：发射与位置更新成对发生，保证 checkpoint 状态与已发射记录一致。
+ *
+ * <p>上下游关系：被 {@link IcebergSourceReader} 调用。
+ */
 final class IcebergSourceRecordEmitter<T>
     implements RecordEmitter<RecordAndPosition<T>, T, IcebergSourceSplit> {
 
   IcebergSourceRecordEmitter() {}
 
+  /**
+   * 发射单条记录并更新 split 位置。
+   *
+   * @param element 记录与位置
+   * @param output Flink 源输出
+   * @param split 当前分片（就地更新位置）
+   */
   @Override
   public void emitRecord(
       RecordAndPosition<T> element, SourceOutput<T> output, IcebergSourceSplit split) {

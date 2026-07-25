@@ -20,7 +20,15 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 
 import org.apache.spark.sql.types.DataType;
 
-/** An input parameter of a {@link Procedure stored procedure}. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：存储过程参数接口，描述单个参数的名称、类型、是否必填。
+ *
+ * <p>设计意图：抽象参数契约，支持过程调用时的参数校验与绑定。
+ *
+ * <p>上下游关系：由 Procedure 声明；由 ProcedureInput 解析。
+ */
 public interface ProcedureParameter {
 
   /**

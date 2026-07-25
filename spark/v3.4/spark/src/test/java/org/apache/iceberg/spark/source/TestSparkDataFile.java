@@ -64,6 +64,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestSparkDataFile 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark数据文件 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkDataFile {
 
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
@@ -106,12 +113,14 @@ public class TestSparkDataFile {
   private static SparkSession spark;
   private static JavaSparkContext sparkContext = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkDataFile.spark = SparkSession.builder().master("local[2]").getOrCreate();
     TestSparkDataFile.sparkContext = JavaSparkContext.fromSparkContext(spark.sparkContext());
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkDataFile.spark;
@@ -123,12 +132,14 @@ public class TestSparkDataFile {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private String tableLocation = null;
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     File tableDir = temp.newFolder();
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** 测试值conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testValueConversion() throws IOException {
     Table table =
@@ -136,12 +147,14 @@ public class TestSparkDataFile {
     checkSparkDataFile(table);
   }
 
+  /** 测试值conversion分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testValueConversionPartitionedTable() throws IOException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
     checkSparkDataFile(table);
   }
 
+  /** 测试值conversion带空stats场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testValueConversionWithEmptyStats() throws IOException {
     Map<String, String> props = Maps.newHashMap();
@@ -150,6 +163,7 @@ public class TestSparkDataFile {
     checkSparkDataFile(table);
   }
 
+  /** 检查Spark数据文件。 */
   private void checkSparkDataFile(Table table) throws IOException {
     Iterable<InternalRow> rows = RandomData.generateSpark(table.schema(), 200, 0);
     JavaRDD<InternalRow> rdd = sparkContext.parallelize(Lists.newArrayList(rows));
@@ -194,6 +208,7 @@ public class TestSparkDataFile {
     }
   }
 
+  /** 检查数据文件。 */
   private void checkDataFile(DataFile expected, DataFile actual) {
     Assert.assertEquals("Path must match", expected.path(), actual.path());
     Assert.assertEquals("Format must match", expected.format(), actual.format());
@@ -216,6 +231,7 @@ public class TestSparkDataFile {
     checkStructLike(expected.partition(), actual.partition());
   }
 
+  /** 检查结构体like。 */
   private void checkStructLike(StructLike expected, StructLike actual) {
     Assert.assertEquals("Struct size should match", expected.size(), actual.size());
     for (int i = 0; i < expected.size(); i++) {

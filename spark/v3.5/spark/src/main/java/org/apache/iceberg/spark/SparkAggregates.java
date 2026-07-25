@@ -30,6 +30,19 @@ import org.apache.spark.sql.connector.expressions.aggregate.CountStar;
 import org.apache.spark.sql.connector.expressions.aggregate.Max;
 import org.apache.spark.sql.connector.expressions.aggregate.Min;
 
+/**
+ * Spark 聚合函数 -> Iceberg 聚合表达式转换器。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：把 Spark DSv2 聚合函数（{@link AggregateFunc}）转换为 Iceberg {@link Expression}， 用于把聚合下推到 Iceberg
+ * manifest 文件统计（如 count/max/min）。
+ *
+ * <p>设计意图：用静态映射表把 Spark 聚合类映射到 Iceberg Operation，再在 convert 中按 op 分支构造 对应 Iceberg 表达式；count
+ * distinct 与非 NamedReference 列无法下推，返回 null。
+ *
+ * <p>上下游关系：被 Spark 读取计划下推逻辑调用；依赖 iceberg-core 的 Expressions。
+ */
 public class SparkAggregates {
   private SparkAggregates() {}
 
@@ -41,6 +54,15 @@ public class SparkAggregates {
           .put(Min.class, Operation.MIN)
           .buildOrThrow();
 
+  /**
+   * 把 Spark 聚合函数转为 Iceberg 表达式。
+   *
+   * <p>逻辑：按聚合类型分支：COUNT（非 distinct 且列为 NamedReference 时转 count）、 COUNT_STAR（转 countStar）、MAX/MIN（列为
+   * NamedReference 时转对应表达式）； 其余返回 null 表示无法下推。
+   *
+   * @param aggregate Spark 聚合函数
+   * @return Iceberg 表达式，或 null 表示不可下推
+   */
   public static Expression convert(AggregateFunc aggregate) {
     Operation op = AGGREGATES.get(aggregate.getClass());
     if (op != null) {

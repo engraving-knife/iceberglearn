@@ -51,10 +51,18 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestParquetEncryptionWithWriteSupport 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestParquetEncryptionWithWriteSupport 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetEncryptionWithWriteSupport extends DataTest {
   private static final ByteBuffer fileDek = ByteBuffer.allocate(16);
   private static final ByteBuffer aadPrefix = ByteBuffer.allocate(16);
 
+  /** 辅助方法：writeAndValidate。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     List<Record> expected = RandomGenericData.generate(schema, 100, 0L);
@@ -121,6 +129,11 @@ public class TestParquetEncryptionWithWriteSupport extends DataTest {
     }
   }
 
+  /**
+   * 测试场景：Two Level List。
+   *
+   * <p>验证该方法在 Two Level List 条件下的行为是否符合预期。
+   */
   @Test
   public void testTwoLevelList() throws IOException {
     Schema schema =

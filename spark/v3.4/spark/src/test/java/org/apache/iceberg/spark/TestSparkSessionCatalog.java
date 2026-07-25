@@ -25,11 +25,19 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkSessionCatalog 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark会话目录 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkSessionCatalog extends SparkTestBase {
   private final String envHmsUriKey = "spark.hadoop." + METASTOREURIS.varname;
   private final String catalogHmsUriKey = "spark.sql.catalog.spark_catalog.uri";
   private final String hmsUri = hiveConf.get(METASTOREURIS.varname);
 
+  /** 集合up目录。 */
   @BeforeClass
   public static void setUpCatalog() {
     spark
@@ -38,6 +46,7 @@ public class TestSparkSessionCatalog extends SparkTestBase {
     spark.conf().set("spark.sql.catalog.spark_catalog.type", "hive");
   }
 
+  /** 初始化hmsURI。 */
   @Before
   public void setupHmsUri() {
     spark.sessionState().catalogManager().reset();
@@ -45,6 +54,7 @@ public class TestSparkSessionCatalog extends SparkTestBase {
     spark.conf().set(catalogHmsUriKey, hmsUri);
   }
 
+  /** 测试校验hmsURI场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testValidateHmsUri() {
     // HMS uris match
@@ -96,6 +106,7 @@ public class TestSparkSessionCatalog extends SparkTestBase {
             .equals("default"));
   }
 
+  /** 测试加载函数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testLoadFunction() {
     String functionClass = "org.apache.hadoop.hive.ql.udf.generic.GenericUDFUpper";

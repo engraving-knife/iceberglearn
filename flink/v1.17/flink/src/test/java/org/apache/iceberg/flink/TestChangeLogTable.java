@@ -48,9 +48,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 /**
- * In this test case, we mainly cover the impact of primary key selection, multiple operations
- * within a single transaction, and multiple operations between different txn on the correctness of
- * the data.
+ * 文件级说明：测试 TestChangeLogTable 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestChangeLogTable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
  */
 @RunWith(Parameterized.class)
 public class TestChangeLogTable extends ChangeLogTableTestBase {
@@ -64,15 +66,18 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
 
   private final boolean partitioned;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "PartitionedTable={0}")
   public static Iterable<Object[]> parameters() {
     return ImmutableList.of(new Object[] {true}, new Object[] {false});
   }
 
+  /** 辅助方法：TestChangeLogTable，Change Log Table。 */
   public TestChangeLogTable(boolean partitioned) {
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   @BeforeClass
   public static void createWarehouse() throws IOException {
     File warehouseFile = TEMPORARY_FOLDER.newFolder();
@@ -80,6 +85,7 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     warehouse = String.format("file:%s", warehouseFile);
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     sql(
@@ -94,6 +100,7 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     getTableEnv().getConfig().set("table.exec.sink.upsert-materialize", "NONE");
   }
 
+  /** 辅助方法：clean，clean。 */
   @After
   @Override
   public void clean() {
@@ -103,6 +110,11 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     BoundedTableFactory.clearDataSets();
   }
 
+  /**
+   * 测试场景：Sql Change Log On Id Key。
+   *
+   * <p>验证该方法在 Sql Change Log On Id Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testSqlChangeLogOnIdKey() throws Exception {
     List<List<Row>> inputRowsPerCheckpoint =
@@ -135,6 +147,11 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
         TABLE_NAME, ImmutableList.of("id"), inputRowsPerCheckpoint, expectedRecordsPerCheckpoint);
   }
 
+  /**
+   * 测试场景：Change Log On Data Key。
+   *
+   * <p>验证该方法在 Change Log On Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnDataKey() throws Exception {
     List<List<Row>> elementsPerCheckpoint =
@@ -162,6 +179,11 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     testSqlChangeLog(TABLE_NAME, ImmutableList.of("data"), elementsPerCheckpoint, expectedRecords);
   }
 
+  /**
+   * 测试场景：Change Log On Id Data Key。
+   *
+   * <p>验证该方法在 Change Log On Id Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnIdDataKey() throws Exception {
     List<List<Row>> elementsPerCheckpoint =
@@ -191,6 +213,11 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
         TABLE_NAME, ImmutableList.of("data", "id"), elementsPerCheckpoint, expectedRecords);
   }
 
+  /**
+   * 测试场景：Pure Insert On Id Key。
+   *
+   * <p>验证该方法在 Pure Insert On Id Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testPureInsertOnIdKey() throws Exception {
     List<List<Row>> elementsPerCheckpoint =
@@ -215,10 +242,12 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     testSqlChangeLog(TABLE_NAME, ImmutableList.of("data"), elementsPerCheckpoint, expectedRecords);
   }
 
+  /** 辅助方法：record，record。 */
   private static Record record(int id, String data) {
     return SimpleDataUtil.createRecord(id, data);
   }
 
+  /** 辅助方法：createTable，create Table。 */
   private Table createTable(String tableName, List<String> key, boolean isPartitioned) {
     String partitionByCause = isPartitioned ? "PARTITIONED BY (data)" : "";
     sql(
@@ -237,6 +266,11 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     return table;
   }
 
+  /**
+   * 测试场景：Sql Change Log。
+   *
+   * <p>验证该方法在 Sql Change Log 条件下的行为是否符合预期。
+   */
   private void testSqlChangeLog(
       String tableName,
       List<String> key,
@@ -280,6 +314,7 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     }
   }
 
+  /** 辅助方法：findValidSnapshots，find Valid Snapshots。 */
   private List<Snapshot> findValidSnapshots(Table table) {
     List<Snapshot> validSnapshots = Lists.newArrayList();
     for (Snapshot snapshot : table.snapshots()) {
@@ -291,6 +326,7 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     return validSnapshots;
   }
 
+  /** 辅助方法：expectedRowSet，expected Row Set。 */
   private static StructLikeSet expectedRowSet(Table table, List<Row> rows) {
     Record[] records = new Record[rows.size()];
     for (int i = 0; i < records.length; i++) {
@@ -299,6 +335,7 @@ public class TestChangeLogTable extends ChangeLogTableTestBase {
     return SimpleDataUtil.expectedRowSet(table, records);
   }
 
+  /** 辅助方法：actualRowSet，actual Row Set。 */
   private static StructLikeSet actualRowSet(Table table, long snapshotId) throws IOException {
     return SimpleDataUtil.actualRowSet(table, snapshotId, "*");
   }

@@ -48,15 +48,18 @@ public class TestOrcMetrics extends TestMetrics {
   static final ImmutableSet<Object> BINARY_TYPES =
       ImmutableSet.of(Type.TypeID.BINARY, Type.TypeID.FIXED, Type.TypeID.UUID);
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：TestOrcMetrics。 */
   public TestOrcMetrics(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：createOutputFile。 */
   @Override
   protected OutputFile createOutputFile() throws IOException {
     File tmpFolder = temp.newFolder("orc");
@@ -64,28 +67,33 @@ public class TestOrcMetrics extends TestMetrics {
     return Files.localOutput(new File(tmpFolder, FileFormat.ORC.addExtension(filename)));
   }
 
+  /** 辅助方法：fileFormat。 */
   @Override
   public FileFormat fileFormat() {
     return FileFormat.ORC;
   }
 
+  /** 辅助方法：getMetrics。 */
   @Override
   public Metrics getMetrics(Schema schema, Record... records) throws IOException {
     return getMetrics(schema, MetricsConfig.getDefault(), records);
   }
 
+  /** 辅助方法：getMetrics。 */
   @Override
   public Metrics getMetrics(Schema schema, MetricsConfig metricsConfig, Record... records)
       throws IOException {
     return getMetrics(schema, createOutputFile(), ImmutableMap.of(), metricsConfig, records);
   }
 
+  /** 辅助方法：getMetricsForRecordsWithSmallRowGroups。 */
   @Override
   protected Metrics getMetricsForRecordsWithSmallRowGroups(
       Schema schema, OutputFile outputFile, Record... records) {
     throw new UnsupportedOperationException("supportsSmallRowGroups = " + supportsSmallRowGroups());
   }
 
+  /** 辅助方法：getMetrics。 */
   private Metrics getMetrics(
       Schema schema,
       OutputFile file,
@@ -106,15 +114,18 @@ public class TestOrcMetrics extends TestMetrics {
     return writer.metrics();
   }
 
+  /** 辅助方法：splitCount。 */
   @Override
   public int splitCount(InputFile inputFile) {
     return 0;
   }
 
+  /** 辅助方法：isBinaryType。 */
   private boolean isBinaryType(Type type) {
     return BINARY_TYPES.contains(type.typeId());
   }
 
+  /** 辅助方法：assertBounds。 */
   @Override
   protected <T> void assertBounds(
       int fieldId, Type type, T lowerBound, T upperBound, Metrics metrics) {

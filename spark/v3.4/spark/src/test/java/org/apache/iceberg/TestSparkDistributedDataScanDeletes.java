@@ -31,10 +31,19 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkDistributedDataScanDeletes 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkdistributed数据扫描删除
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkDistributedDataScanDeletes
     extends DeleteFileIndexTestBase<BatchScan, ScanTask, ScanTaskGroup<ScanTask>> {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "dataMode = {0}, deleteMode = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -50,12 +59,14 @@ public class TestSparkDistributedDataScanDeletes
   private final PlanningMode dataMode;
   private final PlanningMode deleteMode;
 
+  /** 测试Sparkdistributed数据扫描删除。 */
   public TestSparkDistributedDataScanDeletes(
       PlanningMode dataPlanningMode, PlanningMode deletePlanningMode) {
     this.dataMode = dataPlanningMode;
     this.deleteMode = deletePlanningMode;
   }
 
+  /** configure规划模式。 */
   @Before
   public void configurePlanningModes() {
     table
@@ -65,6 +76,7 @@ public class TestSparkDistributedDataScanDeletes
         .commit();
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkDistributedDataScanDeletes.spark =
@@ -75,6 +87,7 @@ public class TestSparkDistributedDataScanDeletes
             .getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkDistributedDataScanDeletes.spark;
@@ -82,6 +95,7 @@ public class TestSparkDistributedDataScanDeletes
     currentSpark.stop();
   }
 
+  /** 新建扫描。 */
   @Override
   protected BatchScan newScan(Table table) {
     SparkReadConf readConf = new SparkReadConf(spark, table, ImmutableMap.of());

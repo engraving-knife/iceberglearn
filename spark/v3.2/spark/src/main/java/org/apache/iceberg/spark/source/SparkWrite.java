@@ -79,6 +79,13 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkWrite。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   private static final Logger LOG = LoggerFactory.getLogger(SparkWrite.class);
 
@@ -129,49 +136,75 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     this.outputSpecId = writeConf.outputSpecId();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Distribution requiredDistribution() {
     return requiredDistribution;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public SortOrder[] requiredOrdering() {
     return requiredOrdering;
   }
 
+  /** 执行该方法的具体逻辑。 */
   BatchWrite asBatchAppend() {
+    /** 执行该方法的具体逻辑。 */
     return new BatchAppend();
   }
 
+  /** 执行该方法的具体逻辑。 */
   BatchWrite asDynamicOverwrite() {
+    /** 执行该方法的具体逻辑。 */
     return new DynamicOverwrite();
   }
 
+  /** 执行该方法的具体逻辑。 */
   BatchWrite asOverwriteByFilter(Expression overwriteExpr) {
+    /** 执行该方法的具体逻辑。 */
     return new OverwriteByFilter(overwriteExpr);
   }
 
+  /** 执行该方法的具体逻辑。 */
   BatchWrite asCopyOnWriteOperation(SparkCopyOnWriteScan scan, IsolationLevel isolationLevel) {
+    /** 执行该方法的具体逻辑。 */
     return new CopyOnWriteOperation(scan, isolationLevel);
   }
 
+  /** 执行该方法的具体逻辑。 */
   BatchWrite asRewrite(String fileSetID) {
+    /** 重写计划或文件。 */
     return new RewriteFiles(fileSetID);
   }
 
+  /** 执行该方法的具体逻辑。 */
   StreamingWrite asStreamingAppend() {
+    /** 执行该方法的具体逻辑。 */
     return new StreamingAppend();
   }
 
+  /** 执行该方法的具体逻辑。 */
   StreamingWrite asStreamingOverwrite() {
+    /** 执行该方法的具体逻辑。 */
     return new StreamingOverwrite();
   }
 
   // the writer factory works for both batch and streaming
+  /** 创建并返回新实例。 */
   private WriterFactory createWriterFactory() {
     // broadcast the table metadata as the writer factory will be sent to executors
     Broadcast<Table> tableBroadcast =
         sparkContext.broadcast(SerializableTableWithSize.copyOf(table));
+    /** 写入数据。 */
     return new WriterFactory(
         tableBroadcast,
         queryId,
@@ -183,6 +216,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
         partitionedFanoutEnabled);
   }
 
+  /** 提交事务或写入结果。 */
   private void commitOperation(SnapshotUpdate<?> operation, String description) {
     LOG.info("Committing {} to table {}", description, table);
     if (applicationId != null) {
@@ -215,6 +249,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /** 中止并回滚当前操作。 */
   private void abort(WriterCommitMessage[] messages) {
     if (cleanupOnAbort) {
       SparkCleanupUtil.deleteFiles("job abort", table.io(), files(messages));
@@ -223,6 +258,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<DataFile> files(WriterCommitMessage[] messages) {
     List<DataFile> files = Lists.newArrayList();
 
@@ -236,29 +272,63 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     return files;
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format("IcebergWrite(table=%s, format=%s)", table, format);
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseBatchWrite。
+   *
+   * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private abstract class BaseBatchWrite implements BatchWrite {
+    /**
+     * 创建并返回新实例。
+     *
+     * @param info 参数
+     * @return 结果对象
+     */
     @Override
     public DataWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       return createWriterFactory();
     }
 
+    /**
+     * 中止并回滚当前操作。
+     *
+     * @param messages 参数
+     */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       SparkWrite.this.abort(messages);
     }
 
+    /** 返回该对象的字符串表示。 */
     @Override
     public String toString() {
       return String.format("IcebergBatchWrite(table=%s, format=%s)", table, format);
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现，处理列式批量数据。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 BatchAppend。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class BatchAppend extends BaseBatchWrite {
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       AppendFiles append = table.newAppend();
@@ -273,7 +343,19 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 DynamicOverwrite。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class DynamicOverwrite extends BaseBatchWrite {
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       List<DataFile> files = files(messages);
@@ -311,13 +393,26 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 OverwriteByFilter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class OverwriteByFilter extends BaseBatchWrite {
     private final Expression overwriteExpr;
 
+    /** 构造 OverwriteByFilter 实例。 */
     private OverwriteByFilter(Expression overwriteExpr) {
       this.overwriteExpr = overwriteExpr;
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -350,19 +445,29 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 CopyOnWriteOperation。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class CopyOnWriteOperation extends BaseBatchWrite {
     private final SparkCopyOnWriteScan scan;
     private final IsolationLevel isolationLevel;
 
+    /** 构造 CopyOnWriteOperation 实例。 */
     private CopyOnWriteOperation(SparkCopyOnWriteScan scan, IsolationLevel isolationLevel) {
       this.scan = scan;
       this.isolationLevel = isolationLevel;
     }
 
+    /** 执行该方法的具体逻辑。 */
     private List<DataFile> overwrittenFiles() {
       return scan.files().stream().map(FileScanTask::file).collect(Collectors.toList());
     }
 
+    /** 执行该方法的具体逻辑。 */
     private Expression conflictDetectionFilter() {
       // the list of filter expressions may be empty but is never null
       List<Expression> scanFilterExpressions = scan.filterExpressions();
@@ -376,6 +481,11 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       return filter;
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -401,6 +511,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       }
     }
 
+    /** 提交事务或写入结果。 */
     private void commitWithSerializableIsolation(
         OverwriteFiles overwriteFiles, int numOverwrittenFiles, int numAddedFiles) {
       Long scanSnapshotId = scan.snapshotId();
@@ -420,6 +531,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       commitOperation(overwriteFiles, commitMsg);
     }
 
+    /** 提交事务或写入结果。 */
     private void commitWithSnapshotIsolation(
         OverwriteFiles overwriteFiles, int numOverwrittenFiles, int numAddedFiles) {
       Long scanSnapshotId = scan.snapshotId();
@@ -439,13 +551,28 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 RewriteFiles。
+   *
+   * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class RewriteFiles extends BaseBatchWrite {
     private final String fileSetID;
 
+    /** 构造 RewriteFiles 实例。 */
     private RewriteFiles(String fileSetID) {
       this.fileSetID = fileSetID;
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       FileRewriteCoordinator coordinator = FileRewriteCoordinator.get();
@@ -453,17 +580,34 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseStreamingWrite。
+   *
+   * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private abstract class BaseStreamingWrite implements StreamingWrite {
     private static final String QUERY_ID_PROPERTY = "spark.sql.streaming.queryId";
     private static final String EPOCH_ID_PROPERTY = "spark.sql.streaming.epochId";
 
+    /** 执行该方法的具体逻辑。 */
     protected abstract String mode();
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param info 参数
+     * @return 结果对象
+     */
     @Override
     public StreamingDataWriterFactory createStreamingWriterFactory(PhysicalWriteInfo info) {
       return createWriterFactory();
     }
 
+    /** 提交事务或写入结果。 */
     @Override
     public final void commit(long epochId, WriterCommitMessage[] messages) {
       LOG.info("Committing epoch {} for query {} in {} mode", epochId, queryId, mode());
@@ -479,14 +623,17 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       doCommit(epochId, messages);
     }
 
+    /** 执行该方法的具体逻辑。 */
     protected abstract void doCommit(long epochId, WriterCommitMessage[] messages);
 
+    /** 提交事务或写入结果。 */
     protected <T> void commit(SnapshotUpdate<T> snapshotUpdate, long epochId, String description) {
       snapshotUpdate.set(QUERY_ID_PROPERTY, queryId);
       snapshotUpdate.set(EPOCH_ID_PROPERTY, Long.toString(epochId));
       commitOperation(snapshotUpdate, description);
     }
 
+    /** 查找并返回结果。 */
     private Long findLastCommittedEpochId() {
       Snapshot snapshot = table.currentSnapshot();
       Long lastCommittedEpochId = null;
@@ -503,23 +650,39 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       return lastCommittedEpochId;
     }
 
+    /**
+     * 中止并回滚当前操作。
+     *
+     * @param epochId 参数
+     * @param messages 参数
+     */
     @Override
     public void abort(long epochId, WriterCommitMessage[] messages) {
       SparkWrite.this.abort(messages);
     }
 
+    /** 返回该对象的字符串表示。 */
     @Override
     public String toString() {
       return String.format("IcebergStreamingWrite(table=%s, format=%s)", table, format);
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 StreamingAppend。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class StreamingAppend extends BaseStreamingWrite {
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected String mode() {
       return "append";
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected void doCommit(long epochId, WriterCommitMessage[] messages) {
       AppendFiles append = table.newFastAppend();
@@ -532,12 +695,26 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 StreamingOverwrite。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class StreamingOverwrite extends BaseStreamingWrite {
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected String mode() {
       return "complete";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param epochId 参数
+     * @param messages 参数
+     */
     @Override
     public void doCommit(long epochId, WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -554,6 +731,13 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 TaskCommit。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   public static class TaskCommit implements WriterCommitMessage {
     private final DataFile[] taskFiles;
 
@@ -563,6 +747,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
 
     // Reports bytesWritten and recordsWritten to the Spark output metrics.
     // Can only be called in executor.
+    /** 执行该方法的具体逻辑。 */
     void reportOutputMetrics() {
       long bytesWritten = 0L;
       long recordsWritten = 0L;
@@ -579,11 +764,21 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     DataFile[] files() {
       return taskFiles;
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 WriterFactory。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class WriterFactory implements DataWriterFactory, StreamingDataWriterFactory {
     private final Broadcast<Table> tableBroadcast;
     private final FileFormat format;
@@ -594,6 +789,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     private final boolean partitionedFanoutEnabled;
     private final String queryId;
 
+    /** 构造 WriterFactory 实例。 */
     protected WriterFactory(
         Broadcast<Table> tableBroadcast,
         String queryId,
@@ -613,11 +809,26 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       this.queryId = queryId;
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partitionId 参数
+     * @param taskId 参数
+     * @return 结果对象
+     */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
       return createWriter(partitionId, taskId, 0);
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partitionId 参数
+     * @param taskId 参数
+     * @param epochId 参数
+     * @return 结果对象
+     */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId, long epochId) {
       Table table = tableBroadcast.value();
@@ -637,9 +848,11 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
               .build();
 
       if (spec.isUnpartitioned()) {
+        /** 执行该方法的具体逻辑。 */
         return new UnpartitionedDataWriter(writerFactory, fileFactory, io, spec, targetFileSize);
 
       } else {
+        /** 执行该方法的具体逻辑。 */
         return new PartitionedDataWriter(
             writerFactory,
             fileFactory,
@@ -653,10 +866,18 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 UnpartitionedDataWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class UnpartitionedDataWriter implements DataWriter<InternalRow> {
     private final FileWriter<InternalRow, DataWriteResult> delegate;
     private final FileIO io;
 
+    /** 构造 UnpartitionedDataWriter 实例。 */
     private UnpartitionedDataWriter(
         SparkFileWriterFactory writerFactory,
         OutputFileFactory fileFactory,
@@ -668,11 +889,21 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       this.io = io;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param record 参数
+     */
     @Override
     public void write(InternalRow record) throws IOException {
       delegate.write(record);
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @return 结果对象
+     */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
@@ -683,6 +914,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       return taskCommit;
     }
 
+    /** 中止并回滚当前操作。 */
     @Override
     public void abort() throws IOException {
       close();
@@ -691,12 +923,20 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       SparkCleanupUtil.deleteTaskFiles(io, result.dataFiles());
     }
 
+    /** 释放底层资源。 */
     @Override
     public void close() throws IOException {
       delegate.close();
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 PartitionedDataWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class PartitionedDataWriter implements DataWriter<InternalRow> {
     private final PartitioningWriter<InternalRow, DataWriteResult> delegate;
     private final FileIO io;
@@ -704,6 +944,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     private final PartitionKey partitionKey;
     private final InternalRowWrapper internalRowWrapper;
 
+    /** 构造 PartitionedDataWriter 实例。 */
     private PartitionedDataWriter(
         SparkFileWriterFactory writerFactory,
         OutputFileFactory fileFactory,
@@ -724,12 +965,22 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       this.internalRowWrapper = new InternalRowWrapper(dataSparkType);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param row 参数
+     */
     @Override
     public void write(InternalRow row) throws IOException {
       partitionKey.partition(internalRowWrapper.wrap(row));
       delegate.write(row, spec, partitionKey);
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @return 结果对象
+     */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
@@ -740,6 +991,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       return taskCommit;
     }
 
+    /** 中止并回滚当前操作。 */
     @Override
     public void abort() throws IOException {
       close();
@@ -748,6 +1000,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       SparkCleanupUtil.deleteTaskFiles(io, result.dataFiles());
     }
 
+    /** 释放底层资源。 */
     @Override
     public void close() throws IOException {
       delegate.close();

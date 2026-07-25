@@ -41,9 +41,16 @@ import org.apache.spark.sql.connector.read.ScanBuilder
 import org.apache.spark.sql.execution.datasources.DataSourceStrategy
 import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行级命令扫描关系下推规则，将过滤与投影下推到行级命令的扫描关系。
+ * <p>设计意图：在物理计划前对行级命令的扫描施加下推优化。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
+ */
 
 object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with PredicateHelper {
   import ExtendedDataSourceV2Implicits._
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     // use native Spark planning for delta-based plans
@@ -124,6 +131,7 @@ object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with Predic
 
       command.withNewRewritePlan(newRewritePlan)
   }
+  /** 执行 pushFilters 相关操作。 */
 
   private def pushFilters(
       cond: Expression,
@@ -156,6 +164,7 @@ object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with Predic
 
     (pushedFilters, newJoinCond)
   }
+  /** 转换为 OutputAttrs。 */
 
   private def toOutputAttrs(
       schema: StructType,
@@ -171,6 +180,7 @@ object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with Predic
 
 object UnplannedGroupBasedMergeOperation {
   type ReturnType = (RowLevelCommand, ReplaceIcebergData, Join, DataSourceV2Relation)
+  /** 执行 unapply 相关操作。 */
 
   def unapply(plan: LogicalPlan): Option[ReturnType] = plan match {
     case m @ MergeIntoIcebergTable(_, _, _, _, _, Some(rewritePlan)) =>

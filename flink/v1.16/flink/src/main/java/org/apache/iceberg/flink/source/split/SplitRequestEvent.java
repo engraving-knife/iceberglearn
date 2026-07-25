@@ -25,6 +25,13 @@ import org.apache.flink.api.connector.source.SourceEvent;
 
 /** We can remove this class once FLINK-21364 is resolved. */
 @Internal
+/**
+ * 分片请求事件，reader 向 enumerator 请求新分片时发送。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装请求信息，实现 Flink SourceEvent。
+ *
+ * <p>设计意图：事件对象；被 SourceReader 发送、enumerator 接收。
+ */
 public class SplitRequestEvent implements SourceEvent {
   private static final long serialVersionUID = 1L;
 

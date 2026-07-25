@@ -46,6 +46,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestCachingCatalog，用于验证 Caching Catalog 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Caching Catalog 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCachingCatalog extends HadoopTableTestBase {
 
   private static final Duration EXPIRATION_TTL = Duration.ofMinutes(5);
@@ -53,16 +61,23 @@ public class TestCachingCatalog extends HadoopTableTestBase {
 
   private FakeTicker ticker;
 
+  /** 辅助方法：before each。 */
   @BeforeEach
   public void beforeEach() {
     this.ticker = new FakeTicker();
   }
 
+  /** 辅助方法：after each。 */
   @AfterEach
   public void afterEach() {
     this.ticker = null;
   }
 
+  /**
+   * 测试场景：invalidate metadata tables if base table is modified。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidateMetadataTablesIfBaseTableIsModified() throws Exception {
     Catalog catalog = CachingCatalog.wrap(hadoopCatalog());
@@ -97,6 +112,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
     Assertions.assertThat(manifestsMetaTable2.currentSnapshot()).isEqualTo(table.currentSnapshot());
   }
 
+  /**
+   * 测试场景：invalidate metadata tables if base table is dropped。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidateMetadataTablesIfBaseTableIsDropped() throws IOException {
     Catalog catalog = CachingCatalog.wrap(hadoopCatalog());
@@ -147,6 +167,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
     }
   }
 
+  /**
+   * 测试场景：table name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableName() throws Exception {
     Catalog catalog = CachingCatalog.wrap(hadoopCatalog());
@@ -164,6 +189,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
         .isEqualTo("hadoop.db.ns1.ns2.tbl.snapshots");
   }
 
+  /**
+   * 测试场景：table expires after interval。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableExpiresAfterInterval() throws IOException {
     TestableCachingCatalog catalog =
@@ -194,6 +224,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
         .isNotSameAs(table);
   }
 
+  /**
+   * 测试场景：catalog expiration ttl refreshes after access via catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogExpirationTtlRefreshesAfterAccessViaCatalog() throws IOException {
     TestableCachingCatalog catalog =
@@ -246,6 +281,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
     Assertions.assertThat(catalog.remainingAgeFor(tableIdent)).get().isEqualTo(HALF_OF_EXPIRATION);
   }
 
+  /**
+   * 测试场景：cache expiration eagerly removes metadata tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCacheExpirationEagerlyRemovesMetadataTables() throws IOException {
     TestableCachingCatalog catalog =
@@ -298,6 +338,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
                     .doesNotContainKeys(metadataTable));
   }
 
+  /**
+   * 测试场景：deadlock。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeadlock() throws IOException, InterruptedException {
     HadoopCatalog underlyingCatalog = hadoopCatalog();
@@ -342,6 +387,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
     createdTables.forEach(table -> catalog.dropTable(table, true));
   }
 
+  /**
+   * 测试场景：caching catalog rejects expiration interval of zero。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCachingCatalogRejectsExpirationIntervalOfZero() {
     Assertions.assertThatThrownBy(
@@ -351,6 +401,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
             "When cache.expiration-interval-ms is set to 0, the catalog cache should be disabled. This indicates a bug.");
   }
 
+  /**
+   * 测试场景：cache expiration is disabled by a negative value。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCacheExpirationIsDisabledByANegativeValue() throws IOException {
     TestableCachingCatalog catalog =
@@ -365,6 +420,11 @@ public class TestCachingCatalog extends HadoopTableTestBase {
         .isFalse();
   }
 
+  /**
+   * 测试场景：invalidate table for chained caching catalogs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidateTableForChainedCachingCatalogs() throws Exception {
     TestableCachingCatalog wrappedCatalog =
@@ -380,6 +440,7 @@ public class TestCachingCatalog extends HadoopTableTestBase {
     Assertions.assertThat(wrappedCatalog.cache().asMap()).doesNotContainKey(tableIdent);
   }
 
+  /** 辅助方法：metadata tables。 */
   public static TableIdentifier[] metadataTables(TableIdentifier tableIdent) {
     return Arrays.stream(MetadataTableType.values())
         .map(type -> TableIdentifier.parse(tableIdent + "." + type.name().toLowerCase(Locale.ROOT)))

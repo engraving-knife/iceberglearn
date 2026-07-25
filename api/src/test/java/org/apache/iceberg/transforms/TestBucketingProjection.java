@@ -45,8 +45,16 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestBucketingProjection 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestBucketingProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestBucketingProjection {
 
+  /** 辅助方法：assertProjectionStrict。 */
   public void assertProjectionStrict(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -77,18 +85,21 @@ public class TestBucketingProjection {
     }
   }
 
+  /** 辅助方法：assertProjectionStrictValue。 */
   public void assertProjectionStrictValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
     Expression projection = Projections.strict(spec).project(filter);
     assertThat(expectedOp).isEqualTo(projection.op());
   }
 
+  /** 辅助方法：assertProjectionInclusiveValue。 */
   public void assertProjectionInclusiveValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
     Expression projection = Projections.inclusive(spec).project(filter);
     assertThat(expectedOp).isEqualTo(projection.op());
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   public void assertProjectionInclusive(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -119,6 +130,11 @@ public class TestBucketingProjection {
     }
   }
 
+  /**
+   * 测试场景：Bucket Integer Strict。
+   *
+   * <p>验证该方法在 Bucket Integer Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketIntegerStrict() {
     Integer value = 100;
@@ -142,6 +158,11 @@ public class TestBucketingProjection {
     assertProjectionStrictValue(spec, in("value", value, value + 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket Integer Inclusive。
+   *
+   * <p>验证该方法在 Bucket Integer Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketIntegerInclusive() {
     Integer value = 100;
@@ -189,6 +210,11 @@ public class TestBucketingProjection {
     assertProjectionStrictValue(spec, in("value", value, value + 1), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket Long Inclusive。
+   *
+   * <p>验证该方法在 Bucket Long Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketLongInclusive() {
     Long value = 100L;
@@ -211,6 +237,11 @@ public class TestBucketingProjection {
         spec, notIn("value", value, value + 1), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Bucket Decimal Strict。
+   *
+   * <p>验证该方法在 Bucket Decimal Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketDecimalStrict() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -237,6 +268,11 @@ public class TestBucketingProjection {
         spec, in("value", value, value.add(delta)), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket Decimal Inclusive。
+   *
+   * <p>验证该方法在 Bucket Decimal Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketDecimalInclusive() {
     Types.DecimalType type = Types.DecimalType.of(9, 2);
@@ -264,6 +300,11 @@ public class TestBucketingProjection {
         spec, notIn("value", value, value.add(delta)), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Bucket String Strict。
+   *
+   * <p>验证该方法在 Bucket String Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketStringStrict() {
     String value = "abcdefg";
@@ -285,6 +326,11 @@ public class TestBucketingProjection {
         spec, in("value", value, value + "abc"), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket String Inclusive。
+   *
+   * <p>验证该方法在 Bucket String Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketStringInclusive() {
     String value = "abcdefg";
@@ -307,6 +353,11 @@ public class TestBucketingProjection {
         spec, notIn("value", value, value + "abc"), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Bucket Byte Buffer Strict。
+   *
+   * <p>验证该方法在 Bucket Byte Buffer Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketByteBufferStrict() throws Exception {
     ByteBuffer value = ByteBuffer.wrap("abcdefg".getBytes("UTF-8"));
@@ -328,6 +379,11 @@ public class TestBucketingProjection {
     assertProjectionStrictValue(spec, in("value", value, anotherValue), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket Byte Buffer Inclusive。
+   *
+   * <p>验证该方法在 Bucket Byte Buffer Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketByteBufferInclusive() throws Exception {
     ByteBuffer value = ByteBuffer.wrap("abcdefg".getBytes("UTF-8"));
@@ -351,6 +407,11 @@ public class TestBucketingProjection {
         spec, notIn("value", value, anotherValue), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Bucket UUID Strict。
+   *
+   * <p>验证该方法在 Bucket UUID Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketUUIDStrict() {
     UUID value = new UUID(123L, 456L);
@@ -372,6 +433,11 @@ public class TestBucketingProjection {
     assertProjectionStrictValue(spec, in("value", value, anotherValue), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Bucket UUID Inclusive。
+   *
+   * <p>验证该方法在 Bucket UUID Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testBucketUUIDInclusive() {
     UUID value = new UUID(123L, 456L);

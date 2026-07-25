@@ -23,8 +23,21 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestUpdateRequirementParser，用于验证 Update Requirement Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Update Requirement Parser
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestUpdateRequirementParser {
 
+  /**
+   * 测试场景：update requirement without requirement type cannot parse。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateRequirementWithoutRequirementTypeCannotParse() {
     List<String> invalidJson =
@@ -39,6 +52,11 @@ public class TestUpdateRequirementParser {
     }
   }
 
+  /**
+   * 测试场景：assert uuid from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertUUIDFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_TABLE_UUID;
@@ -48,6 +66,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert uuid to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertUUIDToJson() {
     String uuid = "2cc52516-5e73-41f2-b139-545d41a4e151";
@@ -58,6 +81,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert table does not exist from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertTableDoesNotExistFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_TABLE_DOES_NOT_EXIST;
@@ -66,6 +94,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert table does not exist to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertTableDoesNotExistToJson() {
     String expected = "{\"type\":\"assert-create\"}";
@@ -75,6 +108,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert ref snapshot id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertRefSnapshotIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_REF_SNAPSHOT_ID;
@@ -88,6 +126,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert ref snapshot id to json with null snapshot id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertRefSnapshotIdToJsonWithNullSnapshotId() {
     String requirementType = UpdateRequirementParser.ASSERT_REF_SNAPSHOT_ID;
@@ -101,6 +144,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert ref snapshot id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertRefSnapshotIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_REF_SNAPSHOT_ID;
@@ -116,6 +164,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert ref snapshot id from json with null snapshot id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertRefSnapshotIdFromJsonWithNullSnapshotId() {
     String requirementType = UpdateRequirementParser.ASSERT_REF_SNAPSHOT_ID;
@@ -131,6 +184,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert last assigned field id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertLastAssignedFieldIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_LAST_ASSIGNED_FIELD_ID;
@@ -144,6 +202,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert last assigned field id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertLastAssignedFieldIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_LAST_ASSIGNED_FIELD_ID;
@@ -158,6 +221,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert current schema id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertCurrentSchemaIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_CURRENT_SCHEMA_ID;
@@ -168,6 +236,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert current schema id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertCurrentSchemaIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_CURRENT_SCHEMA_ID;
@@ -180,6 +253,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert last assigned partition id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertLastAssignedPartitionIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_LAST_ASSIGNED_PARTITION_ID;
@@ -193,6 +271,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert last assigned partition id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertLastAssignedPartitionIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_LAST_ASSIGNED_PARTITION_ID;
@@ -208,6 +291,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert default spec id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertDefaultSpecIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_DEFAULT_SPEC_ID;
@@ -218,6 +306,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert default spec id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertDefaultSpecIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_DEFAULT_SPEC_ID;
@@ -230,6 +323,11 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：assert default sort order id from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertDefaultSortOrderIdFromJson() {
     String requirementType = UpdateRequirementParser.ASSERT_DEFAULT_SORT_ORDER_ID;
@@ -241,6 +339,11 @@ public class TestUpdateRequirementParser {
     assertEquals(requirementType, expected, UpdateRequirementParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assert default sort order id to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssertDefaultSortOrderIdToJson() {
     String requirementType = UpdateRequirementParser.ASSERT_DEFAULT_SORT_ORDER_ID;
@@ -254,6 +357,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected);
   }
 
+  /** 辅助方法：assert equals。 */
   public void assertEquals(
       String requirementType, UpdateRequirement expected, UpdateRequirement actual) {
     switch (requirementType) {
@@ -303,6 +407,7 @@ public class TestUpdateRequirementParser {
     }
   }
 
+  /** 辅助方法：compare assert table uuid。 */
   private static void compareAssertTableUUID(
       UpdateRequirement.AssertTableUUID expected, UpdateRequirement.AssertTableUUID actual) {
     Assertions.assertThat(actual.uuid())
@@ -322,6 +427,7 @@ public class TestUpdateRequirementParser {
         .hasSameClassAs(expected);
   }
 
+  /** 辅助方法：compare assert ref snapshot id。 */
   private static void compareAssertRefSnapshotId(
       UpdateRequirement.AssertRefSnapshotID expected,
       UpdateRequirement.AssertRefSnapshotID actual) {
@@ -333,6 +439,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected.snapshotId());
   }
 
+  /** 辅助方法：compare assert last assigned field id。 */
   private static void compareAssertLastAssignedFieldId(
       UpdateRequirement.AssertLastAssignedFieldId expected,
       UpdateRequirement.AssertLastAssignedFieldId actual) {
@@ -341,6 +448,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected.lastAssignedFieldId());
   }
 
+  /** 辅助方法：compare assert current schema id。 */
   private static void compareAssertCurrentSchemaId(
       UpdateRequirement.AssertCurrentSchemaID expected,
       UpdateRequirement.AssertCurrentSchemaID actual) {
@@ -349,6 +457,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected.schemaId());
   }
 
+  /** 辅助方法：compare assert last assigned partition id。 */
   private static void compareAssertLastAssignedPartitionId(
       UpdateRequirement.AssertLastAssignedPartitionId expected,
       UpdateRequirement.AssertLastAssignedPartitionId actual) {
@@ -357,6 +466,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected.lastAssignedPartitionId());
   }
 
+  /** 辅助方法：compare assert default spec id。 */
   private static void compareAssertDefaultSpecId(
       UpdateRequirement.AssertDefaultSpecID expected,
       UpdateRequirement.AssertDefaultSpecID actual) {
@@ -365,6 +475,7 @@ public class TestUpdateRequirementParser {
         .isEqualTo(expected.specId());
   }
 
+  /** 辅助方法：compare assert default sort order id。 */
   private static void compareAssertDefaultSortOrderId(
       UpdateRequirement.AssertDefaultSortOrderID expected,
       UpdateRequirement.AssertDefaultSortOrderID actual) {

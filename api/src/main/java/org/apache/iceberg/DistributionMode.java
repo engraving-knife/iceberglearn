@@ -22,19 +22,22 @@ import java.util.Locale;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * Enum of supported write distribution mode, it defines the write behavior of batch or streaming
- * job:
+ * 文件级说明：写入分布模式枚举，定义批式或流式作业的写入数据分布行为。
  *
- * <p>1. none: don't shuffle rows. It is suitable for scenarios where the rows are located in only
- * few partitions, otherwise that may produce too many small files because each task is writing rows
- * into different partitions randomly.
+ * <p>所属模块：iceberg-api（核心接口层）。
  *
- * <p>2. hash: hash distribute by partition key, which is suitable for the scenarios where the rows
- * are located into different partitions evenly.
+ * <p>职责：定义三种写入分布模式，指导引擎在写入前如何对数据进行 shuffle：
  *
- * <p>3. range: range distribute by partition key (or sort key if table has an {@link SortOrder}),
- * which is suitable for the scenarios where rows are located into different partitions with skew
- * distribution.
+ * <ul>
+ *   <li>{@link #NONE}：不 shuffle。适合数据集中在少数分区的场景；否则各 task 会随机写不同分区， 产生过多小文件。
+ *   <li>{@link #HASH}：按分区键哈希分布。适合数据在各分区均匀分布的场景。
+ *   <li>{@link #RANGE}：按分区键（或表有 {@link SortOrder} 时按排序键）范围分布。适合数据在各 分区分布倾斜的场景。
+ * </ul>
+ *
+ * <p>设计意图：通过表属性 {@code write.distribution-mode} 配置，让 Iceberg 在不同数据分布特征下
+ * 平衡写入并行度与文件数量。以枚举形式定义并附带字符串名，便于序列化与跨引擎统一语义。
+ *
+ * <p>上下游关系：由 core 模块在写入规划时读取；被 Spark/Flink 等引擎集成模块用于决定 shuffle 策略。
  */
 public enum DistributionMode {
   NONE("none"),
@@ -47,10 +50,21 @@ public enum DistributionMode {
     this.modeName = modeName;
   }
 
+  /** 返回该分布模式的字符串名称（如 "none"、"hash"、"range"）。 */
   public String modeName() {
     return modeName;
   }
 
+  /**
+   * 根据字符串名称解析出对应的 {@link DistributionMode}。
+   *
+   * <p>逻辑：先校验入参非 null，再将其大写化后通过 {@link Enum#valueOf} 匹配枚举； 匹配失败时抛出 {@link
+   * IllegalArgumentException}。
+   *
+   * @param modeName 模式名称字符串（大小写不敏感）
+   * @return 对应的分布模式枚举
+   * @throws IllegalArgumentException 若入参为 null 或无法识别
+   */
   public static DistributionMode fromName(String modeName) {
     Preconditions.checkArgument(null != modeName, "Invalid distribution mode: null");
     try {

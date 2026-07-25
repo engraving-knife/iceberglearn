@@ -21,12 +21,23 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
 
+/**
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 DropBranch。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class DropBranch(table: Seq[String], branch: String, ifExists: Boolean) extends LeafCommand {
 
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"DropBranch branch: ${branch} for table: ${table.quoted}"
   }

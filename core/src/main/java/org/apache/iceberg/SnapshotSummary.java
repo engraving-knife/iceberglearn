@@ -26,6 +26,22 @@ import org.apache.iceberg.relocated.com.google.common.base.Strings;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 快照摘要（summary）的键名常量与工具。
+ *
+ * <p>所属模块：iceberg-core。职责：定义快照 summary map 中使用的标准键名（added/deleted/total 文件数、
+ * 记录数、字节数等），并提供合并/序列化摘要的工具方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>常量集中：所有 summary 键在此声明，避免散落各处的字符串字面量。
+ *   <li>合并算法：在 squash 多个快照时合并计数，正确处理增删抵消。
+ *   <li>MapJoiner：把摘要 map 序列化为单行字符串，便于写入 manifest。
+ * </ul>
+ *
+ * <p>上下游关系：被写入路径、{@link SnapshotProducer}、各引擎读取快照摘要时引用。
+ */
 public class SnapshotSummary {
   public static final String ADDED_FILES_PROP = "added-data-files";
   public static final String DELETED_FILES_PROP = "deleted-data-files";
@@ -61,8 +77,14 @@ public class SnapshotSummary {
 
   public static final MapJoiner MAP_JOINER = Joiner.on(",").withKeyValueSeparator("=");
 
+  /** 私有构造：工具类禁止实例化。 */
   private SnapshotSummary() {}
 
+  /**
+   * 创建快照摘要构建器。
+   *
+   * @return 新的 Builder 实例
+   */
   public static Builder builder() {
     return new Builder();
   }
@@ -357,6 +379,14 @@ public class SnapshotSummary {
     }
   }
 
+  /**
+   * 当表达式为 true 时，把属性以字符串形式写入 builder。
+   *
+   * @param expression 条件表达式
+   * @param builder 属性 map 构建器
+   * @param property 属性键名
+   * @param value 属性值（会调用 {@link String#valueOf} 转字符串）
+   */
   private static void setIf(
       boolean expression,
       ImmutableMap.Builder<String, String> builder,

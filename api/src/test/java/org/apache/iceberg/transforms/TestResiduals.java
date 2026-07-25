@@ -48,7 +48,19 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestResiduals 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestResiduals 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestResiduals {
+  /**
+   * 测试场景：Identity Transform Residuals。
+   *
+   * <p>验证该方法在 Identity Transform Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityTransformResiduals() {
     Schema schema =
@@ -91,6 +103,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Case Insensitive Identity Transform Residuals。
+   *
+   * <p>验证该方法在 Case Insensitive Identity Transform Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveIdentityTransformResiduals() {
     Schema schema =
@@ -133,6 +150,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Case Sensitive Identity Transform Residuals。
+   *
+   * <p>验证该方法在 Case Sensitive Identity Transform Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveIdentityTransformResiduals() {
     Schema schema =
@@ -149,6 +171,11 @@ public class TestResiduals {
         .hasMessageContaining("Cannot find field 'DATEINT' in struct");
   }
 
+  /**
+   * 测试场景：Unpartitioned Residuals。
+   *
+   * <p>验证该方法在 Unpartitioned Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedResiduals() {
     Expression[] expressions =
@@ -176,6 +203,11 @@ public class TestResiduals {
     }
   }
 
+  /**
+   * 测试场景：In。
+   *
+   * <p>验证该方法在 In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIn() {
     Schema schema =
@@ -195,6 +227,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：In Timestamp。
+   *
+   * <p>验证该方法在 In Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testInTimestamp() {
     Schema schema =
@@ -224,6 +261,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Not In。
+   *
+   * <p>验证该方法在 Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotIn() {
     Schema schema =
@@ -243,6 +285,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Is Na N。
+   *
+   * <p>验证该方法在 Is Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaN() {
     Schema schema =
@@ -273,6 +320,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     Schema schema =
@@ -303,6 +355,11 @@ public class TestResiduals {
     assertThat(residual).isEqualTo(alwaysTrue());
   }
 
+  /**
+   * 测试场景：Not In Timestamp。
+   *
+   * <p>验证该方法在 Not In Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInTimestamp() {
     Schema schema =

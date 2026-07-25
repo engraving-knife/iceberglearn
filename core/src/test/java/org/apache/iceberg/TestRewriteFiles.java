@@ -38,11 +38,20 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.internal.util.collections.Sets;
 
+/**
+ * 测试类：TestRewriteFiles，用于验证 Rewrite Files 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Rewrite Files 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestRewriteFiles extends TableTestBase {
 
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -53,11 +62,17 @@ public class TestRewriteFiles extends TableTestBase {
     };
   }
 
+  /** 辅助方法：rewrite files。 */
   public TestRewriteFiles(int formatVersion, String branch) {
     super(formatVersion);
     this.branch = branch;
   }
 
+  /**
+   * 测试场景：empty table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTable() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -90,6 +105,11 @@ public class TestRewriteFiles extends TableTestBase {
         .hasMessage("Missing required files to delete: /path/to/data-a-deletes.parquet");
   }
 
+  /**
+   * 测试场景：add only。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddOnly() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -133,6 +153,11 @@ public class TestRewriteFiles extends TableTestBase {
             "Delete files to add must be empty because there's no delete file to be rewritten");
   }
 
+  /**
+   * 测试场景：delete only。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteOnly() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -174,6 +199,11 @@ public class TestRewriteFiles extends TableTestBase {
         .hasMessage("Files to delete cannot be empty");
   }
 
+  /**
+   * 测试场景：delete with duplicate entries in manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteWithDuplicateEntriesInManifest() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -212,6 +242,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 3 manifests should exist", 3, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：add and delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAndDelete() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -249,6 +284,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 3 manifests should exist", 3, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：rewrite data and delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteDataAndDeleteFiles() {
     Assume.assumeTrue(
@@ -326,6 +366,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 5 manifests should exist", 5, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：rewrite data and assign old sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteDataAndAssignOldSequenceNumber() {
     Assume.assumeTrue(
@@ -410,6 +455,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 4 manifests should exist", 4, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailure() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -438,6 +488,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 1 manifest should exist", 1, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：failure when rewrite both data and delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailureWhenRewriteBothDataAndDeleteFiles() {
     Assume.assumeTrue(
@@ -505,6 +560,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 2 manifest should exist", 2, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：recovery。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecovery() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -537,6 +597,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 3 manifests should exist", 3, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：recover when rewrite both data and delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecoverWhenRewriteBothDataAndDeleteFiles() {
     Assume.assumeTrue(
@@ -605,6 +670,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 5 manifest should exist", 5, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：replace equality deletes with position deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceEqualityDeletesWithPositionDeletes() {
     Assume.assumeTrue(
@@ -664,6 +734,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("4 manifests should exist", 4, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：remove all deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveAllDeletes() {
     Assume.assumeTrue(
@@ -710,6 +785,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("4 manifests should exist", 4, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：delete non existent file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteNonExistentFile() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -734,6 +814,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 1 manifests should exist", 1, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：already deleted file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAlreadyDeletedFile() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -777,6 +862,11 @@ public class TestRewriteFiles extends TableTestBase {
     Assert.assertEquals("Only 3 manifests should exist", 3, listManifestFiles().size());
   }
 
+  /**
+   * 测试场景：new delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNewDeleteFile() {
     Assume.assumeTrue("Delete files are only supported in v2", formatVersion > 1);

@@ -100,8 +100,13 @@ import scala.collection.mutable.Builder;
 import scala.runtime.AbstractPartialFunction;
 
 /**
- * Java version of the original SparkTableUtil.scala
- * https://github.com/apache/iceberg/blob/apache-iceberg-0.8.0-incubating/spark/src/main/scala/org/apache/iceberg/spark/SparkTableUtil.scala
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 表工具类，提供导入外部文件、列举快照文件、统计文件等与 Spark Dataset 交互的静态方法。
+ *
+ * <p>设计意图：将文件级操作通过 Spark Dataset 并行化，提升大表操作效率。
+ *
+ * <p>上下游关系：由 BaseSparkAction / AddFilesProcedure / SnapshotTableSparkAction 等调用。
  */
 public class SparkTableUtil {
 
@@ -269,7 +274,7 @@ public class SparkTableUtil {
           e, "Unknown table: %s. Table not found in catalog.", tableIdent);
     }
   }
-
+  /** 执行 listPartition 相关操作。 */
   private static List<DataFile> listPartition(
       SparkPartition partition,
       PartitionSpec spec,
@@ -285,7 +290,7 @@ public class SparkTableUtil {
         metricsConfig,
         mapping);
   }
-
+  /** 转换为 SparkPartition。 */
   private static SparkPartition toSparkPartition(
       CatalogTablePartition partition, CatalogTable table) {
     Option<URI> locationUri = partition.storage().locationUri();
@@ -302,12 +307,13 @@ public class SparkTableUtil {
         JavaConverters.mapAsJavaMapConverter(partition.spec()).asJava();
     return new SparkPartition(partitionSpec, uri, format);
   }
-
+  /** 执行 resolveAttrs 相关操作。 */
   private static Expression resolveAttrs(SparkSession spark, String table, Expression expr) {
     Function2<String, String, Object> resolver = spark.sessionState().analyzer().resolver();
     LogicalPlan plan = spark.table(table).queryExecution().analyzed();
     return expr.transform(
         new AbstractPartialFunction<Expression, Expression>() {
+          /** 应用转换。 */
           @Override
           public Expression apply(Expression attr) {
             UnresolvedAttribute unresolvedAttribute = (UnresolvedAttribute) attr;
@@ -320,14 +326,14 @@ public class SparkTableUtil {
                   String.format("Could not resolve %s using columns: %s", attr, plan.output()));
             }
           }
-
+          /** 判断是否 DefinedAt。 */
           @Override
           public boolean isDefinedAt(Expression attr) {
             return attr instanceof UnresolvedAttribute;
           }
         });
   }
-
+  /** 执行 buildManifest 相关操作。 */
   private static Iterator<ManifestFile> buildManifest(
       SerializableConfiguration conf,
       PartitionSpec spec,
@@ -460,7 +466,7 @@ public class SparkTableUtil {
     importSparkTable(
         spark, sourceTableIdent, targetTable, stagingDir, Collections.emptyMap(), false);
   }
-
+  /** 执行 importUnpartitionedSparkTable 相关操作。 */
   private static void importUnpartitionedSparkTable(
       SparkSession spark,
       TableIdentifier sourceTableIdent,
@@ -633,7 +639,7 @@ public class SparkTableUtil {
       String stagingDir) {
     importSparkPartitions(spark, partitions, targetTable, spec, stagingDir, false);
   }
-
+  /** 执行 filterPartitions 相关操作。 */
   public static List<SparkPartition> filterPartitions(
       List<SparkPartition> partitions, Map<String, String> partitionFilter) {
     if (partitionFilter.isEmpty()) {
@@ -644,7 +650,7 @@ public class SparkTableUtil {
           .collect(Collectors.toList());
     }
   }
-
+  /** 执行 deleteManifests 相关操作。 */
   private static void deleteManifests(FileIO io, List<ManifestFile> manifests) {
     Tasks.foreach(manifests)
         .executeWith(ThreadPools.getWorkerPool())
@@ -652,12 +658,12 @@ public class SparkTableUtil {
         .suppressFailureWhenFinished()
         .run(item -> io.deleteFile(item.path()));
   }
-
+  /** 执行 loadMetadataTable 相关操作。 */
   public static Dataset<Row> loadMetadataTable(
       SparkSession spark, Table table, MetadataTableType type) {
     return loadMetadataTable(spark, table, type, ImmutableMap.of());
   }
-
+  /** 执行 loadMetadataTable 相关操作。 */
   public static Dataset<Row> loadMetadataTable(
       SparkSession spark, Table table, MetadataTableType type, Map<String, String> extraOptions) {
     SparkTable metadataTable =
@@ -696,7 +702,7 @@ public class SparkTableUtil {
     }
     return branch;
   }
-
+  /** 执行 wapEnabled 相关操作。 */
   public static boolean wapEnabled(Table table) {
     return PropertyUtil.propertyAsBoolean(
         table.properties(),
@@ -715,19 +721,19 @@ public class SparkTableUtil {
       this.uri = uri;
       this.format = format;
     }
-
+    /** 返回 Values 属性。 */
     public Map<String, String> getValues() {
       return values;
     }
-
+    /** 返回 Uri 属性。 */
     public String getUri() {
       return uri;
     }
-
+    /** 返回 Format 属性。 */
     public String getFormat() {
       return format;
     }
-
+    /** 返回字符串表示。 */
     @Override
     public String toString() {
       return MoreObjects.toStringHelper(this)
@@ -736,7 +742,7 @@ public class SparkTableUtil {
           .add("format", format)
           .toString();
     }
-
+    /** 判断是否相等。 */
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -750,7 +756,7 @@ public class SparkTableUtil {
           && Objects.equal(uri, that.uri)
           && Objects.equal(format, that.format);
     }
-
+    /** 返回哈希码。 */
     @Override
     public int hashCode() {
       return Objects.hashCode(values, uri, format);

@@ -26,10 +26,27 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 基于排序（sort）策略的数据文件重写器。
+ *
+ * <p>所属模块：iceberg-spark（actions 子包，提供基于 Spark 的表维护动作实现）。
+ *
+ * <p>职责：在重写数据文件时按指定排序顺序对数据进行全局排序，使输出文件在排序键上 连续分布，提升后续查询的数据跳跃（data skipping）效果。
+ *
+ * <p>设计意图：继承 {@link SparkShufflingDataRewriter} 复用 shuffle 框架， 仅提供排序顺序与排序后数据集的转换。构造时校验排序顺序有效性，
+ * 支持使用表已有排序顺序或外部传入的排序顺序两种方式。
+ *
+ * <p>上下游关系：被数据文件重写动作按策略选中并调用，依赖父类完成 shuffle 与写出。
+ */
 class SparkSortDataRewriter extends SparkShufflingDataRewriter {
 
   private final SortOrder sortOrder;
 
+  /**
+   * 使用表自身排序顺序构造重写器。
+   *
+   * @throws IllegalArgumentException 当表未配置有效排序顺序时抛出
+   */
   SparkSortDataRewriter(SparkSession spark, Table table) {
     super(spark, table);
     Preconditions.checkArgument(
@@ -39,6 +56,12 @@ class SparkSortDataRewriter extends SparkShufflingDataRewriter {
     this.sortOrder = table.sortOrder();
   }
 
+  /**
+   * 使用外部指定的排序顺序构造重写器。
+   *
+   * @param sortOrder 外部传入的排序顺序，必须非空且已排序
+   * @throws IllegalArgumentException 当排序顺序为空或未排序时抛出
+   */
   SparkSortDataRewriter(SparkSession spark, Table table, SortOrder sortOrder) {
     super(spark, table);
     Preconditions.checkArgument(
@@ -47,16 +70,25 @@ class SparkSortDataRewriter extends SparkShufflingDataRewriter {
     this.sortOrder = sortOrder;
   }
 
+  /** 返回该重写策略的可读名称。 */
   @Override
   public String description() {
     return "SORT";
   }
 
+  /** 返回本次重写使用的排序顺序。 */
   @Override
   protected SortOrder sortOrder() {
     return sortOrder;
   }
 
+  /**
+   * 对数据集应用排序函数得到排序后的数据集。
+   *
+   * @param df 原始数据集
+   * @param sortFunc 排序变换函数
+   * @return 排序后的数据集
+   */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, Function<Dataset<Row>, Dataset<Row>> sortFunc) {
     return sortFunc.apply(df);

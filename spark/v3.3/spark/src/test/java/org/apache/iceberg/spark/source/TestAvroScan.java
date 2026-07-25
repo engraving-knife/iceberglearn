@@ -47,6 +47,13 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestAvroScan 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Avro扫描 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAvroScan extends AvroDataTest {
   private static final Configuration CONF = new Configuration();
 
@@ -54,11 +61,13 @@ public class TestAvroScan extends AvroDataTest {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestAvroScan.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestAvroScan.spark;
@@ -66,6 +75,7 @@ public class TestAvroScan extends AvroDataTest {
     currentSpark.stop();
   }
 
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     File parent = temp.newFolder("avro");

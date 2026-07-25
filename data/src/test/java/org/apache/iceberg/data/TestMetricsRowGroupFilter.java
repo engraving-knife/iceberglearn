@@ -89,8 +89,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestMetricsRowGroupFilter 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestMetricsRowGroupFilter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestMetricsRowGroupFilter {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "format = {0}")
   public static Object[] parameters() {
     return new Object[] {"parquet", "orc"};
@@ -98,6 +106,7 @@ public class TestMetricsRowGroupFilter {
 
   private final FileFormat format;
 
+  /** 辅助方法：TestMetricsRowGroupFilter。 */
   public TestMetricsRowGroupFilter(String format) {
     this.format = FileFormat.fromString(format);
   }
@@ -162,6 +171,7 @@ public class TestMetricsRowGroupFilter {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：createInputFile。 */
   @Before
   public void createInputFile() throws IOException {
     switch (format) {
@@ -177,6 +187,7 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /** 辅助方法：createOrcInputFile。 */
   public void createOrcInputFile() throws IOException {
     this.orcFile = temp.newFile();
     Assert.assertTrue(orcFile.delete());
@@ -224,6 +235,7 @@ public class TestMetricsRowGroupFilter {
     orcFile.deleteOnExit();
   }
 
+  /** 辅助方法：createParquetInputFile。 */
   private void createParquetInputFile() throws IOException {
     File parquetFile = temp.newFile();
     Assert.assertTrue(parquetFile.delete());
@@ -270,6 +282,11 @@ public class TestMetricsRowGroupFilter {
     parquetFile.deleteOnExit();
   }
 
+  /**
+   * 测试场景：All Nulls。
+   *
+   * <p>验证该方法在 All Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllNulls() {
     boolean shouldRead;
@@ -290,6 +307,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: struct type is not skipped", shouldRead);
   }
 
+  /**
+   * 测试场景：No Nulls。
+   *
+   * <p>验证该方法在 No Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoNulls() {
     boolean shouldRead = shouldRead(isNull("all_nulls"));
@@ -308,6 +330,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: struct type is not skipped", shouldRead);
   }
 
+  /**
+   * 测试场景：Float With Nan。
+   *
+   * <p>验证该方法在 Float With Nan 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatWithNan() {
     // NaN's should break Parquet's Min/Max stats we should be reading in all cases
@@ -327,6 +354,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue(shouldRead);
   }
 
+  /**
+   * 测试场景：Double With Nan。
+   *
+   * <p>验证该方法在 Double With Nan 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleWithNan() {
     boolean shouldRead = shouldRead(greaterThan("some_double_nans", 1.0));
@@ -345,6 +377,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: column with some nans contains target value", shouldRead);
   }
 
+  /**
+   * 测试场景：Is Na N。
+   *
+   * <p>验证该方法在 Is Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaN() {
     boolean shouldRead = shouldRead(isNaN("all_nans"));
@@ -371,6 +408,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should skip: all null column will not contain nan value", shouldRead);
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     boolean shouldRead = shouldRead(notNaN("all_nans"));
@@ -386,6 +428,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: NaN counts are not tracked in Parquet metrics", shouldRead);
   }
 
+  /**
+   * 测试场景：Required Column。
+   *
+   * <p>验证该方法在 Required Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredColumn() {
     boolean shouldRead = shouldRead(notNull("required"));
@@ -395,6 +442,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should skip: required columns are always non-null", shouldRead);
   }
 
+  /**
+   * 测试场景：Missing Column。
+   *
+   * <p>验证该方法在 Missing Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingColumn() {
     Assertions.assertThatThrownBy(() -> shouldRead(lessThan("missing", 5)))
@@ -403,6 +455,11 @@ public class TestMetricsRowGroupFilter {
         .hasMessageStartingWith("Cannot find field 'missing'");
   }
 
+  /**
+   * 测试场景：Column Not In File。
+   *
+   * <p>验证该方法在 Column Not In File 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnNotInFile() {
     Assume.assumeFalse(
@@ -428,6 +485,11 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Missing Stats Parquet。
+   *
+   * <p>验证该方法在 Missing Stats Parquet 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingStatsParquet() {
     Assume.assumeTrue(format == FileFormat.PARQUET);
@@ -451,6 +513,11 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Zero Record File Parquet。
+   *
+   * <p>验证该方法在 Zero Record File Parquet 条件下的行为是否符合预期。
+   */
   @Test
   public void testZeroRecordFileParquet() {
     Assume.assumeTrue(format == FileFormat.PARQUET);
@@ -475,6 +542,11 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -485,6 +557,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should skip: not(true)", shouldRead);
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -504,6 +581,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: and(true, true)", shouldRead);
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -518,6 +600,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: or(false, true)", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Lt。
+   *
+   * <p>验证该方法在 Integer Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLt() {
     boolean shouldRead = shouldRead(lessThan("id", INT_MIN_VALUE - 25));
@@ -533,6 +620,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Lt Eq。
+   *
+   * <p>验证该方法在 Integer Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLtEq() {
     boolean shouldRead = shouldRead(lessThanOrEqual("id", INT_MIN_VALUE - 25));
@@ -548,6 +640,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: many possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Gt。
+   *
+   * <p>验证该方法在 Integer Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGt() {
     boolean shouldRead = shouldRead(greaterThan("id", INT_MAX_VALUE + 6));
@@ -563,6 +660,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Gt Eq。
+   *
+   * <p>验证该方法在 Integer Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGtEq() {
     boolean shouldRead = shouldRead(greaterThanOrEqual("id", INT_MAX_VALUE + 6));
@@ -578,6 +680,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Eq。
+   *
+   * <p>验证该方法在 Integer Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerEq() {
     boolean shouldRead = shouldRead(equal("id", INT_MIN_VALUE - 25));
@@ -602,6 +709,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should not read: id above upper bound", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Not Eq。
+   *
+   * <p>验证该方法在 Integer Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEq() {
     boolean shouldRead = shouldRead(notEqual("id", INT_MIN_VALUE - 25));
@@ -626,6 +738,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: id above upper bound", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEqRewritten() {
     boolean shouldRead = shouldRead(not(equal("id", INT_MIN_VALUE - 25)));
@@ -650,6 +767,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: id above upper bound", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Lt。
+   *
+   * <p>验证该方法在 Struct Field Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLt() {
     boolean shouldRead = shouldRead(lessThan("struct_not_null.int_field", INT_MIN_VALUE - 25));
@@ -665,6 +787,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Lt Eq。
+   *
+   * <p>验证该方法在 Struct Field Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLtEq() {
     boolean shouldRead =
@@ -681,6 +808,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: many possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Gt。
+   *
+   * <p>验证该方法在 Struct Field Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGt() {
     boolean shouldRead = shouldRead(greaterThan("struct_not_null.int_field", INT_MAX_VALUE + 6));
@@ -696,6 +828,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Gt Eq。
+   *
+   * <p>验证该方法在 Struct Field Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGtEq() {
     boolean shouldRead =
@@ -712,6 +849,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: may possible ids", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Eq。
+   *
+   * <p>验证该方法在 Struct Field Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldEq() {
     boolean shouldRead = shouldRead(equal("struct_not_null.int_field", INT_MIN_VALUE - 25));
@@ -736,6 +878,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should not read: id above upper bound", shouldRead);
   }
 
+  /**
+   * 测试场景：Struct Field Not Eq。
+   *
+   * <p>验证该方法在 Struct Field Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldNotEq() {
     boolean shouldRead = shouldRead(notEqual("struct_not_null.int_field", INT_MIN_VALUE - 25));
@@ -760,12 +907,22 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: id above upper bound", shouldRead);
   }
 
+  /**
+   * 测试场景：Case Insensitive。
+   *
+   * <p>验证该方法在 Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitive() {
     boolean shouldRead = shouldRead(equal("ID", INT_MIN_VALUE - 25), false);
     Assert.assertFalse("Should not read: id below lower bound", shouldRead);
   }
 
+  /**
+   * 测试场景：String Starts With。
+   *
+   * <p>验证该方法在 String Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringStartsWith() {
     Assume.assumeFalse(
@@ -798,6 +955,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertFalse("Should not read: range doesn't match", shouldRead);
   }
 
+  /**
+   * 测试场景：String Not Starts With。
+   *
+   * <p>验证该方法在 String Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringNotStartsWith() {
     Assume.assumeFalse(
@@ -833,6 +995,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: range matches", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer In。
+   *
+   * <p>验证该方法在 Integer In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerIn() {
     boolean shouldRead = shouldRead(in("id", INT_MIN_VALUE - 25, INT_MIN_VALUE - 24));
@@ -867,6 +1034,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read: in on no nulls column", shouldRead);
   }
 
+  /**
+   * 测试场景：Integer Not In。
+   *
+   * <p>验证该方法在 Integer Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotIn() {
     boolean shouldRead = shouldRead(notIn("id", INT_MIN_VALUE - 25, INT_MIN_VALUE - 24));
@@ -908,12 +1080,22 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Some Nulls Not Eq。
+   *
+   * <p>验证该方法在 Some Nulls Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testSomeNullsNotEq() {
     boolean shouldRead = shouldRead(notEqual("some_nulls", "some"));
     Assert.assertTrue("Should read: notEqual on some nulls column", shouldRead);
   }
 
+  /**
+   * 测试场景：In Limit Parquet。
+   *
+   * <p>验证该方法在 In Limit Parquet 条件下的行为是否符合预期。
+   */
   @Test
   public void testInLimitParquet() {
     Assume.assumeTrue(format == FileFormat.PARQUET);
@@ -930,6 +1112,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should read if IN is not evaluated", shouldRead);
   }
 
+  /**
+   * 测试场景：Parquet Type Promotion。
+   *
+   * <p>验证该方法在 Parquet Type Promotion 条件下的行为是否符合预期。
+   */
   @Test
   public void testParquetTypePromotion() {
     Assume.assumeTrue("Only valid for Parquet", format == FileFormat.PARQUET);
@@ -940,6 +1127,11 @@ public class TestMetricsRowGroupFilter {
     Assert.assertTrue("Should succeed with promoted schema", shouldRead);
   }
 
+  /**
+   * 测试场景：Transform Filter。
+   *
+   * <p>验证该方法在 Transform Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransformFilter() {
     Assumptions.assumeThat(format).isEqualTo(FileFormat.PARQUET);
@@ -951,10 +1143,12 @@ public class TestMetricsRowGroupFilter {
         .isTrue();
   }
 
+  /** 辅助方法：shouldRead。 */
   private boolean shouldRead(Expression expression) {
     return shouldRead(expression, true);
   }
 
+  /** 辅助方法：shouldRead。 */
   private boolean shouldRead(Expression expression, boolean caseSensitive) {
     switch (format) {
       case ORC:
@@ -967,6 +1161,7 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /** 辅助方法：shouldReadOrc。 */
   private boolean shouldReadOrc(Expression expression, boolean caseSensitive) {
     try (CloseableIterable<org.apache.iceberg.data.Record> reader =
         ORC.read(Files.localInput(orcFile))
@@ -981,6 +1176,7 @@ public class TestMetricsRowGroupFilter {
     }
   }
 
+  /** 辅助方法：shouldReadParquet。 */
   private boolean shouldReadParquet(
       Expression expression,
       boolean caseSensitive,
@@ -990,22 +1186,27 @@ public class TestMetricsRowGroupFilter {
         .shouldRead(messageType, blockMetaData);
   }
 
+  /** 辅助方法：parquetInputFile。 */
   private org.apache.parquet.io.InputFile parquetInputFile(InputFile inFile) {
     return new org.apache.parquet.io.InputFile() {
+      /** 辅助方法：getLength。 */
       @Override
       public long getLength() throws IOException {
         return inFile.getLength();
       }
 
+      /** 辅助方法：newStream。 */
       @Override
       public org.apache.parquet.io.SeekableInputStream newStream() throws IOException {
         SeekableInputStream stream = inFile.newStream();
         return new DelegatingSeekableInputStream(stream) {
+          /** 辅助方法：getPos。 */
           @Override
           public long getPos() throws IOException {
             return stream.getPos();
           }
 
+          /** 辅助方法：seek。 */
           @Override
           public void seek(long newPos) throws IOException {
             stream.seek(newPos);

@@ -48,17 +48,28 @@ import org.apache.orc.storage.ql.exec.vector.MapColumnVector;
 import org.apache.orc.storage.ql.exec.vector.TimestampColumnVector;
 import org.apache.orc.storage.serde2.io.HiveDecimalWritable;
 
+/**
+ * Flink 专用的 ORC 值读取器工厂与内部实现集合。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：为各种 Iceberg 类型提供对应的 ORC 列向量读取器， 把 ORC 向量化数据转换为 Flink {@link
+ * RowData}/{@link ArrayData}/{@link MapData} 等。
+ *
+ * <p>设计意图：工厂模式 + 单例，按类型提供 reader 实例；被 {@link FlinkOrcReader} 调用。
+ */
 class FlinkOrcReaders {
   private FlinkOrcReaders() {}
 
+  /** 返回字符串读取器单例。 */
   static OrcValueReader<StringData> strings() {
     return StringReader.INSTANCE;
   }
 
+  /** 返回日期读取器单例。 */
   static OrcValueReader<Integer> dates() {
     return DateReader.INSTANCE;
   }
 
+  /** 按精度选择 Decimal18 或 Decimal38 读取器。 */
   static OrcValueReader<DecimalData> decimals(int precision, int scale) {
     if (precision <= 18) {
       return new Decimal18Reader(precision, scale);
@@ -69,32 +80,39 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 返回时间读取器单例。 */
   static OrcValueReader<Integer> times() {
     return TimeReader.INSTANCE;
   }
 
+  /** 返回不带时区的时间戳读取器单例。 */
   static OrcValueReader<TimestampData> timestamps() {
     return TimestampReader.INSTANCE;
   }
 
+  /** 返回带时区的时间戳读取器单例。 */
   static OrcValueReader<TimestampData> timestampTzs() {
     return TimestampTzReader.INSTANCE;
   }
 
+  /** 构造数组读取器。 */
   static <T> OrcValueReader<ArrayData> array(OrcValueReader<T> elementReader) {
     return new ArrayReader<>(elementReader);
   }
 
+  /** 构造 map 读取器。 */
   public static <K, V> OrcValueReader<MapData> map(
       OrcValueReader<K> keyReader, OrcValueReader<V> valueReader) {
     return new MapReader<>(keyReader, valueReader);
   }
 
+  /** 构造 struct 读取器，携带字段常量。 */
   public static OrcValueReader<RowData> struct(
       List<OrcValueReader<?>> readers, Types.StructType struct, Map<Integer, ?> idToConstant) {
     return new StructReader(readers, struct, idToConstant);
   }
 
+  /** 字符串读取器：把 ORC 字节向量转为 Flink StringData。 */
   private static class StringReader implements OrcValueReader<StringData> {
     private static final StringReader INSTANCE = new StringReader();
 
@@ -106,6 +124,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 日期读取器：从 LongColumnVector 读取 int 值。 */
   private static class DateReader implements OrcValueReader<Integer> {
     private static final DateReader INSTANCE = new DateReader();
 
@@ -115,6 +134,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 精度 <=18 的 Decimal 读取器，使用 unscaled long 表示。 */
   private static class Decimal18Reader implements OrcValueReader<DecimalData> {
     private final int precision;
     private final int scale;
@@ -140,6 +160,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 精度 19-38 的 Decimal 读取器，使用 BigDecimal 表示。 */
   private static class Decimal38Reader implements OrcValueReader<DecimalData> {
     private final int precision;
     private final int scale;
@@ -165,6 +186,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 时间读取器：微秒转毫秒（Flink 仅支持毫秒精度）。 */
   private static class TimeReader implements OrcValueReader<Integer> {
     private static final TimeReader INSTANCE = new TimeReader();
 
@@ -176,6 +198,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 不带时区的时间戳读取器，转 LocalDateTime。 */
   private static class TimestampReader implements OrcValueReader<TimestampData> {
     private static final TimestampReader INSTANCE = new TimestampReader();
 
@@ -190,6 +213,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 带时区的时间戳读取器，转 Instant。 */
   private static class TimestampTzReader implements OrcValueReader<TimestampData> {
     private static final TimestampTzReader INSTANCE = new TimestampTzReader();
 
@@ -204,6 +228,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** 数组读取器：按偏移和长度遍历子向量。 */
   private static class ArrayReader<T> implements OrcValueReader<ArrayData> {
     private final OrcValueReader<T> elementReader;
 
@@ -229,6 +254,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** map 读取器：按偏移和长度遍历 key/value 子向量。 */
   private static class MapReader<K, V> implements OrcValueReader<MapData> {
     private final OrcValueReader<K> keyReader;
     private final OrcValueReader<V> valueReader;
@@ -261,6 +287,7 @@ class FlinkOrcReaders {
     }
   }
 
+  /** struct 读取器：基于 GenericRowData 构造行数据。 */
   private static class StructReader extends OrcValueReaders.StructReader<RowData> {
     private final int numFields;
 

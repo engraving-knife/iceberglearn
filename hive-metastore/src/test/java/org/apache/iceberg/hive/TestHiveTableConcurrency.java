@@ -37,8 +37,20 @@ import org.apache.iceberg.relocated.com.google.common.util.concurrent.MoreExecut
 import org.apache.iceberg.util.Tasks;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestHiveTableConcurrency 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveTableConcurrency 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveTableConcurrency extends HiveTableBaseTest {
 
+  /**
+   * 测试场景：Concurrent Fast Appends。
+   *
+   * <p>验证该方法在 Concurrent Fast Appends 条件下的行为是否符合预期。
+   */
   @Test
   public synchronized void testConcurrentFastAppends() {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -80,6 +92,11 @@ public class TestHiveTableConcurrency extends HiveTableBaseTest {
     assertThat(icebergTable.currentSnapshot().allManifests(icebergTable.io())).hasSize(20);
   }
 
+  /**
+   * 测试场景：Concurrent Connections。
+   *
+   * <p>验证该方法在 Concurrent Connections 条件下的行为是否符合预期。
+   */
   @Test
   public synchronized void testConcurrentConnections() throws InterruptedException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);

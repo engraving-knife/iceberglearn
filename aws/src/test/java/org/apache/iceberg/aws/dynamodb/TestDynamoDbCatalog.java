@@ -35,6 +35,13 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 
+/**
+ * 文件级说明：测试 TestDynamoDbCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestDynamoDbCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDynamoDbCatalog {
 
   private static final String WAREHOUSE_PATH = "s3://bucket";
@@ -44,6 +51,7 @@ public class TestDynamoDbCatalog {
   private DynamoDbClient dynamo;
   private DynamoDbCatalog dynamoCatalog;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     dynamo = Mockito.mock(DynamoDbClient.class);
@@ -51,6 +59,11 @@ public class TestDynamoDbCatalog {
     dynamoCatalog.initialize(CATALOG_NAME, WAREHOUSE_PATH, new AwsProperties(), dynamo, null);
   }
 
+  /**
+   * 测试场景：Constructor Warehouse Path With End Slash。
+   *
+   * <p>验证该方法在 Constructor Warehouse Path With End Slash 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructorWarehousePathWithEndSlash() {
     DynamoDbCatalog catalogWithSlash = new DynamoDbCatalog();
@@ -63,6 +76,11 @@ public class TestDynamoDbCatalog {
     Assertions.assertThat(location).isEqualTo(WAREHOUSE_PATH + "/db.db/table");
   }
 
+  /**
+   * 测试场景：Default Warehouse Location No Db Uri。
+   *
+   * <p>验证该方法在 Default Warehouse Location No Db Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationNoDbUri() {
     Mockito.doReturn(GetItemResponse.builder().item(Maps.newHashMap()).build())
@@ -74,6 +92,11 @@ public class TestDynamoDbCatalog {
     Assertions.assertThat(defaultWarehouseLocation).isEqualTo(warehousePath);
   }
 
+  /**
+   * 测试场景：Default Warehouse Location Db Uri。
+   *
+   * <p>验证该方法在 Default Warehouse Location Db Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationDbUri() {
     String dbUri = "s3://bucket2/db";
@@ -91,6 +114,11 @@ public class TestDynamoDbCatalog {
     Assertions.assertThat(defaultWarehouseLocation).isEqualTo("s3://bucket2/db/table");
   }
 
+  /**
+   * 测试场景：Default Warehouse Location No Namespace。
+   *
+   * <p>验证该方法在 Default Warehouse Location No Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationNoNamespace() {
     Mockito.doReturn(GetItemResponse.builder().build())

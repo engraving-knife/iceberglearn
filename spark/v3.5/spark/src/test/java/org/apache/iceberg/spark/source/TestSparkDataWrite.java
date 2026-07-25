@@ -63,6 +63,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkDataWrite 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark数据写 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkDataWrite {
   private static final Configuration CONF = new Configuration();
@@ -75,6 +82,7 @@ public class TestSparkDataWrite {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[] {
@@ -86,16 +94,19 @@ public class TestSparkDataWrite {
     };
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkDataWrite.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** clear源cache。 */
   @Parameterized.AfterParam
   public static void clearSourceCache() {
     ManualSource.clearTables();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkDataWrite.spark;
@@ -103,11 +114,13 @@ public class TestSparkDataWrite {
     currentSpark.stop();
   }
 
+  /** 测试Spark数据写。 */
   public TestSparkDataWrite(String format, String branch) {
     this.format = FileFormat.fromString(format);
     this.branch = branch;
   }
 
+  /** 测试basic写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBasicWrite() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -160,6 +173,7 @@ public class TestSparkDataWrite {
     }
   }
 
+  /** 测试追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAppend() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -212,6 +226,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试空覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyOverwrite() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -258,6 +273,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwrite() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -311,6 +327,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试非分区覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedOverwrite() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -354,6 +371,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试非分区创建带target文件size通过表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedCreateWithTargetFileSizeViaTableProperties() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -406,21 +424,25 @@ public class TestSparkDataWrite {
         "All DataFiles contain 1000 rows", files.stream().allMatch(d -> d.recordCount() == 1000));
   }
 
+  /** 测试分区创建带target文件size通过选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedCreateWithTargetFileSizeViaOption() throws IOException {
     partitionedCreateWithTargetFileSizeViaOption(IcebergOptionsType.NONE);
   }
 
+  /** 测试分区fanout创建带target文件size通过选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedFanoutCreateWithTargetFileSizeViaOption() throws IOException {
     partitionedCreateWithTargetFileSizeViaOption(IcebergOptionsType.TABLE);
   }
 
+  /** 测试分区fanout创建带target文件size通过选项2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedFanoutCreateWithTargetFileSizeViaOption2() throws IOException {
     partitionedCreateWithTargetFileSizeViaOption(IcebergOptionsType.JOB);
   }
 
+  /** 测试写投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteProjection() throws IOException {
     Assume.assumeTrue(
@@ -459,6 +481,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试写投影带middle场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteProjectionWithMiddle() throws IOException {
     Assume.assumeTrue(
@@ -504,6 +527,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试视图返回recent结果场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testViewsReturnRecentResults() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -554,6 +578,7 @@ public class TestSparkDataWrite {
     Assert.assertEquals("Result rows should match", expected2, actual2);
   }
 
+  /** 分区创建带target文件size通过选项。 */
   public void partitionedCreateWithTargetFileSizeViaOption(IcebergOptionsType option)
       throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -635,6 +660,7 @@ public class TestSparkDataWrite {
         "All DataFiles contain 1000 rows", files.stream().allMatch(d -> d.recordCount() == 1000));
   }
 
+  /** 测试提交unknownexception场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCommitUnknownException() throws IOException {
     File parent = temp.newFolder(format.toString());
@@ -723,6 +749,7 @@ public class TestSparkDataWrite {
     JOB
   }
 
+  /** 路径带分支。 */
   private String locationWithBranch(File location) {
     if (branch == null) {
       return location.toString();
@@ -731,6 +758,7 @@ public class TestSparkDataWrite {
     return location + "#branch_" + branch;
   }
 
+  /** 创建分支。 */
   private void createBranch(Table table) {
     if (branch != null && !branch.equals(SnapshotRef.MAIN_BRANCH)) {
       table.manageSnapshots().createBranch(branch, table.currentSnapshot().snapshotId()).commit();

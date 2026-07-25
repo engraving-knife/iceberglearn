@@ -21,6 +21,13 @@ package org.apache.iceberg.spark;
 import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
+/**
+ * 文件级说明：测试 SparkCatalogConfig 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Spark目录配置 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public enum SparkCatalogConfig {
   HIVE(
       "testhive",
@@ -53,14 +60,17 @@ public enum SparkCatalogConfig {
     this.properties = properties;
   }
 
+  /** 目录name。 */
   public String catalogName() {
     return catalogName;
   }
 
+  /** 辅助方法：implementation。 */
   public String implementation() {
     return implementation;
   }
 
+  /** 属性。 */
   public Map<String, String> properties() {
     return properties;
   }

@@ -53,13 +53,23 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestMetadataTableReadableMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestMetadataTableReadableMetrics 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
   private static final String TABLE_NAME = "test_table";
 
+  /** 辅助方法：TestMetadataTableReadableMetrics，Metadata Table Readable Metrics。 */
   public TestMetadataTableReadableMetrics(String catalogName, Namespace baseNamespace) {
     super(catalogName, baseNamespace);
   }
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "catalogName={0}, baseNamespace={1}")
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
@@ -69,6 +79,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     return parameters;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     Configuration configuration = super.getTableEnv().getConfig().getConfiguration();
@@ -101,6 +112,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
           optional(8, "fixedCol", Types.FixedType.ofLength(3)),
           optional(9, "binaryCol", Types.BinaryType.get()));
 
+  /** 辅助方法：createPrimitiveTable，create Primitive Table。 */
   private Table createPrimitiveTable() throws IOException {
     Table table =
         catalog.createTable(
@@ -140,6 +152,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     return table;
   }
 
+  /** 辅助方法：createNestedTable，create Nested Table。 */
   private void createNestedTable() throws IOException {
     Table table =
         validationCatalog.createTable(
@@ -158,6 +171,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     table.newAppend().appendFile(dataFile).commit();
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     super.before();
@@ -166,6 +180,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     sql("USE %s", DATABASE);
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -174,6 +189,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /** 辅助方法：createPrimitiveRecord，create Primitive Record。 */
   protected GenericRecord createPrimitiveRecord(
       boolean booleanCol,
       int intCol,
@@ -197,6 +213,7 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     return record;
   }
 
+  /** 辅助方法：createNestedRecord，create Nested Record。 */
   private GenericRecord createNestedRecord(Long longCol, Double doubleCol) {
     GenericRecord record = GenericRecord.create(NESTED_SCHEMA);
     GenericRecord nested = GenericRecord.create(NESTED_STRUCT_TYPE);
@@ -208,10 +225,16 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     return record;
   }
 
+  /** 辅助方法：row，row。 */
   protected Object[] row(Object... values) {
     return values;
   }
 
+  /**
+   * 测试场景：Primitive Columns。
+   *
+   * <p>验证该方法在 Primitive Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimitiveColumns() throws Exception {
     createPrimitiveTable();
@@ -257,6 +280,11 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
     TestHelpers.assertRows(result, expected);
   }
 
+  /**
+   * 测试场景：Select Primitive Values。
+   *
+   * <p>验证该方法在 Select Primitive Values 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelectPrimitiveValues() throws Exception {
     createPrimitiveTable();
@@ -276,6 +304,11 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
         ImmutableList.of(Row.of(4L, 0)));
   }
 
+  /**
+   * 测试场景：Select Nested Values。
+   *
+   * <p>验证该方法在 Select Nested Values 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelectNestedValues() throws Exception {
     createNestedTable();
@@ -287,6 +320,11 @@ public class TestMetadataTableReadableMetrics extends FlinkCatalogTestBase {
         ImmutableList.of(Row.of(0L, 3L)));
   }
 
+  /**
+   * 测试场景：Nested Values。
+   *
+   * <p>验证该方法在 Nested Values 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedValues() throws Exception {
     createNestedTable();

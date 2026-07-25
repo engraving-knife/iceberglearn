@@ -40,6 +40,15 @@ import org.apache.spark.sql.connector.read.Scan;
 import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPositionDeltaWriteBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
 
   private static final Schema EXPECTED_ROW_ID_SCHEMA =
@@ -76,6 +85,11 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     this.checkOrdering = writeConf.checkOrdering();
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public DeltaWrite build() {
     Preconditions.checkArgument(
@@ -102,10 +116,12 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
 
     Distribution distribution =
         SparkDistributionAndOrderingUtil.buildPositionDeltaDistribution(
+            /** 执行该方法的具体逻辑。 */
             table, command, distributionMode());
     SortOrder[] ordering =
         SparkDistributionAndOrderingUtil.buildPositionDeltaOrdering(table, command);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkPositionDeltaWrite(
         spark,
         table,
@@ -119,11 +135,13 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
         ordering);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Schema dataSchema() {
     StructType dataSparkType = info.schema();
     return dataSparkType != null ? SparkSchemaUtil.convert(table.schema(), dataSparkType) : null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private DistributionMode distributionMode() {
     switch (command) {
       case DELETE:

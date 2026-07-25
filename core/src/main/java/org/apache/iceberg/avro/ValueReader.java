@@ -21,6 +21,31 @@ package org.apache.iceberg.avro;
 import java.io.IOException;
 import org.apache.avro.io.Decoder;
 
+/**
+ * 文件级说明：Avro 值读取器接口，定义从 Avro {@link org.apache.avro.io.Decoder} 读取单个值的基本契约。
+ *
+ * <p>所属模块：iceberg-core（avro 子包）。职责：声明 {@link #read(Decoder, Object)} 方法， 由各类型的具体实现（见 {@link
+ * ValueReaders}）完成解码。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>面向接口编程：读写栈只依赖此接口，具体实现可替换（反射读、Generic 读等）。
+ *   <li>reuse 参数支持对象复用，减少 GC 压力。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link GenericAvroReader} 等组合使用；具体实现在 {@link ValueReaders} 中。
+ *
+ * @param <T> 读取出的 Java 类型
+ */
 public interface ValueReader<T> {
+  /**
+   * 从解码器读取一个值。
+   *
+   * @param decoder Avro 解码器
+   * @param reuse 可复用对象（可为 null，由实现决定是否使用）
+   * @return 读取到的值
+   * @throws IOException 读取失败时抛出
+   */
   T read(Decoder decoder, Object reuse) throws IOException;
 }

@@ -39,29 +39,29 @@ import org.apache.spark.sql.types.StructType
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
 
+/**
+ * Spark Catalyst 分析阶段的规则或检查。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 AssignmentAlignmentSupport。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+ */
 trait AssignmentAlignmentSupport extends CastSupport {
 
   self: SQLConfHelper =>
 
+  /**
+   * Spark Catalyst 分析阶段的规则或检查，实现 UPDATE 行级操作。
+   *
+   * <p>所属模块：iceberg-spark-extensions v3.2。
+   * 类型：样例类 ColumnUpdate。
+   * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+   */
   private case class ColumnUpdate(ref: Seq[String], expr: Expression)
 
   /**
-   * Aligns assignments to match table columns.
-   * <p>
-   * This method processes and reorders given assignments so that each target column gets
-   * an expression it should be set to. If a column does not have a matching assignment,
-   * it will be set to its current value. For example, if one passes a table with columns c1, c2
-   * and an assignment c2 = 1, this method will return c1 = c1, c2 = 1.
-   * <p>
-   * This method also handles updates to nested columns. If there is an assignment to a particular
-   * nested field, this method will construct a new struct with one field updated
-   * preserving other fields that have not been modified. For example, if one passes a table with
-   * columns c1, c2 where c2 is a struct with fields n1 and n2 and an assignment c2.n2 = 1,
-   * this method will return c1 = c1, c2 = struct(c2.n1, 1).
-   *
-   * @param table a target table
-   * @param assignments assignments to align
-   * @return aligned assignments that match table columns
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
    */
   protected def alignAssignments(
       table: LogicalPlan,
@@ -74,6 +74,10 @@ trait AssignmentAlignmentSupport extends CastSupport {
     }
   }
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   private def applyUpdates(
       cols: Seq[NamedExpression],
       updates: Seq[ColumnUpdate],
@@ -134,6 +138,10 @@ trait AssignmentAlignmentSupport extends CastSupport {
     }
   }
 
+  /**
+   * 转换为namedstruct。
+   * @return 结果对象
+   */
   private def toNamedStruct(fields: Seq[StructField], fieldExprs: Seq[Expression]): Expression = {
     val namedStructExprs = fields.zip(fieldExprs).flatMap { case (field, expr) =>
       Seq(Literal(field.name), expr)
@@ -141,6 +149,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
     CreateNamedStruct(namedStructExprs)
   }
 
+  /** 判断是否包含exactmatch。 */
   private def hasExactMatch(
       updates: Seq[ColumnUpdate],
       col: NamedExpression,
@@ -149,6 +158,7 @@ trait AssignmentAlignmentSupport extends CastSupport {
     updates.exists(assignment => isExactMatch(assignment, col, resolver))
   }
 
+  /** 判断是否exactmatch。 */
   private def isExactMatch(
       update: ColumnUpdate,
       col: NamedExpression,
@@ -160,6 +170,10 @@ trait AssignmentAlignmentSupport extends CastSupport {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   protected def castIfNeeded(
       tableAttr: NamedExpression,
       expr: Expression,

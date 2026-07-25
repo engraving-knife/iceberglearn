@@ -70,6 +70,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestIcebergInputFormats 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestIcebergInputFormats 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIcebergInputFormats {
 
   public static final List<TestInputFormat.Factory<Record>> TESTED_INPUT_FORMATS =
@@ -101,6 +108,7 @@ public class TestIcebergInputFormats {
   private final TestInputFormat.Factory<Record> testInputFormat;
   private final FileFormat fileFormat;
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     conf = new Configuration();
@@ -114,6 +122,7 @@ public class TestIcebergInputFormats {
     builder = new InputFormatConfig.ConfigBuilder(conf).readFrom(location.toString());
   }
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "testInputFormat = {0}, fileFormat = {1}")
   public static Object[][] parameters() {
     Object[][] parameters = new Object[TESTED_INPUT_FORMATS.size() * TESTED_FILE_FORMATS.size()][2];
@@ -129,12 +138,18 @@ public class TestIcebergInputFormats {
     return parameters;
   }
 
+  /** 辅助方法：TestIcebergInputFormats。 */
   public TestIcebergInputFormats(
       TestInputFormat.Factory<Record> testInputFormat, String fileFormat) {
     this.testInputFormat = testInputFormat;
     this.fileFormat = FileFormat.fromString(fileFormat);
   }
 
+  /**
+   * 测试场景：Unpartitioned Table。
+   *
+   * <p>验证该方法在 Unpartitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedTable() throws Exception {
     helper.createUnpartitionedTable();
@@ -144,6 +159,11 @@ public class TestIcebergInputFormats {
     testInputFormat.create(builder.conf()).validate(expectedRecords);
   }
 
+  /**
+   * 测试场景：Partitioned Table。
+   *
+   * <p>验证该方法在 Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTable() throws Exception {
     helper.createTable();
@@ -154,6 +174,11 @@ public class TestIcebergInputFormats {
     testInputFormat.create(builder.conf()).validate(expectedRecords);
   }
 
+  /**
+   * 测试场景：Filter Exp。
+   *
+   * <p>验证该方法在 Filter Exp 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterExp() throws Exception {
     helper.createTable();
@@ -171,6 +196,11 @@ public class TestIcebergInputFormats {
     testInputFormat.create(builder.conf()).validate(expectedRecords);
   }
 
+  /**
+   * 测试场景：Residuals。
+   *
+   * <p>验证该方法在 Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testResiduals() throws Exception {
     helper.createTable();
@@ -198,6 +228,11 @@ public class TestIcebergInputFormats {
     testInputFormat.create(builder.conf()).validate(writeRecords);
   }
 
+  /**
+   * 测试场景：Failed Residual Filtering。
+   *
+   * <p>验证该方法在 Failed Residual Filtering 条件下的行为是否符合预期。
+   */
   @Test
   public void testFailedResidualFiltering() throws Exception {
     helper.createTable();
@@ -226,6 +261,11 @@ public class TestIcebergInputFormats {
             "Filter expression ref(name=\"id\") == 0 is not completely satisfied. Additional rows can be returned not satisfied by the filter expression");
   }
 
+  /**
+   * 测试场景：Projection。
+   *
+   * <p>验证该方法在 Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjection() throws Exception {
     helper.createTable();
@@ -251,6 +291,11 @@ public class TestIcebergInputFormats {
   private static final PartitionSpec IDENTITY_PARTITION_SPEC =
       PartitionSpec.builderFor(LOG_SCHEMA).identity("date").identity("level").build();
 
+  /**
+   * 测试场景：Identity Partition Projections。
+   *
+   * <p>验证该方法在 Identity Partition Projections 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityPartitionProjections() throws Exception {
     helper.createTable(LOG_SCHEMA, IDENTITY_PARTITION_SPEC);
@@ -291,6 +336,7 @@ public class TestIcebergInputFormats {
     validateIdentityPartitionProjections(withColumns("message", "level", "date"), inputRecords);
   }
 
+  /** 辅助方法：withColumns。 */
   private static Schema withColumns(String... names) {
     Map<String, Integer> indexByName = TypeUtil.indexByName(LOG_SCHEMA.asStruct());
     Set<Integer> projectedIds = Sets.newHashSet();
@@ -300,6 +346,7 @@ public class TestIcebergInputFormats {
     return TypeUtil.select(LOG_SCHEMA, projectedIds);
   }
 
+  /** 辅助方法：validateIdentityPartitionProjections。 */
   private void validateIdentityPartitionProjections(
       Schema projectedSchema, List<Record> inputRecords) {
     builder.project(projectedSchema);
@@ -322,6 +369,11 @@ public class TestIcebergInputFormats {
     }
   }
 
+  /**
+   * 测试场景：Snapshot Reads。
+   *
+   * <p>验证该方法在 Snapshot Reads 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshotReads() throws Exception {
     helper.createUnpartitionedTable();
@@ -336,6 +388,11 @@ public class TestIcebergInputFormats {
     testInputFormat.create(builder.conf()).validate(expectedRecords);
   }
 
+  /**
+   * 测试场景：Locality。
+   *
+   * <p>验证该方法在 Locality 条件下的行为是否符合预期。
+   */
   @Test
   public void testLocality() throws Exception {
     helper.createUnpartitionedTable();
@@ -353,6 +410,11 @@ public class TestIcebergInputFormats {
     }
   }
 
+  /**
+   * 测试场景：Custom Catalog。
+   *
+   * <p>验证该方法在 Custom Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomCatalog() throws IOException {
     String warehouseLocation = temp.newFolder("hadoop_catalog").getAbsolutePath();
@@ -388,19 +450,23 @@ public class TestIcebergInputFormats {
     private final List<IcebergSplit> splits;
     private final List<T> records;
 
+    /** 辅助方法：TestInputFormat。 */
     private TestInputFormat(List<IcebergSplit> splits, List<T> records) {
       this.splits = splits;
       this.records = records;
     }
 
+    /** 辅助方法：getRecords。 */
     public List<T> getRecords() {
       return records;
     }
 
+    /** 辅助方法：getSplits。 */
     public List<IcebergSplit> getSplits() {
       return splits;
     }
 
+    /** 辅助方法：validate。 */
     public void validate(List<T> expected) {
       Assert.assertEquals(expected, records);
     }
@@ -411,19 +477,23 @@ public class TestIcebergInputFormats {
       TestInputFormat<T> create(Configuration conf);
     }
 
+    /** 辅助方法：newFactory。 */
     public static <T> Factory<T> newFactory(
         String name, Function<Configuration, TestInputFormat<T>> function) {
       return new Factory<T>() {
+        /** 辅助方法：name。 */
         @Override
         public String name() {
           return name;
         }
 
+        /** 辅助方法：create。 */
         @Override
         public TestInputFormat<T> create(Configuration conf) {
           return function.apply(conf);
         }
 
+        /** 辅助方法：toString。 */
         @Override
         public String toString() {
           return String.format("Test%s<T>", name());
@@ -434,10 +504,12 @@ public class TestIcebergInputFormats {
 
   private static final class TestMapredIcebergInputFormat<T> extends TestInputFormat<T> {
 
+    /** 辅助方法：TestMapredIcebergInputFormat。 */
     private TestMapredIcebergInputFormat(List<IcebergSplit> splits, List<T> records) {
       super(splits, records);
     }
 
+    /** 辅助方法：create。 */
     private static <T> TestMapredIcebergInputFormat<T> create(Configuration conf) {
       JobConf job = new JobConf(conf);
       MapredIcebergInputFormat<T> inputFormat = new MapredIcebergInputFormat<>();
@@ -473,10 +545,12 @@ public class TestIcebergInputFormats {
 
   private static final class TestIcebergInputFormat<T> extends TestInputFormat<T> {
 
+    /** 辅助方法：TestIcebergInputFormat。 */
     private TestIcebergInputFormat(List<IcebergSplit> splits, List<T> records) {
       super(splits, records);
     }
 
+    /** 辅助方法：create。 */
     private static <T> TestIcebergInputFormat<T> create(Configuration conf) {
       TaskAttemptContext context = new TaskAttemptContextImpl(conf, new TaskAttemptID());
       IcebergInputFormat<T> inputFormat = new IcebergInputFormat<>();

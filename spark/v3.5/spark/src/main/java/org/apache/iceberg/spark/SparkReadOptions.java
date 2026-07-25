@@ -18,7 +18,15 @@
  */
 package org.apache.iceberg.spark;
 
-/** Spark DF read options */
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 读取选项常量定义，列出所有 Iceberg 支持的读选项键名与说明。
+ *
+ * <p>设计意图：以常量类集中管理选项键，避免硬编码字符串。
+ *
+ * <p>上下游关系：由 SparkReadConf / SparkScanBuilder 引用。
+ */
 public class SparkReadOptions {
 
   private SparkReadOptions() {}

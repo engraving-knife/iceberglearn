@@ -43,6 +43,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestPathIdentifier 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 路径标识符 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestPathIdentifier extends SparkTestBase {
 
   private static final Schema SCHEMA =
@@ -54,6 +61,7 @@ public class TestPathIdentifier extends SparkTestBase {
   private PathIdentifier identifier;
   private SparkCatalog sparkCatalog;
 
+  /** 前。 */
   @Before
   public void before() throws IOException {
     tableLocation = temp.newFolder();
@@ -62,12 +70,14 @@ public class TestPathIdentifier extends SparkTestBase {
     sparkCatalog.initialize("test", new CaseInsensitiveStringMap(ImmutableMap.of()));
   }
 
+  /** 后。 */
   @After
   public void after() {
     tableLocation.delete();
     sparkCatalog = null;
   }
 
+  /** 测试路径标识符场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathIdentifier() throws TableAlreadyExistsException, NoSuchTableException {
     SparkTable table =

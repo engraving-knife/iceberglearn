@@ -33,6 +33,12 @@ import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.UnaryExecNode
 import org.roaringbitmap.longlong.Roaring64Bitmap
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行合并物理执行节点，按 MERGE 的 WHEN 子句流式合并并输出 delete/insert/update 行。
+ * <p>设计意图：实现 MergeRows 的物理执行，以排序归并方式处理匹配/未匹配行。
+ * <p>上下游关系：由 ExtendedDataSourceV2Strategy 从 MergeRows 创建。
+ */
 
 case class MergeRowsExec(
     isSourceRowPresent: Expression,
@@ -52,24 +58,29 @@ case class MergeRowsExec(
   @transient override lazy val producedAttributes: AttributeSet = {
     AttributeSet(output.filterNot(attr => inputSet.contains(attr)))
   }
+  /** 执行 simpleString 相关操作。 */
 
   @transient override lazy val references: AttributeSet = child.outputSet
 
   override def simpleString(maxFields: Int): String = {
     s"MergeRowsExec${truncatedString(output, "[", ", ", "]", maxFields)}"
   }
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: SparkPlan): SparkPlan = {
     copy(child = newChild)
   }
+  /** 执行 doExecute 相关操作。 */
 
   protected override def doExecute(): RDD[InternalRow] = {
     child.execute().mapPartitions(processPartition)
   }
+  /** 执行 createProjection 相关操作。 */
 
   private def createProjection(exprs: Seq[Expression]): UnsafeProjection = {
     UnsafeProjection.create(exprs, child.output)
   }
+  /** 执行 createPredicate 相关操作。 */
 
   private def createPredicate(expr: Expression): BasePredicate = {
     GeneratePredicate.generate(expr, child.output)
@@ -128,19 +139,24 @@ case class MergeRowsExec(
   }
 
   trait Action {
+    /** 执行 cond 相关操作。 */
     def cond: BasePredicate
   }
 
   case class Project(cond: BasePredicate, proj: Projection) extends Action {
+    /** 应用转换。 */
     def apply(row: InternalRow): InternalRow = proj.apply(row)
   }
 
   case class Split(cond: BasePredicate, proj: Projection, otherProj: Projection) extends Action {
+    /** 执行 projectRow 相关操作。 */
     def projectRow(row: InternalRow): InternalRow = proj.apply(row)
+    /** 执行 projectExtraRow 相关操作。 */
     def projectExtraRow(row: InternalRow): InternalRow = otherProj.apply(row)
   }
 
   object EmptyProjection extends Projection {
+    /** 应用转换。 */
     override def apply(row: InternalRow): InternalRow = null
   }
 
@@ -153,8 +169,10 @@ case class MergeRowsExec(
       private val matchedActions: Seq[Project],
       private val notMatchedActions: Seq[Project])
     extends Iterator[InternalRow] {
+    /** 判断是否有下一个元素。 */
 
     override def hasNext: Boolean = rowIterator.hasNext
+    /** 返回下一个元素。 */
 
     override def next(): InternalRow = {
       val row = rowIterator.next()
@@ -173,6 +191,7 @@ case class MergeRowsExec(
         null
       }
     }
+    /** 执行 applyMatchedActions 相关操作。 */
 
     private def applyMatchedActions(row: InternalRow): InternalRow = {
       for (action <- matchedActions) {
@@ -183,6 +202,7 @@ case class MergeRowsExec(
 
       if (emitNotMatchedTargetRows) targetTableProj.apply(row) else null
     }
+    /** 执行 applyNotMatchedActions 相关操作。 */
 
     private def applyNotMatchedActions(row: InternalRow): InternalRow = {
       for (action <- notMatchedActions) {
@@ -209,8 +229,10 @@ case class MergeRowsExec(
     extends Iterator[InternalRow] {
 
     var cachedExtraRow: InternalRow = _
+    /** 判断是否有下一个元素。 */
 
     override def hasNext: Boolean = cachedExtraRow != null || rowIterator.hasNext
+    /** 返回下一个元素。 */
 
     override def next(): InternalRow = {
       if (cachedExtraRow != null) {
@@ -231,6 +253,7 @@ case class MergeRowsExec(
         applyNotMatchedActions(row)
       }
     }
+    /** 执行 applyMatchedActions 相关操作。 */
 
     private def applyMatchedActions(row: InternalRow): InternalRow = {
       for (action <- matchedActions) {
@@ -247,6 +270,7 @@ case class MergeRowsExec(
 
       null
     }
+    /** 执行 applyNotMatchedActions 相关操作。 */
 
     private def applyNotMatchedActions(row: InternalRow): InternalRow = {
       for (action <- notMatchedActions) {
@@ -260,8 +284,10 @@ case class MergeRowsExec(
   }
 
   sealed trait CardinalityCheck {
+    /** 执行动作并返回结果。 */
 
     def execute(inputRow: InternalRow): Unit
+    /** 执行 fail 相关操作。 */
 
     protected def fail(): Unit = {
       throw new SparkException(
@@ -273,11 +299,13 @@ case class MergeRowsExec(
   }
 
   object EmptyCardinalityCheck extends CardinalityCheck {
+    /** 执行动作并返回结果。 */
     def execute(inputRow: InternalRow): Unit = {}
   }
 
   case class BitmapCardinalityCheck(rowIdOrdinal: Int) extends CardinalityCheck {
     private val matchedRowIds = new Roaring64Bitmap()
+    /** 执行动作并返回结果。 */
 
     override def execute(inputRow: InternalRow): Unit = {
       val currentRowId = inputRow.getLong(rowIdOrdinal)

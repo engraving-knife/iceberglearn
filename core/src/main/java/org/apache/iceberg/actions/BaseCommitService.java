@@ -38,14 +38,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An async service which allows for committing multiple file groups as their rewrites complete. The
- * service also allows for partial-progress since commits can fail. Once the service has been closed
- * no new file groups should not be offered.
+ * 异步提交服务：在文件组重写完成时陆续提交它们。
  *
- * <p>Specific implementations provide implementations for {@link #commitOrClean(Set)} and {@link
- * #abortFileGroup(Object)}
+ * <p>所属模块：iceberg-core 的 actions 包，为数据文件/位置删除文件的重写动作提供提交能力。
  *
- * @param <T> abstract type of file group
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>异步接收重写完成的文件组（{@link #offer(Object)}），按 {@code rewritesPerCommit} 批量提交。
+ *   <li>支持部分进度（partial-progress）：某批提交失败时清理对应文件组，不影响其他批次。
+ *   <li>在 {@link #close()} 时等待所有提交完成或超时，并对超时未提交的文件组做清理。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>提交与重写解耦：重写线程只负责产出新文件并 offer，提交线程串行执行 commit，避免并发提交 造成 Iceberg 表状态冲突（Iceberg 的乐观锁要求提交串行化）。
+ *   <li>单线程提交器：用单线程 ExecutorService 保证提交顺序，简化冲突处理。
+ *   <li>部分进度容错：捕获 {@code commitOrClean} 异常后仅记日志不抛出，让后续批次继续尝试， 配合最终 {@link #close()} 校验是否仍有未提交组。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link RewriteDataFilesCommitManager}、{@link RewritePositionDeletesCommitManager}
+ * 等具体提交管理器继承，被对应重写动作的执行流程调用。依赖 {@link Table} 进行 commit。
+ *
+ * @param <T> 文件组的抽象类型（如 {@link RewriteFileGroup}）
  */
 abstract class BaseCommitService<T> implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(BaseCommitService.class);
@@ -62,22 +78,21 @@ abstract class BaseCommitService<T> implements Closeable {
   private final long timeoutInMS;
 
   /**
-   * Constructs a {@link BaseCommitService}
+   * 构造提交服务，使用默认超时时间。
    *
-   * @param table table to perform commit on
-   * @param rewritesPerCommit number of file groups to include in a commit
+   * @param table 执行提交的目标表
+   * @param rewritesPerCommit 单次提交包含的文件组数量
    */
   BaseCommitService(Table table, int rewritesPerCommit) {
     this(table, rewritesPerCommit, TIMEOUT_IN_MS_DEFAULT);
   }
 
   /**
-   * Constructs a {@link BaseCommitService}
+   * 构造提交服务，指定超时时间。
    *
-   * @param table table to perform commit on
-   * @param rewritesPerCommit number of file groups to include in a commit
-   * @param timeoutInMS The timeout to wait for commits to complete after all rewrite jobs have been
-   *     completed
+   * @param table 执行提交的目标表
+   * @param rewritesPerCommit 单次提交包含的文件组数量
+   * @param timeoutInMS 全部重写完成后等待提交完成的超时时间（毫秒）
    */
   BaseCommitService(Table table, int rewritesPerCommit, long timeoutInMS) {
     this.table = table;
@@ -96,22 +111,30 @@ abstract class BaseCommitService<T> implements Closeable {
   }
 
   /**
-   * Perform a commit operation on the table for the set of file groups, should cleanup failed file
-   * groups.
+   * 对一批文件组执行提交操作；提交失败时应清理这批文件组产生的新文件。
    *
-   * @param batch set of file groups
+   * @param batch 待提交的文件组集合
    */
   protected abstract void commitOrClean(Set<T> batch);
 
   /**
-   * Clean up a specified file set by removing any files created for that operation, should not
-   * throw any exceptions
+   * 清理指定文件组：删除为其创建但尚未提交的新文件，不应抛出异常。
    *
-   * @param group group of files which are not yet committed
+   * @param group 尚未提交的文件组
    */
   protected abstract void abortFileGroup(T group);
 
-  /** Starts a single threaded executor service for handling file group commits. */
+  /**
+   * 启动单线程提交执行器，循环处理待提交的文件组。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>当服务处于运行态或仍有待提交/进行中的组时持续循环；
+   *   <li>队列为空且无进行中提交时短暂 sleep 让出 CPU；
+   *   <li>服务已停止但仍有完成的重写待提交时，调用 {@link #commitReadyCommitGroups()} 收尾。
+   * </ul>
+   */
   public void start() {
     Preconditions.checkState(running.compareAndSet(false, true), "Commit service already started");
     LOG.info("Starting commit service for {}", table);
@@ -137,10 +160,9 @@ abstract class BaseCommitService<T> implements Closeable {
   }
 
   /**
-   * Places a file group in the queue and commits a batch of file groups if {@link
-   * #rewritesPerCommit} number of file groups are present in the queue.
+   * 将一个文件组放入待提交队列；若队列中文件组数达到 {@link #rewritesPerCommit} 则立即触发一次提交。
    *
-   * @param group file group to eventually be committed
+   * @param group 待最终提交的文件组
    */
   public void offer(T group) {
     LOG.debug("Offered to commit service: {}", group);
@@ -150,7 +172,13 @@ abstract class BaseCommitService<T> implements Closeable {
     commitReadyCommitGroups();
   }
 
-  /** Returns all File groups which have been committed */
+  /**
+   * 返回所有已成功提交的文件组列表。
+   *
+   * <p>必须在服务关闭（{@link #close()}）后调用。
+   *
+   * @return 已提交文件组列表
+   */
   public List<T> results() {
     Preconditions.checkState(
         committerService.isShutdown(),
@@ -158,6 +186,18 @@ abstract class BaseCommitService<T> implements Closeable {
     return Lists.newArrayList(committedRewrites.iterator());
   }
 
+  /**
+   * 关闭提交服务：停止接收新组并等待所有提交完成或超时。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>将 running 置为 false，调用 {@code shutdown()} 停止接收新任务；
+   *   <li>用 {@code awaitTermination} 等待提交线程结束，超时则标记并告警；
+   *   <li>超时后清理剩余未提交的文件组（{@link #abortFileGroup(Object)}）；
+   *   <li>校验最终状态：若有超时或残留未提交组则抛出异常，提示用户重试。
+   * </ul>
+   */
   @Override
   public void close() {
     Preconditions.checkState(
@@ -208,6 +248,18 @@ abstract class BaseCommitService<T> implements Closeable {
         "File groups offered after service was closed, " + "they were not successfully committed.");
   }
 
+  /**
+   * 尝试组装并提交一批文件组。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>双重检查 {@link #canCreateCommitGroup()} 后，在 {@code synchronized} 块内从 {@code
+   *       completedRewrites} 取出最多 {@code rewritesPerCommit} 个组组成批次；
+   *   <li>生成一个 in-progress token 标记提交进行中，调用 {@link #commitOrClean(Set)} 提交；
+   *   <li>提交成功则把批次加入 {@code committedRewrites}，失败仅记日志（部分进度），最终移除 token。
+   * </ul>
+   */
   private void commitReadyCommitGroups() {
     Set<T> batch = null;
     if (canCreateCommitGroup()) {
@@ -234,6 +286,7 @@ abstract class BaseCommitService<T> implements Closeable {
     }
   }
 
+  /** 判断是否可以组装一个提交批次：队列中文件组数达到 {@code rewritesPerCommit}，或重写已结束且仍有剩余组。 */
   @VisibleForTesting
   boolean canCreateCommitGroup() {
     // Either we have a full commit group, or we have completed writing and need to commit
@@ -243,6 +296,7 @@ abstract class BaseCommitService<T> implements Closeable {
     return fullCommitGroup || writingComplete;
   }
 
+  /** 判断所有重写是否都已提交完成（队列和进行中标记均为空），供测试使用。 */
   @VisibleForTesting
   boolean completedRewritesAllCommitted() {
     return completedRewrites.isEmpty() && inProgressCommits.isEmpty();

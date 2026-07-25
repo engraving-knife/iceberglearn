@@ -21,6 +21,12 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.expressions.Transform
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：替换分区字段的逻辑计划节点，对应 ALTER TABLE ... REPLACE PARTITION FIELD 语句。
+ * <p>设计意图：封装分区字段替换语义。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 ReplacePartitionFieldExec 执行。
+ */
 
 case class ReplacePartitionField(
     table: Seq[String],
@@ -30,6 +36,7 @@ case class ReplacePartitionField(
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"ReplacePartitionField ${table.quoted} ${transformFrom.describe} " +

@@ -28,32 +28,34 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableProperties;
 
 /**
- * A class for common Iceberg configs for Flink writes.
+ * Iceberg Flink sink 的写入配置类，按优先级解析各项写入参数。
  *
- * <p>If a config is set at multiple levels, the following order of precedence is used (top to
- * bottom):
+ * <p>所属模块：iceberg-flink v1.15。职责：基于 {@link FlinkConfParser} 从写入选项、 Flink 全局配置和表属性中读取 sink
+ * 相关配置（文件格式、压缩、upsert、分发模式等）。
+ *
+ * <p>设计意图：配置类，方法自描述单个配置项；优先级为写入选项 > Flink 全局配置 > 表属性 > 默认值。 注意：本类不可序列化。
+ *
+ * <p>优先级（从高到低）：
  *
  * <ol>
- *   <li>Write options
- *   <li>flink ReadableConfig
- *   <li>Table metadata
+ *   <li>写入选项（Write options）
+ *   <li>Flink ReadableConfig
+ *   <li>表元数据（Table metadata）
  * </ol>
  *
- * The most specific value is set in write options and takes precedence over all other configs. If
- * no write option is provided, this class checks the flink configuration for any overrides. If no
- * applicable value is found in the write options, this class uses the table metadata.
- *
- * <p>Note this class is NOT meant to be serialized.
+ * 若写入选项未设置，本类先查 Flink 配置，再回退到表元数据。
  */
 public class FlinkWriteConf {
 
   private final FlinkConfParser confParser;
 
+  /** 构造写入配置，绑定 Iceberg 表、用户写入选项与 Flink 可读配置。 */
   public FlinkWriteConf(
       Table table, Map<String, String> writeOptions, ReadableConfig readableConfig) {
     this.confParser = new FlinkConfParser(table, writeOptions, readableConfig);
   }
 
+  /** 是否覆盖写入模式，默认 false。 */
   public boolean overwriteMode() {
     return confParser
         .booleanConf()
@@ -63,6 +65,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 是否启用 upsert 模式。 */
   public boolean upsertMode() {
     return confParser
         .booleanConf()
@@ -73,6 +76,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取数据文件格式（Parquet/Avro/ORC），覆盖表属性 write.format.default。 */
   public FileFormat dataFileFormat() {
     String valueAsString =
         confParser
@@ -85,6 +89,7 @@ public class FlinkWriteConf {
     return FileFormat.fromString(valueAsString);
   }
 
+  /** 读取目标数据文件大小（字节）。 */
   public long targetDataFileSize() {
     return confParser
         .longConf()
@@ -95,6 +100,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取 Parquet 压缩 codec。 */
   public String parquetCompressionCodec() {
     return confParser
         .stringConf()
@@ -105,6 +111,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取 Parquet 压缩级别（可选）。 */
   public String parquetCompressionLevel() {
     return confParser
         .stringConf()
@@ -115,6 +122,7 @@ public class FlinkWriteConf {
         .parseOptional();
   }
 
+  /** 读取 Avro 压缩 codec。 */
   public String avroCompressionCodec() {
     return confParser
         .stringConf()
@@ -125,6 +133,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取 Avro 压缩级别（可选）。 */
   public String avroCompressionLevel() {
     return confParser
         .stringConf()
@@ -135,6 +144,7 @@ public class FlinkWriteConf {
         .parseOptional();
   }
 
+  /** 读取 ORC 压缩 codec。 */
   public String orcCompressionCodec() {
     return confParser
         .stringConf()
@@ -145,6 +155,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取 ORC 压缩策略。 */
   public String orcCompressionStrategy() {
     return confParser
         .stringConf()
@@ -155,6 +166,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取数据分发模式（NONE/HASH/RANGE）。 */
   public DistributionMode distributionMode() {
     String modeName =
         confParser
@@ -167,6 +179,7 @@ public class FlinkWriteConf {
     return DistributionMode.fromName(modeName);
   }
 
+  /** 读取用于 manifest 规划/扫描的 worker 线程池大小。 */
   public int workerPoolSize() {
     return confParser
         .intConf()
@@ -175,6 +188,7 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取写入的目标分支。 */
   public String branch() {
     return confParser
         .stringConf()
@@ -183,16 +197,17 @@ public class FlinkWriteConf {
         .parse();
   }
 
+  /** 读取写入算子并行度（可选）。 */
   public Integer writeParallelism() {
     return confParser.intConf().option(FlinkWriteOptions.WRITE_PARALLELISM.key()).parseOptional();
   }
 
   /**
-   * NOTE: This may be removed or changed in a future release. This value specifies the interval for
-   * refreshing the table instances in sink writer subtasks. If not specified then the default
-   * behavior is to not refresh the table.
+   * 实验性：读取 sink writer 子任务中刷新表实例的间隔。
    *
-   * @return the interval for refreshing the table in sink writer subtasks
+   * <p>注意：未来版本可能移除或更改。未设置时默认不刷新表。
+   *
+   * @return 刷新表的间隔
    */
   @Experimental
   public Duration tableRefreshInterval() {

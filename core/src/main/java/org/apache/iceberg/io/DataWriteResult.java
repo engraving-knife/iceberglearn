@@ -23,22 +23,31 @@ import java.util.List;
 import org.apache.iceberg.DataFile;
 
 /**
- * A result of writing data files.
+ * 文件级说明：数据文件写入结果。
  *
- * <p>Note that objects of this class are NOT meant to be serialized. Task or delta writers will
- * wrap these results into their own serializable results that can be sent back to query engines.
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：封装一次数据写入操作产生的 {@link DataFile} 列表，作为 {@link FileWriter} 的返回值。
+ *
+ * <p>设计意图：此类本身不可序列化。Task/Delta 写入器会将本结果包装进可序列化的 {@link WriteResult} 再回传给查询引擎，从而将"文件级结果"与"可序列化结果"解耦。
+ *
+ * <p>上下游关系：由 {@link DataWriter}、{@link RollingDataWriter}、{@link FanoutDataWriter} 等产生；由 {@link
+ * ClusteredDataWriter}、{@link BasePositionDeltaWriter} 聚合。
  */
 public class DataWriteResult {
   private final List<DataFile> dataFiles;
 
+  /** 单文件构造器。 */
   public DataWriteResult(DataFile dataFile) {
     this.dataFiles = Collections.singletonList(dataFile);
   }
 
+  /** 多文件构造器。 */
   public DataWriteResult(List<DataFile> dataFiles) {
     this.dataFiles = dataFiles;
   }
 
+  /** 返回本次写入产生的数据文件列表。 */
   public List<DataFile> dataFiles() {
     return dataFiles;
   }

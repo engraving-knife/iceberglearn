@@ -51,13 +51,12 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * A benchmark that evaluates the performance of the cardinality check in MERGE operations.
+ * 文件级说明：MergeCardinalityCheckBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.5: <code>
- *   ./gradlew -DsparkVersions=3.5 :iceberg-spark:iceberg-spark-extensions-3.5_2.12:jmh
- *       -PjmhIncludeRegex=MergeCardinalityCheckBenchmark
- *       -PjmhOutputPath=benchmark/iceberg-merge-cardinality-check-benchmark.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.5）。职责：对 合并基数检查 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 @Fork(1)
 @State(Scope.Benchmark)
@@ -75,6 +74,7 @@ public class MergeCardinalityCheckBenchmark {
   private SparkSession spark;
   private long originalSnapshotId;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() throws NoSuchTableException, ParseException {
     setupSpark();
@@ -85,48 +85,80 @@ public class MergeCardinalityCheckBenchmark {
     this.originalSnapshotId = table.currentSnapshot().snapshotId();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() {
     tearDownSpark();
     dropTable();
   }
 
+  /**
+   * 基准测试场景：复制上写入合并基数检查10percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void copyOnWriteMergeCardinalityCheck10PercentUpdates() {
     runBenchmark(RowLevelOperationMode.COPY_ON_WRITE, 0.1);
   }
 
+  /**
+   * 基准测试场景：复制上写入合并基数检查30percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void copyOnWriteMergeCardinalityCheck30PercentUpdates() {
     runBenchmark(RowLevelOperationMode.COPY_ON_WRITE, 0.3);
   }
 
+  /**
+   * 基准测试场景：复制上写入合并基数检查90percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void copyOnWriteMergeCardinalityCheck90PercentUpdates() {
     runBenchmark(RowLevelOperationMode.COPY_ON_WRITE, 0.9);
   }
 
+  /**
+   * 基准测试场景：合并上读取合并基数检查10percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void mergeOnReadMergeCardinalityCheck10PercentUpdates() {
     runBenchmark(RowLevelOperationMode.MERGE_ON_READ, 0.1);
   }
 
+  /**
+   * 基准测试场景：合并上读取合并基数检查30percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void mergeOnReadMergeCardinalityCheck30PercentUpdates() {
     runBenchmark(RowLevelOperationMode.MERGE_ON_READ, 0.3);
   }
 
+  /**
+   * 基准测试场景：合并上读取合并基数检查90percent更新。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void mergeOnReadMergeCardinalityCheck90PercentUpdates() {
     runBenchmark(RowLevelOperationMode.MERGE_ON_READ, 0.9);
   }
 
+  /** 辅助方法：run基准测试。 */
   private void runBenchmark(RowLevelOperationMode mode, double updatePercentage) {
     sql(
         "ALTER TABLE %s SET TBLPROPERTIES ('%s' '%s')",
@@ -152,6 +184,7 @@ public class MergeCardinalityCheckBenchmark {
         TABLE_NAME, originalSnapshotId);
   }
 
+  /** 辅助方法：初始化Spark。 */
   private void setupSpark() {
     this.spark =
         SparkSession.builder()
@@ -168,10 +201,12 @@ public class MergeCardinalityCheckBenchmark {
             .getOrCreate();
   }
 
+  /** 辅助方法：tear下推Spark。 */
   private void tearDownSpark() {
     spark.stop();
   }
 
+  /** 辅助方法：init表。 */
   private void initTable() {
     sql(
         "CREATE TABLE %s ( "
@@ -194,10 +229,12 @@ public class MergeCardinalityCheckBenchmark {
     sql("ALTER TABLE %s WRITE ORDERED BY id", TABLE_NAME);
   }
 
+  /** 辅助方法：删除表。 */
   private void dropTable() {
     sql("DROP TABLE IF EXISTS %s PURGE", TABLE_NAME);
   }
 
+  /** 辅助方法：追加数据。 */
   private void appendData() throws NoSuchTableException {
     for (int fileNum = 1; fileNum <= NUM_FILES; fileNum++) {
       Dataset<Row> inputDF =
@@ -214,16 +251,19 @@ public class MergeCardinalityCheckBenchmark {
     }
   }
 
+  /** 辅助方法：追加as文件。 */
   private void appendAsFile(Dataset<Row> df) throws NoSuchTableException {
     // ensure the schema is precise (including nullability)
     StructType sparkSchema = spark.table(TABLE_NAME).schema();
     spark.createDataFrame(df.rdd(), sparkSchema).coalesce(1).writeTo(TABLE_NAME).append();
   }
 
+  /** 辅助方法：新建warehousedir。 */
   private String newWarehouseDir() {
     return hadoopConf.get("hadoop.tmp.dir") + UUID.randomUUID();
   }
 
+  /** 辅助方法：SQL。 */
   @FormatMethod
   private void sql(@FormatString String query, Object... args) {
     spark.sql(String.format(query, args));

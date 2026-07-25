@@ -39,6 +39,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestHiveIcebergSerDe 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergSerDe 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergSerDe {
 
   private static final Schema schema =
@@ -46,6 +53,11 @@ public class TestHiveIcebergSerDe {
 
   @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
+  /**
+   * 测试场景：Initialize。
+   *
+   * <p>验证该方法在 Initialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testInitialize() throws IOException, SerDeException {
     File location = tmp.newFolder();
@@ -66,6 +78,11 @@ public class TestHiveIcebergSerDe {
     Assert.assertEquals(IcebergObjectInspector.create(schema), serDe.getObjectInspector());
   }
 
+  /**
+   * 测试场景：Deserialize。
+   *
+   * <p>验证该方法在 Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeserialize() {
     HiveIcebergSerDe serDe = new HiveIcebergSerDe();

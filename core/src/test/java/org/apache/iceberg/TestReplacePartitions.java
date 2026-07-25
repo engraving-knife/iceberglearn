@@ -31,6 +31,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestReplacePartitions，用于验证 Replace Partitions 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Replace Partitions 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestReplacePartitions extends TableTestBase {
 
@@ -75,6 +83,7 @@ public class TestReplacePartitions extends TableTestBase {
 
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -85,11 +94,17 @@ public class TestReplacePartitions extends TableTestBase {
     };
   }
 
+  /** 辅助方法：replace partitions。 */
   public TestReplacePartitions(int formatVersion, String branch) {
     super(formatVersion);
     this.branch = branch;
   }
 
+  /**
+   * 测试场景：replace one partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceOnePartition() {
     commit(table, table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -120,6 +135,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.DELETED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace and merge one partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceAndMergeOnePartition() {
     // ensure the overwrite results in a merge
@@ -146,6 +166,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED, Status.DELETED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace with unpartitioned table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceWithUnpartitionedTable() throws IOException {
     File tableDir = temp.newFolder();
@@ -191,6 +216,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：replace and merge with unpartitioned table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceAndMergeWithUnpartitionedTable() throws IOException {
     File tableDir = temp.newFolder();
@@ -235,6 +265,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED, Status.DELETED));
   }
 
+  /**
+   * 测试场景：validation failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidationFailure() {
     commit(table, table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -255,6 +290,11 @@ public class TestReplacePartitions extends TableTestBase {
         latestSnapshot(readMetadata(), branch).snapshotId());
   }
 
+  /**
+   * 测试场景：validation success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidationSuccess() {
     commit(table, table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -285,6 +325,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：validation not invoked。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidationNotInvoked() {
     commit(table, table.newFastAppend().appendFile(FILE_A), branch);
@@ -325,6 +370,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：validate with default snapshot id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateWithDefaultSnapshotId() {
     commit(table, table.newReplacePartitions().addFile(FILE_A), branch);
@@ -347,6 +397,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[data_bucket=0, data_bucket=1]: [/path/to/data-a.parquet]");
   }
 
+  /**
+   * 测试场景：concurrent replace conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceConflict() {
     commit(table, table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -375,6 +430,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[data_bucket=0, data_bucket=1]: [/path/to/data-a.parquet]");
   }
 
+  /**
+   * 测试场景：concurrent replace no conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceNoConflict() {
     commit(table, table.newFastAppend().appendFile(FILE_A), branch);
@@ -413,6 +473,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：concurrent replace conflict non partitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceConflictNonPartitioned() {
     Table unpartitioned =
@@ -443,6 +508,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[/path/to/data-unpartitioned-a.parquet]");
   }
 
+  /**
+   * 测试场景：append replace conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendReplaceConflict() {
     commit(table, table.newFastAppend().appendFile(FILE_A), branch);
@@ -471,6 +541,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[data_bucket=0, data_bucket=1]: [/path/to/data-b.parquet]");
   }
 
+  /**
+   * 测试场景：append replace no conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendReplaceNoConflict() {
     commit(table, table.newFastAppend().appendFile(FILE_A), branch);
@@ -515,6 +590,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：append replace conflict non partitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendReplaceConflictNonPartitioned() {
     Table unpartitioned =
@@ -545,6 +625,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[/path/to/data-unpartitioned-a.parquet]");
   }
 
+  /**
+   * 测试场景：delete replace conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteReplaceConflict() {
     Assume.assumeTrue(formatVersion == 2);
@@ -574,6 +659,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[data_bucket=0]: [/path/to/data-a-deletes.parquet]");
   }
 
+  /**
+   * 测试场景：delete replace conflict non partitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteReplaceConflictNonPartitioned() {
     Assume.assumeTrue(formatVersion == 2);
@@ -606,6 +696,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[/path/to/data-unpartitioned-a-deletes.parquet]");
   }
 
+  /**
+   * 测试场景：delete replace no conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteReplaceNoConflict() {
     Assume.assumeTrue(formatVersion == 2);
@@ -661,6 +756,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：overwrite replace conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteReplaceConflict() {
     Assume.assumeTrue(formatVersion == 2);
@@ -689,6 +789,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[data_bucket=0]: [/path/to/data-a.parquet]");
   }
 
+  /**
+   * 测试场景：overwrite replace no conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteReplaceNoConflict() {
     Assume.assumeTrue(formatVersion == 2);
@@ -729,6 +834,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：overwrite replace conflict non partitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteReplaceConflictNonPartitioned() {
     Assume.assumeTrue(formatVersion == 2);
@@ -762,6 +872,11 @@ public class TestReplacePartitions extends TableTestBase {
                 + "[/path/to/data-unpartitioned-a.parquet]");
   }
 
+  /**
+   * 测试场景：validate only deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateOnlyDeletes() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -801,6 +916,11 @@ public class TestReplacePartitions extends TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：empty partition path with unpartitioned table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyPartitionPathWithUnpartitionedTable() {
     DataFiles.builder(PartitionSpec.unpartitioned()).withPartitionPath("");

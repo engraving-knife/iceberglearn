@@ -31,8 +31,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Class to adapt a Spark {@code InternalRow} to Iceberg {@link StructLike} for uses like {@link
- * org.apache.iceberg.PartitionKey#partition(StructLike)}
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 InternalRowWrapper。
+ *
+ * <p>设计意图：代理/包装模式，增强或限制原始对象行为。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
  */
 class InternalRowWrapper implements StructLike {
   private final DataType[] types;
@@ -45,16 +50,23 @@ class InternalRowWrapper implements StructLike {
     this.getters = Stream.of(types).map(InternalRowWrapper::getter).toArray(BiFunction[]::new);
   }
 
+  /** 执行该方法的具体逻辑。 */
   InternalRowWrapper wrap(InternalRow internalRow) {
     this.row = internalRow;
     return this;
   }
 
+  /**
+   * 返回大小。
+   *
+   * @return 大小
+   */
   @Override
   public int size() {
     return types.length;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   public <T> T get(int pos, Class<T> javaClass) {
     if (row.isNullAt(pos)) {
@@ -66,11 +78,13 @@ class InternalRowWrapper implements StructLike {
     return javaClass.cast(row.get(pos, types[pos]));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   public <T> void set(int pos, T value) {
     row.update(pos, value);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static BiFunction<InternalRow, Integer, ?> getter(DataType type) {
     if (type instanceof StringType) {
       return (row, pos) -> row.getUTF8String(pos).toString();

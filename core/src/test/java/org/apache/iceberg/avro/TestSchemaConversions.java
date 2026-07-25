@@ -38,7 +38,20 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestSchemaConversions，用于验证 Schema Conversions 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Schema Conversions 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestSchemaConversions {
+  /**
+   * 测试场景：primitive types。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPrimitiveTypes() {
     List<Type> primitives =
@@ -90,6 +103,11 @@ public class TestSchemaConversions {
     }
   }
 
+  /**
+   * 测试场景：avro to iceberg timestamp type without adjust to utc。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAvroToIcebergTimestampTypeWithoutAdjustToUTC() {
     // Not included in the primitives test because there is not a way to round trip the
@@ -102,11 +120,17 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(avroType)).isEqualTo(expectedIcebergType);
   }
 
+  /** 辅助方法：add adjust to utc。 */
   private Schema addAdjustToUtc(Schema schema, boolean adjustToUTC) {
     schema.addProp(AvroSchemaUtil.ADJUST_TO_UTC_PROP, adjustToUTC);
     return schema;
   }
 
+  /**
+   * 测试场景：struct and primitive types。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testStructAndPrimitiveTypes() {
     Types.StructType struct =
@@ -171,6 +195,11 @@ public class TestSchemaConversions {
         .isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：list。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testList() {
     Type list = Types.ListType.ofRequired(34, Types.UUIDType.get());
@@ -186,6 +215,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(list)).as("List to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：list of structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListOfStructs() {
     Type list =
@@ -209,6 +243,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(list)).as("List to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：map of long to bytes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfLongToBytes() {
     Type map = Types.MapType.ofRequired(33, 34, Types.LongType.get(), Types.BinaryType.get());
@@ -221,6 +260,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(map)).as("Map to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：map of string to bytes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfStringToBytes() {
     Type map = Types.MapType.ofRequired(33, 34, Types.StringType.get(), Types.BinaryType.get());
@@ -231,6 +275,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(map)).as("Map to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：map of list to structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfListToStructs() {
     Type map =
@@ -254,6 +303,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(map)).as("Map to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：map of string to structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfStringToStructs() {
     Type map =
@@ -280,6 +334,11 @@ public class TestSchemaConversions {
     assertThat(AvroSchemaUtil.convert(map)).as("Map to Avro schema").isEqualTo(schema);
   }
 
+  /**
+   * 测试场景：complex schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testComplexSchema() {
     org.apache.iceberg.Schema schema =
@@ -323,6 +382,11 @@ public class TestSchemaConversions {
     AvroSchemaUtil.convert(schema, "newTableName").toString(true);
   }
 
+  /**
+   * 测试场景：special chars。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSpecialChars() {
     List<String> names = Lists.newArrayList("9x", "x_", "a.b", "☃", "a#b");
@@ -350,6 +414,11 @@ public class TestSchemaConversions {
     assertThat(origNames).isEqualTo(expectedOrigNames);
   }
 
+  /**
+   * 测试场景：field docs are preserved。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFieldDocsArePreserved() {
     List<String> fieldDocs = Lists.newArrayList(null, "iceberg originating field doc");

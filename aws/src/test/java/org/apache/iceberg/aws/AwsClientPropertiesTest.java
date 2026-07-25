@@ -31,8 +31,20 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 
+/**
+ * 文件级说明：测试 AwsClientPropertiesTest 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 AwsClientPropertiesTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class AwsClientPropertiesTest {
 
+  /**
+   * 测试场景：Apply Client Region。
+   *
+   * <p>验证该方法在 Apply Client Region 条件下的行为是否符合预期。
+   */
   @Test
   public void testApplyClientRegion() {
     Map<String, String> properties = Maps.newHashMap();
@@ -50,6 +62,11 @@ public class AwsClientPropertiesTest {
         .isEqualTo("us-east-1");
   }
 
+  /**
+   * 测试场景：Default Credentials Configuration。
+   *
+   * <p>验证该方法在 Default Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultCredentialsConfiguration() {
     AwsClientProperties awsClientProperties = new AwsClientProperties();
@@ -61,6 +78,11 @@ public class AwsClientPropertiesTest {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Creates New Instance Of Default Credentials Configuration。
+   *
+   * <p>验证该方法在 Creates New Instance Of Default Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatesNewInstanceOfDefaultCredentialsConfiguration() {
     AwsClientProperties awsClientProperties = new AwsClientProperties();
@@ -74,6 +96,11 @@ public class AwsClientPropertiesTest {
         .isNotSameAs(credentialsProvider2);
   }
 
+  /**
+   * 测试场景：Basic Credentials Configuration。
+   *
+   * <p>验证该方法在 Basic Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicCredentialsConfiguration() {
     AwsClientProperties awsClientProperties = new AwsClientProperties();
@@ -95,6 +122,11 @@ public class AwsClientPropertiesTest {
         .isEqualTo("secret");
   }
 
+  /**
+   * 测试场景：Session Credentials Configuration。
+   *
+   * <p>验证该方法在 Session Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testSessionCredentialsConfiguration() {
     // set access key id, secret access key, and session token

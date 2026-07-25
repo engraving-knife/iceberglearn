@@ -33,7 +33,15 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRemoveOrphanFilesAction3 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 移除孤儿文件动作3 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
+  /** 测试Spark目录表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkCatalogTable() throws Exception {
     spark.conf().set("spark.sql.catalog.mycat", "org.apache.iceberg.spark.SparkCatalog");
@@ -64,6 +72,7 @@ public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** 测试Spark目录命名Hadoop表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkCatalogNamedHadoopTable() throws Exception {
     spark.conf().set("spark.sql.catalog.hadoop", "org.apache.iceberg.spark.SparkCatalog");
@@ -94,6 +103,7 @@ public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** 测试Spark目录命名hive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkCatalogNamedHiveTable() throws Exception {
     spark.conf().set("spark.sql.catalog.hive", "org.apache.iceberg.spark.SparkCatalog");
@@ -124,6 +134,7 @@ public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** 测试Spark会话目录Hadoop表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkSessionCatalogHadoopTable() throws Exception {
     spark
@@ -157,6 +168,7 @@ public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** 测试Spark会话目录hive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkSessionCatalogHiveTable() throws Exception {
     spark
@@ -190,6 +202,7 @@ public class TestRemoveOrphanFilesAction3 extends TestRemoveOrphanFilesAction {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** resetSpark会话目录。 */
   @After
   public void resetSparkSessionCatalog() throws Exception {
     spark.conf().unset("spark.sql.catalog.spark_catalog");

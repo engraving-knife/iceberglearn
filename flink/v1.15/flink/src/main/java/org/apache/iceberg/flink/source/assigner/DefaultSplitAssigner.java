@@ -36,6 +36,13 @@ import org.apache.iceberg.flink.source.split.SerializableComparator;
  * locking.
  */
 @Internal
+/**
+ * 默认分片分配器，管理待读分片队列并按请求分配。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：维护分片集合，响应 reader 的 getNext 分配请求。
+ *
+ * <p>设计意图：实现 SplitAssigner；被 enumerator 调用。
+ */
 public class DefaultSplitAssigner implements SplitAssigner {
 
   private final Queue<IcebergSourceSplit> pendingSplits;

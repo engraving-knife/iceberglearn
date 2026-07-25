@@ -51,6 +51,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestFlinkManifest 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkManifest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkManifest {
   private static final Configuration CONF = new Configuration();
 
@@ -60,6 +67,7 @@ public class TestFlinkManifest {
   private FileAppenderFactory<RowData> appenderFactory;
   private final AtomicInteger fileCount = new AtomicInteger(0);
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     File folder = tempFolder.newFolder();
@@ -87,6 +95,11 @@ public class TestFlinkManifest {
             null);
   }
 
+  /**
+   * 测试场景：IO。
+   *
+   * <p>验证该方法在 IO 条件下的行为是否符合预期。
+   */
   @Test
   public void testIO() throws IOException {
     String flinkJobId = newFlinkJobId();
@@ -126,6 +139,11 @@ public class TestFlinkManifest {
     }
   }
 
+  /**
+   * 测试场景：User Provided Manifest Location。
+   *
+   * <p>验证该方法在 User Provided Manifest Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testUserProvidedManifestLocation() throws IOException {
     long checkpointId = 1;
@@ -164,6 +182,11 @@ public class TestFlinkManifest {
     }
   }
 
+  /**
+   * 测试场景：Versioned Serializer。
+   *
+   * <p>验证该方法在 Versioned Serializer 条件下的行为是否符合预期。
+   */
   @Test
   public void testVersionedSerializer() throws IOException {
     long checkpointId = 1;
@@ -201,6 +224,11 @@ public class TestFlinkManifest {
     Assert.assertArrayEquals(versionedSerializeData, versionedSerializeData2);
   }
 
+  /**
+   * 测试场景：Compatibility。
+   *
+   * <p>验证该方法在 Compatibility 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompatibility() throws IOException {
     // The v2 deserializer should be able to deserialize the v1 binary.
@@ -235,22 +263,26 @@ public class TestFlinkManifest {
 
   private static class V1Serializer implements SimpleVersionedSerializer<ManifestFile> {
 
+    /** 辅助方法：getVersion，get Version。 */
     @Override
     public int getVersion() {
       return 1;
     }
 
+    /** 辅助方法：serialize，serialize。 */
     @Override
     public byte[] serialize(ManifestFile m) throws IOException {
       return ManifestFiles.encode(m);
     }
 
+    /** 辅助方法：deserialize，deserialize。 */
     @Override
     public ManifestFile deserialize(int version, byte[] serialized) throws IOException {
       return ManifestFiles.decode(serialized);
     }
   }
 
+  /** 辅助方法：writeDataFile，write Data File。 */
   private DataFile writeDataFile(String filename, List<RowData> rows) throws IOException {
     return SimpleDataUtil.writeFile(
         table,
@@ -262,17 +294,20 @@ public class TestFlinkManifest {
         rows);
   }
 
+  /** 辅助方法：writeEqDeleteFile，write Eq Delete File。 */
   private DeleteFile writeEqDeleteFile(String filename, List<RowData> deletes) throws IOException {
     return SimpleDataUtil.writeEqDeleteFile(
         table, FileFormat.PARQUET, filename, appenderFactory, deletes);
   }
 
+  /** 辅助方法：writePosDeleteFile，write Pos Delete File。 */
   private DeleteFile writePosDeleteFile(String filename, List<Pair<CharSequence, Long>> positions)
       throws IOException {
     return SimpleDataUtil.writePosDeleteFile(
         table, FileFormat.PARQUET, filename, appenderFactory, positions);
   }
 
+  /** 辅助方法：generateDataFiles，generate Data Files。 */
   private List<DataFile> generateDataFiles(int fileNum) throws IOException {
     List<RowData> rowDataList = Lists.newArrayList();
     List<DataFile> dataFiles = Lists.newArrayList();
@@ -283,6 +318,7 @@ public class TestFlinkManifest {
     return dataFiles;
   }
 
+  /** 辅助方法：generateEqDeleteFiles，generate Eq Delete Files。 */
   private List<DeleteFile> generateEqDeleteFiles(int fileNum) throws IOException {
     List<RowData> rowDataList = Lists.newArrayList();
     List<DeleteFile> deleteFiles = Lists.newArrayList();
@@ -294,6 +330,7 @@ public class TestFlinkManifest {
     return deleteFiles;
   }
 
+  /** 辅助方法：generatePosDeleteFiles，generate Pos Delete Files。 */
   private List<DeleteFile> generatePosDeleteFiles(int fileNum) throws IOException {
     List<Pair<CharSequence, Long>> positions = Lists.newArrayList();
     List<DeleteFile> deleteFiles = Lists.newArrayList();
@@ -305,10 +342,12 @@ public class TestFlinkManifest {
     return deleteFiles;
   }
 
+  /** 辅助方法：newFlinkJobId，new Flink Job Id。 */
   private static String newFlinkJobId() {
     return UUID.randomUUID().toString();
   }
 
+  /** 辅助方法：newOperatorUniqueId，new Operator Unique Id。 */
   private static String newOperatorUniqueId() {
     return UUID.randomUUID().toString();
   }

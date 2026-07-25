@@ -33,17 +33,31 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestFastAppend，用于验证 Fast Append 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Fast Append 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestFastAppend extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：fast append。 */
   public TestFastAppend(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：empty table append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppend() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -67,6 +81,11 @@ public class TestFastAppend extends TableTestBase {
         "Table should end with last-sequence-number 0", 0, base.lastSequenceNumber());
   }
 
+  /**
+   * 测试场景：empty table append manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppendManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -97,6 +116,11 @@ public class TestFastAppend extends TableTestBase {
         "Table should end with last-sequence-number 0", 0, base.lastSequenceNumber());
   }
 
+  /**
+   * 测试场景：empty table append files and manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppendFilesAndManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -134,6 +158,11 @@ public class TestFastAppend extends TableTestBase {
         "Table should end with last-sequence-number 0", 0, base.lastSequenceNumber());
   }
 
+  /**
+   * 测试场景：non empty table append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNonEmptyTableAppend() {
     table.newAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -153,6 +182,11 @@ public class TestFastAppend extends TableTestBase {
     validateSnapshot(base.currentSnapshot(), pending, FILE_C, FILE_D);
   }
 
+  /**
+   * 测试场景：no merge。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoMerge() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -177,6 +211,11 @@ public class TestFastAppend extends TableTestBase {
     validateSnapshot(base.currentSnapshot(), pending, FILE_C, FILE_D);
   }
 
+  /**
+   * 测试场景：refresh before apply。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRefreshBeforeApply() {
     // load a new copy of the table that will not be refreshed by the commit
@@ -197,6 +236,11 @@ public class TestFastAppend extends TableTestBase {
     validateSnapshot(base.currentSnapshot(), pending, FILE_D);
   }
 
+  /**
+   * 测试场景：refresh before commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRefreshBeforeCommit() {
     // commit from the stale table
@@ -228,6 +272,11 @@ public class TestFastAppend extends TableTestBase {
         committedManifests.get(0));
   }
 
+  /**
+   * 测试场景：failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailure() {
     // inject 5 failures
@@ -246,6 +295,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertFalse("Should clean up new manifest", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：append manifest cleanup。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestCleanup() throws IOException {
     // inject 5 failures
@@ -265,6 +319,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertFalse("Should clean up new manifest", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：recovery with manifest list。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecoveryWithManifestList() {
     table.updateProperties().set(TableProperties.MANIFEST_LISTS_ENABLED, "true").commit();
@@ -289,6 +348,11 @@ public class TestFastAppend extends TableTestBase {
         metadata.currentSnapshot().allManifests(FILE_IO).contains(newManifest));
   }
 
+  /**
+   * 测试场景：recovery without manifest list。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecoveryWithoutManifestList() {
     table.updateProperties().set(TableProperties.MANIFEST_LISTS_ENABLED, "false").commit();
@@ -313,6 +377,11 @@ public class TestFastAppend extends TableTestBase {
         metadata.currentSnapshot().allManifests(FILE_IO).contains(newManifest));
   }
 
+  /**
+   * 测试场景：append manifest with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestWithSnapshotIdInheritance() throws IOException {
     table.updateProperties().set(TableProperties.SNAPSHOT_ID_INHERITANCE_ENABLED, "true").commit();
@@ -354,6 +423,11 @@ public class TestFastAppend extends TableTestBase {
         snapshot.summary().get("total-records"));
   }
 
+  /**
+   * 测试场景：append manifest failure with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestFailureWithSnapshotIdInheritance() throws IOException {
     table.updateProperties().set(TableProperties.SNAPSHOT_ID_INHERITANCE_ENABLED, "true").commit();
@@ -379,6 +453,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertTrue("Append manifest should not be deleted", new File(manifest.path()).exists());
   }
 
+  /**
+   * 测试场景：invalid append manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidAppendManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -401,6 +480,11 @@ public class TestFastAppend extends TableTestBase {
         .hasMessage("Cannot append manifest with deleted files");
   }
 
+  /**
+   * 测试场景：partition summaries on unpartitioned table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSummariesOnUnpartitionedTable() {
     Table table =
@@ -431,6 +515,11 @@ public class TestFastAppend extends TableTestBase {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：default partition summaries。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultPartitionSummaries() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -455,6 +544,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertEquals("Should set changed partition count", "1", changedPartitions);
   }
 
+  /**
+   * 测试场景：included partition summaries。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIncludedPartitionSummaries() {
     table.updateProperties().set(TableProperties.WRITE_PARTITION_SUMMARY_LIMIT, "1").commit();
@@ -490,6 +584,11 @@ public class TestFastAppend extends TableTestBase {
         partitionSummary);
   }
 
+  /**
+   * 测试场景：included partition summary limit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIncludedPartitionSummaryLimit() {
     table.updateProperties().set(TableProperties.WRITE_PARTITION_SUMMARY_LIMIT, "1").commit();
@@ -516,6 +615,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertEquals("Should set changed partition count", "2", changedPartitions);
   }
 
+  /**
+   * 测试场景：append to existing branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendToExistingBranch() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -527,6 +631,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertEquals(table.ops().current().ref("branch").snapshotId(), branchSnapshot);
   }
 
+  /**
+   * 测试场景：append creates branch if needed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendCreatesBranchIfNeeded() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -538,6 +647,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertEquals(table.ops().current().ref("branch").snapshotId(), branchSnapshot);
   }
 
+  /**
+   * 测试场景：append to branch empty table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendToBranchEmptyTable() {
     table.newFastAppend().appendFile(FILE_B).toBranch("branch").commit();
@@ -548,6 +662,11 @@ public class TestFastAppend extends TableTestBase {
     Assert.assertEquals(table.ops().current().ref("branch").snapshotId(), branchSnapshot);
   }
 
+  /**
+   * 测试场景：append to null branch fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendToNullBranchFails() {
     Assertions.assertThatThrownBy(() -> table.newFastAppend().appendFile(FILE_A).toBranch(null))
@@ -556,6 +675,11 @@ public class TestFastAppend extends TableTestBase {
         .hasMessage("Invalid branch name: null");
   }
 
+  /**
+   * 测试场景：append to tag fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendToTagFails() {
     table.newFastAppend().appendFile(FILE_A).commit();

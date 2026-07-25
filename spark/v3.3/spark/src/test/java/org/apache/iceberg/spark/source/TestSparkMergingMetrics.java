@@ -33,12 +33,21 @@ import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.spark.SparkSchemaUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * 文件级说明：测试 TestSparkMergingMetrics 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkmerging指标 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkMergingMetrics extends TestMergingMetrics<InternalRow> {
 
+  /** 测试Sparkmerging指标。 */
   public TestSparkMergingMetrics(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 写与获取appender。 */
   @Override
   protected FileAppender<InternalRow> writeAndGetAppender(List<Record> records) throws IOException {
     Table testTable =

@@ -43,6 +43,15 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkZOrderDataRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkZOrderDataRewriter.class);
@@ -82,11 +91,21 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     this.zOrderColNames = validZOrderColNames(spark, table, zOrderColNames);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "Z-ORDER";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -96,6 +115,11 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         .build();
   }
 
+  /**
+   * 执行初始化。
+   *
+   * @param options 参数
+   */
   @Override
   public void init(Map<String, String> options) {
     super.init(options);
@@ -103,6 +127,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     this.varLengthContribution = varLengthContribution(options);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, List<FileScanTask> group) {
     Dataset<Row> zValueDF = df.withColumn(Z_COLUMN, zValue(df));
@@ -110,6 +135,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return sortedDF.drop(Z_COLUMN);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Column zValue(Dataset<Row> df) {
     SparkZOrderUDF zOrderUDF =
         new SparkZOrderUDF(zOrderColNames.size(), varLengthContribution, maxOutputSize);
@@ -123,6 +149,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return zOrderUDF.interleaveBytes(array(zOrderCols));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int varLengthContribution(Map<String, String> options) {
     int value =
         PropertyUtil.propertyAsInt(
@@ -135,6 +162,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return value;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int maxOutputSize(Map<String, String> options) {
     int value = PropertyUtil.propertyAsInt(options, MAX_OUTPUT_SIZE, MAX_OUTPUT_SIZE_DEFAULT);
     Preconditions.checkArgument(
@@ -145,6 +173,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return value;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<String> validZOrderColNames(
       SparkSession spark, Table table, List<String> inputZOrderColNames) {
 

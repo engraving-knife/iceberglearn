@@ -27,6 +27,13 @@ import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
  * statistics
  */
 @Internal
+/**
+ * 数据统计事件，承载统计快照用于算子间传输。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装序列化后的统计信息，作为 OperatorEvent 下发。
+ *
+ * <p>设计意图：事件对象；被 DataStatisticsOperator 发送，被下游接收。
+ */
 class DataStatisticsEvent<D extends DataStatistics<D, S>, S> implements OperatorEvent {
 
   private static final long serialVersionUID = 1L;

@@ -50,10 +50,19 @@ import org.apache.iceberg.io.FileAppenderFactory;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 ReaderUtil 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 ReaderUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class ReaderUtil {
 
+  /** 辅助方法：ReaderUtil，Reader Util。 */
   private ReaderUtil() {}
 
+  /** 辅助方法：createFileTask，create File Task。 */
   public static FileScanTask createFileTask(
       List<Record> records,
       File file,
@@ -82,6 +91,7 @@ public class ReaderUtil {
         residuals);
   }
 
+  /** 辅助方法：createDataIterator，create Data Iterator。 */
   public static DataIterator<RowData> createDataIterator(CombinedScanTask combinedTask) {
     return new DataIterator<>(
         new RowDataFileScanTaskReader(
@@ -91,17 +101,20 @@ public class ReaderUtil {
         new PlaintextEncryptionManager());
   }
 
+  /** 辅助方法：createRecordBatchList，create Record Batch List。 */
   public static List<List<Record>> createRecordBatchList(
       Schema schema, int listSize, int batchCount) {
     return createRecordBatchList(0L, schema, listSize, batchCount);
   }
 
+  /** 辅助方法：createRecordBatchList，create Record Batch List。 */
   public static List<List<Record>> createRecordBatchList(
       long seed, Schema schema, int listSize, int batchCount) {
     List<Record> records = RandomGenericData.generate(schema, listSize * batchCount, seed);
     return Lists.partition(records, batchCount);
   }
 
+  /** 辅助方法：createCombinedScanTask，create Combined Scan Task。 */
   public static CombinedScanTask createCombinedScanTask(
       List<List<Record>> recordBatchList,
       TemporaryFolder temporaryFolder,

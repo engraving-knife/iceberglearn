@@ -18,18 +18,38 @@
  */
 package org.apache.iceberg;
 
-/** A changelog scan task. */
+/**
+ * 变更日志扫描任务：表示一次增量变更扫描中产出的一组行级变更（insert/delete）。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：在 {@link ScanTask} 基础上额外暴露变更类型、变更序号与提交快照 ID，使下游能够按 顺序回放表的行级变更。
+ *
+ * <p>设计意图：增量变更扫描（CDC 风格）需要保证变更可按确定的顺序应用，因此引入 {@link #changeOrdinal()} 作为全局排序依据，较低序号必须先应用。
+ *
+ * <p>上下游关系：由 {@link IncrementalChangelogScan} 规划产出，被引擎层用于行级 CDC 同步。
+ */
 public interface ChangelogScanTask extends ScanTask {
-  /** Returns the type of changes produced by this task (i.e. insert/delete). */
+  /**
+   * 返回本任务产出的变更类型（插入或删除）。
+   *
+   * @return 变更操作类型
+   */
   ChangelogOperation operation();
 
   /**
-   * Returns the ordinal of changes produced by this task. This number indicates the order in which
-   * changes produced by this scan must be applied. Operations with a lower ordinal must be applied
-   * first.
+   * 返回本任务变更的序号。
+   *
+   * <p>该序号指示变更的应用顺序：序号较小的变更必须先被应用，以保证最终状态一致。
+   *
+   * @return 变更序号
    */
   int changeOrdinal();
 
-  /** Returns the snapshot ID in which the changes were committed. */
+  /**
+   * 返回变更所提交到的快照 ID。
+   *
+   * @return 提交快照 ID
+   */
   long commitSnapshotId();
 }

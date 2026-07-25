@@ -32,6 +32,14 @@ import org.apache.flink.table.types.logical.VarCharType;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestAggregatedStatisticsTracker 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestAggregatedStatisticsTracker 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestAggregatedStatisticsTracker {
   private static final int NUM_SUBTASKS = 2;
   private final RowType rowType = RowType.of(new VarCharType());
@@ -47,12 +55,18 @@ public class TestAggregatedStatisticsTracker {
   private AggregatedStatisticsTracker<MapDataStatistics, Map<RowData, Long>>
       aggregatedStatisticsTracker;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws Exception {
     aggregatedStatisticsTracker =
         new AggregatedStatisticsTracker<>("testOperator", statisticsSerializer, NUM_SUBTASKS);
   }
 
+  /**
+   * 测试场景：receive Newer Data Statistic Event。
+   *
+   * <p>验证该方法在 receive Newer Data Statistic Event 条件下的行为是否符合预期。
+   */
   @Test
   public void receiveNewerDataStatisticEvent() {
     MapDataStatistics checkpoint1Subtask0DataStatistic = new MapDataStatistics();
@@ -79,6 +93,11 @@ public class TestAggregatedStatisticsTracker {
     assertThat(aggregatedStatisticsTracker.inProgressStatistics().checkpointId()).isEqualTo(2);
   }
 
+  /**
+   * 测试场景：receive Older Data Statistic Event Test。
+   *
+   * <p>验证该方法在 receive Older Data Statistic Event Test 条件下的行为是否符合预期。
+   */
   @Test
   public void receiveOlderDataStatisticEventTest() {
     MapDataStatistics checkpoint2Subtask0DataStatistic = new MapDataStatistics();
@@ -107,6 +126,11 @@ public class TestAggregatedStatisticsTracker {
     assertThat(aggregatedStatisticsTracker.inProgressStatistics().checkpointId()).isEqualTo(2);
   }
 
+  /**
+   * 测试场景：receive Completed Data Statistic Event。
+   *
+   * <p>验证该方法在 receive Completed Data Statistic Event 条件下的行为是否符合预期。
+   */
   @Test
   public void receiveCompletedDataStatisticEvent() {
     MapDataStatistics checkpoint1Subtask0DataStatistic = new MapDataStatistics();

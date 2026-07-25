@@ -80,23 +80,68 @@ import org.apache.iceberg.util.PartitionUtil;
 import org.apache.iceberg.util.SerializationUtil;
 
 /**
- * Generic Mrv2 InputFormat API for Iceberg.
+ * 文件级说明：Iceberg 的 MR v2（mapreduce）InputFormat，是 Iceberg 读取的核心实现。
  *
- * @param <T> T is the in memory data model which can either be Pig tuples, Hive rows. Default is
- *     Iceberg records
+ * <p>所属模块：iceberg-mr（mapreduce 子包；为 MR v2 API 用户提供 Iceberg 读取入口， 也是 {@link
+ * org.apache.iceberg.mr.mapred.MapredIcebergInputFormat} 与 {@link
+ * org.apache.iceberg.mr.hive.HiveIcebergInputFormat} 的底层实现）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link #getSplits(JobContext)}：根据配置加载表、构建 TableScan（含时间旅行、投影、列裁剪、 过滤下推、切分大小），规划出 {@link
+ *       CombinedScanTask} 列表并包装为 {@link IcebergSplit}。
+ *   <li>{@link #createRecordReader(InputSplit, TaskAttemptContext)}：返回 {@link
+ *       IcebergRecordReader}，按文件格式（Avro/ORC/Parquet）打开数据文件， 应用相等性删除（equality delete）过滤与残留谓词过滤。
+ *   <li>支持 GENERIC / HIVE / PIG 三种内存数据模型；HIVE 模式下走 Hive 向量化 reader。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>把表对象通过 {@link SerializableTable#copyOf} 转为可序列化形式写入 split，避免 executor 重新访问 catalog；并可选跳过
+ *       FileIO 配置序列化以减小 split 体积。
+ *   <li>HIVE/PIG 模式不做残留过滤（仅 GENERIC 支持），因此在 split 规划阶段对 HIVE/PIG 调用 {@link
+ *       #checkResiduals(CombinedScanTask)} 提前校验，发现未满足的残留谓词直接报错。
+ *   <li>Hive 向量化 reader 类通过 {@link DynMethods} 反射加载，避免对 Hive 3 专用类的编译期依赖。
+ *   <li>多个 FileScanTask 在同一 RecordReader 中顺序读取，task 间无缝切换。
+ * </ul>
+ *
+ * <p>上下游关系：上游被 MR v2 引擎、{@link MapredIcebergInputFormat}（v1 适配）、 {@link
+ * HiveIcebergInputFormat}（Hive 适配）调用；下游依赖 iceberg-core 的 {@link TableScan}、{@link Parquet}/{@link
+ * ORC}/{@link Avro} 读取器、{@link DeleteFilter} 等。
+ *
+ * @param <T> 内存数据模型类型（PIG Tuple / Hive row / Iceberg Record）
  */
 public class IcebergInputFormat<T> extends InputFormat<Void, T> {
   /**
-   * Configures the {@code Job} to use the {@code IcebergInputFormat} and returns a helper to add
-   * further configuration.
+   * 配置 Job 使用本 InputFormat，并返回 {@link InputFormatConfig.ConfigBuilder} 以便进一步配置。
    *
-   * @param job the {@code Job} to configure
+   * @param job MR v2 Job
+   * @return 配置构造器
    */
   public static InputFormatConfig.ConfigBuilder configure(Job job) {
     job.setInputFormatClass(IcebergInputFormat.class);
     return new InputFormatConfig.ConfigBuilder(job.getConfiguration());
   }
 
+  /**
+   * 计算输入切分。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>优先从 StorageHandler 序列化的配置加载 Table，否则用 {@link Catalogs#loadTable} 加载。
+   *   <li>构建 {@link TableScan}：设置 caseSensitive、snapshotId（时间旅行）、asOfTime、 splitSize、读 schema
+   *       投影、列选择、过滤表达式。
+   *   <li>调用 {@link TableScan#planTasks()} 规划 CombinedScanTask，包装为 {@link IcebergSplit}。 HIVE/PIG
+   *       模式下提前 {@link #checkResiduals} 校验残留谓词。
+   *   <li>对 DataTableScan，按需跳过 FileIO 配置序列化以减小 split 体积。
+   * </ol>
+   *
+   * @param context 作业上下文
+   * @return 切分列表
+   */
   @Override
   public List<InputSplit> getSplits(JobContext context) {
     Configuration conf = context.getConfiguration();
@@ -173,6 +218,13 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
     return splits;
   }
 
+  /**
+   * 校验任务的残留谓词是否完全满足。
+   *
+   * <p>设计要点：HIVE/PIG 模式不支持残留过滤，因此若残留谓词非 alwaysTrue 则直接抛 UnsupportedOperationException，避免读到不该返回的行。
+   *
+   * @param task 组合扫描任务
+   */
   private static void checkResiduals(CombinedScanTask task) {
     task.files()
         .forEach(
@@ -188,11 +240,13 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
             });
   }
 
+  /** 创建 RecordReader，返回新的 {@link IcebergRecordReader} 实例。 */
   @Override
   public RecordReader<Void, T> createRecordReader(InputSplit split, TaskAttemptContext context) {
     return new IcebergRecordReader<>();
   }
 
+  /** Iceberg RecordReader 实现：顺序读取 split 内多个 FileScanTask，按文件格式打开数据。 */
   private static final class IcebergRecordReader<T> extends RecordReader<Void, T> {
 
     private static final String HIVE_VECTORIZED_READER_CLASS =
@@ -228,6 +282,20 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
     private FileIO io;
     private EncryptionManager encryptionManager;
 
+    /**
+     * 初始化 RecordReader。
+     *
+     * <p>逻辑：
+     *
+     * <ol>
+     *   <li>从 split 取出 CombinedScanTask 与 Table；按需注入 FileIO 配置。
+     *   <li>读取表 schema、name mapping、caseSensitive、expectedSchema（投影后）、 reuseContainers、内存数据模型。
+     *   <li>打开第一个 FileScanTask 的迭代器。
+     * </ol>
+     *
+     * @param split 输入切分
+     * @param newContext 任务上下文
+     */
     @Override
     public void initialize(InputSplit split, TaskAttemptContext newContext) {
       Configuration conf = newContext.getConfiguration();
@@ -253,6 +321,13 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       this.currentIterator = open(tasks.next(), expectedSchema).iterator();
     }
 
+    /**
+     * 推进到下一条记录。
+     *
+     * <p>逻辑：当前迭代器有下一条则返回；否则切换到下一个 FileScanTask 的迭代器；任务用尽时关闭并返回 false。
+     *
+     * @return true 表示有下一条记录
+     */
     @Override
     public boolean nextKeyValue() throws IOException {
       while (true) {
@@ -269,16 +344,23 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       }
     }
 
+    /** 返回 key，固定为 null。 */
     @Override
     public Void getCurrentKey() {
       return null;
     }
 
+    /** 返回当前记录值。 */
     @Override
     public T getCurrentValue() {
       return current;
     }
 
+    /**
+     * 返回读取进度，委托给 context.getProgress()。
+     *
+     * <p>TODO：可基于已读行数估算更精确的进度。
+     */
     @Override
     public float getProgress() {
       // TODO: We could give a more accurate progress based on records read from the file.
@@ -295,11 +377,21 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       return context.getProgress();
     }
 
+    /** 关闭当前迭代器。 */
     @Override
     public void close() throws IOException {
       currentIterator.close();
     }
 
+    /**
+     * 打开单个 FileScanTask 对应的数据文件。
+     *
+     * <p>逻辑：用 {@link EncryptionManager#decrypt} 解密 InputFile，按文件格式（Avro/ORC/Parquet） 创建对应 iterable。
+     *
+     * @param currentTask 文件扫描任务
+     * @param readSchema 读 schema
+     * @return 数据 iterable
+     */
     private CloseableIterable<T> openTask(FileScanTask currentTask, Schema readSchema) {
       DataFile file = currentTask.file();
       InputFile inputFile =
@@ -326,6 +418,21 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       return iterable;
     }
 
+    /**
+     * 打开 FileScanTask 并按内存数据模型包装。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>PIG/HIVE：暂不支持 PIG；HIVE 直接 openTask（向量化由各 newXxxIterable 内部处理）。
+     *   <li>GENERIC：用 {@link GenericDeleteFilter} 过滤 equality/position delete， 并按删除过滤后的
+     *       requiredSchema 读取数据。
+     * </ul>
+     *
+     * @param currentTask 文件扫描任务
+     * @param readSchema 读 schema
+     * @return 数据 iterable
+     */
     @SuppressWarnings("unchecked")
     private CloseableIterable<T> open(FileScanTask currentTask, Schema readSchema) {
       switch (inMemoryDataModel) {
@@ -343,6 +450,17 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       }
     }
 
+    /**
+     * 应用残留谓词过滤。
+     *
+     * <p>逻辑：若未跳过残留过滤且 residual 非 alwaysTrue，则用 {@link Evaluator} 对每条记录求值， 用 {@link
+     * InternalRecordWrapper} 包装以适配类型。否则原样返回 iterable。
+     *
+     * @param iter 数据 iterable
+     * @param residual 残留谓词
+     * @param readSchema 读 schema
+     * @return 过滤后的 iterable
+     */
     private CloseableIterable<T> applyResidualFiltering(
         CloseableIterable<T> iter, Expression residual, Schema readSchema) {
       boolean applyResidual =
@@ -360,6 +478,17 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       }
     }
 
+    /**
+     * 创建 Avro 数据 iterable。
+     *
+     * <p>逻辑：构建 {@link Avro.ReadBuilder}，按需设置 reuseContainers、nameMapping； GENERIC 模式用 {@link
+     * DataReader} 作为 reader func；PIG/HIVE 暂不支持 Avro。 最后应用残留过滤。
+     *
+     * @param inputFile 输入文件
+     * @param task 文件扫描任务
+     * @param readSchema 读 schema
+     * @return Avro iterable
+     */
     private CloseableIterable<T> newAvroIterable(
         InputFile inputFile, FileScanTask task, Schema readSchema) {
       Avro.ReadBuilder avroReadBuilder =
@@ -388,6 +517,25 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       return applyResidualFiltering(avroReadBuilder.build(), task.residual(), readSchema);
     }
 
+    /**
+     * 创建 Parquet 数据 iterable。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>PIG：暂不支持。
+     *   <li>HIVE：Hive 3+ 通过反射调用向量化 reader；Hive 2 不支持。
+     *   <li>GENERIC：用 {@link GenericParquetReaders#buildReader} 构建 reader，
+     *       支持过滤下推、reuseContainers、nameMapping。
+     * </ul>
+     *
+     * 最后应用残留过滤。
+     *
+     * @param inputFile 输入文件
+     * @param task 文件扫描任务
+     * @param readSchema 读 schema
+     * @return Parquet iterable
+     */
     private CloseableIterable<T> newParquetIterable(
         InputFile inputFile, FileScanTask task, Schema readSchema) {
       Map<Integer, ?> idToConstant =
@@ -430,6 +578,25 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       return applyResidualFiltering(parquetIterator, task.residual(), readSchema);
     }
 
+    /**
+     * 创建 ORC 数据 iterable。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>PIG：暂不支持。
+     *   <li>HIVE：Hive 3+ 通过反射调用向量化 reader；Hive 2 不支持。
+     *   <li>GENERIC：用 {@link GenericOrcReader#buildReader} 构建 reader，
+     *       投影时排除常量与元数据字段，支持过滤下推、nameMapping。
+     * </ul>
+     *
+     * ORC 暂不支持 reuseContainers。最后应用残留过滤。
+     *
+     * @param inputFile 输入文件
+     * @param task 文件扫描任务
+     * @param readSchema 读 schema
+     * @return ORC iterable
+     */
     private CloseableIterable<T> newOrcIterable(
         InputFile inputFile, FileScanTask task, Schema readSchema) {
       Map<Integer, ?> idToConstant =
@@ -472,6 +639,16 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       return applyResidualFiltering(orcIterator, task.residual(), readSchema);
     }
 
+    /**
+     * 计算文件任务的常量列映射（identity 分区列）。
+     *
+     * <p>逻辑：若 expectedSchema 投影了 identity 分区列，则用 {@link PartitionUtil#constantsMap} 生成 字段ID -> 常量值
+     * 的映射；否则返回空 map。
+     *
+     * @param task 文件扫描任务
+     * @param converter 类型转换函数
+     * @return 常量列映射
+     */
     private Map<Integer, ?> constantsMap(
         FileScanTask task, BiFunction<Type, Object, Object> converter) {
       PartitionSpec spec = task.spec();
@@ -485,6 +662,16 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       }
     }
 
+    /**
+     * 解析实际读取 schema。
+     *
+     * <p>逻辑：优先使用配置中的 read schema；否则按 selectedColumns 做列裁剪（区分大小写敏感）； 都未设置则返回全表 schema。
+     *
+     * @param conf 配置
+     * @param tableSchema 表 schema
+     * @param caseSensitive 是否大小写敏感
+     * @return 实际读取 schema
+     */
     private static Schema readSchema(
         Configuration conf, Schema tableSchema, boolean caseSensitive) {
       Schema readSchema = InputFormatConfig.readSchema(conf);

@@ -28,6 +28,13 @@ import org.apache.flink.metrics.groups.SourceReaderMetricGroup;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 文件级说明：测试 TestingMetricGroup 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestingMetricGroup 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 class TestingMetricGroup extends UnregisteredMetricsGroup implements SourceReaderMetricGroup {
   private final Map<String, Counter> counters;
 
@@ -44,6 +51,7 @@ class TestingMetricGroup extends UnregisteredMetricsGroup implements SourceReade
     return counters;
   }
 
+  /** 辅助方法：counter，counter。 */
   @Override
   public Counter counter(String name) {
     Counter counter = new SimpleCounter();
@@ -51,49 +59,59 @@ class TestingMetricGroup extends UnregisteredMetricsGroup implements SourceReade
     return counter;
   }
 
+  /** 辅助方法：addGroup，add Group。 */
   @Override
   public MetricGroup addGroup(String name) {
     return new TestingMetricGroup(counters);
   }
 
+  /** 辅助方法：addGroup，add Group。 */
   @Override
   public MetricGroup addGroup(String key, String value) {
     return new TestingMetricGroup(counters);
   }
 
+  /** 辅助方法：getIOMetricGroup，get IO Metric Group。 */
   @Override
   public OperatorIOMetricGroup getIOMetricGroup() {
     return new TestingOperatorIOMetricGroup();
   }
 
+  /** 辅助方法：getNumRecordsInErrorsCounter，get Num Records In Errors Counter。 */
   @Override
   public Counter getNumRecordsInErrorsCounter() {
     return new SimpleCounter();
   }
 
+  /** 辅助方法：setPendingBytesGauge，set Pending Bytes Gauge。 */
   @Override
   public void setPendingBytesGauge(Gauge<Long> pendingBytesGauge) {}
 
+  /** 辅助方法：setPendingRecordsGauge，set Pending Records Gauge。 */
   @Override
   public void setPendingRecordsGauge(Gauge<Long> pendingRecordsGauge) {}
 
   private static class TestingOperatorIOMetricGroup extends UnregisteredMetricsGroup
       implements OperatorIOMetricGroup {
+    /** 辅助方法：getNumRecordsInCounter，get Num Records In Counter。 */
     @Override
     public Counter getNumRecordsInCounter() {
       return new SimpleCounter();
     }
 
+    /** 辅助方法：getNumRecordsOutCounter，get Num Records Out Counter。 */
     @Override
     public Counter getNumRecordsOutCounter() {
       return new SimpleCounter();
     }
 
+    /** 辅助方法：getNumBytesInCounter，get Num Bytes In Counter。 */
     @Override
     public Counter getNumBytesInCounter() {
       return new SimpleCounter();
     }
 
+    /** 辅助方法：getNumBytesOutCounter，get Num Bytes Out Counter。 */
     @Override
     public Counter getNumBytesOutCounter() {
       return new SimpleCounter();

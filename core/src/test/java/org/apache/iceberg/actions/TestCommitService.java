@@ -37,12 +37,26 @@ import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
+/**
+ * 测试类：TestCommitService，用于验证 Commit Service 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Commit Service 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCommitService extends TableTestBase {
 
+  /** 辅助方法：commit service。 */
   public TestCommitService() {
     super(1);
   }
 
+  /**
+   * 测试场景：committed results correctly。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCommittedResultsCorrectly() {
     CustomCommitService commitService = new CustomCommitService(table, 5, 10000);
@@ -58,6 +72,11 @@ public class TestCommitService extends TableTestBase {
     Assertions.assertThat(actual).isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：abort file groups after timeout。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAbortFileGroupsAfterTimeout() {
     CustomCommitService commitService = new CustomCommitService(table, 5, 200);
@@ -120,6 +139,7 @@ public class TestCommitService extends TableTestBase {
       super(table, rewritesPerCommit, timeoutInSeconds);
     }
 
+    /** 辅助方法：commit or clean。 */
     @Override
     protected void commitOrClean(Set<Integer> batch) {
       try {
@@ -130,6 +150,7 @@ public class TestCommitService extends TableTestBase {
       }
     }
 
+    /** 辅助方法：abort file group。 */
     @Override
     protected void abortFileGroup(Integer group) {
       aborted.add(group);

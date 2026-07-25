@@ -57,28 +57,54 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark 内部数据类型到 Parquet 的写入器构建工厂。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层，data 子包负责 Spark 数据 格式与 Parquet 之间的写入转换）。
+ *
+ * <p>职责：根据 Spark StructType 和 Parquet MessageType 构建对应的 {@link ParquetValueWriter} 树，使 Spark
+ * InternalRow/ArrayData/MapData 能正确写入 Parquet 文件。涵盖所有 Spark 原始类型、字符串、UUID、Decimal、数组和映射。
+ *
+ * <p>设计意图：利用 {@link ParquetWithSparkSchemaVisitor} 的访问者模式遍历 Spark 与 Parquet 的类型对应结构，通过 WriteBuilder
+ * 在每个节点构建对应的写入器。 Decimal 写入根据 Parquet 物理类型（INT32/INT64/BINARY）选择不同的写入器。 使用 ThreadLocal 缓冲区避免
+ * UUID/Decimal 写入时的频繁分配。
+ *
+ * <p>上下游关系：被 Iceberg Spark 数据源在写入 Parquet 文件时调用； 依赖 Iceberg parquet 模块的 ParquetValueWriter 框架。
+ */
 public class SparkParquetWriters {
   private SparkParquetWriters() {}
 
+  /**
+   * 构建 Spark StructType 对应的 Parquet 写入器。
+   *
+   * <p>逻辑：通过 ParquetWithSparkSchemaVisitor 遍历 Spark schema 与 Parquet MessageType 的结构对应关系，使用
+   * WriteBuilder 在每个类型节点构建写入器。
+   *
+   * @param dfSchema Spark 结构类型
+   * @param type Parquet 消息类型
+   * @param <T> 写入值的类型
+   * @return Parquet 值写入器
+   */
   @SuppressWarnings("unchecked")
   public static <T> ParquetValueWriter<T> buildWriter(StructType dfSchema, MessageType type) {
     return (ParquetValueWriter<T>)
         ParquetWithSparkSchemaVisitor.visit(dfSchema, type, new WriteBuilder(type));
   }
 
+  /** 写入器构建访问者：在 Spark 与 Parquet 类型遍历过程中为每个节点构建对应的写入器。 */
   private static class WriteBuilder extends ParquetWithSparkSchemaVisitor<ParquetValueWriter<?>> {
     private final MessageType type;
 
     WriteBuilder(MessageType type) {
       this.type = type;
     }
-
+    /** 执行 message 相关操作。 */
     @Override
     public ParquetValueWriter<?> message(
         StructType sStruct, MessageType message, List<ParquetValueWriter<?>> fieldWriters) {
       return struct(sStruct, message.asGroupType(), fieldWriters);
     }
-
+    /** 执行 struct 相关操作。 */
     @Override
     public ParquetValueWriter<?> struct(
         StructType sStruct, GroupType struct, List<ParquetValueWriter<?>> fieldWriters) {
@@ -93,7 +119,7 @@ public class SparkParquetWriters {
 
       return new InternalRowWriter(writers, sparkTypes);
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public ParquetValueWriter<?> list(
         ArrayType sArray, GroupType array, ParquetValueWriter<?> elementWriter) {
@@ -109,7 +135,7 @@ public class SparkParquetWriters {
           newOption(repeated.getType(0), elementWriter),
           sArray.elementType());
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ParquetValueWriter<?> map(
         MapType sMap,
@@ -130,12 +156,24 @@ public class SparkParquetWriters {
           sMap.keyType(),
           sMap.valueType());
     }
-
+    /** 创建 Option 实例。 */
     private ParquetValueWriter<?> newOption(Type fieldType, ParquetValueWriter<?> writer) {
       int maxD = type.getMaxDefinitionLevel(path(fieldType.getName()));
       return ParquetValueWriters.option(fieldType, maxD, writer);
     }
 
+    /**
+     * 为原始类型构建对应的 Parquet 写入器。
+     *
+     * <p>逻辑：先根据 Parquet 的 OriginalType（ENUM/JSON/UTF8/DATE/INT_8/INT_16/INT_32/
+     * INT_64/TIME_MICROS/TIMESTAMP_MICROS/DECIMAL/BSON）分派；无注解时再根据
+     * PrimitiveTypeName（BINARY/BOOLEAN/INT32/INT64/FLOAT/DOUBLE）分派。 Decimal 根据 Parquet 物理类型选择
+     * Integer/Long/Fixed 写入器。
+     *
+     * @param sType Spark 数据类型
+     * @param primitive Parquet 原始类型
+     * @return 对应的写入器
+     */
     @Override
     public ParquetValueWriter<?> primitive(DataType sType, PrimitiveType primitive) {
       ColumnDescriptor desc = type.getColumnDescription(currentPath());
@@ -200,7 +238,7 @@ public class SparkParquetWriters {
       }
     }
   }
-
+  /** 执行 ints 相关操作。 */
   private static PrimitiveWriter<?> ints(DataType type, ColumnDescriptor desc) {
     if (type instanceof ByteType) {
       return ParquetValueWriters.tinyints(desc);
@@ -209,30 +247,30 @@ public class SparkParquetWriters {
     }
     return ParquetValueWriters.ints(desc);
   }
-
+  /** 执行 utf8Strings 相关操作。 */
   private static PrimitiveWriter<UTF8String> utf8Strings(ColumnDescriptor desc) {
     return new UTF8StringWriter(desc);
   }
-
+  /** 执行 uuids 相关操作。 */
   private static PrimitiveWriter<UTF8String> uuids(ColumnDescriptor desc) {
     return new UUIDWriter(desc);
   }
-
+  /** 执行 decimalAsInteger 相关操作。 */
   private static PrimitiveWriter<Decimal> decimalAsInteger(
       ColumnDescriptor desc, int precision, int scale) {
     return new IntegerDecimalWriter(desc, precision, scale);
   }
-
+  /** 执行 decimalAsLong 相关操作。 */
   private static PrimitiveWriter<Decimal> decimalAsLong(
       ColumnDescriptor desc, int precision, int scale) {
     return new LongDecimalWriter(desc, precision, scale);
   }
-
+  /** 执行 decimalAsFixed 相关操作。 */
   private static PrimitiveWriter<Decimal> decimalAsFixed(
       ColumnDescriptor desc, int precision, int scale) {
     return new FixedDecimalWriter(desc, precision, scale);
   }
-
+  /** 执行 byteArrays 相关操作。 */
   private static PrimitiveWriter<byte[]> byteArrays(ColumnDescriptor desc) {
     return new ByteArrayWriter(desc);
   }
@@ -241,7 +279,7 @@ public class SparkParquetWriters {
     private UTF8StringWriter(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, UTF8String value) {
       column.writeBinary(repetitionLevel, Binary.fromReusedByteArray(value.getBytes()));
@@ -257,7 +295,7 @@ public class SparkParquetWriters {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       Preconditions.checkArgument(
@@ -286,7 +324,7 @@ public class SparkParquetWriters {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       Preconditions.checkArgument(
@@ -318,7 +356,7 @@ public class SparkParquetWriters {
       this.bytes =
           ThreadLocal.withInitial(() -> new byte[TypeUtil.decimalRequiredBytes(precision)]);
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       byte[] binary =
@@ -340,7 +378,7 @@ public class SparkParquetWriters {
     private UUIDWriter(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, UTF8String string) {
       UUID uuid = UUID.fromString(string.toString());
@@ -353,7 +391,7 @@ public class SparkParquetWriters {
     private ByteArrayWriter(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 写入数据。 */
     @Override
     public void write(int repetitionLevel, byte[] bytes) {
       column.writeBinary(repetitionLevel, Binary.fromReusedByteArray(bytes));
@@ -371,7 +409,7 @@ public class SparkParquetWriters {
       super(definitionLevel, repetitionLevel, writer);
       this.elementType = elementType;
     }
-
+    /** 执行 elements 相关操作。 */
     @Override
     protected Iterator<E> elements(ArrayData list) {
       return new ElementIterator<>(list);
@@ -387,12 +425,12 @@ public class SparkParquetWriters {
         size = list.numElements();
         index = 0;
       }
-
+      /** 判断是否有下一个元素。 */
       @Override
       public boolean hasNext() {
         return index != size;
       }
-
+      /** 返回下一个元素。 */
       @Override
       @SuppressWarnings("unchecked")
       public E next() {
@@ -429,7 +467,7 @@ public class SparkParquetWriters {
       this.keyType = keyType;
       this.valueType = valueType;
     }
-
+    /** 执行 pairs 相关操作。 */
     @Override
     protected Iterator<Map.Entry<K, V>> pairs(MapData map) {
       return new EntryIterator<>(map);
@@ -449,12 +487,12 @@ public class SparkParquetWriters {
         entry = new ReusableEntry<>();
         index = 0;
       }
-
+      /** 判断是否有下一个元素。 */
       @Override
       public boolean hasNext() {
         return index != size;
       }
-
+      /** 返回下一个元素。 */
       @Override
       @SuppressWarnings("unchecked")
       public Map.Entry<K, V> next() {
@@ -482,7 +520,7 @@ public class SparkParquetWriters {
       super(writers);
       this.types = types.toArray(new DataType[types.size()]);
     }
-
+    /** 返回值。 */
     @Override
     protected Object get(InternalRow struct, int index) {
       return struct.get(index, types[index]);

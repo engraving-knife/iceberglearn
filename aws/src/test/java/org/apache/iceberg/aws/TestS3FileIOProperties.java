@@ -39,8 +39,20 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 
+/**
+ * 文件级说明：测试 TestS3FileIOProperties 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3FileIOProperties 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3FileIOProperties {
 
+  /**
+   * 测试场景：3 File Io Sse Custom must Have Custom Key。
+   *
+   * <p>验证该方法在 3 File Io Sse Custom must Have Custom Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoSseCustom_mustHaveCustomKey() {
     Map<String, String> map = Maps.newHashMap();
@@ -51,6 +63,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Cannot initialize SSE-C S3FileIO with null encryption key");
   }
 
+  /**
+   * 测试场景：3 File Io Sse Custom must Have Custom Md 5。
+   *
+   * <p>验证该方法在 3 File Io Sse Custom must Have Custom Md 5 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoSseCustom_mustHaveCustomMd5() {
     Map<String, String> map = Maps.newHashMap();
@@ -62,6 +79,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Cannot initialize SSE-C S3FileIO with null encryption key MD5");
   }
 
+  /**
+   * 测试场景：3 File Io Acl。
+   *
+   * <p>验证该方法在 3 File Io Acl 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoAcl() {
     Map<String, String> map = Maps.newHashMap();
@@ -70,6 +92,11 @@ public class TestS3FileIOProperties {
     Assertions.assertThat(properties.acl()).isEqualTo(ObjectCannedACL.AUTHENTICATED_READ);
   }
 
+  /**
+   * 测试场景：3 File Io Acl unknown Type。
+   *
+   * <p>验证该方法在 3 File Io Acl unknown Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoAcl_unknownType() {
     Map<String, String> map = Maps.newHashMap();
@@ -80,6 +107,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Cannot support S3 CannedACL bad-input");
   }
 
+  /**
+   * 测试场景：3 Multipart Size Too Small。
+   *
+   * <p>验证该方法在 3 Multipart Size Too Small 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3MultipartSizeTooSmall() {
     Map<String, String> map = Maps.newHashMap();
@@ -90,6 +122,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Minimum multipart upload object size must be larger than 5 MB.");
   }
 
+  /**
+   * 测试场景：3 Multipart Size Too Large。
+   *
+   * <p>验证该方法在 3 Multipart Size Too Large 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3MultipartSizeTooLarge() {
     Map<String, String> map = Maps.newHashMap();
@@ -100,6 +137,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Input malformed or exceeded maximum multipart upload size 5GB: 5368709120");
   }
 
+  /**
+   * 测试场景：3 Multipart Threshold Factor Less Than One。
+   *
+   * <p>验证该方法在 3 Multipart Threshold Factor Less Than One 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3MultipartThresholdFactorLessThanOne() {
     Map<String, String> map = Maps.newHashMap();
@@ -110,6 +152,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Multipart threshold factor must be >= to 1.0");
   }
 
+  /**
+   * 测试场景：3 File Io Delete Batch Size Too Large。
+   *
+   * <p>验证该方法在 3 File Io Delete Batch Size Too Large 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoDeleteBatchSizeTooLarge() {
     Map<String, String> map = Maps.newHashMap();
@@ -120,6 +167,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Deletion batch size must be between 1 and 1000");
   }
 
+  /**
+   * 测试场景：3 File Io Delete Batch Size Too Small。
+   *
+   * <p>验证该方法在 3 File Io Delete Batch Size Too Small 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoDeleteBatchSizeTooSmall() {
     Map<String, String> map = Maps.newHashMap();
@@ -130,6 +182,11 @@ public class TestS3FileIOProperties {
         .hasMessage("Deletion batch size must be between 1 and 1000");
   }
 
+  /**
+   * 测试场景：3 File Io Default Credentials Configuration。
+   *
+   * <p>验证该方法在 3 File Io Default Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoDefaultCredentialsConfiguration() {
     // set nothing
@@ -149,6 +206,11 @@ public class TestS3FileIOProperties {
         .isInstanceOf(DefaultCredentialsProvider.class);
   }
 
+  /**
+   * 测试场景：3 File Io Basic Credentials Configuration。
+   *
+   * <p>验证该方法在 3 File Io Basic Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoBasicCredentialsConfiguration() {
     // set access key id and secret access key
@@ -177,6 +239,11 @@ public class TestS3FileIOProperties {
         .isEqualTo("secret");
   }
 
+  /**
+   * 测试场景：3 File Io Session Credentials Configuration。
+   *
+   * <p>验证该方法在 3 File Io Session Credentials Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoSessionCredentialsConfiguration() {
     // set access key id, secret access key, and session token
@@ -206,6 +273,11 @@ public class TestS3FileIOProperties {
         .isEqualTo("secret");
   }
 
+  /**
+   * 测试场景：3 Remote Signer Without Uri。
+   *
+   * <p>验证该方法在 3 Remote Signer Without Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3RemoteSignerWithoutUri() {
     Map<String, String> properties =
@@ -217,6 +289,11 @@ public class TestS3FileIOProperties {
         .hasMessage("S3 signer service URI is required");
   }
 
+  /**
+   * 测试场景：3 Remote Signing Enabled。
+   *
+   * <p>验证该方法在 3 Remote Signing Enabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3RemoteSigningEnabled() {
     String uri = "http://localhost:12345";
@@ -236,6 +313,11 @@ public class TestS3FileIOProperties {
     Assertions.assertThat(signerClient.properties()).isEqualTo(properties);
   }
 
+  /**
+   * 测试场景：3 Remote Signing Disabled。
+   *
+   * <p>验证该方法在 3 Remote Signing Disabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3RemoteSigningDisabled() {
     Map<String, String> properties =

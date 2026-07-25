@@ -38,16 +38,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class that provides file-content caching during reading.
+ * 文件级说明：读取阶段的文件内容缓存。
  *
- * <p>The file-content caching is initiated by calling {@link ContentCache#tryCache(FileIO, String,
- * long)}. Given a FileIO, a file location string, and file length that is within allowed limit,
- * ContentCache will return a {@link CachingInputFile} that is backed by the cache. Calling {@link
- * CachingInputFile#newStream()} will return a {@link ByteBufferInputStream} backed by list of
- * {@link ByteBuffer} from the cache if such file-content exist in the cache. If the file-content
- * does not exist in the cache yet, a regular InputFile will be instantiated, read-ahead, and loaded
- * into the cache before returning ByteBufferInputStream. The regular InputFile is also used as a
- * fallback if cache loading fail.
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：在读取小文件（如 manifest、metadata 文件）时，将其内容缓存到内存中，避免 反复从底层存储读取，提升读取性能。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>基于 Caffeine 缓存：支持按访问后过期、按总字节数权重淘汰、softValues 让 GC 在内存 紧张时可回收。
+ *   <li>仅缓存长度不超过 maxContentLength 的文件，避免大文件占用过多缓存。
+ *   <li>读时回填：通过 {@link CachingInputFile} 包装，首次访问时整文件读入缓存，后续访问 直接从 ByteBuffer 列表构造
+ *       ByteBufferInputStream，避免再次 IO。
+ *   <li>失败回退：缓存加载失败时退回原始 InputFile，保证可用性。
+ * </ul>
+ *
+ * <p>上下游关系：由表配置（如 ManifestList 缓存）使用；底层依赖 FileIO 读取真实文件， 上层调用方通过 {@link #tryCache(FileIO, String,
+ * long)} 获取可缓存的 InputFile。
  */
 public class ContentCache {
   private static final Logger LOG = LoggerFactory.getLogger(ContentCache.class);
@@ -59,15 +67,13 @@ public class ContentCache {
   private final Cache<String, CacheEntry> cache;
 
   /**
-   * Constructor for ContentCache class.
+   * 构造 ContentCache。
    *
-   * @param expireAfterAccessMs controls the duration for which entries in the ContentCache are hold
-   *     since last access. Must be greater or equal than 0. Setting 0 means cache entries expire
-   *     only if it gets evicted due to memory pressure.
-   * @param maxTotalBytes controls the maximum total amount of bytes to cache in ContentCache. Must
-   *     be greater than 0.
-   * @param maxContentLength controls the maximum length of file to be considered for caching. Must
-   *     be greater than 0.
+   * <p>逻辑：校验参数合法性后，基于 Caffeine 构建缓存——设置访问后过期时间、最大权重（字节数）、 软引用值、移除监听器和统计。
+   *
+   * @param expireAfterAccessMs 访问后过期时间（毫秒），>=0；设为 0 表示仅在内存压力下驱逐
+   * @param maxTotalBytes 缓存最大总字节数，必须 >0
+   * @param maxContentLength 允许缓存的最大文件长度，必须 >0
    */
   public ContentCache(long expireAfterAccessMs, long maxTotalBytes, long maxContentLength) {
     ValidationException.check(expireAfterAccessMs >= 0, "expireAfterAccessMs is less than 0");
@@ -96,42 +102,46 @@ public class ContentCache {
             .build();
   }
 
+  /** 返回访问后过期时间（毫秒）。 */
   public long expireAfterAccess() {
     return expireAfterAccessMs;
   }
 
+  /** 返回允许缓存的最大文件长度。 */
   public long maxContentLength() {
     return maxContentLength;
   }
 
+  /** 返回缓存的最大总字节数。 */
   public long maxTotalBytes() {
     return maxTotalBytes;
   }
 
+  /** 返回缓存的统计信息。 */
   public CacheStats stats() {
     return cache.stats();
   }
 
+  /** 按 key 获取缓存项，不存在时用 mappingFunction 加载。 */
   public CacheEntry get(String key, Function<String, CacheEntry> mappingFunction) {
     return cache.get(key, mappingFunction);
   }
 
+  /** 按 location 获取已缓存的项，不存在返回 null。 */
   public CacheEntry getIfPresent(String location) {
     return cache.getIfPresent(location);
   }
 
   /**
-   * Try cache the file-content of file in the given location upon stream reading.
+   * 尝试缓存指定位置的文件内容，在读取流时生效。
    *
-   * <p>If length is longer than maximum length allowed by ContentCache, a regular {@link InputFile}
-   * and no caching will be done for that file. Otherwise, this method will return a {@link
-   * CachingInputFile} that serve file reads backed by ContentCache.
+   * <p>逻辑：若文件长度不超过 maxContentLength，则返回由 ContentCache 支撑的 {@link CachingInputFile}；否则返回普通 {@link
+   * InputFile}（不缓存）。
    *
-   * @param io a FileIO associated with the location.
-   * @param location URL/path of a file accessible by io.
-   * @param length the known length of such file.
-   * @return a {@link CachingInputFile} if length is within allowed limit. Otherwise, a regular
-   *     {@link InputFile} for given location.
+   * @param io 与 location 关联的 FileIO
+   * @param location 文件的 URL/路径
+   * @param length 文件的已知长度
+   * @return 长度在允许范围内返回 {@link CachingInputFile}，否则返回普通 {@link InputFile}
    */
   public InputFile tryCache(FileIO io, String location, long length) {
     if (length <= maxContentLength) {
@@ -140,18 +150,22 @@ public class ContentCache {
     return io.newInputFile(location, length);
   }
 
+  /** 使指定 key 的缓存项失效。 */
   public void invalidate(String key) {
     cache.invalidate(key);
   }
 
+  /** 使所有缓存项失效。 */
   public void invalidateAll() {
     cache.invalidateAll();
   }
 
+  /** 触发缓存清理。 */
   public void cleanUp() {
     cache.cleanUp();
   }
 
+  /** 返回缓存的估算大小。 */
   public long estimatedCacheSize() {
     return cache.estimatedSize();
   }
@@ -177,13 +191,10 @@ public class ContentCache {
   }
 
   /**
-   * A subclass of {@link InputFile} that is backed by a {@link ContentCache}.
+   * 由 {@link ContentCache} 支撑的 {@link InputFile} 实现。
    *
-   * <p>Calling {@link CachingInputFile#newStream()} will return a {@link ByteBufferInputStream}
-   * backed by list of {@link ByteBuffer} from the cache if such file-content exist in the cache. If
-   * the file-content does not exist in the cache, a regular InputFile will be instantiated,
-   * read-ahead, and loaded into the cache before returning ByteBufferInputStream. The regular
-   * InputFile is also used as a fallback if cache loading fail.
+   * <p>设计意图：调用 {@link #newStream()} 时优先从缓存返回 ByteBufferInputStream；若文件内容 尚未缓存，则按 4MB
+   * 分块读入缓存后返回；缓存加载失败时退回原始 InputFile 的流。
    */
   private static class CachingInputFile implements InputFile {
     private final ContentCache contentCache;
@@ -199,6 +210,7 @@ public class ContentCache {
       this.length = length;
     }
 
+    /** 懒加载底层真实 InputFile，作为缓存失效时的回退。 */
     private InputFile wrappedInputFile() {
       if (fallbackInputFile == null) {
         fallbackInputFile = io.newInputFile(location, length);
@@ -206,6 +218,11 @@ public class ContentCache {
       return fallbackInputFile;
     }
 
+    /**
+     * 返回文件长度。
+     *
+     * <p>逻辑：优先取缓存项中的长度；其次取已懒加载的 fallbackInputFile 长度； 否则返回构造时传入的 length。
+     */
     @Override
     public long getLength() {
       CacheEntry buf = contentCache.getIfPresent(location);
@@ -219,15 +236,12 @@ public class ContentCache {
     }
 
     /**
-     * Opens a new {@link SeekableInputStream} for the underlying data file, either from cache or
-     * from the inner FileIO.
+     * 打开新的 {@link SeekableInputStream}。
      *
-     * <p>If data file is not cached yet, and it can fit in the cache, the file content will be
-     * cached first before returning a {@link ByteBufferInputStream}. Otherwise, return a new
-     * SeekableInputStream from the inner FIleIO.
+     * <p>逻辑：若文件长度不超过 maxContentLength 则走 {@link #cachedStream()}（命中缓存或读入 缓存）；否则直接打开底层 InputFile
+     * 的流。FileNotFoundException 包装为 NotFoundException， 其他 IOException 包装为 UncheckedIOException。
      *
-     * @return a {@link ByteBufferInputStream} if file exist in the cache or can fit in the cache.
-     *     Otherwise, return a new SeekableInputStream from the inner FIleIO.
+     * @return ByteBufferInputStream（缓存命中或可缓存时）或底层 SeekableInputStream
      */
     @Override
     public SeekableInputStream newStream() {
@@ -249,17 +263,32 @@ public class ContentCache {
       }
     }
 
+    /** 返回文件路径。 */
     @Override
     public String location() {
       return location;
     }
 
+    /**
+     * 判断文件是否存在。
+     *
+     * <p>逻辑：缓存命中即视为存在；否则委托底层 InputFile.exists()。
+     */
     @Override
     public boolean exists() {
       CacheEntry buf = contentCache.getIfPresent(location);
       return buf != null || wrappedInputFile().exists();
     }
 
+    /**
+     * 将整个文件按 4MB 分块读入 ByteBuffer 列表，构造 CacheEntry。
+     *
+     * <p>逻辑：通过 wrappedInputFile().newStream() 打开流；循环读取 4MB 块，调用 {@link IOUtil#readRemaining}
+     * 读满；若实际读取少于预期则视为遇到 EOF，抛 IOException 触发上层回退；全部读完后构造 CacheEntry 返回。任何 IOException 包装为
+     * UncheckedIOException。
+     *
+     * @return 文件内容对应的 CacheEntry
+     */
     private CacheEntry cacheEntry() {
       long start = System.currentTimeMillis();
       try (SeekableInputStream stream = wrappedInputFile().newStream()) {
@@ -294,6 +323,16 @@ public class ContentCache {
       }
     }
 
+    /**
+     * 返回基于缓存的 SeekableInputStream。
+     *
+     * <p>逻辑：通过 contentCache.get(location, k -> cacheEntry()) 取或加载缓存项；用其 ByteBuffer 列表构造 {@link
+     * ByteBufferInputStream}。UncheckedIOException 解包为 IOException； 其他 RuntimeException 包装为
+     * IOException。
+     *
+     * @return 基于 ByteBuffer 列表的 SeekableInputStream
+     * @throws IOException 加载缓存失败时抛出
+     */
     private SeekableInputStream cachedStream() throws IOException {
       try {
         CacheEntry entry = contentCache.get(location, k -> cacheEntry());

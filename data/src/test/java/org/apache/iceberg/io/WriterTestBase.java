@@ -33,34 +33,48 @@ import org.apache.iceberg.encryption.EncryptedOutputFile;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.StructLikeSet;
 
+/**
+ * 文件级说明：测试 WriterTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 WriterTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class WriterTestBase<T> extends TableTestBase {
 
+  /** 辅助方法：WriterTestBase。 */
   public WriterTestBase(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：newWriterFactory。 */
   protected abstract FileWriterFactory<T> newWriterFactory(
       Schema dataSchema,
       List<Integer> equalityFieldIds,
       Schema equalityDeleteRowSchema,
       Schema positionDeleteRowSchema);
 
+  /** 辅助方法：newWriterFactory。 */
   protected FileWriterFactory<T> newWriterFactory(
       Schema dataSchema, List<Integer> equalityFieldIds, Schema equalityDeleteRowSchema) {
     return newWriterFactory(dataSchema, equalityFieldIds, equalityDeleteRowSchema, null);
   }
 
+  /** 辅助方法：newWriterFactory。 */
   protected FileWriterFactory<T> newWriterFactory(
       Schema dataSchema, Schema positionDeleteRowSchema) {
     return newWriterFactory(dataSchema, null, null, positionDeleteRowSchema);
   }
 
+  /** 辅助方法：newWriterFactory。 */
   protected FileWriterFactory<T> newWriterFactory(Schema dataSchema) {
     return newWriterFactory(dataSchema, null, null, null);
   }
 
+  /** 辅助方法：toRow。 */
   protected abstract T toRow(Integer id, String data);
 
+  /** 辅助方法：partitionKey。 */
   protected PartitionKey partitionKey(PartitionSpec spec, String value) {
     Record record = GenericRecord.create(table.schema()).copy(ImmutableMap.of("data", value));
 
@@ -70,6 +84,7 @@ public abstract class WriterTestBase<T> extends TableTestBase {
     return partitionKey;
   }
 
+  /** 辅助方法：actualRowSet。 */
   protected StructLikeSet actualRowSet(String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     try (CloseableIterable<Record> reader = IcebergGenerics.read(table).select(columns).build()) {
@@ -78,6 +93,7 @@ public abstract class WriterTestBase<T> extends TableTestBase {
     return set;
   }
 
+  /** 辅助方法：writeData。 */
   protected DataFile writeData(
       FileWriterFactory<T> writerFactory,
       OutputFileFactory fileFactory,

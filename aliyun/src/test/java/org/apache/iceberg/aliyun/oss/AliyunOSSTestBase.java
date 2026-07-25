@@ -25,6 +25,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 
+/**
+ * 文件级说明：测试 AliyunOSSTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 AliyunOSSTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class AliyunOSSTestBase {
   @ClassRule public static final AliyunOSSTestRule OSS_TEST_RULE = TestUtility.initialize();
 
@@ -32,20 +39,24 @@ public abstract class AliyunOSSTestBase {
   private final String bucketName = OSS_TEST_RULE.testBucketName();
   private final String keyPrefix = OSS_TEST_RULE.keyPrefix();
 
+  /** 辅助方法：before。 */
   @Before
   public void before() {
     OSS_TEST_RULE.setUpBucket(bucketName);
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() {
     OSS_TEST_RULE.tearDownBucket(bucketName);
   }
 
+  /** 辅助方法：location。 */
   protected String location(String key) {
     return String.format("oss://%s/%s%s", bucketName, keyPrefix, key);
   }
 
+  /** 辅助方法：ossClient。 */
   protected SerializableSupplier<OSS> ossClient() {
     return ossClient;
   }

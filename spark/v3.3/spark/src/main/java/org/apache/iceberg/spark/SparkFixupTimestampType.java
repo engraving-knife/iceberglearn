@@ -25,23 +25,30 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
 /**
- * By default Spark type {@link org.apache.iceberg.types.Types.TimestampType} should be converted to
- * {@link Types.TimestampType#withZone()} iceberg type. But we also can convert {@link
- * org.apache.iceberg.types.Types.TimestampType} to {@link Types.TimestampType#withoutZone()}
- * iceberg type by setting {@link SparkSQLProperties#USE_TIMESTAMP_WITHOUT_TIME_ZONE_IN_NEW_TABLES}
- * to 'true'
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkFixupTimestampType。
  */
 class SparkFixupTimestampType extends FixupTypes {
 
+  /** 构造 SparkFixupTimestampType 实例。 */
   private SparkFixupTimestampType(Schema referenceSchema) {
     super(referenceSchema);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static Schema fixup(Schema schema) {
+    /** 执行该方法的具体逻辑。 */
     return new Schema(
         TypeUtil.visit(schema, new SparkFixupTimestampType(schema)).asStructType().fields());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param primitive 参数
+   * @return 结果对象
+   */
   @Override
   public Type primitive(Type.PrimitiveType primitive) {
     if (primitive.typeId() == Type.TypeID.TIMESTAMP) {
@@ -50,6 +57,7 @@ class SparkFixupTimestampType extends FixupTypes {
     return primitive;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected boolean fixupPrimitive(Type.PrimitiveType type, Type source) {
     return Type.TypeID.TIMESTAMP.equals(type.typeId());

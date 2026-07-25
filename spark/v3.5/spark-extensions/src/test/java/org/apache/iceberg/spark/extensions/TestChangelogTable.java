@@ -40,8 +40,16 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
+/**
+ * 文件级说明：测试 TestChangelogTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 变更日志表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestChangelogTable extends SparkExtensionsTestBase {
 
+  /** 参数。 */
   @Parameters(name = "formatVersion = {0}, catalogName = {1}, implementation = {2}, config = {3}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -62,17 +70,20 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
 
   private final int formatVersion;
 
+  /** 测试变更日志表。 */
   public TestChangelogTable(
       int formatVersion, String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
     this.formatVersion = formatVersion;
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试数据过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFilters() {
     createTableWithDefaultRows();
@@ -97,6 +108,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s.changes WHERE id = 3 ORDER BY _change_ordinal, id", tableName));
   }
 
+  /** 测试覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwrites() {
     createTableWithDefaultRows();
@@ -119,6 +131,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         changelogRecords(snap2, snap3));
   }
 
+  /** 测试查询带时间range场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testQueryWithTimeRange() {
     createTable();
@@ -189,6 +202,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         changelogRecords(rightAfterSnap2, snap3.timestampMillis() - 1));
   }
 
+  /** 测试时间range校验场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimeRangeValidation() {
     createTableWithDefaultRows();
@@ -208,6 +222,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         () -> changelogRecords(snap3.timestampMillis(), snap2.timestampMillis()));
   }
 
+  /** 测试元数据删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataDeletes() {
     createTableWithDefaultRows();
@@ -229,6 +244,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         changelogRecords(snap2, snap3));
   }
 
+  /** 测试已存在的条目在新建数据清单areignored场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExistingEntriesInNewDataManifestsAreIgnored() {
     sql(
@@ -261,6 +277,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         changelogRecords(snap1, snap2));
   }
 
+  /** 测试清单重写areignored场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManifestRewritesAreIgnored() {
     createTableWithDefaultRows();
@@ -276,6 +293,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         sql("SELECT id, _change_type FROM %s.changes ORDER BY id", tableName));
   }
 
+  /** 测试元数据列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataColumns() {
     createTableWithDefaultRows();
@@ -295,11 +313,13 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         rows);
   }
 
+  /** 创建表带默认行。 */
   private void createTableWithDefaultRows() {
     createTable();
     insertDefaultRows();
   }
 
+  /** 创建表。 */
   private void createTable() {
     sql(
         "CREATE TABLE %s (id INT, data STRING) "
@@ -311,11 +331,13 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
         tableName, FORMAT_VERSION, formatVersion);
   }
 
+  /** 插入默认行。 */
   private void insertDefaultRows() {
     sql("INSERT INTO %s VALUES (1, 'a')", tableName);
     sql("INSERT INTO %s VALUES (2, 'b')", tableName);
   }
 
+  /** 变更日志记录。 */
   private List<Object[]> changelogRecords(Snapshot startSnapshot, Snapshot endSnapshot) {
     DataFrameReader reader = spark.read();
 
@@ -330,6 +352,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
     return rowsToJava(collect(reader));
   }
 
+  /** 变更日志记录。 */
   private List<Object[]> changelogRecords(Long startTimestamp, Long endTimeStamp) {
     DataFrameReader reader = spark.read();
 
@@ -344,6 +367,7 @@ public class TestChangelogTable extends SparkExtensionsTestBase {
     return rowsToJava(collect(reader));
   }
 
+  /** 辅助方法：collect。 */
   private List<Row> collect(DataFrameReader reader) {
     return reader
         .table(tableName + "." + SparkChangelogTable.TABLE_NAME)

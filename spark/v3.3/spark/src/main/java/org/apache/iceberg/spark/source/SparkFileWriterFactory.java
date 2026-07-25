@@ -43,6 +43,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkFileWriterFactory。
+ *
+ * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
   private StructType dataSparkType;
   private StructType equalityDeleteSparkType;
@@ -78,20 +87,25 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     this.positionDeleteSparkType = positionDeleteSparkType;
   }
 
+  /** 构造并返回目标对象。 */
   static Builder builderFor(Table table) {
+    /** 构造并返回目标对象。 */
     return new Builder(table);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureDataWrite(Avro.DataWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(dataSparkType()));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureEqualityDelete(Avro.DeleteWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(equalityDeleteSparkType()));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configurePositionDelete(Avro.DeleteWriteBuilder builder) {
     boolean withRow =
@@ -104,17 +118,20 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureDataWrite(Parquet.DataWriteBuilder builder) {
     builder.createWriterFunc(msgType -> SparkParquetWriters.buildWriter(dataSparkType(), msgType));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureEqualityDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
         msgType -> SparkParquetWriters.buildWriter(equalityDeleteSparkType(), msgType));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configurePositionDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -122,22 +139,26 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.transformPaths(path -> UTF8String.fromString(path.toString()));
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureDataWrite(ORC.DataWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configureEqualityDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected void configurePositionDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.transformPaths(path -> UTF8String.fromString(path.toString()));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructType dataSparkType() {
     if (dataSparkType == null) {
       Preconditions.checkNotNull(dataSchema(), "Data schema must not be null");
@@ -147,6 +168,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return dataSparkType;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructType equalityDeleteSparkType() {
     if (equalityDeleteSparkType == null) {
       Preconditions.checkNotNull(
@@ -157,6 +179,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return equalityDeleteSparkType;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructType positionDeleteSparkType() {
     if (positionDeleteSparkType == null) {
       // wrap the optional row schema into the position delete schema containing path and position
@@ -167,6 +190,15 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return positionDeleteSparkType;
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 Builder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   static class Builder {
     private final Table table;
     private FileFormat dataFileFormat;
@@ -195,61 +227,73 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
       this.deleteFileFormat = FileFormat.fromString(deleteFileFormatName);
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder dataFileFormat(FileFormat newDataFileFormat) {
       this.dataFileFormat = newDataFileFormat;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder dataSchema(Schema newDataSchema) {
       this.dataSchema = newDataSchema;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder dataSparkType(StructType newDataSparkType) {
       this.dataSparkType = newDataSparkType;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder dataSortOrder(SortOrder newDataSortOrder) {
       this.dataSortOrder = newDataSortOrder;
       return this;
     }
 
+    /** 删除数据或文件。 */
     Builder deleteFileFormat(FileFormat newDeleteFileFormat) {
       this.deleteFileFormat = newDeleteFileFormat;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder equalityFieldIds(int[] newEqualityFieldIds) {
       this.equalityFieldIds = newEqualityFieldIds;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder equalityDeleteRowSchema(Schema newEqualityDeleteRowSchema) {
       this.equalityDeleteRowSchema = newEqualityDeleteRowSchema;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder equalityDeleteSparkType(StructType newEqualityDeleteSparkType) {
       this.equalityDeleteSparkType = newEqualityDeleteSparkType;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder equalityDeleteSortOrder(SortOrder newEqualityDeleteSortOrder) {
       this.equalityDeleteSortOrder = newEqualityDeleteSortOrder;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder positionDeleteRowSchema(Schema newPositionDeleteRowSchema) {
       this.positionDeleteRowSchema = newPositionDeleteRowSchema;
       return this;
     }
 
+    /** 执行该方法的具体逻辑。 */
     Builder positionDeleteSparkType(StructType newPositionDeleteSparkType) {
       this.positionDeleteSparkType = newPositionDeleteSparkType;
       return this;
     }
 
+    /** 构造并返回目标对象。 */
     SparkFileWriterFactory build() {
       boolean noEqualityDeleteConf = equalityFieldIds == null && equalityDeleteRowSchema == null;
       boolean fullEqualityDeleteConf = equalityFieldIds != null && equalityDeleteRowSchema != null;
@@ -257,6 +301,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
           noEqualityDeleteConf || fullEqualityDeleteConf,
           "Equality field IDs and equality delete row schema must be set together");
 
+      /** 执行该方法的具体逻辑。 */
       return new SparkFileWriterFactory(
           table,
           dataFileFormat,

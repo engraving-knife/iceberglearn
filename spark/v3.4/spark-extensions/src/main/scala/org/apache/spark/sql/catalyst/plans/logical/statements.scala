@@ -22,7 +22,10 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Expression
 
 /**
- * A CALL statement, as parsed from SQL.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：未解析的 CALL 语句逻辑计划节点，仅包含过程名与原始参数表达式。
+ * <p>设计意图：在解析前承载 CALL 语法信息，待 ResolveProcedures 解析为 Call。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 ResolveProcedures 消费。
  */
 case class CallStatement(name: Seq[String], args: Seq[CallArgument]) extends LeafParsedStatement
 
@@ -30,6 +33,7 @@ case class CallStatement(name: Seq[String], args: Seq[CallArgument]) extends Lea
  * An argument in a CALL statement.
  */
 sealed trait CallArgument {
+  /** 执行 expr 相关操作。 */
   def expr: Expression
 }
 

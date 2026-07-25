@@ -21,6 +21,11 @@ package org.apache.iceberg.spark;
 import org.apache.spark.SparkContext;
 import org.apache.spark.SparkContext$;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 JobGroupUtils。
+ */
 public class JobGroupUtils {
 
   private static final String JOB_GROUP_ID = SparkContext$.MODULE$.SPARK_JOB_GROUP_ID();
@@ -28,15 +33,19 @@ public class JobGroupUtils {
   private static final String JOB_INTERRUPT_ON_CANCEL =
       SparkContext$.MODULE$.SPARK_JOB_INTERRUPT_ON_CANCEL();
 
+  /** 构造 JobGroupUtils 实例。 */
   private JobGroupUtils() {}
 
+  /** 返回jobgroupinfo。 */
   public static JobGroupInfo getJobGroupInfo(SparkContext sparkContext) {
     String groupId = sparkContext.getLocalProperty(JOB_GROUP_ID);
     String description = sparkContext.getLocalProperty(JOB_GROUP_DESC);
     String interruptOnCancel = sparkContext.getLocalProperty(JOB_INTERRUPT_ON_CANCEL);
+    /** 执行该方法的具体逻辑。 */
     return new JobGroupInfo(groupId, description, Boolean.parseBoolean(interruptOnCancel));
   }
 
+  /** 设置jobgroupinfo。 */
   public static void setJobGroupInfo(SparkContext sparkContext, JobGroupInfo info) {
     sparkContext.setLocalProperty(JOB_GROUP_ID, info.groupId());
     sparkContext.setLocalProperty(JOB_GROUP_DESC, info.description());

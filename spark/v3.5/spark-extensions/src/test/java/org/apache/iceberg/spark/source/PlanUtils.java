@@ -31,9 +31,18 @@ import scala.PartialFunction;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
+/**
+ * 文件级说明：测试 PlanUtils 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 计划工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class PlanUtils {
+  /** 计划工具。 */
   private PlanUtils() {}
 
+  /** collect下推过滤器。 */
   public static List<org.apache.iceberg.expressions.Expression> collectPushDownFilters(
       LogicalPlan logicalPlan) {
     return JavaConverters.asJavaCollection(logicalPlan.collectLeaves()).stream()
@@ -54,6 +63,7 @@ public class PlanUtils {
         .collect(Collectors.toList());
   }
 
+  /** collectSpark表达式。 */
   public static List<Expression> collectSparkExpressions(
       LogicalPlan logicalPlan, Predicate<Expression> predicate) {
     Seq<List<Expression>> list =
@@ -78,6 +88,7 @@ public class PlanUtils {
         .collect(Collectors.toList());
   }
 
+  /** collectSpark表达式。 */
   private static List<Expression> collectSparkExpressions(
       Expression expression, Predicate<Expression> predicate) {
     Seq<Expression> list =

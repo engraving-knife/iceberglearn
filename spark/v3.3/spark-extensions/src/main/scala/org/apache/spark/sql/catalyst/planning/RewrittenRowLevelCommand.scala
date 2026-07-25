@@ -30,17 +30,18 @@ import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2ScanRelation
 
 /**
- * An extractor for operations such as DELETE and MERGE that require rewriting data.
+ * Spark 执行计划规划工具。
  *
- * This class extracts the following entities:
- *  - the row-level command (such as DeleteFromIcebergTable);
- *  - the read relation in the rewrite plan that can be either DataSourceV2Relation or
- *  DataSourceV2ScanRelation depending on whether the planning has already happened;
- *  - the current rewrite plan.
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 RewrittenRowLevelCommand。
  */
 object RewrittenRowLevelCommand {
   type ReturnType = (RowLevelCommand, LogicalPlan, LogicalPlan)
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def unapply(plan: LogicalPlan): Option[ReturnType] = plan match {
     case c: RowLevelCommand if c.rewritePlan.nonEmpty =>
       val rewritePlan = c.rewritePlan.get
@@ -71,6 +72,10 @@ object RewrittenRowLevelCommand {
       None
   }
 
+  /**
+   * 查找并返回结果。
+   * @return 结果对象
+   */
   private def findReadRelation(
       table: Table,
       plan: LogicalPlan,

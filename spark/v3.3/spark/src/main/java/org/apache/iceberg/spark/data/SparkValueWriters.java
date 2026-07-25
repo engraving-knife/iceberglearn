@@ -37,45 +37,76 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkValueWriters。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class SparkValueWriters {
 
+  /** 构造 SparkValueWriters 实例。 */
   private SparkValueWriters() {}
 
+  /** 执行该方法的具体逻辑。 */
   static ValueWriter<UTF8String> strings() {
     return StringWriter.INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static ValueWriter<UTF8String> uuids() {
     return UUIDWriter.INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static ValueWriter<Decimal> decimal(int precision, int scale) {
+    /** 执行该方法的具体逻辑。 */
     return new DecimalWriter(precision, scale);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static <T> ValueWriter<ArrayData> array(ValueWriter<T> elementWriter, DataType elementType) {
     return new ArrayWriter<>(elementWriter, elementType);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static <K, V> ValueWriter<MapData> arrayMap(
       ValueWriter<K> keyWriter, DataType keyType, ValueWriter<V> valueWriter, DataType valueType) {
     return new ArrayMapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static <K, V> ValueWriter<MapData> map(
       ValueWriter<K> keyWriter, DataType keyType, ValueWriter<V> valueWriter, DataType valueType) {
     return new MapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static ValueWriter<InternalRow> struct(List<ValueWriter<?>> writers, List<DataType> types) {
+    /** 执行该方法的具体逻辑。 */
     return new StructWriter(writers, types);
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 StringWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class StringWriter implements ValueWriter<UTF8String> {
     private static final StringWriter INSTANCE = new StringWriter();
 
+    /** 构造 StringWriter 实例。 */
     private StringWriter() {}
 
+    /**
+     * 写入数据。
+     *
+     * @param s 参数
+     * @param encoder 参数
+     */
     @Override
     public void write(UTF8String s, Encoder encoder) throws IOException {
       // use getBytes because it may return the backing byte array if available.
@@ -85,6 +116,13 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 UUIDWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class UUIDWriter implements ValueWriter<UTF8String> {
     private static final ThreadLocal<ByteBuffer> BUFFER =
         ThreadLocal.withInitial(
@@ -96,8 +134,15 @@ public class SparkValueWriters {
 
     private static final UUIDWriter INSTANCE = new UUIDWriter();
 
+    /** 构造 UUIDWriter 实例。 */
     private UUIDWriter() {}
 
+    /**
+     * 写入数据。
+     *
+     * @param s 参数
+     * @param encoder 参数
+     */
     @Override
     @SuppressWarnings("ByteBufferBackingArray")
     public void write(UTF8String s, Encoder encoder) throws IOException {
@@ -108,11 +153,19 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DecimalWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class DecimalWriter implements ValueWriter<Decimal> {
     private final int precision;
     private final int scale;
     private final ThreadLocal<byte[]> bytes;
 
+    /** 构造 DecimalWriter 实例。 */
     private DecimalWriter(int precision, int scale) {
       this.precision = precision;
       this.scale = scale;
@@ -120,6 +173,12 @@ public class SparkValueWriters {
           ThreadLocal.withInitial(() -> new byte[TypeUtil.decimalRequiredBytes(precision)]);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param d 参数
+     * @param encoder 参数
+     */
     @Override
     public void write(Decimal d, Encoder encoder) throws IOException {
       encoder.writeFixed(
@@ -127,15 +186,29 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ArrayWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ArrayWriter<T> implements ValueWriter<ArrayData> {
     private final ValueWriter<T> elementWriter;
     private final DataType elementType;
 
+    /** 构造 ArrayWriter 实例。 */
     private ArrayWriter(ValueWriter<T> elementWriter, DataType elementType) {
       this.elementWriter = elementWriter;
       this.elementType = elementType;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param array 参数
+     * @param encoder 参数
+     */
     @Override
     @SuppressWarnings("unchecked")
     public void write(ArrayData array, Encoder encoder) throws IOException {
@@ -150,12 +223,20 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ArrayMapWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ArrayMapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
     private final DataType keyType;
     private final DataType valueType;
 
+    /** 构造 ArrayMapWriter 实例。 */
     private ArrayMapWriter(
         ValueWriter<K> keyWriter,
         DataType keyType,
@@ -167,6 +248,12 @@ public class SparkValueWriters {
       this.valueType = valueType;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param map 参数
+     * @param encoder 参数
+     */
     @Override
     @SuppressWarnings("unchecked")
     public void write(MapData map, Encoder encoder) throws IOException {
@@ -184,12 +271,20 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 MapWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class MapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
     private final DataType keyType;
     private final DataType valueType;
 
+    /** 构造 MapWriter 实例。 */
     private MapWriter(
         ValueWriter<K> keyWriter,
         DataType keyType,
@@ -201,6 +296,12 @@ public class SparkValueWriters {
       this.valueType = valueType;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param map 参数
+     * @param encoder 参数
+     */
     @Override
     @SuppressWarnings("unchecked")
     public void write(MapData map, Encoder encoder) throws IOException {
@@ -218,10 +319,18 @@ public class SparkValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 StructWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   static class StructWriter implements ValueWriter<InternalRow> {
     private final ValueWriter<?>[] writers;
     private final DataType[] types;
 
+    /** 构造 StructWriter 实例。 */
     @SuppressWarnings("unchecked")
     private StructWriter(List<ValueWriter<?>> writers, List<DataType> types) {
       this.writers = (ValueWriter<?>[]) Array.newInstance(ValueWriter.class, writers.size());
@@ -232,10 +341,17 @@ public class SparkValueWriters {
       }
     }
 
+    /** 写入数据。 */
     ValueWriter<?>[] writers() {
       return writers;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param row 参数
+     * @param encoder 参数
+     */
     @Override
     public void write(InternalRow row, Encoder encoder) throws IOException {
       for (int i = 0; i < types.length; i += 1) {
@@ -247,6 +363,7 @@ public class SparkValueWriters {
       }
     }
 
+    /** 写入数据。 */
     @SuppressWarnings("unchecked")
     private <T> void write(InternalRow row, int pos, ValueWriter<T> writer, Encoder encoder)
         throws IOException {

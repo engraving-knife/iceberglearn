@@ -39,23 +39,18 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * An implementation of StagedTable that mimics the behavior of Spark's non-atomic CTAS and RTAS.
+ * 模拟 Spark 非原子 CTAS/RTAS 行为的 StagedTable 实现。
  *
- * <p>A Spark catalog can implement StagingTableCatalog to support atomic operations by producing
- * StagedTable. But if a catalog implements StagingTableCatalog, Spark expects the catalog to be
- * able to produce a StagedTable for any table loaded by the catalog. This assumption doesn't always
- * work, as in the case of {@link SparkSessionCatalog}, which supports atomic operations can produce
- * a StagedTable for Iceberg tables, but wraps the session catalog and cannot necessarily produce a
- * working StagedTable implementation for tables that it loads.
+ * <p>所属模块：iceberg-spark。Catalog 实现 {@link StagingTableCatalog} 后，Spark 期望其能为 任意加载的表产出 StagedTable；但
+ * {@link SparkSessionCatalog} 包装了 session catalog，无法 为其加载的非 Iceberg 表产出可用的 StagedTable。本类作为折中方案：实现
+ * StagedTable 接口但 不提供原子性，而是用"建表→写入→失败时删表回滚"的非原子方式模拟。
  *
- * <p>The work-around is this class, which implements the StagedTable interface but does not have
- * atomic behavior. Instead, the StagedTable interface is used to implement the behavior of the
- * non-atomic SQL plans that will create a table, write, and will drop the table to roll back.
+ * <p>职责：将读、写、删除调用透传给真实表；提交时无操作（写时已提交）；中止时删除表以回滚。
  *
- * <p>This StagedTable implements SupportsRead, SupportsWrite, and SupportsDelete by passing the
- * calls to the real table. Implementing those interfaces is safe because Spark will not use them
- * unless the table supports them and returns the corresponding capabilities from {@link
- * #capabilities()}.
+ * <p>设计意图：复用 StagedTable 接口语义来承载非原子执行计划，避免 Spark 因 Catalog 无法 产出 StagedTable 而报错。实现
+ * SupportsRead/SupportsWrite/SupportsDelete 是安全的，因为 Spark 仅在 {@link #capabilities()} 返回对应能力时才会调用。
+ *
+ * <p>上下游关系：由 SparkSessionCatalog 等在无法提供真正原子暂存表时返回。
  */
 public class RollbackStagedTable
     implements StagedTable, SupportsRead, SupportsWrite, SupportsDelete {
@@ -63,63 +58,75 @@ public class RollbackStagedTable
   private final Identifier ident;
   private final Table table;
 
+  /** 以所属 Catalog、表标识与真实表构造。 */
   public RollbackStagedTable(TableCatalog catalog, Identifier ident, Table table) {
     this.catalog = catalog;
     this.ident = ident;
     this.table = table;
   }
 
+  /** 提交暂存变更：实际变更在写入结束时已提交，此处无操作。 */
   @Override
   public void commitStagedChanges() {
     // the changes have already been committed to the table at the end of the write
   }
 
+  /** 中止暂存变更：通过删除表实现回滚。 */
   @Override
   public void abortStagedChanges() {
     // roll back changes by dropping the table
     catalog.dropTable(ident);
   }
 
+  /** 返回真实表名。 */
   @Override
   public String name() {
     return table.name();
   }
 
+  /** 返回真实表 schema。 */
   @Override
   public StructType schema() {
     return table.schema();
   }
 
+  /** 返回真实表分区变换。 */
   @Override
   public Transform[] partitioning() {
     return table.partitioning();
   }
 
+  /** 返回真实表属性。 */
   @Override
   public Map<String, String> properties() {
     return table.properties();
   }
 
+  /** 返回真实表能力集合。 */
   @Override
   public Set<TableCapability> capabilities() {
     return table.capabilities();
   }
 
+  /** 透传 deleteWhere 到实现了 SupportsDelete 的真实表。 */
   @Override
   public void deleteWhere(Filter[] filters) {
     call(SupportsDelete.class, t -> t.deleteWhere(filters));
   }
 
+  /** 透传 newScanBuilder 到实现了 SupportsRead 的真实表。 */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     return callReturning(SupportsRead.class, t -> t.newScanBuilder(options));
   }
 
+  /** 透传 newWriteBuilder 到实现了 SupportsWrite 的真实表。 */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     return callReturning(SupportsWrite.class, t -> t.newWriteBuilder(info));
   }
 
+  /** 在真实表上执行无返回值的调用，委托给 {@link #callReturning}。 */
   private <T> void call(Class<? extends T> requiredClass, Consumer<T> task) {
     callReturning(
         requiredClass,
@@ -129,6 +136,7 @@ public class RollbackStagedTable
         });
   }
 
+  /** 在真实表上执行有返回值的调用：若真实表实现了所需接口则执行，否则抛出 UnsupportedOperationException。 */
   private <T, R> R callReturning(Class<? extends T> requiredClass, Function<T, R> task) {
     if (requiredClass.isInstance(table)) {
       return task.apply(requiredClass.cast(table));

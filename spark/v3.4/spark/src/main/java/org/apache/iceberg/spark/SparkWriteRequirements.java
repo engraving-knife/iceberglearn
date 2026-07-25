@@ -22,7 +22,15 @@ import org.apache.spark.sql.connector.distributions.Distribution;
 import org.apache.spark.sql.connector.distributions.Distributions;
 import org.apache.spark.sql.connector.expressions.SortOrder;
 
-/** A set of requirements such as distribution and ordering reported to Spark during writes. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 写入要求载体，描述 Iceberg 期望的写入分布与排序要求。
+ *
+ * <p>设计意图：封装分布模式与排序顺序，用于在 Spark 写入前施加必要的 shuffle/sort。
+ *
+ * <p>上下游关系：由 SparkWriteBuilder / SetWriteDistributionAndOrdering 等使用。
+ */
 public class SparkWriteRequirements {
 
   public static final SparkWriteRequirements EMPTY =
@@ -35,15 +43,15 @@ public class SparkWriteRequirements {
     this.distribution = distribution;
     this.ordering = ordering;
   }
-
+  /** 返回分布信息。 */
   public Distribution distribution() {
     return distribution;
   }
-
+  /** 返回排序信息。 */
   public SortOrder[] ordering() {
     return ordering;
   }
-
+  /** 判断是否存在 Ordering。 */
   public boolean hasOrdering() {
     return ordering.length != 0;
   }

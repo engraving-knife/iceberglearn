@@ -83,6 +83,15 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Iceberg 表的 Spark 包装，实现 Spark V2 Table 接口，支持读写、行级操作、元数据列与时间旅行。
+ *
+ * <p>设计意图：委托底层 Iceberg Table，将 Spark 的读写/扫描/写入请求转译为 Iceberg 操作，并通过快照后缀支持时间旅行。
+ *
+ * <p>上下游关系：由 SparkCatalog / IcebergSource 创建；被 Spark 读写链路调用。
+ */
 public class SparkTable
     implements org.apache.spark.sql.connector.catalog.Table,
         SupportsRead,
@@ -151,7 +160,7 @@ public class SparkTable
             TableProperties.SPARK_WRITE_ACCEPT_ANY_SCHEMA_DEFAULT);
     this.capabilities = acceptAnySchema ? CAPABILITIES_WITH_ACCEPT_ANY_SCHEMA : CAPABILITIES;
   }
-
+  /** 执行 sparkSession 相关操作。 */
   private SparkSession sparkSession() {
     if (lazySpark == null) {
       this.lazySpark = SparkSession.active();
@@ -159,28 +168,28 @@ public class SparkTable
 
     return lazySpark;
   }
-
+  /** 执行 table 相关操作。 */
   public Table table() {
     return icebergTable;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return icebergTable.toString();
   }
-
+  /** 执行 snapshotId 相关操作。 */
   public Long snapshotId() {
     return snapshotId;
   }
-
+  /** 执行 copyWithSnapshotId 相关操作。 */
   public SparkTable copyWithSnapshotId(long newSnapshotId) {
     return new SparkTable(icebergTable, newSnapshotId, refreshEagerly);
   }
-
+  /** 执行 copyWithBranch 相关操作。 */
   public SparkTable copyWithBranch(String targetBranch) {
     return new SparkTable(icebergTable, targetBranch, refreshEagerly);
   }
-
+  /** 执行 snapshotSchema 相关操作。 */
   private Schema snapshotSchema() {
     if (icebergTable instanceof BaseMetadataTable) {
       return icebergTable.schema();
@@ -190,7 +199,7 @@ public class SparkTable
       return SnapshotUtil.schemaFor(icebergTable, snapshotId, null);
     }
   }
-
+  /** 返回 Schema。 */
   @Override
   public StructType schema() {
     if (lazyTableSchema == null) {
@@ -199,12 +208,12 @@ public class SparkTable
 
     return lazyTableSchema;
   }
-
+  /** 返回分区信息。 */
   @Override
   public Transform[] partitioning() {
     return Spark3Util.toTransforms(icebergTable.spec());
   }
-
+  /** 返回属性。 */
   @Override
   public Map<String, String> properties() {
     ImmutableMap.Builder<String, String> propsBuilder = ImmutableMap.builder();
@@ -243,12 +252,12 @@ public class SparkTable
 
     return propsBuilder.build();
   }
-
+  /** 返回能力集。 */
   @Override
   public Set<TableCapability> capabilities() {
     return capabilities;
   }
-
+  /** 执行 metadataColumns 相关操作。 */
   @Override
   public MetadataColumn[] metadataColumns() {
     DataType sparkPartitionType = SparkSchemaUtil.convert(Partitioning.partitionType(table()));
@@ -260,7 +269,7 @@ public class SparkTable
       new SparkMetadataColumn(MetadataColumns.IS_DELETED.name(), DataTypes.BooleanType, false)
     };
   }
-
+  /** 创建 ScanBuilder 实例。 */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (options.containsKey(SparkReadOptions.SCAN_TASK_SET_ID)) {
@@ -276,7 +285,7 @@ public class SparkTable
     return new SparkScanBuilder(
         sparkSession(), icebergTable, branch, snapshotSchema(), scanOptions);
   }
-
+  /** 创建 WriteBuilder 实例。 */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     Preconditions.checkArgument(
@@ -288,12 +297,12 @@ public class SparkTable
       return new SparkWriteBuilder(sparkSession(), icebergTable, branch, info);
     }
   }
-
+  /** 创建 RowLevelOperationBuilder 实例。 */
   @Override
   public RowLevelOperationBuilder newRowLevelOperationBuilder(RowLevelOperationInfo info) {
     return new SparkRowLevelOperationBuilder(sparkSession(), icebergTable, branch, info);
   }
-
+  /** 执行 canDeleteWhere 相关操作。 */
   @Override
   public boolean canDeleteWhere(Predicate[] predicates) {
     Preconditions.checkArgument(
@@ -357,7 +366,7 @@ public class SparkTable
       return false;
     }
   }
-
+  /** 执行 deleteWhere 相关操作。 */
   @Override
   public void deleteWhere(Predicate[] predicates) {
     Expression deleteExpr = SparkV2Filters.convert(predicates);
@@ -387,12 +396,12 @@ public class SparkTable
 
     deleteFiles.commit();
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return icebergTable.toString();
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -405,13 +414,13 @@ public class SparkTable
     SparkTable that = (SparkTable) other;
     return icebergTable.name().equals(that.icebergTable.name());
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     // use only name in order to correctly invalidate Spark cache
     return icebergTable.name().hashCode();
   }
-
+  /** 执行 addSnapshotId 相关操作。 */
   private static CaseInsensitiveStringMap addSnapshotId(
       CaseInsensitiveStringMap options, Long snapshotId) {
     if (snapshotId != null) {

@@ -24,48 +24,74 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 
 /**
- * Module for encrypting and decrypting table data files.
+ * 文件级说明：表数据文件加密/解密管理器接口。
  *
- * <p>This must be serializable because an instance may be instantiated in one place and sent across
- * the wire in some Iceberg integrations, notably Spark.
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>解密：根据 {@link EncryptedInputFile} 携带的密钥元数据，把读取原始加密字节的 InputFile 转换为返回明文流的 {@link InputFile}。
+ *   <li>加密：把写入原始字节的 {@link OutputFile} 包装为写入加密字节的 {@link EncryptedOutputFile}，并产出对应的密钥元数据。
+ *   <li>提供单文件与批量（Iterable）两种入口，批量入口允许实现做优化（如预取密钥）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>实现 {@link Serializable}：实例可能在 Spark 等引擎中被序列化后分发到执行节点， 故要求可序列化。
+ *   <li>批量入口默认委托单文件方法：实现侧只需实现单文件版本即可工作；若需批量化 优化（如批量预取密钥、减少 KMS 往返），可覆盖默认方法。
+ *   <li>面向接口：具体加密算法（如 envelope encryption、AES-GCM）由实现决定， API 层只描述加密/解密契约。
+ * </ul>
+ *
+ * <p>上下游关系：被 iceberg-core 的数据读写路径调用；实现侧通常结合 {@link KmsClient} 完成 envelope 加密。
  */
 public interface EncryptionManager extends Serializable {
 
   /**
-   * Given an {@link EncryptedInputFile#encryptedInputFile()} representing the raw encrypted bytes
-   * from the underlying file system, and given metadata about how the file was encrypted via {@link
-   * EncryptedInputFile#keyMetadata()}, return an {@link InputFile} that returns decrypted input
-   * streams.
+   * 解密单个加密输入文件。
+   *
+   * <p>逻辑：根据 {@link EncryptedInputFile#encryptedInputFile()} 提供的原始加密字节与 {@link
+   * EncryptedInputFile#keyMetadata()} 提供的密钥元数据，定位解密密钥并返回 一个 {@link InputFile}，其输入流读取时返回明文字节。
+   *
+   * @param encrypted 已加密的输入文件包装
+   * @return 返回明文输入流的 {@link InputFile}
    */
   InputFile decrypt(EncryptedInputFile encrypted);
 
   /**
-   * Variant of {@link #decrypt(EncryptedInputFile)} that provides a sequence of files that all need
-   * to be decrypted in a single context.
+   * 批量解密多个加密输入文件（同一上下文）。
    *
-   * <p>By default this calls the single-file decryption method for each element in the iterator.
-   * Implementations can override this for a variety of optimizations. For example, an
-   * implementation can perform lookahead on the input iterator and fetch encryption keys in batch.
+   * <p>逻辑：默认实现使用 {@link Iterables#transform} 对每个元素调用 {@link
+   * #decrypt(EncryptedInputFile)}。实现可覆盖以做批量优化，例如对输入迭代器 做预读（lookahead）并批量拉取密钥，减少 KMS 往返次数。
+   *
+   * @param encrypted 已加密输入文件集合
+   * @return 返回明文输入流的 {@link InputFile} 迭代视图
    */
   default Iterable<InputFile> decrypt(Iterable<EncryptedInputFile> encrypted) {
     return Iterables.transform(encrypted, this::decrypt);
   }
 
   /**
-   * Given a handle on an {@link OutputFile} that writes raw bytes to the underlying file system,
-   * return a bundle of an {@link EncryptedOutputFile#encryptingOutputFile()} that writes encrypted
-   * bytes to the underlying file system, and the {@link EncryptedOutputFile#keyMetadata()} that
-   * points to the encryption key that is being used to encrypt this file.
+   * 加密单个输出文件。
+   *
+   * <p>逻辑：给定一个向底层文件系统写原始字节的 {@link OutputFile}，返回一个 {@link EncryptedOutputFile}，其 {@link
+   * EncryptedOutputFile#encryptingOutputFile()} 在写入时自动加密字节，{@link
+   * EncryptedOutputFile#keyMetadata()} 指向所用密钥。
+   *
+   * @param rawOutput 原始输出文件
+   * @return 已加密输出文件包装
    */
   EncryptedOutputFile encrypt(OutputFile rawOutput);
 
   /**
-   * Variant of {@link #encrypt(OutputFile)} that provides a sequence of files that all need to be
-   * encrypted in a single context.
+   * 批量加密多个输出文件（同一上下文）。
    *
-   * <p>By default this calls the single-file encryption method for each element in the iterator.
-   * Implementations can override this for a variety of optimizations. For example, an
-   * implementation can perform lookahead on the input iterator and fetch encryption keys in batch.
+   * <p>逻辑：默认实现使用 {@link Iterables#transform} 对每个元素调用 {@link
+   * #encrypt(OutputFile)}。实现可覆盖以做批量优化，例如预读迭代器并批量获取 密钥，减少 KMS 往返次数。
+   *
+   * @param rawOutput 原始输出文件集合
+   * @return 已加密输出文件迭代视图
    */
   default Iterable<EncryptedOutputFile> encrypt(Iterable<OutputFile> rawOutput) {
     return Iterables.transform(rawOutput, this::encrypt);

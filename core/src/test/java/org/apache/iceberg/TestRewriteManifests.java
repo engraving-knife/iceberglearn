@@ -42,17 +42,32 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestRewriteManifests，用于验证 Rewrite Manifests 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Rewrite Manifests 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestRewriteManifests extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：rewrite manifests。 */
   public TestRewriteManifests(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：rewrite manifests appended directly。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteManifestsAppendedDirectly() throws IOException {
     Table table = load();
@@ -77,6 +92,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(0), ids(appendId), files(FILE_A), statuses(ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：rewrite manifests with scan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteManifestsWithScanExecutor() throws IOException {
     Table table = load();
@@ -111,6 +131,11 @@ public class TestRewriteManifests extends TableTestBase {
     Assert.assertTrue("Thread should be created in provided pool", scanThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：rewrite manifests generated and appended directly。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteManifestsGeneratedAndAppendedDirectly() throws IOException {
     Table table = load();
@@ -154,6 +179,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.EXISTING, ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace manifests separate。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceManifestsSeparate() {
     Table table = load();
@@ -176,6 +206,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(1), ids(appendId), files(FILE_B), statuses(ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace manifests consolidate。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceManifestsConsolidate() throws IOException {
     Table table = load();
@@ -214,6 +249,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.EXISTING, ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace manifests with filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceManifestsWithFilter() throws IOException {
     Table table = load();
@@ -269,6 +309,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(1), ids(appendIdA), files(FILE_A), statuses(ManifestEntry.Status.ADDED));
   }
 
+  /**
+   * 测试场景：replace manifests max size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceManifestsMaxSize() {
     Table table = load();
@@ -293,6 +338,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(1), ids(appendId), files(FILE_B), statuses(ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：concurrent rewrite manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentRewriteManifest() throws IOException {
     Table table = load();
@@ -348,6 +398,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.EXISTING, ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：append during rewrite manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendDuringRewriteManifest() {
     Table table = load();
@@ -380,6 +435,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(1), ids(appendIdB), files(FILE_B), statuses(ManifestEntry.Status.ADDED));
   }
 
+  /**
+   * 测试场景：rewrite manifest during append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteManifestDuringAppend() {
     Table table = load();
@@ -410,6 +470,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifests.get(1), ids(appendIdA), files(FILE_A), statuses(ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：basic manifest replacement。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicManifestReplacement() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -464,6 +529,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.ADDED, ManifestEntry.Status.ADDED));
   }
 
+  /**
+   * 测试场景：basic manifest replacement with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicManifestReplacementWithSnapshotIdInheritance() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -523,6 +593,11 @@ public class TestRewriteManifests extends TableTestBase {
     table.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
   }
 
+  /**
+   * 测试场景：with multiple partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWithMultiplePartitionSpec() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -597,6 +672,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifestFiles.get(1).existingFilesCount());
   }
 
+  /**
+   * 测试场景：manifest size with multiple partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestSizeWithMultiplePartitionSpec() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -679,6 +759,11 @@ public class TestRewriteManifests extends TableTestBase {
         manifestFiles.get(3).existingFilesCount());
   }
 
+  /**
+   * 测试场景：manifest replacement concurrent append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementConcurrentAppend() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -736,6 +821,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.ADDED, ManifestEntry.Status.ADDED));
   }
 
+  /**
+   * 测试场景：manifest replacement concurrent delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementConcurrentDelete() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -796,6 +886,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.DELETED, ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：manifest replacement concurrent conflicting delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementConcurrentConflictingDelete() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -828,6 +923,11 @@ public class TestRewriteManifests extends TableTestBase {
         .hasMessageStartingWith("Manifest is missing");
   }
 
+  /**
+   * 测试场景：manifest replacement combined with rewrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementCombinedWithRewrite() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -888,6 +988,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.ADDED));
   }
 
+  /**
+   * 测试场景：manifest replacement combined with rewrite concurrent delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementCombinedWithRewriteConcurrentDelete() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -947,6 +1052,11 @@ public class TestRewriteManifests extends TableTestBase {
         statuses(ManifestEntry.Status.EXISTING));
   }
 
+  /**
+   * 测试场景：invalid usage。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidUsage() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -998,6 +1108,11 @@ public class TestRewriteManifests extends TableTestBase {
             "Replaced and created manifests must have the same number of active files");
   }
 
+  /**
+   * 测试场景：manifest replacement failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementFailure() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -1038,6 +1153,11 @@ public class TestRewriteManifests extends TableTestBase {
     Assert.assertTrue("New manifest should not be deleted", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：manifest replacement failure with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReplacementFailureWithSnapshotIdInheritance() throws IOException {
     Assert.assertNull("Table should be empty", table.currentSnapshot());
@@ -1080,6 +1200,11 @@ public class TestRewriteManifests extends TableTestBase {
     Assert.assertTrue("New manifest should not be deleted", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：rewrite manifests on branch unsupported。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteManifestsOnBranchUnsupported() {
 
@@ -1093,6 +1218,7 @@ public class TestRewriteManifests extends TableTestBase {
             "Cannot commit to branch someBranch: org.apache.iceberg.BaseRewriteManifests does not support branch commits");
   }
 
+  /** 辅助方法：validate summary。 */
   private void validateSummary(
       Snapshot snapshot, int replaced, int kept, int created, int entryCount) {
     Map<String, String> summary = snapshot.summary();
@@ -1110,6 +1236,7 @@ public class TestRewriteManifests extends TableTestBase {
         "Entry count should match", entryCount, Integer.parseInt(summary.get("entries-processed")));
   }
 
+  /** 辅助方法：match number of manifest file with spec id。 */
   private void matchNumberOfManifestFileWithSpecId(
       List<ManifestFile> manifestFiles,
       int toBeMatchedPartitionSpecId,

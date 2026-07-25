@@ -21,6 +21,15 @@ package org.apache.iceberg.spark.source;
 import org.apache.spark.sql.connector.catalog.MetadataColumn;
 import org.apache.spark.sql.types.DataType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg 元数据列定义，声明如 _file_path、_spec_id 等元数据列的名称与类型。
+ *
+ * <p>设计意图：实现 Spark MetadataColumn，向 Spark 暴露 Iceberg 元数据列。
+ *
+ * <p>上下游关系：由 SparkTable 在 SupportsMetadataColumns 中暴露。
+ */
 public class SparkMetadataColumn implements MetadataColumn {
 
   private final String name;
@@ -32,17 +41,17 @@ public class SparkMetadataColumn implements MetadataColumn {
     this.dataType = dataType;
     this.isNullable = isNullable;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return name;
   }
-
+  /** 执行 dataType 相关操作。 */
   @Override
   public DataType dataType() {
     return dataType;
   }
-
+  /** 判断是否 Nullable。 */
   @Override
   public boolean isNullable() {
     return isNullable;

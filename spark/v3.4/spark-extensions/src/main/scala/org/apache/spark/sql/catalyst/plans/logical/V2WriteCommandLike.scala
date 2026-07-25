@@ -25,15 +25,27 @@ import org.apache.spark.sql.catalyst.expressions.AttributeSet
 
 // a node similar to V2WriteCommand in Spark but does not extend Command
 // as ReplaceData and WriteDelta that extend this trait are nested within other commands
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：类 V2 写命令特征，标记 Iceberg 命令具有 V2 写命令的提交语义。
+ * <p>设计意图：以 trait 使 Iceberg 命令可被 V2 写入优化规则识别处理。
+ * <p>上下游关系：被 ReplaceIcebergData / WriteIcebergDelta 等混入。
+ */
 trait V2WriteCommandLike extends UnaryNode {
+  /** 执行 table 相关操作。 */
   def table: NamedRelation
+  /** 执行 query 相关操作。 */
   def query: LogicalPlan
+  /** 执行 outputResolved 相关操作。 */
   def outputResolved: Boolean
 
   override lazy val resolved: Boolean = table.resolved && query.resolved && outputResolved
+  /** 执行 child 相关操作。 */
 
   override def child: LogicalPlan = query
+  /** 执行 output 相关操作。 */
   override def output: Seq[Attribute] = Seq.empty
+  /** 执行 producedAttributes 相关操作。 */
   override def producedAttributes: AttributeSet = outputSet
   // Commands are eagerly executed. They will be converted to LocalRelation after the DataFrame
   // is created. That said, the statistics of a command is useless. Here we just return a dummy

@@ -20,6 +20,29 @@ package org.apache.iceberg;
 
 import java.io.Serializable;
 
+/**
+ * 文件级说明：可继承的快照元信息接口，用于在 manifest 读取时补全文件元信息。
+ *
+ * <p>所属模块：iceberg-core。职责：定义 {@link #apply(ManifestEntry)} 方法，把继承的 分区规格、快照 ID 等上下文信息应用到 manifest
+ * 条目上。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>manifest 文件本身不存储分区规格 ID、快照 ID 等上下文信息，这些信息由 InheritableMetadata 在读取时补全，减小 manifest 体积。
+ *   <li>实现 Serializable 以支持缓存和远程传输。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link ManifestEntry} 在读取时调用；由 TableMetadata 创建。
+ */
 interface InheritableMetadata extends Serializable {
+  /**
+   * 把继承的上下文（分区规格、快照 ID 等）应用到 manifest 条目上。
+   *
+   * <p>设计要点：manifest 文件本身不存储这些上下文信息，由本方法在读取时补全。
+   *
+   * @param manifestEntry 待补全的 manifest 条目
+   * @return 补全后的 manifest 条目
+   */
   <F extends ContentFile<F>> ManifestEntry<F> apply(ManifestEntry<F> manifestEntry);
 }

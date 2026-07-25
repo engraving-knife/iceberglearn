@@ -51,6 +51,7 @@ public class ScriptRunner {
     this.stopOnError = stopOnError;
   }
 
+  /** 辅助方法：setDelimiter。 */
   public void setDelimiter(String newDelimiter, boolean newFullLineDelimiter) {
     this.delimiter = newDelimiter;
     this.fullLineDelimiter = newFullLineDelimiter;
@@ -191,28 +192,33 @@ public class ScriptRunner {
     }
   }
 
+  /** 辅助方法：getDelimiter。 */
   private String getDelimiter() {
     return delimiter;
   }
 
+  /** 辅助方法：print。 */
   private void print(Object obj) {
     if (logWriter != null) {
       System.out.print(obj);
     }
   }
 
+  /** 辅助方法：println。 */
   private void println(Object obj) {
     if (logWriter != null) {
       logWriter.println(obj);
     }
   }
 
+  /** 辅助方法：printlnError。 */
   private void printlnError(Object obj) {
     if (errorLogWriter != null) {
       errorLogWriter.println(obj);
     }
   }
 
+  /** 辅助方法：flush。 */
   private void flush() {
     if (logWriter != null) {
       logWriter.flush();

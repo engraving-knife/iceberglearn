@@ -31,18 +31,42 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.io.SeekableInputStream;
 
+/**
+ * 本地文件系统 {@link InputFile}/{@link OutputFile} 工厂与实现。
+ *
+ * <p>所属模块：iceberg-api（IO 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>为本地 {@link File} 创建 {@link OutputFile} 与 {@link InputFile} 实例；
+ *   <li>提供基于 {@link RandomAccessFile} 的可定位输入/输出流实现，支持按位置读写。
+ * </ul>
+ *
+ * <p>设计意图：Iceberg 通过 {@link InputFile}/{@link OutputFile} 抽象屏蔽底层存储差异，
+ * 本类是本地文件系统的参考实现，常用于测试与单机场景。其他存储（HDFS/S3 等）由各自模块 提供等价实现。
+ *
+ * <p>上下游关系：被 core 模块及测试代码用于读写本地 manifest/数据文件。
+ */
 public class Files {
 
   private Files() {}
 
+  /** 为本地 {@link File} 创建 {@link OutputFile}。 */
   public static OutputFile localOutput(File file) {
     return new LocalOutputFile(file);
   }
 
+  /** 为本地路径字符串创建 {@link OutputFile}。 */
   public static OutputFile localOutput(String file) {
     return localOutput(Paths.get(file).toAbsolutePath().toFile());
   }
 
+  /**
+   * 本地文件系统的 {@link OutputFile} 实现。
+   *
+   * <p>设计要点：创建文件前会确保父目录存在；{@link #create()} 不允许覆盖已有文件， {@link #createOrOverwrite()} 会先删除再创建。
+   */
   private static class LocalOutputFile implements OutputFile {
     private final File file;
 
@@ -50,6 +74,16 @@ public class Files {
       this.file = file;
     }
 
+    /**
+     * 创建新文件并返回可定位输出流。
+     *
+     * <p>逻辑：文件已存在则抛 {@link AlreadyExistsException}；父目录不存在则创建；最后用 {@link RandomAccessFile} 以 "rw"
+     * 模式打开并包装为 PositionFileOutputStream。
+     *
+     * @throws AlreadyExistsException 文件已存在
+     * @throws RuntimeIOException 父目录创建失败
+     * @throws NotFoundException 文件创建失败
+     */
     @Override
     public PositionOutputStream create() {
       if (file.exists()) {
@@ -68,6 +102,7 @@ public class Files {
       }
     }
 
+    /** 创建或覆盖文件：若已存在则先删除，再调用 {@link #create()}。 */
     @Override
     public PositionOutputStream createOrOverwrite() {
       if (file.exists()) {
@@ -94,10 +129,16 @@ public class Files {
     }
   }
 
+  /** 为本地 {@link File} 创建 {@link InputFile}。 */
   public static InputFile localInput(File file) {
     return new LocalInputFile(file);
   }
 
+  /**
+   * 为本地路径字符串创建 {@link InputFile}。
+   *
+   * <p>设计要点：若路径以 {@code file:} 前缀开头，会先剥离该前缀再构造 File，避免 URI scheme 影响本地路径解析。
+   */
   public static InputFile localInput(String file) {
     if (file.startsWith("file:")) {
       return localInput(new File(file.replaceFirst("file:", "")));
@@ -105,6 +146,11 @@ public class Files {
     return localInput(new File(file));
   }
 
+  /**
+   * 本地文件系统的 {@link InputFile} 实现。
+   *
+   * <p>设计要点：通过 {@link RandomAccessFile} 以只读模式打开，支持按位置 seek。
+   */
   private static class LocalInputFile implements InputFile {
     private final File file;
 
@@ -117,6 +163,14 @@ public class Files {
       return file.length();
     }
 
+    /**
+     * 打开新的可定位输入流。
+     *
+     * <p>逻辑：以 "r" 只读模式打开 {@link RandomAccessFile}，包装为 {@link SeekableFileInputStream}；文件不存在则抛
+     * {@link NotFoundException}。
+     *
+     * @throws NotFoundException 文件不存在
+     */
     @Override
     public SeekableInputStream newStream() {
       try {
@@ -142,6 +196,7 @@ public class Files {
     }
   }
 
+  /** 基于 {@link RandomAccessFile} 的可定位输入流实现，支持 {@link #getPos()} 与 {@link #seek(long)}。 */
   private static class SeekableFileInputStream extends SeekableInputStream {
     private final RandomAccessFile stream;
 
@@ -189,6 +244,11 @@ public class Files {
     }
   }
 
+  /**
+   * 基于 {@link RandomAccessFile} 的可定位输出流实现。
+   *
+   * <p>设计要点：{@link #getPos()} 在流已关闭时返回文件长度，避免对已关闭流读取位置时 抛异常；通过 {@code isClosed} 标志区分。
+   */
   private static class PositionFileOutputStream extends PositionOutputStream {
     private final File file;
     private final RandomAccessFile stream;

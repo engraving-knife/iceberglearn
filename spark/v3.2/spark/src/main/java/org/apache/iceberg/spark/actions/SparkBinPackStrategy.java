@@ -35,6 +35,15 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的策略实现，定义文件重写等动作的具体算法。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkBinPackStrategy。
+ *
+ * <p>设计意图：策略模式，可在运行时切换算法实现。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 public class SparkBinPackStrategy extends BinPackStrategy {
   private final Table table;
   private final SparkSession spark;
@@ -42,16 +51,28 @@ public class SparkBinPackStrategy extends BinPackStrategy {
   private final FileScanTaskSetManager manager = FileScanTaskSetManager.get();
   private final FileRewriteCoordinator rewriteCoordinator = FileRewriteCoordinator.get();
 
+  /** 构造 SparkBinPackStrategy 实例。 */
   public SparkBinPackStrategy(Table table, SparkSession spark) {
     this.table = table;
     this.spark = spark;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Table table() {
     return table;
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param filesToRewrite 参数
+   * @return 结果对象
+   */
   @Override
   public Set<DataFile> rewriteFiles(List<FileScanTask> filesToRewrite) {
     String groupID = UUID.randomUUID().toString();

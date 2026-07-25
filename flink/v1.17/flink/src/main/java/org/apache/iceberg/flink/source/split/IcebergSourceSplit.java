@@ -38,6 +38,24 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 文件级说明：Iceberg source 的 split 表示，封装 {@link CombinedScanTask} 与读取位置。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/split 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>封装 Iceberg 的 {@link CombinedScanTask} 作为 Flink SourceSplit。
+ *   <li>维护当前读取的文件偏移与记录偏移，支持故障恢复时续读。
+ *   <li>提供 V1（Java 序列化）与 V2（自定义 JSON 序列化）两种序列化方式。
+ * </ul>
+ *
+ * <p>设计意图：split 频繁写入 checkpoint，缓存序列化字节数组以降低重复序列化开销； V2 使用 JSON 序列化以避免类版本变化引发的兼容问题。
+ *
+ * <p>上下游关系：上游为 {@link org.apache.iceberg.flink.source.enumerator.AbstractIcebergEnumerator} 创建
+ * split，下游为 {@link org.apache.iceberg.flink.source.reader.IcebergSourceSplitReader} 读取。
+ */
 @Internal
 public class IcebergSourceSplit implements SourceSplit, Serializable {
   private static final long serialVersionUID = 1L;
@@ -49,8 +67,7 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
   private int fileOffset;
   private long recordOffset;
 
-  // The splits are frequently serialized into checkpoints.
-  // Caching the byte representation makes repeated serialization cheap.
+  // split 频繁被序列化到 checkpoint，缓存字节表示以降低重复序列化开销。
   @Nullable private transient byte[] serializedBytesCache;
 
   private IcebergSourceSplit(CombinedScanTask task, int fileOffset, long recordOffset) {
@@ -59,34 +76,48 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
     this.recordOffset = recordOffset;
   }
 
+  /** 从 CombinedScanTask 构造 split，文件偏移与记录偏移均为 0。 */
   public static IcebergSourceSplit fromCombinedScanTask(CombinedScanTask combinedScanTask) {
     return fromCombinedScanTask(combinedScanTask, 0, 0L);
   }
 
+  /** 从 CombinedScanTask 构造 split，指定初始文件偏移与记录偏移。 */
   public static IcebergSourceSplit fromCombinedScanTask(
       CombinedScanTask combinedScanTask, int fileOffset, long recordOffset) {
     return new IcebergSourceSplit(combinedScanTask, fileOffset, recordOffset);
   }
 
+  /** 返回该 split 的 CombinedScanTask。 */
   public CombinedScanTask task() {
     return task;
   }
 
+  /** 返回当前文件偏移。 */
   public int fileOffset() {
     return fileOffset;
   }
 
+  /** 返回当前记录偏移。 */
   public long recordOffset() {
     return recordOffset;
   }
 
+  /** 返回 split ID，由其包含的文件列表拼接生成。 */
   @Override
   public String splitId() {
     return MoreObjects.toStringHelper(this).add("files", toString(task.files())).toString();
   }
 
+  /**
+   * 更新读取位置。
+   *
+   * <p>逻辑：位置变化后使序列化缓存失效，避免 checkpoint 写入过期数据。
+   *
+   * @param newFileOffset 新文件偏移
+   * @param newRecordOffset 新记录偏移
+   */
   public void updatePosition(int newFileOffset, long newRecordOffset) {
-    // invalidate the cache after position change
+    // 位置变化后使缓存失效
     serializedBytesCache = null;
     fileOffset = newFileOffset;
     recordOffset = newRecordOffset;
@@ -101,6 +132,7 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
         .toString();
   }
 
+  /** 把文件列表拼接为字符串。 */
   private String toString(Collection<FileScanTask> files) {
     return Iterables.toString(
         files.stream()
@@ -114,6 +146,12 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
             .collect(Collectors.toList()));
   }
 
+  /**
+   * V1 序列化（Java 默认序列化），缓存结果以加速重复序列化。
+   *
+   * @return 序列化字节数组
+   * @throws IOException 序列化失败时抛出
+   */
   byte[] serializeV1() throws IOException {
     if (serializedBytesCache == null) {
       serializedBytesCache = InstantiationUtil.serializeObject(this);
@@ -122,6 +160,7 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
     return serializedBytesCache;
   }
 
+  /** V1 反序列化，按 IcebergSourceSplit 的类加载器反序列化。 */
   static IcebergSourceSplit deserializeV1(byte[] serialized) throws IOException {
     try {
       return InstantiationUtil.deserializeObject(
@@ -131,6 +170,14 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
     }
   }
 
+  /**
+   * V2 序列化（自定义格式：fileOffset、recordOffset 与每个 FileScanTask 的 JSON）。
+   *
+   * <p>逻辑：从 ThreadLocal 取 DataOutputSerializer，依次写入偏移、task 数与每个 task 的 JSON， 然后缓存字节数组以加速重复序列化。
+   *
+   * @return 序列化字节数组
+   * @throws IOException 序列化失败时抛出
+   */
   byte[] serializeV2() throws IOException {
     if (serializedBytesCache == null) {
       DataOutputSerializer out = SERIALIZER_CACHE.get();
@@ -157,6 +204,14 @@ public class IcebergSourceSplit implements SourceSplit, Serializable {
     return serializedBytesCache;
   }
 
+  /**
+   * V2 反序列化，按 fileOffset、recordOffset、task 数与各 task JSON 依次读取， 并按 caseSensitive 解析每个 task。
+   *
+   * @param serialized 序列化字节
+   * @param caseSensitive 是否大小写敏感
+   * @return 反序列化得到的 IcebergSourceSplit
+   * @throws IOException 反序列化失败时抛出
+   */
   static IcebergSourceSplit deserializeV2(byte[] serialized, boolean caseSensitive)
       throws IOException {
     DataInputDeserializer in = new DataInputDeserializer(serialized);

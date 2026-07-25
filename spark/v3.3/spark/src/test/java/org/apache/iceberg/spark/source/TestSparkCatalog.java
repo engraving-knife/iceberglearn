@@ -32,17 +32,26 @@ import org.apache.spark.sql.connector.catalog.SupportsNamespaces;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 
+/**
+ * 文件级说明：测试 TestSparkCatalog 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Spark目录 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkCatalog<T extends TableCatalog & FunctionCatalog & SupportsNamespaces>
     extends SparkSessionCatalog<T> {
 
   private static final Map<Identifier, Table> tableMap = Maps.newHashMap();
 
+  /** 集合表。 */
   public static void setTable(Identifier ident, Table table) {
     Preconditions.checkArgument(
         !tableMap.containsKey(ident), "Cannot set " + ident + ". It is already set");
     tableMap.put(ident, table);
   }
 
+  /** 加载表。 */
   @Override
   public Table loadTable(Identifier ident) throws NoSuchTableException {
     if (tableMap.containsKey(ident)) {
@@ -60,6 +69,7 @@ public class TestSparkCatalog<T extends TableCatalog & FunctionCatalog & Support
     return new SparkTable(table, false);
   }
 
+  /** clear表。 */
   public static void clearTables() {
     tableMap.clear();
   }

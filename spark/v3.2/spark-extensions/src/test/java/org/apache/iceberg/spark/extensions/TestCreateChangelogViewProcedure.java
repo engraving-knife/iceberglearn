@@ -29,37 +29,50 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCreateChangelogViewProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 创建变更日志视图存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
   private static final String DELETE = ChangelogOperation.DELETE.name();
   private static final String INSERT = ChangelogOperation.INSERT.name();
   private static final String UPDATE_BEFORE = ChangelogOperation.UPDATE_BEFORE.name();
   private static final String UPDATE_AFTER = ChangelogOperation.UPDATE_AFTER.name();
 
+  /** 测试创建变更日志视图存储过程。 */
   public TestCreateChangelogViewProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 创建表带2列。 */
   public void createTableWith2Columns() {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
     sql("ALTER TABLE %s ADD PARTITION FIELD data", tableName);
   }
 
+  /** 创建表带3列。 */
   private void createTableWith3Columns() {
     sql("CREATE TABLE %s (id INT, data STRING, age INT) USING iceberg", tableName);
     sql("ALTER TABLE %s ADD PARTITION FIELD id", tableName);
   }
 
+  /** 创建表带标识符字段。 */
   private void createTableWithIdentifierField() {
     sql("CREATE TABLE %s (id INT NOT NULL, data STRING) USING iceberg", tableName);
     sql("ALTER TABLE %s SET IDENTIFIER FIELDS id", tableName);
   }
 
+  /** 测试customized视图name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCustomizedViewName() {
     createTableWith2Columns();
@@ -93,6 +106,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals(2, rowCount);
   }
 
+  /** 测试no快照idinput场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoSnapshotIdInput() {
     createTableWith2Columns();
@@ -124,6 +138,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id", viewName));
   }
 
+  /** 测试时间戳based查询场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampsBasedQuery() {
     createTableWith2Columns();
@@ -184,6 +199,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id", returns.get(0)[0]));
   }
 
+  /** 测试带carryovers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWithCarryovers() {
     createTableWith2Columns();
@@ -219,6 +235,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, _change_type", viewName));
   }
 
+  /** 测试更新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdate() {
     createTableWith2Columns();
@@ -250,6 +267,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试更新带标识符字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithIdentifierField() {
     createTableWithIdentifierField();
@@ -278,6 +296,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试更新带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithFilter() {
     createTableWith2Columns();
@@ -310,6 +329,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s where id != 3 order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试更新带多个标识符列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithMultipleIdentifierColumns() {
     createTableWith3Columns();
@@ -342,6 +362,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试移除carryovers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveCarryOvers() {
     createTableWith3Columns();
@@ -376,6 +397,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试移除carryovers无updated行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveCarryOversWithoutUpdatedRows() {
     createTableWith3Columns();
@@ -408,6 +430,7 @@ public class TestCreateChangelogViewProcedure extends SparkExtensionsTestBase {
         sql("select * from %s order by _change_ordinal, id, data", viewName));
   }
 
+  /** 测试非移除carryovers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotRemoveCarryOvers() {
     createTableWith3Columns();

@@ -24,8 +24,20 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestPropertiesSerDesUtil 的功能。
+ *
+ * <p>所属模块：iceberg-dell。职责：验证 TestPropertiesSerDesUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestPropertiesSerDesUtil {
 
+  /**
+   * 测试场景：Properties Ser Des。
+   *
+   * <p>验证该方法在 Properties Ser Des 条件下的行为是否符合预期。
+   */
   @Test
   public void testPropertiesSerDes() {
     Map<String, String> properties = ImmutableMap.of("a", "a", "b", "b");

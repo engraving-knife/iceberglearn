@@ -38,6 +38,13 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkTableSource 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkTableSource 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkTableSource extends FlinkTestBase {
 
   private static final String CATALOG_NAME = "test_catalog";
@@ -49,6 +56,7 @@ public class TestFlinkTableSource extends FlinkTestBase {
   private int scanEventCount = 0;
   private ScanEvent lastScanEvent = null;
 
+  /** 辅助方法：TestFlinkTableSource，Flink Table Source。 */
   public TestFlinkTableSource() {
     // register a scan event listener to validate pushdown
     Listeners.register(
@@ -59,12 +67,14 @@ public class TestFlinkTableSource extends FlinkTestBase {
         ScanEvent.class);
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     super.getTableEnv().getConfig().getConfiguration().set(CoreOptions.DEFAULT_PARALLELISM, 1);
     return super.getTableEnv();
   }
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   @BeforeClass
   public static void createWarehouse() throws IOException {
     File warehouseFile = TEMPORARY_FOLDER.newFolder();
@@ -73,6 +83,7 @@ public class TestFlinkTableSource extends FlinkTestBase {
     warehouse = "file:" + warehouseFile;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     sql(
@@ -92,6 +103,7 @@ public class TestFlinkTableSource extends FlinkTestBase {
     this.lastScanEvent = null;
   }
 
+  /** 辅助方法：clean，clean。 */
   @After
   public void clean() {
     sql("DROP TABLE IF EXISTS %s.%s", DATABASE_NAME, TABLE_NAME);
@@ -99,6 +111,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     dropCatalog(CATALOG_NAME, true);
   }
 
+  /**
+   * 测试场景：Limit Push Down。
+   *
+   * <p>验证该方法在 Limit Push Down 条件下的行为是否符合预期。
+   */
   @Test
   public void testLimitPushDown() {
 
@@ -131,6 +148,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should produce the expected records", Row.of(1, "iceberg", 10.0), mixedResult.get(0));
   }
 
+  /**
+   * 测试场景：No Filter Push Down。
+   *
+   * <p>验证该方法在 No Filter Push Down 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoFilterPushDown() {
     String sql = String.format("SELECT * FROM %s ", TABLE_NAME);
@@ -142,6 +164,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should not push down a filter", Expressions.alwaysTrue(), lastScanEvent.filter());
   }
 
+  /**
+   * 测试场景：Filter Push Down Equal。
+   *
+   * <p>验证该方法在 Filter Push Down Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownEqual() {
     String sqlLiteralRight = String.format("SELECT * FROM %s WHERE id = 1 ", TABLE_NAME);
@@ -157,6 +184,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Equal Null。
+   *
+   * <p>验证该方法在 Filter Push Down Equal Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownEqualNull() {
     String sqlEqualNull = String.format("SELECT * FROM %s WHERE data = NULL ", TABLE_NAME);
@@ -166,6 +198,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Equal Literal On Left。
+   *
+   * <p>验证该方法在 Filter Push Down Equal Literal On Left 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownEqualLiteralOnLeft() {
     String sqlLiteralLeft = String.format("SELECT * FROM %s WHERE 1 = id ", TABLE_NAME);
@@ -181,6 +218,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down No Equal。
+   *
+   * <p>验证该方法在 Filter Push Down No Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNoEqual() {
     String sqlNE = String.format("SELECT * FROM %s WHERE id <> 1 ", TABLE_NAME);
@@ -196,6 +238,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down No Equal Null。
+   *
+   * <p>验证该方法在 Filter Push Down No Equal Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNoEqualNull() {
     String sqlNotEqualNull = String.format("SELECT * FROM %s WHERE data <> NULL ", TABLE_NAME);
@@ -205,6 +252,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down And。
+   *
+   * <p>验证该方法在 Filter Push Down And 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownAnd() {
     String sqlAnd =
@@ -221,6 +273,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expected, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Or。
+   *
+   * <p>验证该方法在 Filter Push Down Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownOr() {
     String sqlOr = String.format("SELECT * FROM %s WHERE id = 1 OR data = 'b' ", TABLE_NAME);
@@ -237,6 +294,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThan() {
     String sqlGT = String.format("SELECT * FROM %s WHERE id > 1 ", TABLE_NAME);
@@ -253,6 +315,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than Null。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThanNull() {
     String sqlGT = String.format("SELECT * FROM %s WHERE data > null ", TABLE_NAME);
@@ -262,6 +329,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than Literal On Left。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than Literal On Left 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThanLiteralOnLeft() {
     String sqlGT = String.format("SELECT * FROM %s WHERE 3 > id ", TABLE_NAME);
@@ -278,6 +350,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than Equal。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThanEqual() {
     String sqlGTE = String.format("SELECT * FROM %s WHERE id >= 2 ", TABLE_NAME);
@@ -294,6 +371,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than Equal Null。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than Equal Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThanEqualNull() {
     String sqlGTE = String.format("SELECT * FROM %s WHERE data >= null ", TABLE_NAME);
@@ -303,6 +385,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Greater Than Equal Literal On Left。
+   *
+   * <p>验证该方法在 Filter Push Down Greater Than Equal Literal On Left 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownGreaterThanEqualLiteralOnLeft() {
     String sqlGTE = String.format("SELECT * FROM %s WHERE 2 >= id ", TABLE_NAME);
@@ -319,6 +406,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThan() {
     String sqlLT = String.format("SELECT * FROM %s WHERE id < 2 ", TABLE_NAME);
@@ -334,6 +426,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than Null。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThanNull() {
     String sqlLT = String.format("SELECT * FROM %s WHERE data < null ", TABLE_NAME);
@@ -343,6 +440,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than Literal On Left。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than Literal On Left 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThanLiteralOnLeft() {
     String sqlLT = String.format("SELECT * FROM %s WHERE 2 < id ", TABLE_NAME);
@@ -358,6 +460,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than Equal。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThanEqual() {
     String sqlLTE = String.format("SELECT * FROM %s WHERE id <= 1 ", TABLE_NAME);
@@ -373,6 +480,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than Equal Null。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than Equal Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThanEqualNull() {
     String sqlLTE = String.format("SELECT * FROM %s WHERE data <= null ", TABLE_NAME);
@@ -382,6 +494,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
     Assert.assertNull("Should not push down a filter", lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Less Than Equal Literal On Left。
+   *
+   * <p>验证该方法在 Filter Push Down Less Than Equal Literal On Left 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLessThanEqualLiteralOnLeft() {
     String sqlLTE = String.format("SELECT * FROM %s WHERE 3 <= id  ", TABLE_NAME);
@@ -397,6 +514,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down In。
+   *
+   * <p>验证该方法在 Filter Push Down In 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownIn() {
     String sqlIN = String.format("SELECT * FROM %s WHERE id IN (1,2) ", TABLE_NAME);
@@ -411,6 +533,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down In Null。
+   *
+   * <p>验证该方法在 Filter Push Down In Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownInNull() {
     String sqlInNull =
@@ -428,6 +555,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedScan, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Not In。
+   *
+   * <p>验证该方法在 Filter Push Down Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNotIn() {
     String sqlNotIn = String.format("SELECT * FROM %s WHERE id NOT IN (3,2) ", TABLE_NAME);
@@ -442,6 +574,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedScan, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Not In Null。
+   *
+   * <p>验证该方法在 Filter Push Down Not In Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNotInNull() {
     String sqlNotInNull = String.format("SELECT * FROM %s WHERE id NOT IN (1,2,NULL) ", TABLE_NAME);
@@ -452,6 +589,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         lastScanEvent);
   }
 
+  /**
+   * 测试场景：Filter Push Down Is Not Null。
+   *
+   * <p>验证该方法在 Filter Push Down Is Not Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownIsNotNull() {
     String sqlNotNull = String.format("SELECT * FROM %s WHERE data IS NOT NULL", TABLE_NAME);
@@ -468,6 +610,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Is Null。
+   *
+   * <p>验证该方法在 Filter Push Down Is Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownIsNull() {
     String sqlNull = String.format("SELECT * FROM %s WHERE data IS  NULL", TABLE_NAME);
@@ -483,6 +630,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Not。
+   *
+   * <p>验证该方法在 Filter Push Down Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNot() {
     String sqlNot = String.format("SELECT * FROM %s WHERE NOT (id = 1 OR id = 2 ) ", TABLE_NAME);
@@ -498,6 +650,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Between。
+   *
+   * <p>验证该方法在 Filter Push Down Between 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownBetween() {
     String sqlBetween = String.format("SELECT * FROM %s WHERE id BETWEEN 1 AND 2 ", TABLE_NAME);
@@ -515,6 +672,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expected, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Not Between。
+   *
+   * <p>验证该方法在 Filter Push Down Not Between 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownNotBetween() {
     String sqlNotBetween =
@@ -531,6 +693,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedFilter, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Push Down Like。
+   *
+   * <p>验证该方法在 Filter Push Down Like 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDownLike() {
     String expectedFilter = "ref(name=\"data\") startsWith \"\"ice\"\"";
@@ -558,6 +725,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should contain the push down filter", expectedScan, lastScanEvent.filter().toString());
   }
 
+  /**
+   * 测试场景：Filter Not Push Down Like。
+   *
+   * <p>验证该方法在 Filter Not Push Down Like 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterNotPushDownLike() {
     Row expectRecord = Row.of(1, "iceberg", 10.0);
@@ -596,6 +768,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should not push down a filter", Expressions.alwaysTrue(), lastScanEvent.filter());
   }
 
+  /**
+   * 测试场景：Filter Push Down 2 Literal。
+   *
+   * <p>验证该方法在 Filter Push Down 2 Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterPushDown2Literal() {
     String sql2Literal = String.format("SELECT * FROM %s WHERE 1 > 0 ", TABLE_NAME);
@@ -607,6 +784,11 @@ public class TestFlinkTableSource extends FlinkTestBase {
         "Should not push down a filter", Expressions.alwaysTrue(), lastScanEvent.filter());
   }
 
+  /**
+   * 测试场景：Sql Parse Na N。
+   *
+   * <p>验证该方法在 Sql Parse Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testSqlParseNaN() {
     // todo add some test case to test NaN

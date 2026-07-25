@@ -29,6 +29,13 @@ import org.apache.iceberg.hadoop.Util;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.sql.connector.read.InputPartition;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkInputPartition。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkInputPartition implements InputPartition, Serializable {
   private final ScanTaskGroup<?> taskGroup;
   private final Broadcast<Table> tableBroadcast;
@@ -56,24 +63,41 @@ class SparkInputPartition implements InputPartition, Serializable {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String[] preferredLocations() {
     return preferredLocations;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   public <T extends ScanTask> ScanTaskGroup<T> taskGroup() {
     return (ScanTaskGroup<T>) taskGroup;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Table table() {
     return tableBroadcast.value();
   }
 
+  /** 判断是否casesensitive。 */
   public boolean isCaseSensitive() {
     return caseSensitive;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Schema expectedSchema() {
     if (expectedSchema == null) {
       this.expectedSchema = SchemaParser.fromJson(expectedSchemaString);

@@ -35,10 +35,19 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestUpdateRequirements，用于验证 Update Requirements 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Update Requirements 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestUpdateRequirements {
   private final TableMetadata metadata = mock(TableMetadata.class);
   private final TableMetadata updated = mock(TableMetadata.class);
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     String uuid = UUID.randomUUID().toString();
@@ -46,6 +55,11 @@ public class TestUpdateRequirements {
     when(updated.uuid()).thenReturn(uuid);
   }
 
+  /**
+   * 测试场景：null check。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void nullCheck() {
     assertThatThrownBy(() -> UpdateRequirements.forCreateTable(null))
@@ -69,6 +83,11 @@ public class TestUpdateRequirements {
         .hasMessage("Invalid metadata updates: null");
   }
 
+  /**
+   * 测试场景：empty updates for create table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void emptyUpdatesForCreateTable() {
     assertThat(UpdateRequirements.forCreateTable(ImmutableList.of()))
@@ -76,6 +95,11 @@ public class TestUpdateRequirements {
         .hasOnlyElementsOfType(UpdateRequirement.AssertTableDoesNotExist.class);
   }
 
+  /**
+   * 测试场景：empty updates for update and replace table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void emptyUpdatesForUpdateAndReplaceTable() {
     assertThat(UpdateRequirements.forReplaceTable(metadata, ImmutableList.of()))
@@ -87,6 +111,11 @@ public class TestUpdateRequirements {
         .hasOnlyElementsOfType(UpdateRequirement.AssertTableUUID.class);
   }
 
+  /**
+   * 测试场景：table already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void tableAlreadyExists() {
     List<UpdateRequirement> requirements = UpdateRequirements.forCreateTable(ImmutableList.of());
@@ -96,6 +125,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: table already exists");
   }
 
+  /**
+   * 测试场景：assign uuid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void assignUUID() {
     List<UpdateRequirement> requirements =
@@ -114,6 +148,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：assign uuid failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void assignUUIDFailure() {
     List<UpdateRequirement> requirements =
@@ -129,6 +168,11 @@ public class TestUpdateRequirements {
                 updated.uuid(), metadata.uuid()));
   }
 
+  /**
+   * 测试场景：upgrade format version。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void upgradeFormatVersion() {
     List<UpdateRequirement> requirements =
@@ -143,6 +187,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：add schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addSchema() {
     int lastColumnId = 1;
@@ -172,6 +221,11 @@ public class TestUpdateRequirements {
         .isEqualTo(lastColumnId);
   }
 
+  /**
+   * 测试场景：add schema failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addSchemaFailure() {
     when(metadata.lastColumnId()).thenReturn(2);
@@ -190,6 +244,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: last assigned field id changed: expected id 2 != 3");
   }
 
+  /**
+   * 测试场景：set current schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setCurrentSchema() {
     int schemaId = 3;
@@ -217,6 +276,11 @@ public class TestUpdateRequirements {
         .isEqualTo(schemaId);
   }
 
+  /**
+   * 测试场景：set current schema failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setCurrentSchemaFailure() {
     int schemaId = 3;
@@ -236,6 +300,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: current schema changed: expected id 3 != 4");
   }
 
+  /**
+   * 测试场景：add partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addPartitionSpec() {
     int lastAssignedPartitionId = 3;
@@ -273,6 +342,11 @@ public class TestUpdateRequirements {
         .isEqualTo(lastAssignedPartitionId);
   }
 
+  /**
+   * 测试场景：add partition spec failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addPartitionSpecFailure() {
     when(metadata.lastAssignedPartitionId()).thenReturn(3);
@@ -288,6 +362,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: last assigned partition id changed: expected id 3 != 4");
   }
 
+  /**
+   * 测试场景：set default partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setDefaultPartitionSpec() {
     int specId = 3;
@@ -315,6 +394,11 @@ public class TestUpdateRequirements {
         .isEqualTo(specId);
   }
 
+  /**
+   * 测试场景：set default partition spec failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setDefaultPartitionSpecFailure() {
     int specId = PartitionSpec.unpartitioned().specId();
@@ -333,6 +417,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: default partition spec changed: expected id 0 != 1");
   }
 
+  /**
+   * 测试场景：add sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addSortOrder() {
     List<UpdateRequirement> requirements =
@@ -347,6 +436,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：set default sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setDefaultSortOrder() {
     int sortOrderId = 3;
@@ -376,6 +470,11 @@ public class TestUpdateRequirements {
         .isEqualTo(sortOrderId);
   }
 
+  /**
+   * 测试场景：set default sort order failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setDefaultSortOrderFailure() {
     int sortOrderId = SortOrder.unsorted().orderId();
@@ -389,6 +488,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: default sort order changed: expected id 0 != 1");
   }
 
+  /**
+   * 测试场景：set and remove statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setAndRemoveStatistics() {
     List<UpdateRequirement> requirements =
@@ -415,6 +519,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：add and remove snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addAndRemoveSnapshot() {
     List<UpdateRequirement> requirements =
@@ -439,6 +548,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：set and remove snapshot ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setAndRemoveSnapshotRef() {
     long snapshotId = 14L;
@@ -483,6 +597,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：set snapshot ref failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setSnapshotRefFailure() {
     long snapshotId = 14L;
@@ -526,6 +645,11 @@ public class TestUpdateRequirements {
         .hasMessage("Requirement failed: branch random_branch has changed: expected id 14 != 15");
   }
 
+  /**
+   * 测试场景：set and remove properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setAndRemoveProperties() {
     List<UpdateRequirement> requirements =
@@ -553,6 +677,11 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /**
+   * 测试场景：set location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void setLocation() {
     List<UpdateRequirement> requirements =
@@ -567,6 +696,7 @@ public class TestUpdateRequirements {
     assertTableUUID(requirements);
   }
 
+  /** 辅助方法：assert table uuid。 */
   private void assertTableUUID(List<UpdateRequirement> requirements) {
     assertThat(requirements)
         .element(0)

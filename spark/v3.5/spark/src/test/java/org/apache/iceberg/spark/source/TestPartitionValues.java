@@ -62,8 +62,16 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestPartitionValues 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 分区值 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestPartitionValues {
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -102,11 +110,13 @@ public class TestPartitionValues {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestPartitionValues.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestPartitionValues.spark;
@@ -119,11 +129,13 @@ public class TestPartitionValues {
   private final String format;
   private final boolean vectorized;
 
+  /** 测试分区值。 */
   public TestPartitionValues(String format, boolean vectorized) {
     this.format = format;
     this.vectorized = vectorized;
   }
 
+  /** 测试空值分区值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullPartitionValue() throws Exception {
     String desc = "null_part";
@@ -165,6 +177,7 @@ public class TestPartitionValues {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试reordered列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReorderedColumns() throws Exception {
     String desc = "reorder_columns";
@@ -204,6 +217,7 @@ public class TestPartitionValues {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试reordered列nonullability场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReorderedColumnsNoNullability() throws Exception {
     String desc = "reorder_columns_no_nullability";
@@ -244,6 +258,7 @@ public class TestPartitionValues {
     Assert.assertEquals("Result rows should match", expected, actual);
   }
 
+  /** 测试分区值类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionValueTypes() throws Exception {
     String[] columnNames =
@@ -322,6 +337,7 @@ public class TestPartitionValues {
     }
   }
 
+  /** 测试嵌套分区值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedPartitionValues() throws Exception {
     String[] columnNames =
@@ -401,6 +417,7 @@ public class TestPartitionValues {
     }
   }
 
+  /** 测试分区通过嵌套字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   /**
    * To verify if WrappedPositionAccessor is generated against a string field within a nested field,
    * rather than a Position2Accessor. Or when building the partition path, a ClassCastException is
@@ -455,6 +472,7 @@ public class TestPartitionValues {
     Assert.assertEquals("Number of rows should match", rows.size(), actual.size());
   }
 
+  /** 测试读分区列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadPartitionColumn() throws Exception {
     Assume.assumeTrue("Temporary skip ORC", !"orc".equals(format));

@@ -32,6 +32,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /** Reading metadata tables (like snapshots, manifests, etc.) */
 @Internal
+/**
+ * 元数据读取函数，读取 Iceberg 元数据列（如 position delete 信息）。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：构造读取元数据的 DataIterator。
+ *
+ * <p>设计意图：继承 DataIteratorReaderFunction；被 split reader 调用。
+ */
 public class MetaDataReaderFunction extends DataIteratorReaderFunction<RowData> {
   private final Schema readSchema;
   private final FileIO io;

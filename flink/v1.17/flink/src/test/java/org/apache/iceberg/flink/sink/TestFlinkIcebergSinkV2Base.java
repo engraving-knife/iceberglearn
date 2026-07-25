@@ -45,6 +45,13 @@ import org.apache.iceberg.util.StructLikeSet;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestFlinkIcebergSinkV2Base 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkIcebergSinkV2Base 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkIcebergSinkV2Base {
 
   protected static final int FORMAT_V2 = 2;
@@ -69,6 +76,7 @@ public class TestFlinkIcebergSinkV2Base {
           "-U", RowKind.UPDATE_BEFORE,
           "+U", RowKind.UPDATE_AFTER);
 
+  /** 辅助方法：row，row。 */
   protected Row row(String rowKind, int id, String data) {
     RowKind kind = ROW_KIND_MAP.get(rowKind);
     if (kind == null) {
@@ -78,6 +86,11 @@ public class TestFlinkIcebergSinkV2Base {
     return Row.ofKind(kind, id, data);
   }
 
+  /**
+   * 测试场景：Upsert On Id Data Key。
+   *
+   * <p>验证该方法在 Upsert On Id Data Key 条件下的行为是否符合预期。
+   */
   protected void testUpsertOnIdDataKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -99,6 +112,11 @@ public class TestFlinkIcebergSinkV2Base {
         branch);
   }
 
+  /**
+   * 测试场景：Change Log On Id Data Key。
+   *
+   * <p>验证该方法在 Change Log On Id Data Key 条件下的行为是否符合预期。
+   */
   protected void testChangeLogOnIdDataKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -128,6 +146,11 @@ public class TestFlinkIcebergSinkV2Base {
         branch);
   }
 
+  /**
+   * 测试场景：Change Log On Same Key。
+   *
+   * <p>验证该方法在 Change Log On Same Key 条件下的行为是否符合预期。
+   */
   protected void testChangeLogOnSameKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -156,6 +179,11 @@ public class TestFlinkIcebergSinkV2Base {
         branch);
   }
 
+  /**
+   * 测试场景：Change Log On Data Key。
+   *
+   * <p>验证该方法在 Change Log On Data Key 条件下的行为是否符合预期。
+   */
   protected void testChangeLogOnDataKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -184,6 +212,11 @@ public class TestFlinkIcebergSinkV2Base {
         branch);
   }
 
+  /**
+   * 测试场景：Upsert On Data Key。
+   *
+   * <p>验证该方法在 Upsert On Data Key 条件下的行为是否符合预期。
+   */
   protected void testUpsertOnDataKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -206,6 +239,11 @@ public class TestFlinkIcebergSinkV2Base {
         branch);
   }
 
+  /**
+   * 测试场景：Change Log On Id Key。
+   *
+   * <p>验证该方法在 Change Log On Id Key 条件下的行为是否符合预期。
+   */
   protected void testChangeLogOnIdKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -256,6 +294,11 @@ public class TestFlinkIcebergSinkV2Base {
     }
   }
 
+  /**
+   * 测试场景：Upsert On Id Key。
+   *
+   * <p>验证该方法在 Upsert On Id Key 条件下的行为是否符合预期。
+   */
   protected void testUpsertOnIdKey(String branch) throws Exception {
     List<List<Row>> elementsPerCheckpoint =
         ImmutableList.of(
@@ -292,6 +335,11 @@ public class TestFlinkIcebergSinkV2Base {
     }
   }
 
+  /**
+   * 测试场景：Change Logs。
+   *
+   * <p>验证该方法在 Change Logs 条件下的行为是否符合预期。
+   */
   protected void testChangeLogs(
       List<String> equalityFieldColumns,
       KeySelector<Row, Object> keySelector,
@@ -331,10 +379,12 @@ public class TestFlinkIcebergSinkV2Base {
     }
   }
 
+  /** 辅助方法：record，record。 */
   protected Record record(int id, String data) {
     return SimpleDataUtil.createRecord(id, data);
   }
 
+  /** 辅助方法：findValidSnapshots，find Valid Snapshots。 */
   private List<Snapshot> findValidSnapshots() {
     List<Snapshot> validSnapshots = Lists.newArrayList();
     for (Snapshot snapshot : table.snapshots()) {
@@ -346,10 +396,12 @@ public class TestFlinkIcebergSinkV2Base {
     return validSnapshots;
   }
 
+  /** 辅助方法：expectedRowSet，expected Row Set。 */
   private StructLikeSet expectedRowSet(Record... records) {
     return SimpleDataUtil.expectedRowSet(table, records);
   }
 
+  /** 辅助方法：actualRowSet，actual Row Set。 */
   private StructLikeSet actualRowSet(long snapshotId, String... columns) throws IOException {
     table.refresh();
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());

@@ -27,6 +27,13 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.types.Type.PrimitiveType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestReadabilityChecks 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestReadabilityChecks 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestReadabilityChecks {
   private static final Type.PrimitiveType[] PRIMITIVES =
       new Type.PrimitiveType[] {
@@ -49,6 +56,11 @@ public class TestReadabilityChecks {
         Types.DecimalType.of(9, 3)
       };
 
+  /**
+   * 测试场景：Primitive Types。
+   *
+   * <p>验证该方法在 Primitive Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimitiveTypes() {
     for (Type.PrimitiveType from : PRIMITIVES) {
@@ -75,6 +87,11 @@ public class TestReadabilityChecks {
     }
   }
 
+  /**
+   * 测试场景：Disallow Primitive To Map。
+   *
+   * <p>验证该方法在 Disallow Primitive To Map 条件下的行为是否符合预期。
+   */
   private void testDisallowPrimitiveToMap(PrimitiveType from, Schema fromSchema) {
     Schema mapSchema =
         new Schema(
@@ -88,6 +105,11 @@ public class TestReadabilityChecks {
         .contains("cannot be read as a map");
   }
 
+  /**
+   * 测试场景：Disallow Primitive To List。
+   *
+   * <p>验证该方法在 Disallow Primitive To List 条件下的行为是否符合预期。
+   */
   private void testDisallowPrimitiveToList(PrimitiveType from, Schema fromSchema) {
 
     Schema listSchema = new Schema(required(1, "list_field", Types.ListType.ofRequired(2, from)));
@@ -99,6 +121,11 @@ public class TestReadabilityChecks {
         .contains("cannot be read as a list");
   }
 
+  /**
+   * 测试场景：Disallow Primitive To Struct。
+   *
+   * <p>验证该方法在 Disallow Primitive To Struct 条件下的行为是否符合预期。
+   */
   private void testDisallowPrimitiveToStruct(PrimitiveType from, Schema fromSchema) {
     Schema structSchema =
         new Schema(required(1, "struct_field", Types.StructType.of(required(2, "from", from))));
@@ -110,6 +137,11 @@ public class TestReadabilityChecks {
         .contains("cannot be read as a struct");
   }
 
+  /**
+   * 测试场景：Required Schema Field。
+   *
+   * <p>验证该方法在 Required Schema Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredSchemaField() {
     Schema write = new Schema(optional(1, "from_field", Types.IntegerType.get()));
@@ -123,6 +155,11 @@ public class TestReadabilityChecks {
         .contains("should be required, but is optional");
   }
 
+  /**
+   * 测试场景：Missing Schema Field。
+   *
+   * <p>验证该方法在 Missing Schema Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingSchemaField() {
     Schema write = new Schema(required(0, "other_field", Types.IntegerType.get()));
@@ -136,6 +173,11 @@ public class TestReadabilityChecks {
         .contains("is required, but is missing");
   }
 
+  /**
+   * 测试场景：Required Struct Field。
+   *
+   * <p>验证该方法在 Required Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredStructField() {
     Schema write =
@@ -159,6 +201,11 @@ public class TestReadabilityChecks {
         .contains("should be required, but is optional");
   }
 
+  /**
+   * 测试场景：Missing Required Struct Field。
+   *
+   * <p>验证该方法在 Missing Required Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingRequiredStructField() {
     Schema write =
@@ -182,6 +229,11 @@ public class TestReadabilityChecks {
         .contains("is required, but is missing");
   }
 
+  /**
+   * 测试场景：Missing Optional Struct Field。
+   *
+   * <p>验证该方法在 Missing Optional Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingOptionalStructField() {
     Schema write =
@@ -201,6 +253,11 @@ public class TestReadabilityChecks {
     assertThat(errors).isEmpty();
   }
 
+  /**
+   * 测试场景：Incompatible Struct Field。
+   *
+   * <p>验证该方法在 Incompatible Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleStructField() {
     Schema write =
@@ -222,6 +279,11 @@ public class TestReadabilityChecks {
         .contains("cannot be promoted to float");
   }
 
+  /**
+   * 测试场景：Incompatible Struct And Primitive。
+   *
+   * <p>验证该方法在 Incompatible Struct And Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleStructAndPrimitive() {
     Schema write =
@@ -240,6 +302,11 @@ public class TestReadabilityChecks {
         .contains("struct cannot be read as a string");
   }
 
+  /**
+   * 测试场景：Multiple Errors。
+   *
+   * <p>验证该方法在 Multiple Errors 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleErrors() {
     // required field is optional and cannot be promoted to the read type
@@ -265,6 +332,11 @@ public class TestReadabilityChecks {
         .contains("cannot be promoted to float");
   }
 
+  /**
+   * 测试场景：Required Map Value。
+   *
+   * <p>验证该方法在 Required Map Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredMapValue() {
     Schema write =
@@ -288,6 +360,11 @@ public class TestReadabilityChecks {
         .contains("values should be required, but are optional");
   }
 
+  /**
+   * 测试场景：Incompatible Map Key。
+   *
+   * <p>验证该方法在 Incompatible Map Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleMapKey() {
     Schema write =
@@ -311,6 +388,11 @@ public class TestReadabilityChecks {
         .contains("cannot be promoted to double");
   }
 
+  /**
+   * 测试场景：Incompatible Map Value。
+   *
+   * <p>验证该方法在 Incompatible Map Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleMapValue() {
     Schema write =
@@ -334,6 +416,11 @@ public class TestReadabilityChecks {
         .contains("cannot be promoted to double");
   }
 
+  /**
+   * 测试场景：Incompatible Map And Primitive。
+   *
+   * <p>验证该方法在 Incompatible Map And Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleMapAndPrimitive() {
     Schema write =
@@ -352,6 +439,11 @@ public class TestReadabilityChecks {
         .contains("map cannot be read as a string");
   }
 
+  /**
+   * 测试场景：Required List Element。
+   *
+   * <p>验证该方法在 Required List Element 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredListElement() {
     Schema write =
@@ -369,6 +461,11 @@ public class TestReadabilityChecks {
         .contains("elements should be required, but are optional");
   }
 
+  /**
+   * 测试场景：Incompatible List Element。
+   *
+   * <p>验证该方法在 Incompatible List Element 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleListElement() {
     Schema write =
@@ -385,6 +482,11 @@ public class TestReadabilityChecks {
         .contains("cannot be promoted to string");
   }
 
+  /**
+   * 测试场景：Incompatible List And Primitive。
+   *
+   * <p>验证该方法在 Incompatible List And Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncompatibleListAndPrimitive() {
     Schema write =
@@ -400,6 +502,11 @@ public class TestReadabilityChecks {
         .contains("list cannot be read as a string");
   }
 
+  /**
+   * 测试场景：Different Field Ordering。
+   *
+   * <p>验证该方法在 Different Field Ordering 条件下的行为是否符合预期。
+   */
   @Test
   public void testDifferentFieldOrdering() {
     // writes should not reorder fields
@@ -424,6 +531,11 @@ public class TestReadabilityChecks {
     assertThat(errors).as("Should produce 0 error message").isEmpty();
   }
 
+  /**
+   * 测试场景：Struct Write Reordering。
+   *
+   * <p>验证该方法在 Struct Write Reordering 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructWriteReordering() {
     // writes should not reorder fields
@@ -452,6 +564,11 @@ public class TestReadabilityChecks {
         .contains("field_b is out of order, before field_a");
   }
 
+  /**
+   * 测试场景：Struct Read Reordering。
+   *
+   * <p>验证该方法在 Struct Read Reordering 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructReadReordering() {
     // reads should allow reordering
@@ -476,6 +593,11 @@ public class TestReadabilityChecks {
     assertThat(errors).isEmpty();
   }
 
+  /**
+   * 测试场景：Case Insensitive Schema Projection。
+   *
+   * <p>验证该方法在 Case Insensitive Schema Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveSchemaProjection() {
     Schema schema =
@@ -498,6 +620,11 @@ public class TestReadabilityChecks {
     assertThat(schema.caseInsensitiveSelect("locations.LONG").findField(2)).isNotNull();
   }
 
+  /**
+   * 测试场景：Check Nullability Required Schema Field。
+   *
+   * <p>验证该方法在 Check Nullability Required Schema Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckNullabilityRequiredSchemaField() {
     Schema write = new Schema(optional(1, "from_field", Types.IntegerType.get()));
@@ -507,6 +634,11 @@ public class TestReadabilityChecks {
     assertThat(errors).isEmpty();
   }
 
+  /**
+   * 测试场景：Check Nullability Required Struct Field。
+   *
+   * <p>验证该方法在 Check Nullability Required Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckNullabilityRequiredStructField() {
     Schema write =

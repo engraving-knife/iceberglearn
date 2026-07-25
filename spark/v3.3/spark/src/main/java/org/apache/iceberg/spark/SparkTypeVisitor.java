@@ -27,7 +27,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.UserDefinedType;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkTypeVisitor。
+ *
+ * <p>设计意图：访问者模式，按类型分派处理逻辑。
+ */
 class SparkTypeVisitor<T> {
+  /** 执行该方法的具体逻辑。 */
   static <T> T visit(DataType type, SparkTypeVisitor<T> visitor) {
     if (type instanceof StructType) {
       StructField[] fields = ((StructType) type).fields();
@@ -56,22 +64,57 @@ class SparkTypeVisitor<T> {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param struct 参数
+   * @param fieldResults 参数
+   * @return 结果对象
+   */
   public T struct(StructType struct, List<T> fieldResults) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param field 参数
+   * @param typeResult 参数
+   * @return 结果对象
+   */
   public T field(StructField field, T typeResult) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param array 参数
+   * @param elementResult 参数
+   * @return 结果对象
+   */
   public T array(ArrayType array, T elementResult) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param map 参数
+   * @param keyResult 参数
+   * @param valueResult 参数
+   * @return 结果对象
+   */
   public T map(MapType map, T keyResult, T valueResult) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param atomic 参数
+   * @return 结果对象
+   */
   public T atomic(DataType atomic) {
     return null;
   }

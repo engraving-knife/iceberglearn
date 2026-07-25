@@ -33,6 +33,13 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 BatchDataReader。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class BatchDataReader extends BaseBatchReader<FileScanTask> {
   private static final Logger LOG = LoggerFactory.getLogger(BatchDataReader.class);
 
@@ -45,11 +52,13 @@ class BatchDataReader extends BaseBatchReader<FileScanTask> {
     super(table, task, expectedSchema, caseSensitive, size);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(FileScanTask task) {
     return Stream.concat(Stream.of(task.file()), task.deletes().stream());
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected CloseableIterator<ColumnarBatch> open(FileScanTask task) {
     String filePath = task.file().path().toString();

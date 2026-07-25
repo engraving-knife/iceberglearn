@@ -40,6 +40,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestParquetAvroReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 ParquetAvro读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestParquetAvroReader {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
@@ -86,6 +93,7 @@ public class TestParquetAvroReader {
                       required(24, "couch rope", Types.IntegerType.get())))),
           optional(2, "slide", Types.StringType.get()));
 
+  /** 测试结构体模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Ignore
   public void testStructSchema() throws IOException {
     Schema structSchema =
@@ -144,6 +152,7 @@ public class TestParquetAvroReader {
     double stddev = Math.sqrt((((double) sumSq) / trials) - (mean * mean));
   }
 
+  /** 测试带旧读路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Ignore
   public void testWithOldReadPath() throws IOException {
     File testFile = writeTestData(COMPLEX_SCHEMA, 500_000, 1985);
@@ -189,6 +198,7 @@ public class TestParquetAvroReader {
     }
   }
 
+  /** 测试 testCorrectness 场景：验证 Correctness 相关操作的行为与结果。 */
   @Test
   public void testCorrectness() throws IOException {
     Iterable<Record> records = RandomData.generate(COMPLEX_SCHEMA, 50_000, 34139);
@@ -222,6 +232,7 @@ public class TestParquetAvroReader {
     }
   }
 
+  /** 写测试数据。 */
   private File writeTestData(Schema schema, int numRecords, int seed) throws IOException {
     File testFile = temp.newFile();
     Assert.assertTrue("Delete should succeed", testFile.delete());

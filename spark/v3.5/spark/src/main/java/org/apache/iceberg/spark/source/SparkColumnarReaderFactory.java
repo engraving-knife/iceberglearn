@@ -26,19 +26,46 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
+/**
+ * Spark 列式读取的分区读取器工厂：为每个输入分区创建列式 {@link ColumnarBatch} 读取器。
+ *
+ * <p>所属模块：iceberg-spark（source 子包，Spark 数据源向量化读取路径）。
+ *
+ * <p>职责：实现 {@link PartitionReaderFactory}，仅支持列式读取，按输入分区的任务类型 构造对应的 {@link BatchDataReader}。
+ *
+ * <p>设计意图：专用于向量化读取场景，行式读取直接抛出异常；构造时校验批次大小大于 1。
+ *
+ * <p>上下游关系：由 Spark 读取执行引擎调用，输入分区为 {@link SparkInputPartition}， 产出 {@link BatchDataReader}。
+ */
 class SparkColumnarReaderFactory implements PartitionReaderFactory {
   private final int batchSize;
 
+  /**
+   * 构造列式读取器工厂。
+   *
+   * @param batchSize 列式批次大小，必须大于 1
+   * @throws IllegalArgumentException 当批次大小不大于 1 时抛出
+   */
   SparkColumnarReaderFactory(int batchSize) {
     Preconditions.checkArgument(batchSize > 1, "Batch size must be > 1");
     this.batchSize = batchSize;
   }
 
+  /** 行式读取不支持，始终抛出异常。 */
   @Override
   public PartitionReader<InternalRow> createReader(InputPartition inputPartition) {
     throw new UnsupportedOperationException("Row-based reads are not supported");
   }
 
+  /**
+   * 创建列式批次读取器。
+   *
+   * <p>逻辑：校验输入分区为 {@link SparkInputPartition}，当所有任务为 {@link FileScanTask} 时构造 {@link
+   * BatchDataReader}，否则抛出不支持异常。
+   *
+   * @param inputPartition 输入分区
+   * @return 列式批次读取器
+   */
   @Override
   public PartitionReader<ColumnarBatch> createColumnarReader(InputPartition inputPartition) {
     Preconditions.checkArgument(
@@ -57,6 +84,7 @@ class SparkColumnarReaderFactory implements PartitionReaderFactory {
     }
   }
 
+  /** 始终支持列式读取。 */
   @Override
   public boolean supportColumnarReads(InputPartition inputPartition) {
     return true;

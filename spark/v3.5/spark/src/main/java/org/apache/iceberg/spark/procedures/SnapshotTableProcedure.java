@@ -32,6 +32,20 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.runtime.BoxedUnit;
 
+/**
+ * 快照表存储过程，为已有表创建 Iceberg 快照（不修改原表）。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层，procedures 子包）。
+ *
+ * <p>职责：实现 CALL system.snapshot('source_table', 'table', 'location', properties) 存储过程，通过
+ * SparkActions.snapshotTable 为源表创建一个新的 Iceberg 表快照， 新表拥有独立的元数据但共享源表的数据文件。
+ *
+ * <p>设计意图：与 MigrateTable 不同，snapshot 不修改原表而是创建新表， 适用于在不影响原表的情况下试用 Iceberg。支持自定义表位置和属性。
+ * 输出返回导入的数据文件数。
+ *
+ * <p>上下游关系：通过 SparkProcedures 注册；依赖 SparkActions 的 {@link org.apache.iceberg.actions.SnapshotTable}
+ * 实现。
+ */
 class SnapshotTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -50,26 +64,35 @@ class SnapshotTableProcedure extends BaseProcedure {
   private SnapshotTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new BaseProcedure.Builder<SnapshotTableProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected SnapshotTableProcedure doBuild() {
         return new SnapshotTableProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行快照表操作。
+   *
+   * <p>逻辑：解析源表名、目标表名、可选的位置和属性，创建 SnapshotTable action 并设置参数后执行。校验源表与目标表名不同。
+   *
+   * @param args 输入参数行（source_table, table, location, properties）
+   * @return 包含导入数据文件数的单行输出
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     String source = args.getString(0);
@@ -105,7 +128,7 @@ class SnapshotTableProcedure extends BaseProcedure {
     SnapshotTable.Result result = action.tableProperties(properties).execute();
     return new InternalRow[] {newInternalRow(result.importedDataFilesCount())};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "SnapshotTableProcedure";

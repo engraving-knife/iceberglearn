@@ -24,261 +24,269 @@ import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
 
-/** Represents a table. */
+/**
+ * 表接口：Iceberg 中对一张表的核心抽象，提供元数据访问与各类更新/扫描入口。
+ *
+ * <p>所属模块：iceberg-api（最顶层公共 API 模块，被 core 及所有引擎模块依赖）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>暴露表的元数据：schema、分区规范、排序顺序、快照、属性、位置等。
+ *   <li>提供扫描创建入口：{@link #newScan()}、{@link #newBatchScan()}、增量扫描等。
+ *   <li>提供更新/操作入口：追加、覆写、删除、重写、schema 演进、快照管理等。
+ *   <li>提供基础设施访问：{@link FileIO}、{@link EncryptionManager}、{@link LocationProvider}。
+ * </ul>
+ *
+ * <p>设计意图：作为纯接口，把表的"契约"与"实现"解耦，使 Catalog 可以返回不同实现 （如内存表、REST 表、SQL 表等）。默认方法为可选能力提供兜底实现（如 {@link
+ * #newBatchScan()} 默认通过 {@link BatchScanAdapter} 适配）。
+ *
+ * <p>上下游关系：由 {@code Catalog} 加载并返回；被引擎层、core 模块的更新实现类广泛使用。
+ */
 public interface Table {
 
   /**
-   * Return the full name for this table.
+   * 返回本表的全名。
    *
-   * @return this table's name
+   * @return 表名
    */
   default String name() {
     return toString();
   }
 
-  /** Refresh the current table metadata. */
+  /** 刷新并加载最新的表元数据。 */
   void refresh();
 
   /**
-   * Create a new {@link TableScan scan} for this table.
+   * 创建本表的 {@link TableScan} 扫描。
    *
-   * <p>Once a table scan is created, it can be refined to project columns and filter data.
+   * <p>扫描创建后可进一步配置投影列与过滤条件。
    *
-   * @return a table scan for this table
+   * @return 表扫描
    */
   TableScan newScan();
 
   /**
-   * Create a new {@link BatchScan batch scan} for this table.
+   * 创建本表的 {@link BatchScan} 批量扫描。
    *
-   * <p>Once a batch scan is created, it can be refined to project columns and filter data.
+   * <p>默认实现通过 {@link BatchScanAdapter} 把 {@link TableScan} 适配为 BatchScan。
    *
-   * @return a batch scan for this table
+   * @return 批量扫描
    */
   default BatchScan newBatchScan() {
     return new BatchScanAdapter(newScan());
   }
 
   /**
-   * Create a new {@link IncrementalAppendScan scan} for this table.
+   * 创建本表的 {@link IncrementalAppendScan} 增量追加扫描。
    *
-   * <p>Once a scan is created, it can be refined to project columns and filter data.
+   * <p>默认实现抛出 {@link UnsupportedOperationException}，由具体实现类提供支持。
    *
-   * @return an incremental scan for appends only snapshots
+   * @return 增量追加扫描
    */
   default IncrementalAppendScan newIncrementalAppendScan() {
     throw new UnsupportedOperationException("Incremental append scan is not supported");
   }
 
   /**
-   * Create a new {@link IncrementalChangelogScan} for this table.
+   * 创建本表的 {@link IncrementalChangelogScan} 增量变更日志扫描。
    *
-   * <p>Once a scan is created, it can be refined to project columns and filter data.
+   * <p>默认实现抛出 {@link UnsupportedOperationException}，由具体实现类提供支持。
    *
-   * @return an incremental changelog scan
+   * @return 增量变更日志扫描
    */
   default IncrementalChangelogScan newIncrementalChangelogScan() {
     throw new UnsupportedOperationException("Incremental changelog scan is not supported");
   }
 
   /**
-   * Return the {@link Schema schema} for this table.
+   * 返回本表当前的 {@link Schema}。
    *
-   * @return this table's schema
+   * @return 表 schema
    */
   Schema schema();
 
   /**
-   * Return a map of {@link Schema schema} for this table.
+   * 返回本表所有 schema 的映射（schema ID → Schema）。
    *
-   * @return this table's schema map
+   * @return schema 映射
    */
   Map<Integer, Schema> schemas();
 
   /**
-   * Return the {@link PartitionSpec partition spec} for this table.
+   * 返回本表当前的 {@link PartitionSpec} 分区规范。
    *
-   * @return this table's partition spec
+   * @return 分区规范
    */
   PartitionSpec spec();
 
   /**
-   * Return a map of {@link PartitionSpec partition specs} for this table.
+   * 返回本表所有分区规范的映射（specID → PartitionSpec）。
    *
-   * @return this table's partition specs map
+   * @return 分区规范映射
    */
   Map<Integer, PartitionSpec> specs();
 
   /**
-   * Return the {@link SortOrder sort order} for this table.
+   * 返回本表当前的 {@link SortOrder} 排序顺序。
    *
-   * @return this table's sort order
+   * @return 排序顺序
    */
   SortOrder sortOrder();
 
   /**
-   * Return a map of sort order IDs to {@link SortOrder sort orders} for this table.
+   * 返回本表所有排序顺序的映射（sortOrderID → SortOrder）。
    *
-   * @return this table's sort orders map
+   * @return 排序顺序映射
    */
   Map<Integer, SortOrder> sortOrders();
 
   /**
-   * Return a map of string properties for this table.
+   * 返回本表的字符串属性映射。
    *
-   * @return this table's properties map
+   * @return 表属性映射
    */
   Map<String, String> properties();
 
   /**
-   * Return the table's base location.
+   * 返回本表的存储根路径。
    *
-   * @return this table's location
+   * @return 表存储路径
    */
   String location();
 
   /**
-   * Get the current {@link Snapshot snapshot} for this table, or null if there are no snapshots.
+   * 返回本表当前的 {@link Snapshot}，若无快照返回 null。
    *
-   * @return the current table Snapshot.
+   * @return 当前快照
    */
   Snapshot currentSnapshot();
 
   /**
-   * Get the {@link Snapshot snapshot} of this table with the given id, or null if there is no
-   * matching snapshot.
+   * 按快照 ID 查找 {@link Snapshot}，无匹配返回 null。
    *
-   * @return the {@link Snapshot} with the given id.
+   * @param snapshotId 快照 ID
+   * @return 对应快照
    */
   Snapshot snapshot(long snapshotId);
 
   /**
-   * Get the {@link Snapshot snapshots} of this table.
+   * 返回本表所有 {@link Snapshot} 的迭代器。
    *
-   * @return an Iterable of snapshots of this table.
+   * @return 快照迭代器
    */
   Iterable<Snapshot> snapshots();
 
   /**
-   * Get the snapshot history of this table.
+   * 返回本表的快照历史。
    *
-   * @return a list of {@link HistoryEntry history entries}
+   * @return 历史条目列表
    */
   List<HistoryEntry> history();
 
   /**
-   * Create a new {@link UpdateSchema} to alter the columns of this table and commit the change.
+   * 创建 {@link UpdateSchema} 以修改本表列并提交。
    *
-   * @return a new {@link UpdateSchema}
+   * @return 新的 schema 更新器
    */
   UpdateSchema updateSchema();
 
   /**
-   * Create a new {@link UpdatePartitionSpec} to alter the partition spec of this table and commit
-   * the change.
+   * 创建 {@link UpdatePartitionSpec} 以修改本表分区规范并提交。
    *
-   * @return a new {@link UpdatePartitionSpec}
+   * @return 新的分区规范更新器
    */
   UpdatePartitionSpec updateSpec();
 
   /**
-   * Create a new {@link UpdateProperties} to update table properties and commit the changes.
+   * 创建 {@link UpdateProperties} 以更新表属性并提交。
    *
-   * @return a new {@link UpdateProperties}
+   * @return 新的属性更新器
    */
   UpdateProperties updateProperties();
 
   /**
-   * Create a new {@link ReplaceSortOrder} to set the table sort order and commit the change.
+   * 创建 {@link ReplaceSortOrder} 以设置表排序顺序并提交。
    *
-   * @return a new {@link ReplaceSortOrder}
+   * @return 新的排序顺序替换器
    */
   ReplaceSortOrder replaceSortOrder();
 
   /**
-   * Create a new {@link UpdateLocation} to update table location and commit the changes.
+   * 创建 {@link UpdateLocation} 以更新表存储位置并提交。
    *
-   * @return a new {@link UpdateLocation}
+   * @return 新的位置更新器
    */
   UpdateLocation updateLocation();
 
   /**
-   * Create a new {@link AppendFiles append API} to add files to this table and commit.
+   * 创建 {@link AppendFiles} 追加 API 以向本表新增文件并提交。
    *
-   * @return a new {@link AppendFiles}
+   * @return 新的追加 API
    */
   AppendFiles newAppend();
 
   /**
-   * Create a new {@link AppendFiles append API} to add files to this table and commit.
+   * 创建快速追加 {@link AppendFiles} API。
    *
-   * <p>Using this method signals to the underlying implementation that the append should not
-   * perform extra work in order to commit quickly. Fast appends are not recommended for normal
-   * writes because the fast commit may cause split planning to slow down over time.
+   * <p>逻辑：通知底层实现跳过额外工作以尽快提交。不推荐用于常规写入，因为快速提交可能 导致后续分片规划变慢。若实现不支持快速追加，则退化为 {@link #newAppend()}。
    *
-   * <p>Implementations may not support fast appends, in which case this will return the same
-   * appender as {@link #newAppend()}.
-   *
-   * @return a new {@link AppendFiles}
+   * @return 新的追加 API
    */
   default AppendFiles newFastAppend() {
     return newAppend();
   }
 
   /**
-   * Create a new {@link RewriteFiles rewrite API} to replace files in this table and commit.
+   * 创建 {@link RewriteFiles} 重写 API 以替换本表文件并提交。
    *
-   * @return a new {@link RewriteFiles}
+   * @return 新的文件重写 API
    */
   RewriteFiles newRewrite();
 
   /**
-   * Create a new {@link RewriteManifests rewrite manifests API} to replace manifests for this table
-   * and commit.
+   * 创建 {@link RewriteManifests} 清单重写 API 以替换本表清单并提交。
    *
-   * @return a new {@link RewriteManifests}
+   * @return 新的清单重写 API
    */
   RewriteManifests rewriteManifests();
 
   /**
-   * Create a new {@link OverwriteFiles overwrite API} to overwrite files by a filter expression.
+   * 创建 {@link OverwriteFiles} 覆写 API 以按过滤表达式覆写文件并提交。
    *
-   * @return a new {@link OverwriteFiles}
+   * @return 新的覆写 API
    */
   OverwriteFiles newOverwrite();
 
   /**
-   * Create a new {@link RowDelta row-level delta API} to remove or replace rows in existing data
-   * files.
+   * 创建 {@link RowDelta} 行级增量 API 以删除或替换已有数据文件中的行并提交。
    *
-   * @return a new {@link RowDelta}
+   * @return 新的行级增量 API
    */
   RowDelta newRowDelta();
 
   /**
-   * Not recommended: Create a new {@link ReplacePartitions replace partitions API} to dynamically
-   * overwrite partitions in the table with new data.
+   * 不推荐：创建 {@link ReplacePartitions} 分区替换 API 以动态覆写表分区。
    *
-   * <p>This is provided to implement SQL compatible with Hive table operations but is not
-   * recommended. Instead, use the {@link OverwriteFiles overwrite API} to explicitly overwrite
-   * data.
+   * <p>主要为兼容 Hive 风格 SQL 提供，推荐优先使用 {@link OverwriteFiles} 做显式覆写。
    *
-   * @return a new {@link ReplacePartitions}
+   * @return 新的分区替换 API
    */
   ReplacePartitions newReplacePartitions();
 
   /**
-   * Create a new {@link DeleteFiles delete API} to replace files in this table and commit.
+   * 创建 {@link DeleteFiles} 删除 API 以删除本表文件并提交。
    *
-   * @return a new {@link DeleteFiles}
+   * @return 新的删除 API
    */
   DeleteFiles newDelete();
 
   /**
-   * Create a new {@link UpdateStatistics update table statistics API} to add or remove statistics
-   * files in this table.
+   * 创建 {@link UpdateStatistics} 统计文件更新 API 以新增/删除本表统计文件。
    *
-   * @return a new {@link UpdateStatistics}
+   * <p>默认实现抛出 {@link UnsupportedOperationException}，由具体实现类提供支持。
+   *
+   * @return 新的统计更新 API
    */
   default UpdateStatistics updateStatistics() {
     throw new UnsupportedOperationException(
@@ -286,57 +294,58 @@ public interface Table {
   }
 
   /**
-   * Create a new {@link ExpireSnapshots expire API} to manage snapshots in this table and commit.
+   * 创建 {@link ExpireSnapshots} 过期 API 以管理本表快照过期并提交。
    *
-   * @return a new {@link ExpireSnapshots}
+   * @return 新的快照过期 API
    */
   ExpireSnapshots expireSnapshots();
 
   /**
-   * Create a new {@link ManageSnapshots manage snapshots API} to manage snapshots in this table and
-   * commit.
+   * 创建 {@link ManageSnapshots} 快照管理 API 以管理本表快照并提交。
    *
-   * @return a new {@link ManageSnapshots}
+   * @return 新的快照管理 API
    */
   ManageSnapshots manageSnapshots();
 
   /**
-   * Create a new {@link Transaction transaction API} to commit multiple table operations at once.
+   * 创建 {@link Transaction} 事务 API 以一次性提交多个表操作。
    *
-   * @return a new {@link Transaction}
+   * @return 新的事务 API
    */
   Transaction newTransaction();
 
-  /** Returns a {@link FileIO} to read and write table data and metadata files. */
+  /** 返回用于读写表数据与元数据文件的 {@link FileIO}。 */
   FileIO io();
 
   /**
-   * Returns an {@link org.apache.iceberg.encryption.EncryptionManager} to encrypt and decrypt data
-   * files.
+   * 返回用于加解密数据文件的 {@link EncryptionManager}。
+   *
+   * @return 加密管理器
    */
   EncryptionManager encryption();
 
-  /** Returns a {@link LocationProvider} to provide locations for new data files. */
+  /** 返回用于为新数据文件生成存储路径的 {@link LocationProvider}。 */
   LocationProvider locationProvider();
 
   /**
-   * Returns the current statistics files for the table
+   * 返回本表当前的统计文件列表。
    *
-   * @return the current statistics files for the table
+   * @return 统计文件列表
    */
   List<StatisticsFile> statisticsFiles();
 
   /**
-   * Returns the current refs for the table
+   * 返回本表当前的快照引用（refs）映射。
    *
-   * @return the current refs for the table
+   * @return 引用名 → {@link SnapshotRef}
    */
   Map<String, SnapshotRef> refs();
 
   /**
-   * Returns the snapshot referenced by the given name or null if no such reference exists.
+   * 按引用名查找 {@link Snapshot}，无匹配引用返回 null。
    *
-   * @return the snapshot which is referenced by the given name or null if no such reference exists.
+   * @param name 引用名（分支或标签）
+   * @return 引用指向的快照
    */
   default Snapshot snapshot(String name) {
     SnapshotRef ref = refs().get(name);

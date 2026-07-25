@@ -39,23 +39,9 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * An implementation of StagedTable that mimics the behavior of Spark's non-atomic CTAS and RTAS.
+ * Iceberg Spark 集成相关组件。
  *
- * <p>A Spark catalog can implement StagingTableCatalog to support atomic operations by producing
- * StagedTable. But if a catalog implements StagingTableCatalog, Spark expects the catalog to be
- * able to produce a StagedTable for any table loaded by the catalog. This assumption doesn't always
- * work, as in the case of {@link SparkSessionCatalog}, which supports atomic operations can produce
- * a StagedTable for Iceberg tables, but wraps the session catalog and cannot necessarily produce a
- * working StagedTable implementation for tables that it loads.
- *
- * <p>The work-around is this class, which implements the StagedTable interface but does not have
- * atomic behavior. Instead, the StagedTable interface is used to implement the behavior of the
- * non-atomic SQL plans that will create a table, write, and will drop the table to roll back.
- *
- * <p>This StagedTable implements SupportsRead, SupportsWrite, and SupportsDelete by passing the
- * calls to the real table. Implementing those interfaces is safe because Spark will not use them
- * unless the table supports them and returns the corresponding capabilities from {@link
- * #capabilities()}.
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 RollbackStagedTable。
  */
 public class RollbackStagedTable
     implements StagedTable, SupportsRead, SupportsWrite, SupportsDelete {
@@ -63,63 +49,109 @@ public class RollbackStagedTable
   private final Identifier ident;
   private final Table table;
 
+  /** 构造 RollbackStagedTable 实例。 */
   public RollbackStagedTable(TableCatalog catalog, Identifier ident, Table table) {
     this.catalog = catalog;
     this.ident = ident;
     this.table = table;
   }
 
+  /** 提交事务或写入结果。 */
   @Override
   public void commitStagedChanges() {
     // the changes have already been committed to the table at the end of the write
   }
 
+  /** 中止并回滚当前操作。 */
   @Override
   public void abortStagedChanges() {
     // roll back changes by dropping the table
     catalog.dropTable(ident);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return table.name();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType schema() {
     return table.schema();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Transform[] partitioning() {
     return table.partitioning();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<String, String> properties() {
     return table.properties();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<TableCapability> capabilities() {
     return table.capabilities();
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @param filters 参数
+   */
   @Override
   public void deleteWhere(Filter[] filters) {
     call(SupportsDelete.class, t -> t.deleteWhere(filters));
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     return callReturning(SupportsRead.class, t -> t.newScanBuilder(options));
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param info 参数
+   * @return 结果对象
+   */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     return callReturning(SupportsWrite.class, t -> t.newWriteBuilder(info));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private <T> void call(Class<? extends T> requiredClass, Consumer<T> task) {
     callReturning(
         requiredClass,
@@ -129,6 +161,7 @@ public class RollbackStagedTable
         });
   }
 
+  /** 执行该方法的具体逻辑。 */
   private <T, R> R callReturning(Class<? extends T> requiredClass, Function<T, R> task) {
     if (requiredClass.isInstance(table)) {
       return task.apply(requiredClass.cast(table));

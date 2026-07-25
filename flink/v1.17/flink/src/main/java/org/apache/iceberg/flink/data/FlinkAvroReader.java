@@ -37,16 +37,42 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：将 Avro 数据读取为 Flink {@link RowData} 的读取器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 data 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 Avro {@link DatumReader} 接口，把 Avro 编码的字节流解码为 Flink RowData。
+ *   <li>结合 Iceberg 期望 schema 与 Avro 文件 schema 处理列重命名与字段投影。
+ *   <li>支持把字段 ID 到常量的映射注入读取结果，常用于分区列填充。
+ *   <li>支持行位置信息注入（实现 {@link SupportsRowPosition}）。
+ * </ul>
+ *
+ * <p>设计意图：通过访问器模式构建 Iceberg 类型到 ValueReader 的映射， 复用 Iceberg 的
+ * AvroSchemaWithTypeVisitor，避免在每个数据类型处重复样板代码。
+ *
+ * <p>上下游关系：上游为 Iceberg 的 Avro 文件读取入口，下游为 {@link FlinkValueReaders} 提供的具体字段读取器。
+ */
 public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPosition {
 
   private final Schema readSchema;
   private final ValueReader<RowData> reader;
   private Schema fileSchema = null;
 
+  /** 构造读取器，使用空常量映射。 */
   public FlinkAvroReader(org.apache.iceberg.Schema expectedSchema, Schema readSchema) {
     this(expectedSchema, readSchema, ImmutableMap.of());
   }
 
+  /**
+   * 构造读取器，可传入字段 ID 到常量值的映射。
+   *
+   * <p>逻辑：通过 {@link AvroSchemaWithTypeVisitor} 访问 Iceberg 期望 schema 与 Avro schema， 使用内部 {@link
+   * ReadBuilder} 构造 ValueReader 树。
+   */
   @SuppressWarnings("unchecked")
   public FlinkAvroReader(
       org.apache.iceberg.Schema expectedSchema, Schema readSchema, Map<Integer, ?> constants) {
@@ -56,16 +82,26 @@ public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPositio
             AvroSchemaWithTypeVisitor.visit(expectedSchema, readSchema, new ReadBuilder(constants));
   }
 
+  /** 设置当前文件的 Avro schema，并应用列别名重写以匹配读取 schema。 */
   @Override
   public void setSchema(Schema newFileSchema) {
     this.fileSchema = Schema.applyAliases(newFileSchema, readSchema);
   }
 
+  /**
+   * 从解码器读取一条记录并转为 RowData。
+   *
+   * @param reuse 可复用的 RowData（本实现未使用）
+   * @param decoder Avro 解码器
+   * @return 解码后的 RowData
+   * @throws IOException 读取失败时抛出
+   */
   @Override
   public RowData read(RowData reuse, Decoder decoder) throws IOException {
     return DecoderResolver.resolveAndRead(decoder, readSchema, fileSchema, reader, reuse);
   }
 
+  /** 注入行位置供应器，仅当内部 reader 支持 {@link SupportsRowPosition} 时生效。 */
   @Override
   public void setRowPositionSupplier(Supplier<Long> posSupplier) {
     if (reader instanceof SupportsRowPosition) {
@@ -73,6 +109,7 @@ public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPositio
     }
   }
 
+  /** 内部访问器：根据 Iceberg 类型与 Avro schema 构造对应的 ValueReader。 */
   private static class ReadBuilder extends AvroSchemaWithTypeVisitor<ValueReader<?>> {
     private final Map<Integer, ?> idToConstant;
 

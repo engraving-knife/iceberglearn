@@ -21,6 +21,13 @@ package org.apache.iceberg.spark.source;
 import java.util.OptionalLong;
 import org.apache.spark.sql.connector.read.Statistics;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现，收集并汇报任务执行指标。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 Stats。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class Stats implements Statistics {
   private final OptionalLong sizeInBytes;
   private final OptionalLong numRows;
@@ -30,11 +37,21 @@ class Stats implements Statistics {
     this.numRows = OptionalLong.of(numRows);
   }
 
+  /**
+   * 返回大小。
+   *
+   * @return 结果对象
+   */
   @Override
   public OptionalLong sizeInBytes() {
     return sizeInBytes;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public OptionalLong numRows() {
     return numRows;

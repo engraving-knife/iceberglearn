@@ -57,6 +57,27 @@ import org.apache.iceberg.util.SnapshotUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：快照更新生产者（合并型），是 Iceberg 表 commit 操作的核心实现基类。
+ *
+ * <p>所属模块：iceberg-core。职责：继承 {@link SnapshotProducer}，实现"合并型"快照更新—— 在已有快照基础上，添加/删除数据文件或删除文件，生成新的
+ * manifest 集合并提交新快照。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>核心抽象基类：AppendFiles、OverwriteFiles、DeleteFiles、ReplacePartitions 等 具体操作都继承本类，复用 manifest
+ *       过滤、合并、写入逻辑。
+ *   <li>ManifestFilterManager：负责按文件路径/分区过滤掉被删除的文件。
+ *   <li>ManifestMergeManager：负责合并小 manifest，控制 manifest 数量。
+ *   <li>乐观锁：commit 时检测快照是否已被其他操作更新，冲突则重试。
+ *   <li>支持序列号继承和统计信息更新。
+ * </ul>
+ *
+ * <p>上下游关系：被 AppendFiles/OverwriteFiles/DeleteFiles 等继承；依赖 {@link ManifestFiles}（读写
+ * manifest）、{@link ManifestFilterManager}（过滤）、 {@link ManifestMergeManager}（合并）、{@link
+ * SnapshotProducer}（commit 流程）。
+ */
 abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
   private static final Logger LOG = LoggerFactory.getLogger(MergingSnapshotProducer.class);
 
@@ -145,6 +166,11 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     return caseSensitive;
   }
 
+  /**
+   * 返回当前操作涉及的分区规格。
+   *
+   * @return 分区规格
+   */
   protected PartitionSpec dataSpec() {
     Preconditions.checkState(
         dataSpec != null, "Cannot determine partition spec: no data files have been added");
@@ -152,19 +178,31 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     return dataSpec;
   }
 
+  /**
+   * 返回当前操作的行过滤表达式。
+   *
+   * @return 行过滤表达式
+   */
   protected Expression rowFilter() {
     return deleteExpression;
   }
 
+  /**
+   * 返回本次操作添加的数据文件列表。
+   *
+   * @return 添加的数据文件列表
+   */
   protected List<DataFile> addedDataFiles() {
     return ImmutableList.copyOf(newDataFiles);
   }
 
+  /** 标记本次操作中有删除操作，用于验证。 */
   protected void failAnyDelete() {
     filterManager.failAnyDelete();
     deleteFilterManager.failAnyDelete();
   }
 
+  /** 检查是否有未提供删除路径的删除操作。 */
   protected void failMissingDeletePaths() {
     filterManager.failMissingDeletePaths();
     deleteFilterManager.failMissingDeletePaths();
@@ -191,11 +229,31 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     deleteFilterManager.dropPartition(specId, partition);
   }
 
+  /**
+   * 从当前快照中删除指定数据文件。
+   *
+   * @param file 待删除的数据文件
+   */
+  /**
+   * 从当前快照中删除指定数据文件。
+   *
+   * @param file 待删除的数据文件
+   */
   /** Add a specific data file to be deleted in the new snapshot. */
   protected void delete(DataFile file) {
     filterManager.delete(file);
   }
 
+  /**
+   * 从当前快照中删除指定删除文件。
+   *
+   * @param file 待删除的删除文件
+   */
+  /**
+   * 从当前快照中删除指定删除文件。
+   *
+   * @param file 待删除的删除文件
+   */
   /** Add a specific delete file to be deleted in the new snapshot. */
   protected void delete(DeleteFile file) {
     deleteFilterManager.delete(file);
@@ -208,10 +266,20 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     filterManager.delete(path);
   }
 
+  /**
+   * 判断本次操作是否删除了数据文件。
+   *
+   * @return true 如果有数据文件被删除
+   */
   protected boolean deletesDataFiles() {
     return filterManager.containsDeletes();
   }
 
+  /**
+   * 判断本次操作是否删除了删除文件。
+   *
+   * @return true 如果有删除文件被删除
+   */
   protected boolean deletesDeleteFiles() {
     return deleteFilterManager.containsDeletes();
   }
@@ -224,6 +292,16 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     return newDeleteFilesBySpec.size() > 0;
   }
 
+  /**
+   * 添加一个数据文件到当前快照更新。
+   *
+   * @param file 数据文件元信息
+   */
+  /**
+   * 添加一个数据文件到当前快照更新。
+   *
+   * @param file 数据文件元信息
+   */
   /** Add a data file to the new snapshot. */
   protected void add(DataFile file) {
     Preconditions.checkNotNull(file, "Invalid data file: null");
@@ -233,6 +311,16 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     newDataFiles.add(file);
   }
 
+  /**
+   * 添加一个删除文件到当前快照更新。
+   *
+   * @param file 删除文件元信息
+   */
+  /**
+   * 添加一个删除文件到当前快照更新。
+   *
+   * @param file 删除文件元信息
+   */
   /** Add a delete file to the new snapshot. */
   protected void add(DeleteFile file) {
     Preconditions.checkNotNull(file, "Invalid delete file: null");
@@ -818,11 +906,12 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
 
   @Override
   public List<ManifestFile> apply(TableMetadata base, Snapshot snapshot) {
-    // filter any existing manifests
+    // 第一步：过滤已有数据文件 manifest，去除被删除的文件
     List<ManifestFile> filtered =
         filterManager.filterManifests(
             SnapshotUtil.schemaFor(base, targetBranch()),
             snapshot != null ? snapshot.dataManifests(ops.io()) : null);
+    // 计算最小数据序列号，用于过滤过期的 delete 文件
     long minDataSequenceNumber =
         filtered.stream()
             .map(ManifestFile::minSequenceNumber)
@@ -832,13 +921,15 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
                         != ManifestWriter
                             .UNASSIGNED_SEQ) // filter out unassigned in rewritten manifests
             .reduce(base.lastSequenceNumber(), Math::min);
+    // 丢弃早于最小数据序列号的 delete 文件（这些 delete 已无意义）
     deleteFilterManager.dropDeleteFilesOlderThan(minDataSequenceNumber);
+    // 第二步：过滤已有删除文件 manifest
     List<ManifestFile> filteredDeletes =
         deleteFilterManager.filterManifests(
             SnapshotUtil.schemaFor(base, targetBranch()),
             snapshot != null ? snapshot.deleteManifests(ops.io()) : null);
 
-    // only keep manifests that have live data files or that were written by this commit
+    // 第三步：合并新增 manifest 与过滤后 manifest，只保留有活动文件的 manifest
     Predicate<ManifestFile> shouldKeep =
         manifest ->
             manifest.hasAddedFiles()
@@ -849,13 +940,14 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
     Iterable<ManifestFile> unmergedDeleteManifests =
         Iterables.filter(Iterables.concat(prepareDeleteManifests(), filteredDeletes), shouldKeep);
 
-    // update the snapshot summary
+    // 第四步：汇总快照统计信息
     summaryBuilder.clear();
     summaryBuilder.merge(addedFilesSummary);
     summaryBuilder.merge(appendedManifestsSummary);
     summaryBuilder.merge(filterManager.buildSummary(filtered));
     summaryBuilder.merge(deleteFilterManager.buildSummary(filteredDeletes));
 
+    // 第五步：合并小 manifest 并返回最终 manifest 列表
     List<ManifestFile> manifests = Lists.newArrayList();
     Iterables.addAll(manifests, mergeManager.mergeManifests(unmergedManifests));
     Iterables.addAll(manifests, deleteMergeManager.mergeManifests(unmergedDeleteManifests));

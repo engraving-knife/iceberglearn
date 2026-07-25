@@ -26,14 +26,17 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.util.CharVarcharUtils
 import org.apache.spark.sql.types.DataType
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 AssignmentUtils。
+ */
 object AssignmentUtils extends SQLConfHelper {
 
   /**
-   * Checks whether assignments are aligned and match table columns.
-   *
-   * @param table a target table
-   * @param assignments assignments to check
-   * @return true if the assignments are aligned
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
    */
   def aligned(table: LogicalPlan, assignments: Seq[Assignment]): Boolean = {
     val sameSize = table.output.size == assignments.size
@@ -49,6 +52,10 @@ object AssignmentUtils extends SQLConfHelper {
     }
   }
 
+  /**
+   * 转换为assignmentref。
+   * @return 结果对象
+   */
   def toAssignmentRef(expr: Expression): Seq[String] = expr match {
     case attr: AttributeReference =>
       Seq(attr.name)
@@ -62,6 +69,10 @@ object AssignmentUtils extends SQLConfHelper {
       throw new AnalysisException(s"Cannot convert to a reference, unsupported expression: $other")
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def handleCharVarcharLimits(assignment: Assignment): Assignment = {
     val key = assignment.key
     val value = assignment.value

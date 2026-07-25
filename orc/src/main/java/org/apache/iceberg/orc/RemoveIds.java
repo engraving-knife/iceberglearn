@@ -22,6 +22,17 @@ import java.util.List;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.orc.TypeDescription;
 
+/**
+ * 清除 ORC schema 树上 Iceberg id 属性的访问器。
+ *
+ * <p>所属模块：iceberg-orc。用于生成不带 Iceberg id 的“干净”ORC schema， 供需要与原生 ORC 工具交互的场景使用。
+ *
+ * <p>职责：遍历 ORC TypeDescription 树，重建新的 TypeDescription（clone 后移除 id 属性）。
+ *
+ * <p>设计意图：primitive 节点 clone 后调 removeIcebergAttributes 清除 id， struct/list/map 重建新的复合类型，保证不修改原对象。
+ *
+ * <p>上下游关系：被 {@link ORCSchemaUtil#removeIds} 调用。
+ */
 class RemoveIds extends OrcSchemaVisitor<TypeDescription> {
 
   @Override
@@ -51,6 +62,7 @@ class RemoveIds extends OrcSchemaVisitor<TypeDescription> {
     return removeIcebergAttributes(primitive.clone());
   }
 
+  /** 移除 ORC TypeDescription 上的 Iceberg id 属性。 */
   private static TypeDescription removeIcebergAttributes(TypeDescription orcType) {
     orcType.removeAttribute(ORCSchemaUtil.ICEBERG_ID_ATTRIBUTE);
     return orcType;

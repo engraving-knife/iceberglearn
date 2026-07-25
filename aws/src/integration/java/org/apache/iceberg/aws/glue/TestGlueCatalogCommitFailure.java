@@ -49,8 +49,20 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+/**
+ * 文件级说明：TestGlueCatalogCommitFailure 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 Glue目录提交failure 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestGlueCatalogCommitFailure extends GlueTestBase {
 
+  /**
+   * 测试场景：failed提交。
+   *
+   * <p>验证该方法在 failed提交 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testFailedCommit() {
     Table table = setupTable();
@@ -74,6 +86,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：failed提交throwsunknownexception。
+   *
+   * <p>验证该方法在 failed提交throwsunknownexception 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testFailedCommitThrowsUnknownException() {
     Table table = setupTable();
@@ -101,6 +118,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：并发modificationexceptiondoes非检查提交status。
+   *
+   * <p>验证该方法在 并发modificationexceptiondoes非检查提交status 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testConcurrentModificationExceptionDoesNotCheckCommitStatus() {
     Table table = setupTable();
@@ -127,6 +149,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：检查提交status后retries。
+   *
+   * <p>验证该方法在 检查提交status后retries 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCheckCommitStatusAfterRetries() {
     String namespace = createNamespace();
@@ -149,6 +176,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         "No new metadata files should exist", 2, metadataFileCount(spyOps.current()));
   }
 
+  /**
+   * 测试场景：noretryawarenesscorrupts表。
+   *
+   * <p>验证该方法在 noretryawarenesscorrupts表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNoRetryAwarenessCorruptsTable() {
     // This test exists to replicate the issue the prior test validates the fix for
@@ -181,6 +213,7 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         .hasMessageContaining("Location does not exist");
   }
 
+  /** 辅助方法：simulateretried提交。 */
   private void simulateRetriedCommit(GlueTableOperations spyOps, boolean reportRetry) {
     // Perform a successful commit, then call it again, optionally letting the retryDetector know
     // about it
@@ -198,6 +231,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         .persistGlueTable(Mockito.any(), Mockito.anyMap(), Mockito.any(), Mockito.any());
   }
 
+  /**
+   * 测试场景：提交throwsexceptionwhilesucceeded。
+   *
+   * <p>验证该方法在 提交throwsexceptionwhilesucceeded 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCommitThrowsExceptionWhileSucceeded() {
     Table table = setupTable();
@@ -225,6 +263,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：failed提交throwsunknownexception当status检查fails。
+   *
+   * <p>验证该方法在 failed提交throwsunknownexception当status检查fails 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testFailedCommitThrowsUnknownExceptionWhenStatusCheckFails() {
     Table table = setupTable();
@@ -254,6 +297,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：succeeded提交throwsunknownexception。
+   *
+   * <p>验证该方法在 succeeded提交throwsunknownexception 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testSucceededCommitThrowsUnknownException() {
     Table table = setupTable();
@@ -280,17 +328,9 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
   }
 
   /**
-   * Pretends we threw an exception while persisting, the commit succeeded, the lock expired, and a
-   * second committer placed a commit on top of ours before the first committer was able to check if
-   * their commit succeeded or not
+   * 测试场景：exceptionthrownin并发提交。
    *
-   * <p>Timeline: Client 1 commits which throws an exception but suceeded Client 1's lock expires
-   * while waiting to do the recheck for commit success Client 2 acquires a lock, commits
-   * successfully on top of client 1's commit and release lock Client 1 check's to see if their
-   * commit was successful
-   *
-   * <p>This tests to make sure a disconnected client 1 doesn't think their commit failed just
-   * because it isn't the current one during the recheck phase.
+   * <p>验证该方法在 exceptionthrownin并发提交 条件下的行为与断言结果是否符合预期。
    */
   @Test
   public void testExceptionThrownInConcurrentCommit() {
@@ -319,6 +359,7 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         ops.current().schema().columns().size());
   }
 
+  /** 辅助方法：并发提交andthrowexception。 */
   private void concurrentCommitAndThrowException(
       GlueTableOperations realOps, GlueTableOperations spyOperations, Table table) {
     // Simulate a communication error after a successful commit
@@ -346,6 +387,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         .persistGlueTable(Mockito.any(), Mockito.anyMap(), Mockito.any(), Mockito.any());
   }
 
+  /**
+   * 测试场景：创建表带invaliddb。
+   *
+   * <p>验证该方法在 创建表带invaliddb 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableWithInvalidDB() {
     Table table = setupTable();
@@ -369,6 +415,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：Glueaccessdeniedexception。
+   *
+   * <p>验证该方法在 Glueaccessdeniedexception 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testGlueAccessDeniedException() {
     Table table = setupTable();
@@ -392,6 +443,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：Glue校验exception。
+   *
+   * <p>验证该方法在 Glue校验exception 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testGlueValidationException() {
     Table table = setupTable();
@@ -415,6 +471,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：测试s3exception。
+   *
+   * <p>验证该方法在对应输入下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testS3Exception() {
     Table table = setupTable();
@@ -435,6 +496,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：otherGlueexception。
+   *
+   * <p>验证该方法在 otherGlueexception 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testOtherGlueException() {
     Table table = setupTable();
@@ -455,6 +521,11 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /**
+   * 测试场景：internalservererrorretry提交。
+   *
+   * <p>验证该方法在 internalservererrorretry提交 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testInternalServerErrorRetryCommit() {
     Table table = setupTable();
@@ -475,12 +546,14 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     Assert.assertEquals("No new metadata files should exist", 2, metadataFileCount(ops.current()));
   }
 
+  /** 辅助方法：初始化表。 */
   private Table setupTable() {
     String namespace = createNamespace();
     String tableName = createTable(namespace);
     return glueCatalog.loadTable(TableIdentifier.of(namespace, tableName));
   }
 
+  /** 辅助方法：更新表。 */
   private TableMetadata updateTable(Table table, GlueTableOperations ops) {
     table.updateSchema().addColumn("n", Types.IntegerType.get()).commit();
 
@@ -492,6 +565,7 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     return metadataV2;
   }
 
+  /** 辅助方法：提交andthrowexception。 */
   private void commitAndThrowException(GlueTableOperations realOps, GlueTableOperations spyOps) {
     Mockito.doAnswer(
             i -> {
@@ -506,21 +580,25 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
         .persistGlueTable(Mockito.any(), Mockito.anyMap(), Mockito.any(), Mockito.any());
   }
 
+  /** 辅助方法：fail提交andthrowexception。 */
   private void failCommitAndThrowException(GlueTableOperations spyOps) {
     failCommitAndThrowException(spyOps, new RuntimeException("Datacenter on fire"));
   }
 
+  /** 辅助方法：fail提交andthrowexception。 */
   private void failCommitAndThrowException(GlueTableOperations spyOps, Exception exceptionToThrow) {
     Mockito.doThrow(exceptionToThrow)
         .when(spyOps)
         .persistGlueTable(Mockito.any(), Mockito.anyMap(), Mockito.any(), Mockito.any());
   }
 
+  /** 辅助方法：breakfallback目录提交检查。 */
   private void breakFallbackCatalogCommitCheck(GlueTableOperations spyOperations) {
     Mockito.when(spyOperations.refresh())
         .thenThrow(new RuntimeException("Still on fire")); // Failure on commit check
   }
 
+  /** 辅助方法：元数据文件存在。 */
   private boolean metadataFileExists(TableMetadata metadata) {
     try {
       s3.headObject(
@@ -534,6 +612,7 @@ public class TestGlueCatalogCommitFailure extends GlueTestBase {
     }
   }
 
+  /** 辅助方法：元数据文件计数。 */
   private int metadataFileCount(TableMetadata metadata) {
     return (int)
         s3

@@ -28,6 +28,19 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：{@link ViewVersion} 的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core（视图元数据实现模块）。
+ *
+ * <p>职责：将视图版本（版本 ID、时间戳、schema-id、summary、默认 catalog/namespace、 representations 列表）在 JSON 与 {@link
+ * ViewVersion} 之间互转。
+ *
+ * <p>设计意图：字段命名采用 Iceberg 规范的 kebab-case；representations 列表中的每个元素 由 {@link ViewRepresentationParser}
+ * 按 type 分派处理；default-catalog 为可选字段，仅在 非空时输出。
+ *
+ * <p>上下游关系：被 {@link ViewMetadataParser} 在序列化/反序列化视图元数据的 versions 字段时调用。
+ */
 public class ViewVersionParser {
 
   private static final String VERSION_ID = "version-id";
@@ -40,6 +53,17 @@ public class ViewVersionParser {
 
   private ViewVersionParser() {}
 
+  /**
+   * 将 {@link ViewVersion} 写入 {@link JsonGenerator}。
+   *
+   * <p>逻辑：写起始对象 -> 写 version-id、timestamp-ms、schema-id、summary -> default-catalog 非空时写出 -> 写
+   * default-namespace（levels 数组） -> 写 representations 数组（逐个委托 {@link ViewRepresentationParser}） ->
+   * 写结束对象。
+   *
+   * @param version 视图版本
+   * @param generator Jackson 生成器
+   * @throws IOException 写入失败
+   */
   public static void toJson(ViewVersion version, JsonGenerator generator) throws IOException {
     Preconditions.checkArgument(version != null, "Cannot serialize null view version");
     generator.writeStartObject();
@@ -65,15 +89,37 @@ public class ViewVersionParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 将 {@link ViewVersion} 序列化为 JSON 字符串（紧凑格式）。
+   *
+   * @param version 视图版本
+   * @return JSON 文本
+   */
   static String toJson(ViewVersion version) {
     return JsonUtil.generate(gen -> toJson(version, gen), false);
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link ViewVersion}。
+   *
+   * @param json JSON 文本
+   * @return 视图版本
+   */
   static ViewVersion fromJson(String json) {
     Preconditions.checkArgument(json != null, "Cannot parse view version from null string");
     return JsonUtil.parse(json, ViewVersionParser::fromJson);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link ViewVersion}。
+   *
+   * <p>逻辑：校验节点非空且为对象 -> 逐一取出 version-id、schema-id、timestamp-ms、summary -> 遍历 representations 数组委托
+   * {@link ViewRepresentationParser} 解析 -> 取出 default-catalog（可选）与 default-namespace -> 组装
+   * ImmutableViewVersion。
+   *
+   * @param node 已解析的 JSON 节点
+   * @return 视图版本
+   */
   public static ViewVersion fromJson(JsonNode node) {
     Preconditions.checkArgument(node != null, "Cannot parse view version from null object");
     Preconditions.checkArgument(

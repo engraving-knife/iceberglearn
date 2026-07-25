@@ -34,11 +34,13 @@ public class ObjectData {
   public final Map<String, String> userMetadata;
   private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
+  /** 辅助方法：ObjectData。 */
   private ObjectData(byte[] content, Map<String, String> userMetadata) {
     this.content = content;
     this.userMetadata = userMetadata;
   }
 
+  /** 辅助方法：create。 */
   public static ObjectData create(byte[] content, S3ObjectMetadata metadata) {
     Map<String, String> userMetadata = new LinkedHashMap<>();
     if (metadata != null) {
@@ -48,16 +50,19 @@ public class ObjectData {
     return new ObjectData(content, userMetadata);
   }
 
+  /** 辅助方法：length。 */
   public int length() {
     return content.length;
   }
 
+  /** 辅助方法：appendContent。 */
   public ObjectData appendContent(byte[] appendedData) {
     byte[] newContent = Arrays.copyOf(content, content.length + appendedData.length);
     System.arraycopy(appendedData, 0, newContent, content.length, appendedData.length);
     return new ObjectData(newContent, userMetadata);
   }
 
+  /** 辅助方法：createInputStream。 */
   public InputStream createInputStream(Range range) {
     int offset = range.getFirst().intValue();
     int length;
@@ -70,6 +75,7 @@ public class ObjectData {
     return new ByteArrayInputStream(content, offset, length);
   }
 
+  /** 辅助方法：createFullMetadata。 */
   public S3ObjectMetadata createFullMetadata() {
     S3ObjectMetadata metadata = new S3ObjectMetadata();
     MessageDigest md = null;
@@ -86,6 +92,7 @@ public class ObjectData {
     return metadata;
   }
 
+  /** 辅助方法：bytesToHex。 */
   private static String bytesToHex(byte[] bytes) {
     char[] hexChars = new char[bytes.length * 2];
     for (int j = 0; j < bytes.length; j++) {

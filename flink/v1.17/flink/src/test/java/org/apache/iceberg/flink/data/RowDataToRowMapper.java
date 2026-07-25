@@ -27,22 +27,32 @@ import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.utils.TypeConversions;
 import org.apache.flink.types.Row;
 
+/**
+ * 文件级说明：测试 RowDataToRowMapper 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 RowDataToRowMapper 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class RowDataToRowMapper extends RichMapFunction<RowData, Row> {
 
   private final RowType rowType;
 
   private transient DataStructureConverter<Object, Object> converter;
 
+  /** 辅助方法：RowDataToRowMapper，Row Data To Row Mapper。 */
   public RowDataToRowMapper(RowType rowType) {
     this.rowType = rowType;
   }
 
+  /** 辅助方法：open，open。 */
   @Override
   public void open(Configuration parameters) throws Exception {
     this.converter =
         DataStructureConverters.getConverter(TypeConversions.fromLogicalToDataType(rowType));
   }
 
+  /** 辅助方法：map，map。 */
   @Override
   public Row map(RowData value) throws Exception {
     return (Row) converter.toExternal(value);

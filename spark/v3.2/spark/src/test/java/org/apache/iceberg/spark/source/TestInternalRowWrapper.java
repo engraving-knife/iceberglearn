@@ -32,20 +32,30 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.junit.Assert;
 import org.junit.Ignore;
 
+/**
+ * 文件级说明：测试 TestInternalRowWrapper 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 internal行wrapper 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestInternalRowWrapper extends RecordWrapperTest {
 
+  /** 测试时间戳无时区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Ignore
   @Override
   public void testTimestampWithoutZone() {
     // Spark does not support timestamp without zone.
   }
 
+  /** 测试时间场景：验证该方法在对应输入下的行为与断言结果。 */
   @Ignore
   @Override
   public void testTime() {
     // Spark does not support time fields.
   }
 
+  /** 生成与校验。 */
   @Override
   protected void generateAndValidate(Schema schema, AssertMethod assertMethod) {
     int numRecords = 100;

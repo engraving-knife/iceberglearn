@@ -22,13 +22,20 @@ import java.io.ObjectStreamException;
 import java.io.Serializable;
 
 /**
- * Stand-in classes for expression classes in Java Serialization.
+ * 模块：api，transforms（分区变换）层序列化辅助。
  *
- * <p>These are used so that transform classes can be singletons and use identical equality.
+ * <p>职责：为各类 Transform 单例提供 Java 序列化代理。
+ *
+ * <p>设计意图：Transform 类设计为单例以保证相等性（identical equality），无法直接被 Java 序列化， 因此通过代理类承担序列化，并在 {@code
+ * readResolve} 中还原为对应单例。
+ *
+ * <p>上下游关系：被 {@link VoidTransform}、{@link Identity}、{@link Years}、{@link Months}、 {@link
+ * Days}、{@link Hours} 等单例 Transform 在 {@code writeReplace} 中使用。
  */
 class SerializationProxies {
   private SerializationProxies() {}
 
+  /** {@link VoidTransform} 的序列化代理，反序列化时还原为单例。 */
   static class VoidTransformProxy implements Serializable {
     private static final VoidTransformProxy INSTANCE = new VoidTransformProxy();
 
@@ -36,7 +43,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     VoidTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {
@@ -44,6 +51,7 @@ class SerializationProxies {
     }
   }
 
+  /** {@link Identity} 的序列化代理，反序列化时还原为单例。 */
   static class IdentityTransformProxy implements Serializable {
     private static final IdentityTransformProxy INSTANCE = new IdentityTransformProxy();
 
@@ -51,7 +59,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     IdentityTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {
@@ -59,6 +67,7 @@ class SerializationProxies {
     }
   }
 
+  /** {@link Years} 的序列化代理，反序列化时还原为单例。 */
   static class YearsTransformProxy implements Serializable {
     private static final YearsTransformProxy INSTANCE = new YearsTransformProxy();
 
@@ -66,7 +75,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     YearsTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {
@@ -74,6 +83,7 @@ class SerializationProxies {
     }
   }
 
+  /** {@link Months} 的序列化代理，反序列化时还原为单例。 */
   static class MonthsTransformProxy implements Serializable {
     private static final MonthsTransformProxy INSTANCE = new MonthsTransformProxy();
 
@@ -81,7 +91,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     MonthsTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {
@@ -89,6 +99,7 @@ class SerializationProxies {
     }
   }
 
+  /** {@link Days} 的序列化代理，反序列化时还原为单例。 */
   static class DaysTransformProxy implements Serializable {
     private static final DaysTransformProxy INSTANCE = new DaysTransformProxy();
 
@@ -96,7 +107,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     DaysTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {
@@ -104,6 +115,7 @@ class SerializationProxies {
     }
   }
 
+  /** {@link Hours} 的序列化代理，反序列化时还原为单例。 */
   static class HoursTransformProxy implements Serializable {
     private static final HoursTransformProxy INSTANCE = new HoursTransformProxy();
 
@@ -111,7 +123,7 @@ class SerializationProxies {
       return INSTANCE;
     }
 
-    /** Constructor for Java serialization. */
+    /** Java 序列化使用的无参构造。 */
     HoursTransformProxy() {}
 
     Object readResolve() throws ObjectStreamException {

@@ -40,8 +40,15 @@ import org.apache.spark.sql.execution.datasources.v2.ReplaceRewrittenRowLevelCom
 import org.apache.spark.sql.execution.datasources.v2.RowLevelCommandScanRelationPushDown
 import org.apache.spark.sql.execution.dynamicpruning.RowLevelCommandDynamicPruning
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：类 IcebergSparkSessionExtensions。
+ */
 class IcebergSparkSessionExtensions extends (SparkSessionExtensions => Unit) {
 
+  /** 执行核心逻辑。 */
   override def apply(extensions: SparkSessionExtensions): Unit = {
     // parser extensions
     extensions.injectParser { case (_, parser) => new IcebergSparkSqlExtensionsParser(parser) }

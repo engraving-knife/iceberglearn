@@ -40,8 +40,20 @@ import software.amazon.awssdk.services.glue.model.GetTablesRequest;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * 文件级说明：测试 TestAwsClientFactories 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestAwsClientFactories 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestAwsClientFactories {
 
+  /**
+   * 测试场景：Load Default。
+   *
+   * <p>验证该方法在 Load Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadDefault() {
     Assertions.assertThat(AwsClientFactories.defaultFactory())
@@ -53,6 +65,11 @@ public class TestAwsClientFactories {
         .isInstanceOf(AwsClientFactories.DefaultAwsClientFactory.class);
   }
 
+  /**
+   * 测试场景：Load Custom。
+   *
+   * <p>验证该方法在 Load Custom 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCustom() {
     Map<String, String> properties = Maps.newHashMap();
@@ -62,6 +79,11 @@ public class TestAwsClientFactories {
         .isInstanceOf(CustomFactory.class);
   }
 
+  /**
+   * 测试场景：3 File Io Credentials Verification。
+   *
+   * <p>验证该方法在 3 File Io Credentials Verification 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIoCredentialsVerification() {
     Map<String, String> properties = Maps.newHashMap();
@@ -79,6 +101,11 @@ public class TestAwsClientFactories {
         .hasMessage("S3 client access key ID and secret access key must be set at the same time");
   }
 
+  /**
+   * 测试场景：Default Aws Client Factory Serializable。
+   *
+   * <p>验证该方法在 Default Aws Client Factory Serializable 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultAwsClientFactorySerializable() throws IOException {
     Map<String, String> properties = Maps.newHashMap();
@@ -95,6 +122,11 @@ public class TestAwsClientFactories {
         .isInstanceOf(AwsClientFactories.DefaultAwsClientFactory.class);
   }
 
+  /**
+   * 测试场景：Assume Role Aws Client Factory Serializable。
+   *
+   * <p>验证该方法在 Assume Role Aws Client Factory Serializable 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssumeRoleAwsClientFactorySerializable() throws IOException {
     Map<String, String> properties = Maps.newHashMap();
@@ -112,6 +144,11 @@ public class TestAwsClientFactories {
     Assertions.assertThat(deserializedClientFactory).isInstanceOf(AssumeRoleAwsClientFactory.class);
   }
 
+  /**
+   * 测试场景：Lake Formation Aws Client Factory Serializable。
+   *
+   * <p>验证该方法在 Lake Formation Aws Client Factory Serializable 条件下的行为是否符合预期。
+   */
   @Test
   public void testLakeFormationAwsClientFactorySerializable() throws IOException {
     Map<String, String> properties = Maps.newHashMap();
@@ -135,6 +172,11 @@ public class TestAwsClientFactories {
         .isInstanceOf(LakeFormationAwsClientFactory.class);
   }
 
+  /**
+   * 测试场景：With Dummy Valid Credentials Provider。
+   *
+   * <p>验证该方法在 With Dummy Valid Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithDummyValidCredentialsProvider() {
     AwsClientFactory defaultAwsClientFactory =
@@ -148,6 +190,11 @@ public class TestAwsClientFactories {
         .hasMessageContaining("The AWS Access Key Id you provided does not exist in our records");
   }
 
+  /**
+   * 测试场景：With No Create Method Credentials Provider。
+   *
+   * <p>验证该方法在 With No Create Method Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNoCreateMethodCredentialsProvider() {
     String providerClassName = NoCreateMethod.class.getName();
@@ -156,6 +203,11 @@ public class TestAwsClientFactories {
     testProviderAndAssertThrownBy(providerClassName, containsMessage);
   }
 
+  /**
+   * 测试场景：With No Arg Create Method Credentials Provider。
+   *
+   * <p>验证该方法在 With No Arg Create Method Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNoArgCreateMethodCredentialsProvider() {
     String providerClassName = CreateMethod.class.getName();
@@ -163,6 +215,11 @@ public class TestAwsClientFactories {
     testProviderAndAssertThrownBy(providerClassName, containsMessage);
   }
 
+  /**
+   * 测试场景：With Map Arg Create Method Credentials Provider。
+   *
+   * <p>验证该方法在 With Map Arg Create Method Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithMapArgCreateMethodCredentialsProvider() {
     String providerClassName = CreateMapMethod.class.getName();
@@ -170,6 +227,11 @@ public class TestAwsClientFactories {
     testProviderAndAssertThrownBy(providerClassName, containsMessage);
   }
 
+  /**
+   * 测试场景：With Class Does Not Exists Credentials Provider。
+   *
+   * <p>验证该方法在 With Class Does Not Exists Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithClassDoesNotExistsCredentialsProvider() {
     String providerClassName = "invalidClassName";
@@ -177,6 +239,11 @@ public class TestAwsClientFactories {
     testProviderAndAssertThrownBy(providerClassName, containsMessage);
   }
 
+  /**
+   * 测试场景：With Class Does Not Implement Credentials Provider。
+   *
+   * <p>验证该方法在 With Class Does Not Implement Credentials Provider 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithClassDoesNotImplementCredentialsProvider() {
     String providerClassName = NoInterface.class.getName();
@@ -185,6 +252,11 @@ public class TestAwsClientFactories {
     testProviderAndAssertThrownBy(providerClassName, containsMessage);
   }
 
+  /**
+   * 测试场景：Provider And Assert Thrown By。
+   *
+   * <p>验证该方法在 Provider And Assert Thrown By 条件下的行为是否符合预期。
+   */
   private void testProviderAndAssertThrownBy(String providerClassName, String containsMessage) {
     AwsClientFactory defaultAwsClientFactory =
         getAwsClientFactoryByCredentialsProvider(providerClassName);
@@ -192,6 +264,7 @@ public class TestAwsClientFactories {
     assertAllClientObjectsThrownBy(defaultAwsClientFactory, containsMessage);
   }
 
+  /** 辅助方法：assertAllClientObjectsThrownBy。 */
   public void assertAllClientObjectsThrownBy(
       AwsClientFactory defaultAwsClientFactory, String containsMessage) {
     // invoking sdk client apis to ensure resolveCredentials() being called
@@ -203,6 +276,7 @@ public class TestAwsClientFactories {
     assertThatThrownBy(() -> defaultAwsClientFactory.kms().listAliases(), containsMessage);
   }
 
+  /** 辅助方法：assertClientObjectsNotNull。 */
   private void assertClientObjectsNotNull(AwsClientFactory defaultAwsClientFactory) {
     Assertions.assertThat(defaultAwsClientFactory.s3()).isNotNull();
     Assertions.assertThat(defaultAwsClientFactory.dynamo()).isNotNull();
@@ -210,6 +284,7 @@ public class TestAwsClientFactories {
     Assertions.assertThat(defaultAwsClientFactory.kms()).isNotNull();
   }
 
+  /** 辅助方法：assertThatThrownBy。 */
   private void assertThatThrownBy(
       ThrowableAssert.ThrowingCallable shouldRaiseThrowable, String containsMessage) {
     Assertions.assertThatThrownBy(shouldRaiseThrowable)
@@ -217,17 +292,20 @@ public class TestAwsClientFactories {
         .hasMessageContaining(containsMessage);
   }
 
+  /** 辅助方法：assertDefaultAwsClientFactory。 */
   private void assertDefaultAwsClientFactory(AwsClientFactory awsClientFactory) {
     Assertions.assertThat(awsClientFactory)
         .isInstanceOf(AwsClientFactories.DefaultAwsClientFactory.class);
   }
 
+  /** 辅助方法：getAwsClientFactoryByCredentialsProvider。 */
   private AwsClientFactory getAwsClientFactoryByCredentialsProvider(String providerClass) {
     Map<String, String> properties = getDefaultClientFactoryProperties(providerClass);
     AwsClientFactory defaultAwsClientFactory = AwsClientFactories.from(properties);
     return defaultAwsClientFactory;
   }
 
+  /** 辅助方法：getDefaultClientFactoryProperties。 */
   private Map<String, String> getDefaultClientFactoryProperties(String providerClass) {
     Map<String, String> properties = Maps.newHashMap();
     properties.put(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER + ".param1", "value1");
@@ -240,10 +318,12 @@ public class TestAwsClientFactories {
 
   private static class DummyValidProvider implements AwsCredentialsProvider {
 
+    /** 辅助方法：create。 */
     public static DummyValidProvider create() {
       return new DummyValidProvider();
     }
 
+    /** 辅助方法：resolveCredentials。 */
     @Override
     public AwsCredentials resolveCredentials() {
       return AwsBasicCredentials.create("test-accessKeyId", "test-secretAccessKey");
@@ -252,6 +332,7 @@ public class TestAwsClientFactories {
 
   private abstract static class ProviderTestBase implements AwsCredentialsProvider {
 
+    /** 辅助方法：resolveCredentials。 */
     @Override
     public AwsCredentials resolveCredentials() {
       throw new IllegalArgumentException(
@@ -262,6 +343,7 @@ public class TestAwsClientFactories {
   private static class NoCreateMethod extends ProviderTestBase {}
 
   private static class CreateMethod extends ProviderTestBase {
+    /** 辅助方法：create。 */
     public static CreateMethod create() {
       return new CreateMethod();
     }
@@ -276,6 +358,7 @@ public class TestAwsClientFactories {
       Preconditions.checkArgument(properties.get("param1") != null, "param1 value cannot be null");
     }
 
+    /** 辅助方法：create。 */
     public static CreateMapMethod create(Map<String, String> properties) {
       return new CreateMapMethod(properties);
     }
@@ -283,28 +366,34 @@ public class TestAwsClientFactories {
 
   public static class CustomFactory implements AwsClientFactory {
 
+    /** 辅助方法：CustomFactory。 */
     public CustomFactory() {}
 
+    /** 辅助方法：s3。 */
     @Override
     public S3Client s3() {
       return null;
     }
 
+    /** 辅助方法：glue。 */
     @Override
     public GlueClient glue() {
       return null;
     }
 
+    /** 辅助方法：kms。 */
     @Override
     public KmsClient kms() {
       return null;
     }
 
+    /** 辅助方法：dynamo。 */
     @Override
     public DynamoDbClient dynamo() {
       return null;
     }
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(Map<String, String> properties) {}
   }

@@ -27,6 +27,21 @@ import java.util.Properties;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.ClientPoolImpl;
 
+/**
+ * 文件级说明：JDBC 连接池，继承 ClientPoolImpl 管理 Connection 的借出与归还。
+ *
+ * <p>所属模块：iceberg-core（jdbc 子包）。职责：实现 JDBC Connection 的池化管理， 包装 SQL 受检异常为 RuntimeException，提供 run
+ * 方法执行数据库操作。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link org.apache.iceberg.ClientPoolImpl}，复用通用的连接池逻辑 （借出/归还/异常重试）。
+ *   <li>把 SQLException 包装为 UncheckedSQLException，简化调用方异常处理。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link JdbcCatalog} 持有和使用；产出 java.sql.Connection。
+ */
 public class JdbcClientPool extends ClientPoolImpl<Connection, SQLException> {
 
   private final String dbUrl;
@@ -49,6 +64,14 @@ public class JdbcClientPool extends ClientPoolImpl<Connection, SQLException> {
   }
 
   @Override
+  /**
+   * 创建新的 JDBC 连接。
+   *
+   * <p>设计要点：通过 DriverManager 创建连接，可能加载驱动类。
+   *
+   * @return 新的数据库连接
+   * @throws SQLException 连接失败时抛出
+   */
   protected Connection newClient() {
     try {
       Properties dbProps = JdbcUtil.filterAndRemovePrefix(properties, JdbcCatalog.PROPERTY_PREFIX);
@@ -65,6 +88,11 @@ public class JdbcClientPool extends ClientPoolImpl<Connection, SQLException> {
   }
 
   @Override
+  /**
+   * 关闭数据库连接。
+   *
+   * @param client 待关闭的连接
+   */
   protected void close(Connection client) {
     try {
       client.close();

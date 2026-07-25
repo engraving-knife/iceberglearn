@@ -31,6 +31,15 @@ import org.apache.iceberg.util.StructProjection;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 数据文件描述，将 Iceberg DataFile 的指标与路径以 Spark StructType 行形式暴露。
+ *
+ * <p>设计意图：作为 Iceberg DataFile 与 Spark InternalRow 之间的适配器，便于在 Spark 中分析文件元数据。
+ *
+ * <p>上下游关系：由 BaseSparkAction / SparkTableUtil 等在列出/统计文件时使用。
+ */
 public class SparkDataFile implements DataFile {
 
   private final int filePathPosition;
@@ -99,7 +108,7 @@ public class SparkDataFile implements DataFile {
     splitOffsetsPosition = positions.get("split_offsets");
     sortOrderIdPosition = positions.get("sort_order_id");
   }
-
+  /** 包装。 */
   public SparkDataFile wrap(Row row) {
     this.wrapped = row;
     if (wrappedPartition.size() > 0) {
@@ -107,105 +116,105 @@ public class SparkDataFile implements DataFile {
     }
     return this;
   }
-
+  /** 执行 pos 相关操作。 */
   @Override
   public Long pos() {
     return null;
   }
-
+  /** 执行 specId 相关操作。 */
   @Override
   public int specId() {
     return -1;
   }
-
+  /** 执行 path 相关操作。 */
   @Override
   public CharSequence path() {
     return wrapped.getAs(filePathPosition);
   }
-
+  /** 格式化输出。 */
   @Override
   public FileFormat format() {
     return FileFormat.fromString(wrapped.getString(fileFormatPosition));
   }
-
+  /** 执行 partition 相关操作。 */
   @Override
   public StructLike partition() {
     return partitionProjection;
   }
-
+  /** 执行 recordCount 相关操作。 */
   @Override
   public long recordCount() {
     return wrapped.getAs(recordCountPosition);
   }
-
+  /** 执行 fileSizeInBytes 相关操作。 */
   @Override
   public long fileSizeInBytes() {
     return wrapped.getAs(fileSizeInBytesPosition);
   }
-
+  /** 执行 columnSizes 相关操作。 */
   @Override
   public Map<Integer, Long> columnSizes() {
     return wrapped.isNullAt(columnSizesPosition) ? null : wrapped.getJavaMap(columnSizesPosition);
   }
-
+  /** 执行 valueCounts 相关操作。 */
   @Override
   public Map<Integer, Long> valueCounts() {
     return wrapped.isNullAt(valueCountsPosition) ? null : wrapped.getJavaMap(valueCountsPosition);
   }
-
+  /** 执行 nullValueCounts 相关操作。 */
   @Override
   public Map<Integer, Long> nullValueCounts() {
     return wrapped.isNullAt(nullValueCountsPosition)
         ? null
         : wrapped.getJavaMap(nullValueCountsPosition);
   }
-
+  /** 执行 nanValueCounts 相关操作。 */
   @Override
   public Map<Integer, Long> nanValueCounts() {
     return wrapped.isNullAt(nanValueCountsPosition)
         ? null
         : wrapped.getJavaMap(nanValueCountsPosition);
   }
-
+  /** 执行 lowerBounds 相关操作。 */
   @Override
   public Map<Integer, ByteBuffer> lowerBounds() {
     Map<?, ?> lowerBounds =
         wrapped.isNullAt(lowerBoundsPosition) ? null : wrapped.getJavaMap(lowerBoundsPosition);
     return convert(lowerBoundsType, lowerBounds);
   }
-
+  /** 执行 upperBounds 相关操作。 */
   @Override
   public Map<Integer, ByteBuffer> upperBounds() {
     Map<?, ?> upperBounds =
         wrapped.isNullAt(upperBoundsPosition) ? null : wrapped.getJavaMap(upperBoundsPosition);
     return convert(upperBoundsType, upperBounds);
   }
-
+  /** 执行 keyMetadata 相关操作。 */
   @Override
   public ByteBuffer keyMetadata() {
     return convert(keyMetadataType, wrapped.get(keyMetadataPosition));
   }
-
+  /** 返回副本。 */
   @Override
   public DataFile copy() {
     throw new UnsupportedOperationException("Not implemented: copy");
   }
-
+  /** 执行 copyWithoutStats 相关操作。 */
   @Override
   public DataFile copyWithoutStats() {
     throw new UnsupportedOperationException("Not implemented: copyWithoutStats");
   }
-
+  /** 执行 splitOffsets 相关操作。 */
   @Override
   public List<Long> splitOffsets() {
     return wrapped.isNullAt(splitOffsetsPosition) ? null : wrapped.getList(splitOffsetsPosition);
   }
-
+  /** 执行 sortOrderId 相关操作。 */
   @Override
   public Integer sortOrderId() {
     return wrapped.getAs(sortOrderIdPosition);
   }
-
+  /** 执行 fieldPosition 相关操作。 */
   private int fieldPosition(String name, StructType sparkType) {
     try {
       return sparkType.fieldIndex(name);

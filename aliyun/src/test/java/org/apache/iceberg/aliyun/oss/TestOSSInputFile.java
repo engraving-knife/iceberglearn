@@ -40,6 +40,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestOSSInputFile 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSInputFile 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSInputFile extends AliyunOSSTestBase {
   private final OSS ossClient = ossClient().get();
   private final OSS ossMock = mock(OSS.class, delegatesTo(ossClient));
@@ -47,6 +54,11 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
   private final AliyunProperties aliyunProperties = new AliyunProperties();
   private final Random random = ThreadLocalRandom.current();
 
+  /**
+   * 测试场景：Read File。
+   *
+   * <p>验证该方法在 Read File 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadFile() throws Exception {
     OSSURI uri = randomURI();
@@ -58,6 +70,11 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
     readAndVerify(uri, data);
   }
 
+  /**
+   * 测试场景：OSS Input File。
+   *
+   * <p>验证该方法在 OSS Input File 条件下的行为是否符合预期。
+   */
   @Test
   public void testOSSInputFile() {
     OSSURI uri = randomURI();
@@ -69,6 +86,11 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
         .hasMessageContaining("Invalid file length");
   }
 
+  /**
+   * 测试场景：Exists。
+   *
+   * <p>验证该方法在 Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testExists() {
     OSSURI uri = randomURI();
@@ -89,6 +111,11 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
     reset(ossMock);
   }
 
+  /**
+   * 测试场景：Get Length。
+   *
+   * <p>验证该方法在 Get Length 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetLength() {
     OSSURI uri = randomURI();
@@ -106,6 +133,7 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
     reset(ossMock);
   }
 
+  /** 辅助方法：readAndVerify。 */
   private void readAndVerify(OSSURI uri, byte[] data) throws IOException {
     InputFile inputFile =
         new OSSInputFile(ossClient().get(), uri, aliyunProperties, MetricsContext.nullMetrics());
@@ -119,6 +147,7 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Should have same object content", data, actual);
   }
 
+  /** 辅助方法：verifyLength。 */
   private void verifyLength(OSS ossClientMock, OSSURI uri, byte[] data, boolean isCache) {
     InputFile inputFile;
     if (isCache) {
@@ -133,16 +162,19 @@ public class TestOSSInputFile extends AliyunOSSTestBase {
     Assert.assertEquals("Should have expected file length", data.length, inputFile.getLength());
   }
 
+  /** 辅助方法：randomURI。 */
   private OSSURI randomURI() {
     return new OSSURI(location(String.format("%s.dat", UUID.randomUUID())));
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：writeOSSData。 */
   private void writeOSSData(OSSURI uri, byte[] data) {
     ossClient.putObject(uri.bucket(), uri.key(), new ByteArrayInputStream(data));
   }

@@ -27,6 +27,14 @@ import org.apache.iceberg.rest.RequestResponseTestBase;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestCreateNamespaceRequest，用于验证 Create Namespace Request 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Create Namespace Request 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCreateNamespaceRequest extends RequestResponseTestBase<CreateNamespaceRequest> {
 
   /* Values used to fill in request fields */
@@ -72,6 +80,11 @@ public class TestCreateNamespaceRequest extends RequestResponseTestBase<CreateNa
     assertEquals(deserialize(jsonWithMissingProperties), req);
   }
 
+  /**
+   * 测试场景：deserialize invalid request。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeserializeInvalidRequest() {
     String jsonIncorrectTypeForNamespace =
@@ -102,6 +115,11 @@ public class TestCreateNamespaceRequest extends RequestResponseTestBase<CreateNa
         .hasMessage("argument \"content\" is null");
   }
 
+  /**
+   * 测试场景：builder does not build invalid requests。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBuilderDoesNotBuildInvalidRequests() {
     Assertions.assertThatThrownBy(
@@ -132,11 +150,13 @@ public class TestCreateNamespaceRequest extends RequestResponseTestBase<CreateNa
         .hasMessage("Invalid value for properties [a]: null");
   }
 
+  /** 辅助方法：all fields from spec。 */
   @Override
   public String[] allFieldsFromSpec() {
     return new String[] {"namespace", "properties"};
   }
 
+  /** 辅助方法：create example instance。 */
   @Override
   public CreateNamespaceRequest createExampleInstance() {
     return CreateNamespaceRequest.builder()
@@ -145,12 +165,14 @@ public class TestCreateNamespaceRequest extends RequestResponseTestBase<CreateNa
         .build();
   }
 
+  /** 辅助方法：assert equals。 */
   @Override
   public void assertEquals(CreateNamespaceRequest actual, CreateNamespaceRequest expected) {
     Assertions.assertThat(actual.namespace()).isEqualTo(expected.namespace());
     Assertions.assertThat(actual.properties()).isEqualTo(expected.properties());
   }
 
+  /** 辅助方法：deserialize。 */
   @Override
   public CreateNamespaceRequest deserialize(String json) throws JsonProcessingException {
     CreateNamespaceRequest request = mapper().readValue(json, CreateNamespaceRequest.class);

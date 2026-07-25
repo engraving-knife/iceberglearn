@@ -23,8 +23,15 @@ import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.logical.MergeIntoIcebergTable
 import org.apache.spark.sql.catalyst.plans.logical.UpdateIcebergTable
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行级 Iceberg 命令对齐校验规则，检查行级命令的赋值与目标列是否对齐一致。
+ * <p>设计意图：作为分析后置检查（check），确保行级操作语义正确。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册到 Spark 分析器。
+ */
 
 object AlignedRowLevelIcebergCommandCheck extends (LogicalPlan => Unit) {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): Unit = {
     plan foreach {

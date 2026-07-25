@@ -52,6 +52,11 @@ import org.apache.spark.sql.connector.expressions.filter.Predicate;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg Spark 集成相关组件，实现数据过滤逻辑。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkV2Filters。
+ */
 public class SparkV2Filters {
 
   private static final String TRUE = "ALWAYS_TRUE";
@@ -89,8 +94,10 @@ public class SparkV2Filters {
           .put(STARTS_WITH, Operation.STARTS_WITH)
           .buildOrThrow();
 
+  /** 构造 SparkV2Filters 实例。 */
   private SparkV2Filters() {}
 
+  /** 把输入转换为另一种表示。 */
   @SuppressWarnings({"checkstyle:CyclomaticComplexity", "checkstyle:MethodLength"})
   public static Expression convert(Predicate predicate) {
     Operation op = FILTERS.get(predicate.name());
@@ -246,6 +253,7 @@ public class SparkV2Filters {
     return null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private static <T> T child(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -254,6 +262,7 @@ public class SparkV2Filters {
     return (T) children[0];
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private static <T> T leftChild(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -262,6 +271,7 @@ public class SparkV2Filters {
     return (T) children[0];
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private static <T> T rightChild(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -270,19 +280,23 @@ public class SparkV2Filters {
     return (T) children[1];
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private static <T> T childAtIndex(Predicate predicate, int index) {
     return (T) predicate.children()[index];
   }
 
+  /** 判断是否ref。 */
   private static boolean isRef(org.apache.spark.sql.connector.expressions.Expression expr) {
     return expr instanceof NamedReference;
   }
 
+  /** 判断是否literal。 */
   private static boolean isLiteral(org.apache.spark.sql.connector.expressions.Expression expr) {
     return expr instanceof Literal;
   }
 
+  /** 把输入转换为另一种表示。 */
   private static Object convertLiteral(Literal<?> literal) {
     if (literal.value() instanceof UTF8String) {
       return ((UTF8String) literal.value()).toString();
@@ -292,6 +306,7 @@ public class SparkV2Filters {
     return literal.value();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static Expression handleEqual(String attribute, Object value) {
     if (NaNUtil.isNaN(value)) {
       return isNaN(attribute);
@@ -300,6 +315,7 @@ public class SparkV2Filters {
     }
   }
 
+  /** 判断是否包含noinfilter。 */
   private static boolean hasNoInFilter(Predicate predicate) {
     Operation op = FILTERS.get(predicate.name());
 
@@ -324,6 +340,7 @@ public class SparkV2Filters {
     return false;
   }
 
+  /** 判断是否supportedinpredicate。 */
   private static boolean isSupportedInPredicate(Predicate predicate) {
     if (!isRef(childAtIndex(predicate, 0))) {
       return false;

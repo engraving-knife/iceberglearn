@@ -18,9 +18,22 @@
  */
 package org.apache.iceberg.view;
 
-/** View properties that can be set during CREATE/REPLACE view or using updateProperties API. */
+/**
+ * 文件级说明：视图可配置属性键常量。
+ *
+ * <p>所属模块：iceberg-core（视图元数据实现模块）。
+ *
+ * <p>职责：集中定义视图级属性键及其默认值，供 CREATE/REPLACE 视图或 updateProperties API 使用。
+ *
+ * <p>设计意图：以常量类形式管理属性键字符串，避免拼写错误；私有构造禁止实例化。
+ *
+ * <p>上下游关系：被 {@link ViewMetadata.Builder} 在构建时读取（如版本历史大小）， 被 {@link ViewMetadataParser} 序列化/反序列化
+ * properties 字段时引用。
+ */
 public class ViewProperties {
+  /** 视图保留的版本历史条目数的属性键。 */
   public static final String VERSION_HISTORY_SIZE = "version.history.num-entries";
+  /** 版本历史条目数的默认值。 */
   public static final int VERSION_HISTORY_SIZE_DEFAULT = 10;
 
   private ViewProperties() {}

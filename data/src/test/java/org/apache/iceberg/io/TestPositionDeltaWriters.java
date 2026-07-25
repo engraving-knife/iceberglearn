@@ -36,8 +36,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestPositionDeltaWriters 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestPositionDeltaWriters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -53,17 +61,21 @@ public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
   private final FileFormat fileFormat;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：TestPositionDeltaWriters。 */
   public TestPositionDeltaWriters(FileFormat fileFormat) {
     super(TABLE_FORMAT_VERSION);
     this.fileFormat = fileFormat;
   }
 
+  /** 辅助方法：toSet。 */
   protected abstract StructLikeSet toSet(Iterable<T> records);
 
+  /** 辅助方法：format。 */
   protected FileFormat format() {
     return fileFormat;
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws Exception {
@@ -75,6 +87,11 @@ public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
     this.fileFactory = OutputFileFactory.builderFor(table, 1, 1).format(fileFormat).build();
   }
 
+  /**
+   * 测试场景：Position Delta With One Data Writer。
+   *
+   * <p>验证该方法在 Position Delta With One Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeltaWithOneDataWriter() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -100,6 +117,11 @@ public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Must not reference data files", 0, referencedDataFiles.length);
   }
 
+  /**
+   * 测试场景：Position Delta Insert Only。
+   *
+   * <p>验证该方法在 Position Delta Insert Only 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeltaInsertOnly() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -136,6 +158,11 @@ public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Position Delta Delete Only。
+   *
+   * <p>验证该方法在 Position Delta Delete Only 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeltaDeleteOnly() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -192,6 +219,11 @@ public abstract class TestPositionDeltaWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Position Delta Multiple Specs。
+   *
+   * <p>验证该方法在 Position Delta Multiple Specs 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeltaMultipleSpecs() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());

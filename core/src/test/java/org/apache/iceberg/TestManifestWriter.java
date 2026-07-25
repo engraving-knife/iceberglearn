@@ -35,13 +35,23 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestManifestWriter，用于验证 Manifest Writer 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Manifest Writer 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestManifestWriter extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：manifest writer。 */
   public TestManifestWriter(int formatVersion) {
     super(formatVersion);
   }
@@ -49,6 +59,11 @@ public class TestManifestWriter extends TableTestBase {
   private static final int FILE_SIZE_CHECK_ROWS_DIVISOR = 250;
   private static final long SMALL_FILE_SIZE = 10L;
 
+  /**
+   * 测试场景：manifest stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestStats() throws IOException {
     ManifestFile manifest =
@@ -79,6 +94,11 @@ public class TestManifestWriter extends TableTestBase {
     Assert.assertEquals("Deleted rows count should match", 7L, (long) manifest.deletedRowsCount());
   }
 
+  /**
+   * 测试场景：manifest partition stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestPartitionStats() throws IOException {
     ManifestFile manifest =
@@ -103,6 +123,11 @@ public class TestManifestWriter extends TableTestBase {
         Conversions.fromByteBuffer(Types.IntegerType.get(), partitionFieldSummary.upperBound()));
   }
 
+  /**
+   * 测试场景：write manifest with sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWriteManifestWithSequenceNumber() throws IOException {
     Assume.assumeTrue("sequence number is only valid for format version > 1", formatVersion > 1);
@@ -128,6 +153,11 @@ public class TestManifestWriter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：commit manifest with explicit data sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCommitManifestWithExplicitDataSequenceNumber() throws IOException {
     Assume.assumeTrue("Sequence numbers are valid for format version > 1", formatVersion > 1);
@@ -173,6 +203,11 @@ public class TestManifestWriter extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：commit manifest with existing entries without file sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCommitManifestWithExistingEntriesWithoutFileSequenceNumber() throws IOException {
     Assume.assumeTrue("Sequence numbers are valid for format version > 1", formatVersion > 1);
@@ -224,6 +259,11 @@ public class TestManifestWriter extends TableTestBase {
         statuses(Status.EXISTING, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：rolling manifest writer no records。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollingManifestWriterNoRecords() throws IOException {
     RollingManifestWriter<DataFile> writer = newRollingWriteManifest(SMALL_FILE_SIZE);
@@ -235,6 +275,11 @@ public class TestManifestWriter extends TableTestBase {
     Assertions.assertThat(writer.toManifestFiles()).isEmpty();
   }
 
+  /**
+   * 测试场景：rolling delete manifest writer no records。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollingDeleteManifestWriterNoRecords() throws IOException {
     Assumptions.assumeThat(formatVersion).isGreaterThan(1);
@@ -247,6 +292,11 @@ public class TestManifestWriter extends TableTestBase {
     Assertions.assertThat(writer.toManifestFiles()).isEmpty();
   }
 
+  /**
+   * 测试场景：rolling manifest writer split files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollingManifestWriterSplitFiles() throws IOException {
     RollingManifestWriter<DataFile> writer = newRollingWriteManifest(SMALL_FILE_SIZE);
@@ -303,6 +353,11 @@ public class TestManifestWriter extends TableTestBase {
         deletedRowCounts);
   }
 
+  /**
+   * 测试场景：rolling delete manifest writer split files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollingDeleteManifestWriterSplitFiles() throws IOException {
     Assumptions.assumeThat(formatVersion).isGreaterThan(1);
@@ -359,6 +414,7 @@ public class TestManifestWriter extends TableTestBase {
         deletedRowCounts);
   }
 
+  /** 辅助方法：check manifests。 */
   private void checkManifests(
       List<ManifestFile> manifests,
       int[] addedFileCounts,
@@ -384,10 +440,12 @@ public class TestManifestWriter extends TableTestBase {
     }
   }
 
+  /** 辅助方法：new file。 */
   private DataFile newFile(long recordCount) {
     return newFile(recordCount, null);
   }
 
+  /** 辅助方法：new file。 */
   private DataFile newFile(long recordCount, StructLike partition) {
     String fileName = UUID.randomUUID().toString();
     DataFiles.Builder builder =
@@ -401,6 +459,7 @@ public class TestManifestWriter extends TableTestBase {
     return builder.build();
   }
 
+  /** 辅助方法：new pos delete file。 */
   private DeleteFile newPosDeleteFile(long recordCount) {
     return FileMetadata.deleteFileBuilder(SPEC)
         .ofPositionDeletes()
@@ -410,6 +469,7 @@ public class TestManifestWriter extends TableTestBase {
         .build();
   }
 
+  /** 辅助方法：new rolling write manifest。 */
   private RollingManifestWriter<DataFile> newRollingWriteManifest(long targetFileSize) {
     return new RollingManifestWriter<>(
         () -> {
@@ -419,6 +479,7 @@ public class TestManifestWriter extends TableTestBase {
         targetFileSize);
   }
 
+  /** 辅助方法：new rolling write delete manifest。 */
   private RollingManifestWriter<DeleteFile> newRollingWriteDeleteManifest(long targetFileSize) {
     return new RollingManifestWriter<>(
         () -> {
@@ -428,6 +489,7 @@ public class TestManifestWriter extends TableTestBase {
         targetFileSize);
   }
 
+  /** 辅助方法：new manifest file。 */
   private OutputFile newManifestFile() {
     try {
       return Files.localOutput(FileFormat.AVRO.addExtension(temp.newFile().toString()));

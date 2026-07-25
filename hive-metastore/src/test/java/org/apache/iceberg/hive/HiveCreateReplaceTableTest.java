@@ -47,6 +47,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 文件级说明：测试 HiveCreateReplaceTableTest 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 HiveCreateReplaceTableTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
 
   private static final String TABLE_NAME = "tbl";
@@ -60,16 +67,23 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
 
   private String tableLocation;
 
+  /** 辅助方法：createTableLocation。 */
   @BeforeEach
   public void createTableLocation() throws IOException {
     tableLocation = temp.resolve("hive-").toString();
   }
 
+  /** 辅助方法：cleanup。 */
   @AfterEach
   public void cleanup() {
     catalog.dropTable(TABLE_IDENTIFIER);
   }
 
+  /**
+   * 测试场景：Create Table Txn。
+   *
+   * <p>验证该方法在 Create Table Txn 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxn() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -88,6 +102,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     assertThat(table.properties()).as("Table props should match").containsEntry("prop", "value");
   }
 
+  /**
+   * 测试场景：Create Table Txn Table Created Concurrently。
+   *
+   * <p>验证该方法在 Create Table Txn Table Created Concurrently 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxnTableCreatedConcurrently() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -105,6 +124,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .hasMessage("Table already exists: hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Create Table Txn And Append。
+   *
+   * <p>验证该方法在 Create Table Txn And Append 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxnAndAppend() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -131,6 +155,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .hasSize(1);
   }
 
+  /**
+   * 测试场景：Create Table Txn Table Already Exists。
+   *
+   * <p>验证该方法在 Create Table Txn Table Already Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxnTableAlreadyExists() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -147,6 +176,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .hasMessage("Table already exists: hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Replace Table Txn。
+   *
+   * <p>验证该方法在 Replace Table Txn 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testReplaceTableTxn(int formatVersion) {
@@ -173,6 +207,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Replace Table Txn Table Not Exists。
+   *
+   * <p>验证该方法在 Replace Table Txn Table Not Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testReplaceTableTxnTableNotExists() {
     assertThatThrownBy(
@@ -181,6 +220,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .hasMessage("Table does not exist: hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Replace Table Txn Table Deleted Concurrently。
+   *
+   * <p>验证该方法在 Replace Table Txn Table Deleted Concurrently 条件下的行为是否符合预期。
+   */
   @Test
   public void testReplaceTableTxnTableDeletedConcurrently() {
     catalog.createTable(TABLE_IDENTIFIER, SCHEMA, SPEC, tableLocation, Maps.newHashMap());
@@ -197,6 +241,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .hasMessage("No such table: hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Replace Table Txn Table Modified Concurrently。
+   *
+   * <p>验证该方法在 Replace Table Txn Table Modified Concurrently 条件下的行为是否符合预期。
+   */
   @Test
   public void testReplaceTableTxnTableModifiedConcurrently() {
     Table table =
@@ -219,6 +268,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
         .containsEntry("prop", "value");
   }
 
+  /**
+   * 测试场景：Create Or Replace Table Txn Table Not Exists。
+   *
+   * <p>验证该方法在 Create Or Replace Table Txn Table Not Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateOrReplaceTableTxnTableNotExists() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -231,6 +285,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     assertThat(table.properties()).as("Table props should match").containsEntry("prop", "value");
   }
 
+  /**
+   * 测试场景：Create Or Replace Table Txn Table Exists。
+   *
+   * <p>验证该方法在 Create Or Replace Table Txn Table Exists 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testCreateOrReplaceTableTxnTableExists(int formatVersion) {
@@ -257,6 +316,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Or Replace Table Txn Table Deleted Concurrently。
+   *
+   * <p>验证该方法在 Create Or Replace Table Txn Table Deleted Concurrently 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateOrReplaceTableTxnTableDeletedConcurrently() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -283,6 +347,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     assertThat(table.properties()).as("Table props should match").containsEntry("prop", "value");
   }
 
+  /**
+   * 测试场景：Create Or Replace Table Txn Table Created Concurrently。
+   *
+   * <p>验证该方法在 Create Or Replace Table Txn Table Created Concurrently 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateOrReplaceTableTxnTableCreatedConcurrently() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
@@ -311,6 +380,11 @@ public class HiveCreateReplaceTableTest extends HiveMetastoreTest {
     assertThat(table.properties()).as("Table props should match").containsEntry("prop", "value");
   }
 
+  /**
+   * 测试场景：Create Table Txn With Global Table Location。
+   *
+   * <p>验证该方法在 Create Table Txn With Global Table Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxnWithGlobalTableLocation() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();

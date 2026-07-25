@@ -21,6 +21,13 @@ package org.apache.iceberg.flink.source.reader;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.MetricGroup;
 
+/**
+ * Iceberg Source 读取器 metrics 容器，统计扫描与读取指标。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：注册与更新读取字节数、记录数等指标。
+ *
+ * <p>设计意图：辅助类；被 IcebergSourceReader 调用。
+ */
 public class IcebergSourceReaderMetrics {
   private final Counter assignedSplits;
   private final Counter assignedBytes;

@@ -32,7 +32,13 @@ import org.apache.spark.TaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A utility for cleaning up written but not committed files. */
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkCleanupUtil。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkCleanupUtil {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkCleanupUtil.class);
@@ -42,22 +48,16 @@ class SparkCleanupUtil {
   private static final int DELETE_MAX_RETRY_WAIT_MS = 30 * 1000; // 30 seconds
   private static final int DELETE_TOTAL_RETRY_TIME_MS = 2 * 60 * 1000; // 2 minutes
 
+  /** 构造 SparkCleanupUtil 实例。 */
   private SparkCleanupUtil() {}
 
-  /**
-   * Attempts to delete as many files produced by a task as possible.
-   *
-   * <p>Note this method will log Spark task info and is supposed to be called only on executors.
-   * Use {@link #deleteFiles(String, FileIO, List)} to delete files on the driver.
-   *
-   * @param io a {@link FileIO} instance used for deleting files
-   * @param files a list of files to delete
-   */
+  /** 删除数据或文件。 */
   public static void deleteTaskFiles(FileIO io, List<? extends ContentFile<?>> files) {
     deleteFiles(taskInfo(), io, files);
   }
 
   // the format matches what Spark uses for internal logging
+  /** 执行该方法的具体逻辑。 */
   private static String taskInfo() {
     TaskContext taskContext = TaskContext.get();
     if (taskContext == null) {
@@ -73,18 +73,13 @@ class SparkCleanupUtil {
     }
   }
 
-  /**
-   * Attempts to delete as many given files as possible.
-   *
-   * @param context a helpful description of the operation invoking this method
-   * @param io a {@link FileIO} instance used for deleting files
-   * @param files a list of files to delete
-   */
+  /** 删除数据或文件。 */
   public static void deleteFiles(String context, FileIO io, List<? extends ContentFile<?>> files) {
     List<String> paths = Lists.transform(files, file -> file.path().toString());
     deletePaths(context, io, paths);
   }
 
+  /** 删除数据或文件。 */
   private static void deletePaths(String context, FileIO io, List<String> paths) {
     if (io instanceof SupportsBulkOperations) {
       SupportsBulkOperations bulkIO = (SupportsBulkOperations) io;
@@ -94,6 +89,7 @@ class SparkCleanupUtil {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static void bulkDelete(String context, SupportsBulkOperations io, List<String> paths) {
     try {
       io.deleteFiles(paths);
@@ -109,6 +105,7 @@ class SparkCleanupUtil {
     }
   }
 
+  /** 删除数据或文件。 */
   private static void delete(String context, FileIO io, List<String> paths) {
     AtomicInteger deletedFilesCount = new AtomicInteger(0);
 

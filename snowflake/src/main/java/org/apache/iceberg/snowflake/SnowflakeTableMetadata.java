@@ -26,6 +26,20 @@ import org.apache.iceberg.relocated.com.google.common.base.Objects;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * Snowflake 表元数据记录，不可变值对象。
+ *
+ * <p>所属模块：iceberg-snowflake。职责：封装从 Snowflake 查询到的表元数据，主要包含两个 metadata location——Snowflake
+ * 路径语法（{@code snowflakeMetadataLocation}）与 Iceberg 路径语法 （{@code
+ * icebergMetadataLocation}），以及表状态（{@code status}）。
+ *
+ * <p>设计意图：Snowflake 与 Iceberg 对云存储路径的表述存在差异（如 {@code azure://} vs {@code wasbs://}、{@code gcs://}
+ * vs {@code gs://}），构造时即通过 {@link #snowflakeLocationToIcebergLocation(String)} 完成转换并缓存，后续读取零开销。
+ * {@code rawJsonVal} 仅作调试用途，不参与 equals/hashCode。
+ *
+ * <p>上下游关系：由 {@link SnowflakeClient} 查询 Snowflake 后通过 {@link #parseJson(String)} 构造， 被 {@link
+ * SnowflakeTableOperations} 用于定位 Iceberg 元数据文件。
+ */
 class SnowflakeTableMetadata {
   public static final Pattern SNOWFLAKE_AZURE_PATTERN =
       Pattern.compile("azure://([^/]+)/([^/]+)/(.*)");
@@ -39,6 +53,14 @@ class SnowflakeTableMetadata {
   // SnowflakeTableMetadata instances should not depend on equality of this field.
   private final String rawJsonVal;
 
+  /**
+   * 构造 Snowflake 表元数据记录。
+   *
+   * @param snowflakeMetadataLocation Snowflake 路径语法的元数据位置
+   * @param icebergMetadataLocation Iceberg 路径语法的元数据位置（已转换）
+   * @param status 表状态
+   * @param rawJsonVal 原始 JSON 字符串，仅用于调试，不参与相等性判断
+   */
   SnowflakeTableMetadata(
       String snowflakeMetadataLocation,
       String icebergMetadataLocation,
@@ -50,20 +72,25 @@ class SnowflakeTableMetadata {
     this.rawJsonVal = rawJsonVal;
   }
 
-  /** Storage location of table metadata in Snowflake's path syntax. */
+  /** 返回 Snowflake 路径语法的表元数据存储位置。 */
   public String snowflakeMetadataLocation() {
     return snowflakeMetadataLocation;
   }
 
-  /** Storage location of table metadata in Iceberg's path syntax. */
+  /** 返回 Iceberg 路径语法的表元数据存储位置（已从 Snowflake 语法转换）。 */
   public String icebergMetadataLocation() {
     return icebergMetadataLocation;
   }
 
+  /** 返回表状态。 */
   public String getStatus() {
     return status;
   }
 
+  /**
+   * 相等性比较：仅比较 snowflakeMetadataLocation、icebergMetadataLocation、status 三个解析字段， 不比较 rawJsonVal（原始
+   * JSON 可能并非实例来源，不应影响相等性）。
+   */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -80,11 +107,13 @@ class SnowflakeTableMetadata {
         && Objects.equal(this.status, that.status);
   }
 
+  /** 返回基于三个解析字段的哈希值（与 equals 保持一致，不含 rawJsonVal）。 */
   @Override
   public int hashCode() {
     return Objects.hashCode(snowflakeMetadataLocation, icebergMetadataLocation, status);
   }
 
+  /** 返回包含三个解析字段的可读字符串表示（不含 rawJsonVal）。 */
   @Override
   public String toString() {
     return String.format(
@@ -92,15 +121,21 @@ class SnowflakeTableMetadata {
         snowflakeMetadataLocation, icebergMetadataLocation, status);
   }
 
+  /** 返回包含 rawJsonVal 的调试用字符串，比 {@link #toString()} 多输出原始 JSON。 */
   public String toDebugString() {
     return String.format("%s, rawJsonVal: %s", toString(), rawJsonVal);
   }
 
   /**
-   * Translates from Snowflake's path syntax to Iceberg's path syntax for paths matching known
-   * non-compatible Snowflake paths. Throws IllegalArgumentException if the prefix of the
-   * snowflakeLocation is a known non-compatible path syntax but fails to match the expected path
-   * components for a successful translation.
+   * 把 Snowflake 路径语法转换为 Iceberg 路径语法。
+   *
+   * <p>逻辑：对已知的不兼容前缀做转换——{@code azure://account/container/path} 转为 {@code
+   * wasbs://container@account/path}（用 {@link #SNOWFLAKE_AZURE_PATTERN} 匹配并重组）； {@code gcs://} 转为
+   * {@code gs://}（仅替换 scheme）。其余路径原样返回。
+   *
+   * @param snowflakeLocation Snowflake 路径语法的 location
+   * @return Iceberg 路径语法的 location
+   * @throws IllegalArgumentException 若前缀为 {@code azure://} 但路径不匹配预期格式
    */
   public static String snowflakeLocationToIcebergLocation(String snowflakeLocation) {
     if (snowflakeLocation.startsWith("azure://")) {
@@ -128,8 +163,14 @@ class SnowflakeTableMetadata {
   }
 
   /**
-   * Factory method for parsing a JSON string containing expected Snowflake table metadata into a
-   * SnowflakeTableMetadata object.
+   * 工厂方法：把 Snowflake 返回的 JSON 字符串解析为 {@link SnowflakeTableMetadata} 对象。
+   *
+   * <p>逻辑：用 {@link JsonUtil#mapper()} 解析 JSON，读取 {@code metadataLocation} 与 {@code status}； 调用
+   * {@link #snowflakeLocationToIcebergLocation(String)} 转换路径语法后构造实例， 原始 JSON 作为 rawJsonVal 保留供调试。
+   *
+   * @param json Snowflake 表元数据的 JSON 字符串
+   * @return 解析得到的 {@link SnowflakeTableMetadata}
+   * @throws IllegalArgumentException JSON 格式错误或缺少必填字段
    */
   public static SnowflakeTableMetadata parseJson(String json) {
     JsonNode parsedVal;

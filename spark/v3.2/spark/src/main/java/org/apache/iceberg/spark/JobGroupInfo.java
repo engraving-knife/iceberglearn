@@ -18,26 +18,46 @@
  */
 package org.apache.iceberg.spark;
 
-/** Captures information about the current job which is used for displaying on the UI */
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 JobGroupInfo。
+ */
 public class JobGroupInfo {
   private String groupId;
   private String description;
   private boolean interruptOnCancel;
 
+  /** 构造 JobGroupInfo 实例。 */
   public JobGroupInfo(String groupId, String desc, boolean interruptOnCancel) {
     this.groupId = groupId;
     this.description = desc;
     this.interruptOnCancel = interruptOnCancel;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String groupId() {
     return groupId;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String description() {
     return description;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean interruptOnCancel() {
     return interruptOnCancel;
   }

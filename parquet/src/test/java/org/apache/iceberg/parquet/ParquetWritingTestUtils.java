@@ -38,6 +38,7 @@ import org.apache.parquet.schema.MessageType;
 /** Utilities for tests that need to write Parquet files. */
 class ParquetWritingTestUtils {
 
+  /** 辅助方法：ParquetWritingTestUtils。 */
   private ParquetWritingTestUtils() {}
 
   static File writeRecords(Path temp, Schema schema, GenericData.Record... records)

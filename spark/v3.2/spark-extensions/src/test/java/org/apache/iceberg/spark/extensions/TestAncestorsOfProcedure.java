@@ -27,18 +27,28 @@ import org.apache.spark.sql.AnalysisException;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestAncestorsOfProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 祖先的存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAncestorsOfProcedure extends SparkExtensionsTestBase {
 
+  /** 测试祖先的存储过程。 */
   public TestAncestorsOfProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试ancestor的使用空参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAncestorOfUsingEmptyArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -60,6 +70,7 @@ public class TestAncestorsOfProcedure extends SparkExtensionsTestBase {
         output);
   }
 
+  /** 测试ancestor的使用快照id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAncestorOfUsingSnapshotId() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -84,6 +95,7 @@ public class TestAncestorsOfProcedure extends SparkExtensionsTestBase {
         sql("CALL %s.system.ancestors_of('%s', %dL)", catalogName, tableIdent, preSnapshotId));
   }
 
+  /** 测试ancestor的带rollback场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAncestorOfWithRollBack() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -128,6 +140,7 @@ public class TestAncestorsOfProcedure extends SparkExtensionsTestBase {
         sql("CALL %s.system.ancestors_of('%s', %dL)", catalogName, tableIdent, thirdSnapshotId));
   }
 
+  /** 测试ancestor的使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAncestorOfUsingNamedArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -145,6 +158,7 @@ public class TestAncestorsOfProcedure extends SparkExtensionsTestBase {
             catalogName, firstSnapshotId, tableIdent));
   }
 
+  /** 测试invalidancestor的场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidAncestorOfCases() {
     AssertHelpers.assertThrows(

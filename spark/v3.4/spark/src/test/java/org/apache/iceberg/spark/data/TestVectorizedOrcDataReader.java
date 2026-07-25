@@ -48,6 +48,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestVectorizedOrcDataReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 向量化ORC数据读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestVectorizedOrcDataReader implements WithAssertions {
   @TempDir public static Path temp;
 
@@ -60,6 +67,7 @@ public class TestVectorizedOrcDataReader implements WithAssertions {
               4, "array", Types.ListType.ofOptional(5, Types.IntegerType.get())));
   private static OutputFile outputFile;
 
+  /** 创建数据文件。 */
   @BeforeAll
   public static void createDataFile() throws IOException {
     GenericRecord bufferRecord = GenericRecord.create(SCHEMA);
@@ -94,10 +102,12 @@ public class TestVectorizedOrcDataReader implements WithAssertions {
     }
   }
 
+  /** batches到行。 */
   private Iterator<InternalRow> batchesToRows(Iterator<ColumnarBatch> batches) {
     return Iterators.concat(Iterators.transform(batches, ColumnarBatch::rowIterator));
   }
 
+  /** 校验所有行。 */
   private void validateAllRows(Iterator<InternalRow> rows) {
     long rowCount = 0;
     long expId = 1;
@@ -114,6 +124,7 @@ public class TestVectorizedOrcDataReader implements WithAssertions {
     assertThat(rowCount).isEqualTo(5);
   }
 
+  /** 测试读取器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReader() throws IOException {
     try (CloseableIterable<ColumnarBatch> reader =
@@ -127,6 +138,7 @@ public class TestVectorizedOrcDataReader implements WithAssertions {
     }
   }
 
+  /** 测试读取器带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReaderWithFilter() throws IOException {
     try (CloseableIterable<ColumnarBatch> reader =
@@ -142,6 +154,7 @@ public class TestVectorizedOrcDataReader implements WithAssertions {
     }
   }
 
+  /** 测试带过滤器带selected场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWithFilterWithSelected() throws IOException {
     try (CloseableIterable<ColumnarBatch> reader =

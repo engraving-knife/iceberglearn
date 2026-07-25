@@ -39,11 +39,18 @@ import org.apache.spark.sql.connector.expressions.YearsTransform
 import org.apache.spark.sql.errors.QueryCompilationErrors
 
 /**
- * A class that is inspired by V2ExpressionUtils in Spark but supports Iceberg transforms.
+ * Spark 表达式与 Iceberg 表达式之间的转换，表示或转换 Spark 表达式。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 ExtendedV2ExpressionUtils。
  */
 object ExtendedV2ExpressionUtils extends SQLConfHelper {
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits.MultipartIdentifierHelper
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   def resolveRef[T <: NamedExpression](ref: NamedReference, plan: LogicalPlan): T = {
     plan.resolve(ref.fieldNames.toSeq, conf.resolver) match {
       case Some(namedExpr) =>
@@ -55,10 +62,18 @@ object ExtendedV2ExpressionUtils extends SQLConfHelper {
     }
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   def resolveRefs[T <: NamedExpression](refs: Seq[NamedReference], plan: LogicalPlan): Seq[T] = {
     refs.map(ref => resolveRef[T](ref, plan))
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   def toCatalyst(expr: V2Expression, query: LogicalPlan): Expression = {
     expr match {
       case SortValue(child, direction, nullOrdering) =>
@@ -91,11 +106,19 @@ object ExtendedV2ExpressionUtils extends SQLConfHelper {
     }
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   private def toCatalyst(direction: V2SortDirection): SortDirection = direction match {
     case V2SortDirection.ASCENDING => Ascending
     case V2SortDirection.DESCENDING => Descending
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   private def toCatalyst(nullOrdering: V2NullOrdering): NullOrdering = nullOrdering match {
     case V2NullOrdering.NULLS_FIRST => NullsFirst
     case V2NullOrdering.NULLS_LAST => NullsLast

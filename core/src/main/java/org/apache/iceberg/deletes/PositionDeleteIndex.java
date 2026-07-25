@@ -18,30 +18,47 @@
  */
 package org.apache.iceberg.deletes;
 
+/**
+ * 位置删除索引接口：表示某个数据文件中被删除的行位置集合。
+ *
+ * <p>所属模块：iceberg-core，deletes 包内位置删除的抽象。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义向索引中添加删除位置（单点或区间）的契约。
+ *   <li>定义判断某个行位置是否被删除的查询契约。
+ * </ul>
+ *
+ * <p>设计意图：将删除位置的存储与查询解耦，允许不同实现（如位图、有序集合等）按场景选择。 默认实现 {@link BitmapPositionDeleteIndex} 使用 Roaring64
+ * 位图，兼顾内存与查询性能。
+ *
+ * <p>上下游关系：由 {@link Deletes#toPositionIndex} 从位置删除文件构建，被行扫描流程用于跳过已删除行。
+ */
 public interface PositionDeleteIndex {
   /**
-   * Set a deleted row position.
+   * 标记单个行位置为已删除。
    *
-   * @param position the deleted row position
+   * @param position 被删除的行位置
    */
   void delete(long position);
 
   /**
-   * Set a range of deleted row positions.
+   * 标记一段连续的行位置区间为已删除。
    *
-   * @param posStart inclusive beginning of position range
-   * @param posEnd exclusive ending of position range
+   * @param posStart 区间起始位置（含）
+   * @param posEnd 区间结束位置（不含）
    */
   void delete(long posStart, long posEnd);
 
   /**
-   * Checks whether a row at the position is deleted.
+   * 判断指定行位置是否被标记为已删除。
    *
-   * @param position deleted row position
-   * @return whether the position is deleted
+   * @param position 待判定的行位置
+   * @return 若该位置在删除集合中返回 true
    */
   boolean isDeleted(long position);
 
-  /** Returns true if this collection contains no element. */
+  /** 判断当前索引是否不包含任何已删除位置。 */
   boolean isEmpty();
 }

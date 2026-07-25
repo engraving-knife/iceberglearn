@@ -19,6 +19,12 @@
 
 package org.apache.spark.sql.catalyst.util
 
+/**
+ * 工具类。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 RowDeltaUtils。
+ */
 object RowDeltaUtils {
   final val OPERATION_COLUMN: String = "__row_operation"
   final val DELETE_OPERATION: Int = 1

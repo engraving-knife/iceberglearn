@@ -49,8 +49,16 @@ import org.apache.iceberg.util.ByteBuffers;
 import org.assertj.core.api.Assertions;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
+/**
+ * 文件级说明：测试 TestHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHelpers {
 
+  /** 辅助方法：TestHelpers。 */
   private TestHelpers() {}
 
   /** Wait in a tight check loop until system clock is past {@code timestampMillis} */
@@ -62,11 +70,13 @@ public class TestHelpers {
     return current;
   }
 
+  /** 辅助方法：assertAndUnwrap。 */
   public static <T> T assertAndUnwrap(Expression expr, Class<T> expected) {
     assertThat(expr).as("Expression should have expected type: " + expected).isInstanceOf(expected);
     return expected.cast(expr);
   }
 
+  /** 辅助方法：assertAndUnwrap。 */
   @SuppressWarnings("unchecked")
   public static <T> BoundPredicate<T> assertAndUnwrap(Expression expr) {
     assertThat(expr)
@@ -75,6 +85,7 @@ public class TestHelpers {
     return (BoundPredicate<T>) expr;
   }
 
+  /** 辅助方法：assertAndUnwrapBoundSet。 */
   @SuppressWarnings("unchecked")
   public static <T> BoundSetPredicate<T> assertAndUnwrapBoundSet(Expression expr) {
     assertThat(expr)
@@ -83,6 +94,7 @@ public class TestHelpers {
     return (BoundSetPredicate<T>) expr;
   }
 
+  /** 辅助方法：assertAndUnwrapUnbound。 */
   @SuppressWarnings("unchecked")
   public static <T> UnboundPredicate<T> assertAndUnwrapUnbound(Expression expr) {
     assertThat(expr)
@@ -91,10 +103,12 @@ public class TestHelpers {
     return (UnboundPredicate<T>) expr;
   }
 
+  /** 辅助方法：assertAllReferencesBound。 */
   public static void assertAllReferencesBound(String message, Expression expr) {
     ExpressionVisitors.visit(expr, new CheckReferencesBound(message));
   }
 
+  /** 辅助方法：roundTripSerialize。 */
   @SuppressWarnings("unchecked")
   public static <T> T roundTripSerialize(T type) throws IOException, ClassNotFoundException {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -108,6 +122,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertSameSchemaList。 */
   public static void assertSameSchemaList(List<Schema> list1, List<Schema> list2) {
     Assertions.assertThat(list1)
         .as("Should have same number of schemas in both lists")
@@ -127,6 +142,7 @@ public class TestHelpers {
             });
   }
 
+  /** 辅助方法：assertSerializedMetadata。 */
   public static void assertSerializedMetadata(Table expected, Table actual) {
     assertThat(actual.name()).as("Name must match").isEqualTo(expected.name());
     assertThat(actual.location()).as("Location must match").isEqualTo(expected.location());
@@ -138,6 +154,7 @@ public class TestHelpers {
     assertThat(actual.sortOrder()).as("Sort order must match").isEqualTo(expected.sortOrder());
   }
 
+  /** 辅助方法：assertSerializedAndLoadedMetadata。 */
   public static void assertSerializedAndLoadedMetadata(Table expected, Table actual) {
     assertSerializedMetadata(expected, actual);
     assertThat(actual.specs()).as("Specs must match").isEqualTo(expected.specs());
@@ -149,6 +166,7 @@ public class TestHelpers {
     assertThat(actual.history()).as("History must match").isEqualTo(expected.history());
   }
 
+  /** 辅助方法：assertSameSchemaMap。 */
   public static void assertSameSchemaMap(Map<Integer, Schema> map1, Map<Integer, Schema> map2) {
     Assertions.assertThat(map1)
         .as("Should have same number of schemas in both maps")
@@ -266,8 +284,10 @@ public class TestHelpers {
   }
 
   public static class KryoHelpers {
+    /** 辅助方法：KryoHelpers。 */
     private KryoHelpers() {}
 
+    /** 辅助方法：roundTripSerialize。 */
     @SuppressWarnings("unchecked")
     public static <T> T roundTripSerialize(T obj) throws IOException {
       Kryo kryo = new Kryo();
@@ -300,6 +320,7 @@ public class TestHelpers {
       this.message = message;
     }
 
+    /** 辅助方法：predicate。 */
     @Override
     public <T> Void predicate(UnboundPredicate<T> pred) {
       fail(message + ": Found unbound predicate: " + pred);
@@ -309,32 +330,38 @@ public class TestHelpers {
 
   /** Implements {@link StructLike#get} for passing data in tests. */
   public static class Row implements StructLike {
+    /** 辅助方法：of。 */
     public static Row of(Object... values) {
       return new Row(values);
     }
 
     private final Object[] values;
 
+    /** 辅助方法：Row。 */
     private Row(Object... values) {
       this.values = values;
     }
 
+    /** 辅助方法：size。 */
     @Override
     public int size() {
       return values.length;
     }
 
+    /** 辅助方法：get。 */
     @Override
     @SuppressWarnings("unchecked")
     public <T> T get(int pos, Class<T> javaClass) {
       return javaClass.cast(values[pos]);
     }
 
+    /** 辅助方法：set。 */
     @Override
     public <T> void set(int pos, T value) {
       values[pos] = value;
     }
 
+    /** 辅助方法：equals。 */
     @Override
     public boolean equals(Object other) {
       if (this == other) {
@@ -349,6 +376,7 @@ public class TestHelpers {
       return Arrays.equals(values, that.values);
     }
 
+    /** 辅助方法：hashCode。 */
     @Override
     public int hashCode() {
       return Arrays.hashCode(values);
@@ -361,10 +389,12 @@ public class TestHelpers {
     private final ByteBuffer lowerBound;
     private final ByteBuffer upperBound;
 
+    /** 辅助方法：TestFieldSummary。 */
     public TestFieldSummary(boolean containsNull, ByteBuffer lowerBound, ByteBuffer upperBound) {
       this(containsNull, null, lowerBound, upperBound);
     }
 
+    /** 辅助方法：TestFieldSummary。 */
     public TestFieldSummary(
         boolean containsNull, Boolean containsNaN, ByteBuffer lowerBound, ByteBuffer upperBound) {
       this.containsNull = containsNull;
@@ -373,26 +403,31 @@ public class TestHelpers {
       this.upperBound = upperBound;
     }
 
+    /** 辅助方法：containsNull。 */
     @Override
     public boolean containsNull() {
       return containsNull;
     }
 
+    /** 辅助方法：containsNaN。 */
     @Override
     public Boolean containsNaN() {
       return containsNaN;
     }
 
+    /** 辅助方法：lowerBound。 */
     @Override
     public ByteBuffer lowerBound() {
       return lowerBound;
     }
 
+    /** 辅助方法：upperBound。 */
     @Override
     public ByteBuffer upperBound() {
       return upperBound;
     }
 
+    /** 辅助方法：copy。 */
     @Override
     public ManifestFile.PartitionFieldSummary copy() {
       return this;
@@ -414,6 +449,7 @@ public class TestHelpers {
     private final List<PartitionFieldSummary> partitions;
     private final byte[] keyMetadata;
 
+    /** 辅助方法：TestManifestFile。 */
     public TestManifestFile(
         String path,
         long length,
@@ -439,6 +475,7 @@ public class TestHelpers {
       this.keyMetadata = ByteBuffers.toByteArray(keyMetadata);
     }
 
+    /** 辅助方法：TestManifestFile。 */
     public TestManifestFile(
         String path,
         long length,
@@ -468,81 +505,97 @@ public class TestHelpers {
       this.keyMetadata = ByteBuffers.toByteArray(keyMetadata);
     }
 
+    /** 辅助方法：path。 */
     @Override
     public String path() {
       return path;
     }
 
+    /** 辅助方法：length。 */
     @Override
     public long length() {
       return length;
     }
 
+    /** 辅助方法：partitionSpecId。 */
     @Override
     public int partitionSpecId() {
       return specId;
     }
 
+    /** 辅助方法：content。 */
     @Override
     public ManifestContent content() {
       return content;
     }
 
+    /** 辅助方法：sequenceNumber。 */
     @Override
     public long sequenceNumber() {
       return 0;
     }
 
+    /** 辅助方法：minSequenceNumber。 */
     @Override
     public long minSequenceNumber() {
       return 0;
     }
 
+    /** 辅助方法：snapshotId。 */
     @Override
     public Long snapshotId() {
       return snapshotId;
     }
 
+    /** 辅助方法：addedFilesCount。 */
     @Override
     public Integer addedFilesCount() {
       return addedFiles;
     }
 
+    /** 辅助方法：addedRowsCount。 */
     @Override
     public Long addedRowsCount() {
       return addedRows;
     }
 
+    /** 辅助方法：existingFilesCount。 */
     @Override
     public Integer existingFilesCount() {
       return existingFiles;
     }
 
+    /** 辅助方法：existingRowsCount。 */
     @Override
     public Long existingRowsCount() {
       return existingRows;
     }
 
+    /** 辅助方法：deletedFilesCount。 */
     @Override
     public Integer deletedFilesCount() {
       return deletedFiles;
     }
 
+    /** 辅助方法：deletedRowsCount。 */
     @Override
     public Long deletedRowsCount() {
       return deletedRows;
     }
 
+    /** 辅助方法：partitions。 */
     @Override
     public List<PartitionFieldSummary> partitions() {
       return partitions;
     }
 
+    /** 辅助方法：keyMetadata。 */
     @Override
     public ByteBuffer keyMetadata() {
       return keyMetadata == null ? null : ByteBuffer.wrap(keyMetadata);
     }
 
+    /** 辅助方法：copy。 */
     @Override
     public ManifestFile copy() {
       return this;
@@ -559,10 +612,12 @@ public class TestHelpers {
     private final Map<Integer, ByteBuffer> lowerBounds;
     private final Map<Integer, ByteBuffer> upperBounds;
 
+    /** 辅助方法：TestDataFile。 */
     public TestDataFile(String path, StructLike partition, long recordCount) {
       this(path, partition, recordCount, null, null, null, null, null);
     }
 
+    /** 辅助方法：TestDataFile。 */
     public TestDataFile(
         String path,
         StructLike partition,
@@ -582,86 +637,103 @@ public class TestHelpers {
       this.upperBounds = upperBounds;
     }
 
+    /** 辅助方法：pos。 */
     @Override
     public Long pos() {
       return null;
     }
 
+    /** 辅助方法：specId。 */
     @Override
     public int specId() {
       return 0;
     }
 
+    /** 辅助方法：path。 */
     @Override
     public CharSequence path() {
       return path;
     }
 
+    /** 辅助方法：format。 */
     @Override
     public FileFormat format() {
       return FileFormat.fromFileName(path());
     }
 
+    /** 辅助方法：partition。 */
     @Override
     public StructLike partition() {
       return partition;
     }
 
+    /** 辅助方法：recordCount。 */
     @Override
     public long recordCount() {
       return recordCount;
     }
 
+    /** 辅助方法：fileSizeInBytes。 */
     @Override
     public long fileSizeInBytes() {
       return 0;
     }
 
+    /** 辅助方法：columnSizes。 */
     @Override
     public Map<Integer, Long> columnSizes() {
       return null;
     }
 
+    /** 辅助方法：valueCounts。 */
     @Override
     public Map<Integer, Long> valueCounts() {
       return valueCounts;
     }
 
+    /** 辅助方法：nullValueCounts。 */
     @Override
     public Map<Integer, Long> nullValueCounts() {
       return nullValueCounts;
     }
 
+    /** 辅助方法：nanValueCounts。 */
     @Override
     public Map<Integer, Long> nanValueCounts() {
       return nanValueCounts;
     }
 
+    /** 辅助方法：lowerBounds。 */
     @Override
     public Map<Integer, ByteBuffer> lowerBounds() {
       return lowerBounds;
     }
 
+    /** 辅助方法：upperBounds。 */
     @Override
     public Map<Integer, ByteBuffer> upperBounds() {
       return upperBounds;
     }
 
+    /** 辅助方法：keyMetadata。 */
     @Override
     public ByteBuffer keyMetadata() {
       return null;
     }
 
+    /** 辅助方法：copy。 */
     @Override
     public DataFile copy() {
       return this;
     }
 
+    /** 辅助方法：copyWithoutStats。 */
     @Override
     public DataFile copyWithoutStats() {
       return this;
     }
 
+    /** 辅助方法：splitOffsets。 */
     @Override
     public List<Long> splitOffsets() {
       return null;

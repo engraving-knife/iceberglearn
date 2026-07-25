@@ -47,37 +47,39 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 
 /**
- * Benchmark to compare performance of reading Parquet data with a flat schema using vectorized
- * Iceberg read path and the built-in file source in Spark.
+ * 文件级说明：VectorizedReadFlatParquetDataBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.3: <code>
- *   ./gradlew -DsparkVersions=3.3 :iceberg-spark:iceberg-spark-3.3_2.12:jmh \
- *       -PjmhIncludeRegex=VectorizedReadFlatParquetDataBenchmark \
- *       -PjmhOutputPath=benchmark/results.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.4）。职责：对 向量化读取扁平Parquet数据 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchmark {
 
   static final int NUM_FILES = 5;
   static final int NUM_ROWS_PER_FILE = 10_000_000;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() {
     setupSpark();
     appendData();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() throws IOException {
     tearDownSpark();
     cleanupFiles();
   }
 
+  /** 辅助方法：initHadoop配置。 */
   @Override
   protected Configuration initHadoopConf() {
     return new Configuration();
   }
 
+  /** 辅助方法：init表。 */
   @Override
   protected Table initTable() {
     // bigDecimalCol is big enough to be encoded as fix len binary (9 bytes),
@@ -99,6 +101,7 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
     return tables.create(schema, partitionSpec, properties, newTableLocation());
   }
 
+  /** 辅助方法：Parquet写入属性。 */
   Map<String, String> parquetWriteProps() {
     Map<String, String> properties = Maps.newHashMap();
     properties.put(TableProperties.METADATA_COMPRESSION, "gzip");
@@ -106,6 +109,7 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
     return properties;
   }
 
+  /** 辅助方法：追加数据。 */
   void appendData() {
     for (int fileNum = 1; fileNum <= NUM_FILES; fileNum++) {
       Dataset<Row> df =
@@ -127,6 +131,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
     }
   }
 
+  /**
+   * 基准测试场景：读取整数Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIntegersIcebergVectorized5k() {
@@ -139,6 +148,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取整数Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIntegersSparkVectorized5k() {
@@ -150,6 +164,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取长整型Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readLongsIcebergVectorized5k() {
@@ -162,6 +181,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取长整型Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readLongsSparkVectorized5k() {
@@ -173,6 +197,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取单精度Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readFloatsIcebergVectorized5k() {
@@ -185,6 +214,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取单精度Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readFloatsSparkVectorized5k() {
@@ -196,6 +230,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取双精度Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDoublesIcebergVectorized5k() {
@@ -209,6 +248,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取双精度Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDoublesSparkVectorized5k() {
@@ -220,6 +264,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取十进制Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDecimalsIcebergVectorized5k() {
@@ -233,6 +282,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取十进制Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDecimalsSparkVectorized5k() {
@@ -244,6 +298,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取big十进制Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readBigDecimalsIcebergVectorized5k() {
@@ -257,6 +316,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取big十进制Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readBigDecimalsSparkVectorized5k() {
@@ -268,6 +332,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取日期Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDatesIcebergVectorized5k() {
@@ -280,6 +349,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取日期Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDatesSparkVectorized5k() {
@@ -291,6 +365,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取时间戳Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readTimestampsIcebergVectorized5k() {
@@ -304,6 +383,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取时间戳Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readTimestampsSparkVectorized5k() {
@@ -315,6 +399,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取字符串Iceberg向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readStringsIcebergVectorized5k() {
@@ -328,6 +417,11 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /**
+   * 基准测试场景：读取字符串Spark向量化5k。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readStringsSparkVectorized5k() {
@@ -339,6 +433,7 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
         });
   }
 
+  /** 辅助方法：表属性带vectorization启用。 */
   private static Map<String, String> tablePropsWithVectorizationEnabled(int batchSize) {
     Map<String, String> tableProperties = Maps.newHashMap();
     tableProperties.put(TableProperties.PARQUET_VECTORIZATION_ENABLED, "true");
@@ -346,6 +441,7 @@ public class VectorizedReadFlatParquetDataBenchmark extends IcebergSourceBenchma
     return tableProperties;
   }
 
+  /** 辅助方法：Spark配置带vectorization启用。 */
   private static Map<String, String> sparkConfWithVectorizationEnabled(int batchSize) {
     Map<String, String> conf = Maps.newHashMap();
     conf.put(SQLConf.PARQUET_VECTORIZED_READER_ENABLED().key(), "true");

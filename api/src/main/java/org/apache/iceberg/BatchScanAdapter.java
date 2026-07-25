@@ -24,7 +24,23 @@ import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.metrics.MetricsReporter;
 
-/** An adapter that allows using {@link TableScan} as {@link BatchScan}. */
+/**
+ * 适配器：把 {@link TableScan} 适配为 {@link BatchScan} 接口。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>持有一个 {@link TableScan} 实例，把 {@link BatchScan} 的所有方法委托给它执行。
+ *   <li>所有"配置类"方法都返回一个新的 {@code BatchScanAdapter}（包裹新的 TableScan）， 以保持 Scan 的不可变语义。
+ * </ul>
+ *
+ * <p>设计意图：{@link TableScan} 与 {@link BatchScan} 接口高度相似但分属两条 API 线， 通过适配器模式让旧的 TableScan 实现可直接暴露为
+ * BatchScan，避免重复实现扫描逻辑。 采用委托 + 不可变返回的方式，保证多次链式调用之间互不影响。
+ *
+ * <p>上下游关系：被 core 模块在 {@link TableScan#planTasks()} 等场景内部使用，将 TableScan 包装成 BatchScan 暴露给引擎。
+ */
 class BatchScanAdapter implements BatchScan {
 
   private final TableScan scan;

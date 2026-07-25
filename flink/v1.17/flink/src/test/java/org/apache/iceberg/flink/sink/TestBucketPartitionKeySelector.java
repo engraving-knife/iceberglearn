@@ -26,12 +26,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+/**
+ * 文件级说明：测试 TestBucketPartitionKeySelector 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestBucketPartitionKeySelector 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestBucketPartitionKeySelector {
 
   @ParameterizedTest
   @EnumSource(
       value = TableSchemaType.class,
       names = {"ONE_BUCKET", "IDENTITY_AND_BUCKET"})
+  /**
+   * 测试场景：Correct Key Selection。
+   *
+   * <p>验证该方法在 Correct Key Selection 条件下的行为是否符合预期。
+   */
   public void testCorrectKeySelection(TableSchemaType tableSchemaType) {
     int numBuckets = 60;
 
@@ -51,6 +64,11 @@ public class TestBucketPartitionKeySelector {
             });
   }
 
+  /**
+   * 测试场景：Key Selector Multiple Buckets Fail。
+   *
+   * <p>验证该方法在 Key Selector Multiple Buckets Fail 条件下的行为是否符合预期。
+   */
   @Test
   public void testKeySelectorMultipleBucketsFail() {
     PartitionSpec partitionSpec = TableSchemaType.TWO_BUCKETS.getPartitionSpec(1);

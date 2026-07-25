@@ -48,169 +48,168 @@ import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.glue.GlueClientBuilder;
 
+/**
+ * 文件级说明：AWS 集成的核心配置属性持有者。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>集中定义并解析 Glue、DynamoDB、AssumeRole、REST SigV4 等场景的全部配置键与默认值。
+ *   <li>持有运行期所需的可变状态（区域、端点、凭证提供者类名、是否跳过归档等）， 并提供 setter 以便 catalog 在运行中覆盖。
+ *   <li>提供将端点、凭证、Glue/DynamoDB 端点注入到 AWS 客户端 builder 的辅助方法。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>历史演进：本类原本承载 HTTP、区域、凭证等所有 AWS 相关配置；后续为避免膨胀， HTTP/区域/凭证相关配置已迁移至 {@link HttpClientProperties}
+ *       与 {@link AwsClientProperties}， 旧 API 保留为 @Deprecated 以保持向后兼容。
+ *   <li>可序列化：实现 Serializable，便于在 Spark/Flink 等分布式引擎中分发。
+ *   <li>解析即校验：构造时从 properties 抽取并缓存所有相关字段，运行期 getter 直接返回缓存值。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link AwsClientFactory} 实现（如 {@link AssumeRoleAwsClientFactory}、 {@link
+ * LakeFormationAwsClientFactory}）持有；被 {@code GlueCatalog}、 {@link DynamoDbCatalog}、{@link
+ * RESTSigV4Signer} 等组件读取具体配置。
+ */
 public class AwsProperties implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(AwsProperties.class);
 
   /**
-   * The ID of the Glue Data Catalog where the tables reside. If none is provided, Glue
-   * automatically uses the caller's AWS account ID by default.
+   * Glue 数据目录的 Catalog ID（即 AWS 账号 ID）。未提供时 Glue 默认使用调用方所在账号。
    *
-   * <p>For more details, see
-   * https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-catalog-databases.html
+   * <p>详见 https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-catalog-databases.html
    */
   public static final String GLUE_CATALOG_ID = "glue.id";
 
-  /**
-   * The account ID used in a Glue resource ARN, e.g.
-   * arn:aws:glue:us-east-1:1000000000000:table/db1/table1
-   */
+  /** Glue 资源 ARN 中使用的账号 ID，例如 arn:aws:glue:us-east-1:1000000000000:table/db1/table1。 */
   public static final String GLUE_ACCOUNT_ID = "glue.account-id";
 
   /**
-   * If Glue should skip archiving an old table version when creating a new version in a commit. By
-   * default Glue archives all old table versions after an UpdateTable call, but Glue has a default
-   * max number of archived table versions (can be increased). So for streaming use case with lots
-   * of commits, it is recommended to set this value to true.
+   * 是否在 Glue 创建新表版本时跳过旧版本的归档。默认 Glue 会在 UpdateTable 后归档所有旧版本， 但归档版本数量有上限（可申请提升）。对于频繁提交的流式场景，建议设为
+   * true 以避免触及上限。
    */
   public static final String GLUE_CATALOG_SKIP_ARCHIVE = "glue.skip-archive";
 
+  /** {@link #GLUE_CATALOG_SKIP_ARCHIVE} 的默认值：true。 */
   public static final boolean GLUE_CATALOG_SKIP_ARCHIVE_DEFAULT = true;
 
   /**
-   * If Glue should skip name validations It is recommended to stick to Glue best practice in
-   * https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html to make sure operations
-   * are Hive compatible. This is only added for users that have existing conventions using
-   * non-standard characters. When database name and table name validation are skipped, there is no
-   * guarantee that downstream systems would all support the names.
+   * 是否跳过 Glue 对库名/表名的合法性校验。建议遵循 Glue 最佳实践
+   * （https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html）以保证 Hive 兼容性。
+   * 仅为已有非标准命名约定的用户提供；跳过后无法保证下游系统均能识别这些名称。
    */
   public static final String GLUE_CATALOG_SKIP_NAME_VALIDATION = "glue.skip-name-validation";
 
+  /** {@link #GLUE_CATALOG_SKIP_NAME_VALIDATION} 的默认值：false。 */
   public static final boolean GLUE_CATALOG_SKIP_NAME_VALIDATION_DEFAULT = false;
 
   /**
-   * If set, GlueCatalog will use Lake Formation for access control. For more credential vending
-   * details, see: https://docs.aws.amazon.com/lake-formation/latest/dg/api-overview.html. If
-   * enabled, the {@link AwsClientFactory} implementation must be {@link
-   * LakeFormationAwsClientFactory} or any class that extends it.
+   * 是否让 GlueCatalog 通过 Lake Formation 进行访问控制与凭证下发。 详见
+   * https://docs.aws.amazon.com/lake-formation/latest/dg/api-overview.html。 启用时，{@link
+   * AwsClientFactory} 实现必须是 {@link LakeFormationAwsClientFactory} 或其子类。
    */
   public static final String GLUE_LAKEFORMATION_ENABLED = "glue.lakeformation-enabled";
 
+  /** {@link #GLUE_LAKEFORMATION_ENABLED} 的默认值：false。 */
   public static final boolean GLUE_LAKEFORMATION_ENABLED_DEFAULT = false;
 
-  /**
-   * Configure an alternative endpoint of the Glue service for GlueCatalog to access.
-   *
-   * <p>This could be used to use GlueCatalog with any glue-compatible metastore service that has a
-   * different endpoint
-   */
+  /** 配置 GlueCatalog 访问 Glue 服务时使用的自定义端点。 可用于对接任意 Glue 兼容的元数据服务。 */
   public static final String GLUE_CATALOG_ENDPOINT = "glue.endpoint";
 
-  /** Configure an alternative endpoint of the DynamoDB service to access. */
+  /** 配置访问 DynamoDB 服务时使用的自定义端点。 */
   public static final String DYNAMODB_ENDPOINT = "dynamodb.endpoint";
 
-  /** DynamoDB table name for {@link DynamoDbCatalog} */
+  /** {@link DynamoDbCatalog} 使用的 DynamoDB 表名。 */
   public static final String DYNAMODB_TABLE_NAME = "dynamodb.table-name";
 
+  /** {@link #DYNAMODB_TABLE_NAME} 的默认值：iceberg。 */
   public static final String DYNAMODB_TABLE_NAME_DEFAULT = "iceberg";
 
   /**
-   * The implementation class of {@link AwsClientFactory} to customize AWS client configurations. If
-   * set, all AWS clients will be initialized by the specified factory. If not set, {@link
-   * AwsClientFactories#defaultFactory()} is used as default factory.
+   * {@link AwsClientFactory} 实现类的全限定类名，用于自定义 AWS 客户端构造。 未设置时使用 {@link
+   * AwsClientFactories#defaultFactory()} 作为默认工厂。
    */
   public static final String CLIENT_FACTORY = "client.factory";
 
-  /**
-   * Used by {@link AssumeRoleAwsClientFactory}. If set, all AWS clients will assume a role of the
-   * given ARN, instead of using the default credential chain.
-   */
+  /** 供 {@link AssumeRoleAwsClientFactory} 使用：设置要扮演的 IAM 角色 ARN， 所有 AWS 客户端将使用该角色的临时凭证而非默认凭证链。 */
   public static final String CLIENT_ASSUME_ROLE_ARN = "client.assume-role.arn";
 
   /**
-   * Used by {@link AssumeRoleAwsClientFactory} to pass a list of sessions. Each session tag
-   * consists of a key name and an associated value.
+   * 供 {@link AssumeRoleAwsClientFactory} 使用：传递给 STS 会话的标签列表， 每个标签以“键名=值”形式给出，前缀为
+   * client.assume-role.tags.。
    */
   public static final String CLIENT_ASSUME_ROLE_TAGS_PREFIX = "client.assume-role.tags.";
 
   /**
-   * Used by {@link AssumeRoleAwsClientFactory}. The timeout of the assume role session in seconds,
-   * default to 1 hour. At the end of the timeout, a new set of role session credentials will be
-   * fetched through a STS client.
+   * 供 {@link AssumeRoleAwsClientFactory} 使用：AssumeRole 会话超时（秒），默认 1 小时。 超时后会通过 STS 客户端重新获取新的会话凭证。
    */
   public static final String CLIENT_ASSUME_ROLE_TIMEOUT_SEC = "client.assume-role.timeout-sec";
 
+  /** {@link #CLIENT_ASSUME_ROLE_TIMEOUT_SEC} 的默认值：3600 秒（1 小时）。 */
   public static final int CLIENT_ASSUME_ROLE_TIMEOUT_SEC_DEFAULT = 3600;
 
   /**
-   * Used by {@link AssumeRoleAwsClientFactory}. Optional external ID used to assume an IAM role.
+   * 供 {@link AssumeRoleAwsClientFactory} 使用的可选外部 ID，用于扮演 IAM 角色。
    *
-   * <p>For more details, see
-   * https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
+   * <p>详见 https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
    */
   public static final String CLIENT_ASSUME_ROLE_EXTERNAL_ID = "client.assume-role.external-id";
 
   /**
-   * Used by {@link AssumeRoleAwsClientFactory}. If set, all AWS clients except STS client will use
-   * the given region instead of the default region chain.
+   * 供 {@link AssumeRoleAwsClientFactory} 使用：除 STS 外所有客户端使用的目标区域， 替代默认区域链。取值必须是 {@link
+   * software.amazon.awssdk.regions.Region} 之一，如 us-east-1。
    *
-   * <p>The value must be one of {@link software.amazon.awssdk.regions.Region}, such as 'us-east-1'.
-   * For more details, see https://docs.aws.amazon.com/general/latest/gr/rande.html
+   * <p>详见 https://docs.aws.amazon.com/general/latest/gr/rande.html
    */
   public static final String CLIENT_ASSUME_ROLE_REGION = "client.assume-role.region";
 
   /**
-   * Used by {@link AssumeRoleAwsClientFactory}. Optional session name used to assume an IAM role.
+   * 供 {@link AssumeRoleAwsClientFactory} 使用的可选会话名，用于扮演 IAM 角色。
    *
-   * <p>For more details, see
+   * <p>详见
    * https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html#ck_rolesessionname
    */
   public static final String CLIENT_ASSUME_ROLE_SESSION_NAME = "client.assume-role.session-name";
 
-  /**
-   * Used by {@link LakeFormationAwsClientFactory}. The table name used as part of lake formation
-   * credentials request.
-   */
+  /** 供 {@link LakeFormationAwsClientFactory} 使用：Lake Formation 凭证请求中使用的表名。 */
   public static final String LAKE_FORMATION_TABLE_NAME = "lakeformation.table-name";
 
-  /**
-   * Used by {@link LakeFormationAwsClientFactory}. The database name used as part of lake formation
-   * credentials request.
-   */
+  /** 供 {@link LakeFormationAwsClientFactory} 使用：Lake Formation 凭证请求中使用的库名。 */
   public static final String LAKE_FORMATION_DB_NAME = "lakeformation.db-name";
 
-  /** Region to be used by the SigV4 protocol for signing requests. */
+  /** SigV4 签名请求时使用的区域。 */
   public static final String REST_SIGNER_REGION = "rest.signing-region";
 
-  /** The service name to be used by the SigV4 protocol for signing requests. */
+  /** SigV4 签名请求时使用的服务名。 */
   public static final String REST_SIGNING_NAME = "rest.signing-name";
 
-  /** The default service name (API Gateway and lambda) used during SigV4 signing. */
+  /** SigV4 签名默认服务名（API Gateway 与 Lambda）：execute-api。 */
   public static final String REST_SIGNING_NAME_DEFAULT = "execute-api";
 
   /**
-   * Configure the static access key ID used for SigV4 signing.
+   * 配置 SigV4 签名使用的静态 access key ID。
    *
-   * <p>When set, the default client factory will use the basic or session credentials provided
-   * instead of reading the default credential chain to create S3 access credentials. If {@link
-   * #REST_SESSION_TOKEN} is set, session credential is used, otherwise basic credential is used.
+   * <p>设置后默认工厂将使用提供的 basic 或 session 凭证，而非默认凭证链。 若同时设置了 {@link #REST_SESSION_TOKEN}，则使用 session
+   * 凭证，否则使用 basic 凭证。
    */
   public static final String REST_ACCESS_KEY_ID = "rest.access-key-id";
 
   /**
-   * Configure the static secret access key used for SigV4 signing.
+   * 配置 SigV4 签名使用的静态 secret access key。
    *
-   * <p>When set, the default client factory will use the basic or session credentials provided
-   * instead of reading the default credential chain to create S3 access credentials. If {@link
-   * #REST_SESSION_TOKEN} is set, session credential is used, otherwise basic credential is used.
+   * <p>设置后默认工厂将使用提供的 basic 或 session 凭证，而非默认凭证链。 若同时设置了 {@link #REST_SESSION_TOKEN}，则使用 session
+   * 凭证，否则使用 basic 凭证。
    */
   public static final String REST_SECRET_ACCESS_KEY = "rest.secret-access-key";
 
   /**
-   * Configure the static session token used for SigV4.
+   * 配置 SigV4 签名使用的静态 session token。
    *
-   * <p>When set, the default client factory will use the session credentials provided instead of
-   * reading the default credential chain to create access credentials.
+   * <p>设置后默认工厂将使用提供的 session 凭证，而非默认凭证链。
    */
   public static final String REST_SESSION_TOKEN = "rest.session-token";
 
@@ -243,6 +242,7 @@ public class AwsProperties implements Serializable {
   private String restSecretAccessKey;
   private String restSessionToken;
 
+  /** 构造默认实例：所有字段使用默认值，无任何用户配置。 */
   public AwsProperties() {
     this.httpClientProperties = Collections.emptyMap();
     this.stsClientAssumeRoleTags = Sets.newHashSet();
@@ -270,6 +270,14 @@ public class AwsProperties implements Serializable {
     this.restSigningName = REST_SIGNING_NAME_DEFAULT;
   }
 
+  /**
+   * 从 catalog/FileIO properties 解析并缓存全部 AWS 相关配置字段。
+   *
+   * <p>逻辑：分别抽取 HTTP 客户端配置子集、AssumeRole 标签、客户端区域、凭证提供者类名、 Glue/DynamoDB 端点与表名、REST SigV4
+   * 凭证等，按默认值兜底。allProperties 持有原始 properties 的可序列化副本，供需要全量配置的场景使用。
+   *
+   * @param properties catalog/FileIO 全部配置键值
+   */
   @SuppressWarnings("MethodLength")
   public AwsProperties(Map<String, String> properties) {
     this.httpClientProperties =
@@ -316,96 +324,117 @@ public class AwsProperties implements Serializable {
     this.restSessionToken = properties.get(REST_SESSION_TOKEN);
   }
 
+  /** 返回 AssumeRole 会话标签集合。 */
   public Set<software.amazon.awssdk.services.sts.model.Tag> stsClientAssumeRoleTags() {
     return stsClientAssumeRoleTags;
   }
 
+  /** 返回 AssumeRole 角色 ARN。 */
   public String clientAssumeRoleArn() {
     return clientAssumeRoleArn;
   }
 
+  /** 返回 AssumeRole 会话超时（秒）。 */
   public int clientAssumeRoleTimeoutSec() {
     return clientAssumeRoleTimeoutSec;
   }
 
+  /** 返回 AssumeRole 外部 ID。 */
   public String clientAssumeRoleExternalId() {
     return clientAssumeRoleExternalId;
   }
 
+  /** 返回 AssumeRole 目标区域。 */
   public String clientAssumeRoleRegion() {
     return clientAssumeRoleRegion;
   }
 
+  /** 返回 AssumeRole 会话名。 */
   public String clientAssumeRoleSessionName() {
     return clientAssumeRoleSessionName;
   }
 
+  /** 返回 Glue Catalog ID（账号 ID）。 */
   public String glueCatalogId() {
     return glueCatalogId;
   }
 
+  /** 设置 Glue Catalog ID。 */
   public void setGlueCatalogId(String id) {
     this.glueCatalogId = id;
   }
 
+  /** 返回是否跳过 Glue 旧版本归档。 */
   public boolean glueCatalogSkipArchive() {
     return glueCatalogSkipArchive;
   }
 
+  /** 设置是否跳过 Glue 旧版本归档。 */
   public void setGlueCatalogSkipArchive(boolean skipArchive) {
     this.glueCatalogSkipArchive = skipArchive;
   }
 
+  /** 返回是否跳过 Glue 库名/表名校验。 */
   public boolean glueCatalogSkipNameValidation() {
     return glueCatalogSkipNameValidation;
   }
 
+  /** 设置是否跳过 Glue 库名/表名校验。 */
   public void setGlueCatalogSkipNameValidation(boolean glueCatalogSkipNameValidation) {
     this.glueCatalogSkipNameValidation = glueCatalogSkipNameValidation;
   }
 
+  /** 返回是否启用 Lake Formation。 */
   public boolean glueLakeFormationEnabled() {
     return glueLakeFormationEnabled;
   }
 
+  /** 设置是否启用 Lake Formation。 */
   public void setGlueLakeFormationEnabled(boolean glueLakeFormationEnabled) {
     this.glueLakeFormationEnabled = glueLakeFormationEnabled;
   }
 
+  /** 返回 DynamoDB 表名。 */
   public String dynamoDbTableName() {
     return dynamoDbTableName;
   }
 
+  /** 设置 DynamoDB 表名。 */
   public void setDynamoDbTableName(String name) {
     this.dynamoDbTableName = name;
   }
 
-  /** @deprecated will be removed in 1.5.0, use {@link HttpClientProperties} instead */
+  /** @deprecated 将在 1.5.0 移除，请改用 {@link HttpClientProperties} */
   @Deprecated
   public Map<String, String> httpClientProperties() {
     return httpClientProperties;
   }
 
-  /**
-   * @deprecated will be removed in 1.5.0, use {@link AwsClientProperties#clientRegion()} instead
-   */
+  /** @deprecated 将在 1.5.0 移除，请改用 {@link AwsClientProperties#clientRegion()} */
   @Deprecated
   public String clientRegion() {
     return clientRegion;
   }
 
-  /**
-   * @deprecated will be removed in 1.5.0, use {@link AwsClientProperties#setClientRegion(String)}
-   *     instead
-   */
+  /** @deprecated 将在 1.5.0 移除，请改用 {@link AwsClientProperties#setClientRegion(String)} */
   @Deprecated
   public void setClientRegion(String clientRegion) {
     this.clientRegion = clientRegion;
   }
 
   /**
-   * @deprecated will be removed in 1.5.0, use {@link
-   *     AwsClientProperties#applyClientCredentialConfigurations(AwsClientBuilder)} instead
+   * 为客户端 builder 注入自定义凭证提供者（若配置）。
+   *
+   * <p>典型用法：
+   *
+   * <pre>
+   *     GlueClient.builder().applyMutation(awsProperties::applyS3EndpointConfigurations)
+   * </pre>
+   *
+   * @param builder 待配置的 AWS 客户端 builder
+   * @param <T> builder 类型
+   * @deprecated 将在 1.5.0 移除，请改用 {@link
+   *     AwsClientProperties#applyClientCredentialConfigurations(AwsClientBuilder)}
    */
   @Deprecated
   public <T extends AwsClientBuilder> void applyClientCredentialConfigurations(T builder) {
@@ -415,31 +444,42 @@ public class AwsProperties implements Serializable {
   }
 
   /**
-   * Override the endpoint for a glue client.
+   * 为 Glue 客户端 builder 注入自定义端点。
    *
-   * <p>Sample usage:
+   * <p>典型用法：
    *
    * <pre>
    *     GlueClient.builder().applyMutation(awsProperties::applyS3EndpointConfigurations)
    * </pre>
+   *
+   * @param builder Glue 客户端 builder
+   * @param <T> builder 类型
    */
   public <T extends GlueClientBuilder> void applyGlueEndpointConfigurations(T builder) {
     configureEndpoint(builder, glueEndpoint);
   }
 
   /**
-   * Override the endpoint for a dynamoDb client.
+   * 为 DynamoDB 客户端 builder 注入自定义端点。
    *
-   * <p>Sample usage:
+   * <p>典型用法：
    *
    * <pre>
    *     DynamoDbClient.builder().applyMutation(awsProperties::applyDynamoDbEndpointConfigurations)
    * </pre>
+   *
+   * @param builder DynamoDB 客户端 builder
+   * @param <T> builder 类型
    */
   public <T extends DynamoDbClientBuilder> void applyDynamoDbEndpointConfigurations(T builder) {
     configureEndpoint(builder, dynamoDbEndpoint);
   }
 
+  /**
+   * 返回 REST SigV4 签名使用的区域。未配置时通过默认区域链解析并缓存。
+   *
+   * @return 签名区域
+   */
   public Region restSigningRegion() {
     if (restSigningRegion == null) {
       this.restSigningRegion = DefaultAwsRegionProviderChain.builder().build().getRegion().id();
@@ -448,15 +488,31 @@ public class AwsProperties implements Serializable {
     return Region.of(restSigningRegion);
   }
 
+  /** 返回 REST SigV4 签名使用的服务名。 */
   public String restSigningName() {
     return restSigningName;
   }
 
+  /**
+   * 构造 REST SigV4 签名使用的凭证提供者。
+   *
+   * <p>逻辑：若配置了静态 access key，则按是否带 session token 构造 basic 或 session
+   * 静态凭证；否则若配置了自定义凭证提供者类，则反射加载；最后回退到默认凭证链。
+   *
+   * @return 凭证提供者
+   */
   public AwsCredentialsProvider restCredentialsProvider() {
     return credentialsProvider(
         this.restAccessKeyId, this.restSecretAccessKey, this.restSessionToken);
   }
 
+  /**
+   * 将前缀下的 properties 转换为 STS Tag 集合。
+   *
+   * @param properties 全部配置
+   * @param prefix 标签前缀
+   * @return STS Tag 集合
+   */
   private Set<software.amazon.awssdk.services.sts.model.Tag> toStsTags(
       Map<String, String> properties, String prefix) {
     return PropertyUtil.propertiesWithPrefix(properties, prefix).entrySet().stream()
@@ -469,6 +525,22 @@ public class AwsProperties implements Serializable {
         .collect(Collectors.toSet());
   }
 
+  /**
+   * 根据静态 access key/secret/session token 选择并构造凭证提供者。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>access key 非空：有 session token 构造 session 凭证，否则 basic 凭证。
+   *   <li>access key 为空但配置了自定义凭证提供者类：反射加载。
+   *   <li>否则：返回新的默认凭证链实例。
+   * </ul>
+   *
+   * @param accessKeyId 静态 access key（可空）
+   * @param secretAccessKey 静态 secret（可空）
+   * @param sessionToken 静态 session token（可空）
+   * @return 凭证提供者
+   */
   private AwsCredentialsProvider credentialsProvider(
       String accessKeyId, String secretAccessKey, String sessionToken) {
     if (accessKeyId != null) {
@@ -489,6 +561,21 @@ public class AwsProperties implements Serializable {
     return DefaultCredentialsProvider.builder().build();
   }
 
+  /**
+   * 通过反射加载并实例化自定义凭证提供者类。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>反射加载类，校验其实现 {@link AwsCredentialsProvider}。
+   *   <li>优先尝试静态 create(Map) 方法并传入凭证提供者配置；若不存在则尝试无参 create()。
+   *   <li>两者均无则抛 IllegalArgumentException。
+   * </ol>
+   *
+   * @param credentialsProviderClass 凭证提供者全限定类名
+   * @return 凭证提供者实例
+   * @throws IllegalArgumentException 当类不存在、不实现接口或缺少 create 方法时
+   */
   private AwsCredentialsProvider credentialsProvider(String credentialsProviderClass) {
     Class<?> providerClass;
     try {
@@ -529,6 +616,13 @@ public class AwsProperties implements Serializable {
     }
   }
 
+  /**
+   * 为客户端 builder 设置端点覆盖。
+   *
+   * @param builder SDK 客户端 builder
+   * @param endpoint 端点 URL（为 null 则不设置）
+   * @param <T> builder 类型
+   */
   private <T extends SdkClientBuilder> void configureEndpoint(T builder, String endpoint) {
     if (endpoint != null) {
       builder.endpointOverride(URI.create(endpoint));

@@ -22,9 +22,11 @@ import java.io.Serializable;
 import org.apache.iceberg.io.TaskWriter;
 
 /**
- * Factory to create {@link TaskWriter}
+ * 任务写入器工厂接口，定义创建 TaskWriter 的契约。
  *
- * @param <T> data type of record.
+ * <p>所属模块：iceberg-flink v1.15。职责：抽象写入器创建逻辑，支持按分区/非分区策略。
+ *
+ * <p>设计意图：工厂接口；被 IcebergStreamWriter 调用。
  */
 public interface TaskWriterFactory<T> extends Serializable {
 

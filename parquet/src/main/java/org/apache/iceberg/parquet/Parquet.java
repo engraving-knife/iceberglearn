@@ -111,6 +111,34 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
+/**
+ * 文件级说明：Iceberg Parquet 文件读写的统一入口与 Builder 工厂。
+ *
+ * <p>所属模块：iceberg-parquet（对外门面，向 iceberg-core 与各引擎模块提供 Parquet 读写 API）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供 write/read 等入口构造 WriteBuilder / ReadBuilder，链式配置 schema、压缩、 加密、过滤、指标等参数。
+ *   <li>提供 writeData 与 writeDeletes 用于构造数据文件 writer 与删除文件 writer （位置删除/等值删除）。
+ *   <li>把 Iceberg 表属性（PARQUET_*）映射为 Parquet 写入器参数（row group/page/codec 等）， 通过 WriteBuilder.Context
+ *       统一管理。
+ *   <li>提供 concat 把多个 Parquet 文件合并为一个。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Builder 模式：把大量可选参数链式组装，避免长参数构造函数。
+ *   <li>双路径写入：当提供 createWriterFunc 时走 Iceberg 原生 ParquetValueWriter 路径， 否则走 parquet-mr
+ *       WriteSupport（Avro）路径。
+ *   <li>双路径读取：当提供 readerFunc/batchedReaderFunc 时走 Iceberg 原生 reader 路径， 否则走 parquet-mr
+ *       ReadSupport（Avro）路径。
+ * </ul>
+ *
+ * <p>上下游关系：被 iceberg-core 的 DataFiles、GenericMcFileWriter 等以及 Spark/Flink 引擎集成层调用；内部依赖
+ * ParquetIO、ParquetSchemaUtil、ParquetWriteAdapter、 ParquetReader 等。
+ */
 public class Parquet {
   private Parquet() {}
 
@@ -121,10 +149,22 @@ public class Parquet {
           "parquet.read.support.class",
           "parquet.crypto.factory.class");
 
+  /**
+   * 创建 Parquet 写入器 Builder。
+   *
+   * @param file 输出文件
+   * @return WriteBuilder 实例
+   */
   public static WriteBuilder write(OutputFile file) {
     return new WriteBuilder(file);
   }
 
+  /**
+   * Parquet 写入器 Builder，链式配置 schema/压缩/加密/指标等并构建 FileAppender。
+   *
+   * <p>设计意图：持有 Context 工厂（createContextFunc）以支持 data 与 delete 两种属性集； build() 时根据是否提供
+   * createWriterFunc 选择原生 writer 或 Avro WriteSupport 路径。
+   */
   public static class WriteBuilder {
     private final OutputFile file;
     private final Configuration conf;
@@ -250,6 +290,17 @@ public class Parquet {
       return this;
     }
 
+    /**
+     * 构建 Parquet 文件追加器。
+     *
+     * <p>逻辑：校验 schema/name；写入 iceberg.schema 元数据；通过 Context 解析 row group/page/ codec 等参数；按 codec
+     * 设置压缩级别配置；构造加密属性；若提供 createWriterFunc 则走 Iceberg 原生 ParquetWriter 路径，否则走 parquet-mr
+     * ParquetWriteBuilder + AvroWriteSupport 路径。
+     *
+     * @param <D> 数据类型
+     * @return FileAppender 实例
+     * @throws IOException IO 异常
+     */
     public <D> FileAppender<D> build() throws IOException {
       Preconditions.checkNotNull(schema, "Schema is required");
       Preconditions.checkNotNull(name, "Table name is required and cannot be null");
@@ -373,6 +424,12 @@ public class Parquet {
       }
     }
 
+    /**
+     * 写入参数上下文：从 Iceberg 表属性解析出的 Parquet 写入参数集合。
+     *
+     * <p>设计意图：把属性解析与写入器构造解耦；dataContext 与 deleteContext 共用一套字段， delete 优先使用 DELETE_PARQUET_* 属性，回退到
+     * data 属性。
+     */
     private static class Context {
       private final int rowGroupSize;
       private final int pageSize;
@@ -411,6 +468,15 @@ public class Parquet {
         this.dictionaryEnabled = dictionaryEnabled;
       }
 
+      /**
+       * 从表属性解析数据文件的 Parquet 写入参数。
+       *
+       * <p>逻辑：逐项读取 PARQUET_ROW_GROUP_SIZE_BYTES/PARQUET_PAGE_SIZE_BYTES/ PARQUET_COMPRESSION
+       * 等属性，校验合法性，组装 Context。
+       *
+       * @param config 表属性
+       * @return 写入参数上下文
+       */
       static Context dataContext(Map<String, String> config) {
         int rowGroupSize =
             PropertyUtil.propertyAsInt(
@@ -483,6 +549,14 @@ public class Parquet {
             dictionaryEnabled);
       }
 
+      /**
+       * 从表属性解析删除文件的 Parquet 写入参数。
+       *
+       * <p>逻辑：先取 dataContext 作为默认值，再用 DELETE_PARQUET_* 属性覆盖； 删除文件不启用 bloom filter。
+       *
+       * @param config 表属性
+       * @return 写入参数上下文
+       */
       static Context deleteContext(Map<String, String> config) {
         // default delete config using data config
         Context dataContext = dataContext(config);
@@ -604,10 +678,20 @@ public class Parquet {
     }
   }
 
+  /**
+   * 创建数据文件写入器 Builder，封装 Parquet 写入 + Iceberg DataWriter 元数据。
+   *
+   * @param file 输出文件
+   * @return DataWriteBuilder 实例
+   */
   public static DataWriteBuilder writeData(OutputFile file) {
     return new DataWriteBuilder(file);
   }
 
+  /**
+   * 数据文件写入器 Builder：在 Parquet WriteBuilder 之上叠加分区 spec、partition、 加密 key 元数据、排序顺序，最终构建 {@link
+   * DataWriter}。
+   */
   public static class DataWriteBuilder {
     private final WriteBuilder appenderBuilder;
     private final String location;
@@ -711,10 +795,20 @@ public class Parquet {
     }
   }
 
+  /**
+   * 创建删除文件写入器 Builder，支持等值删除与位置删除两种模式。
+   *
+   * @param file 输出文件
+   * @return DeleteWriteBuilder 实例
+   */
   public static DeleteWriteBuilder writeDeletes(OutputFile file) {
     return new DeleteWriteBuilder(file);
   }
 
+  /**
+   * 删除文件写入器 Builder：可构建等值删除 writer（buildEqualityWriter）或 位置删除 writer（buildPositionWriter），并写入对应的
+   * delete-type 元数据。
+   */
   public static class DeleteWriteBuilder {
     private final WriteBuilder appenderBuilder;
     private final String location;
@@ -825,6 +919,16 @@ public class Parquet {
       return this;
     }
 
+    /**
+     * 构建等值删除文件 writer。
+     *
+     * <p>逻辑：校验 rowSchema、equalityFieldIds、createWriterFunc、spec； 写入 delete-type=equality 与
+     * delete-field-ids 元数据； 用 rowSchema 与 createWriterFunc 配置 appender，使用 deleteContext。
+     *
+     * @param <T> 行类型
+     * @return EqualityDeleteWriter
+     * @throws IOException IO 异常
+     */
     public <T> EqualityDeleteWriter<T> buildEqualityWriter() throws IOException {
       Preconditions.checkState(
           rowSchema != null, "Cannot create equality delete file without a schema");
@@ -862,6 +966,17 @@ public class Parquet {
           equalityFieldIds);
     }
 
+    /**
+     * 构建位置删除文件 writer。
+     *
+     * <p>逻辑：校验 equalityFieldIds 为空、spec 合法；写入 delete-type=position 元数据； 若提供 rowSchema 与
+     * createWriterFunc，则包装为 PositionDeleteStructWriter 写入行数据； 否则仅写 path+pos（使用
+     * GenericParquetWriter）。
+     *
+     * @param <T> 行类型
+     * @return PositionDeleteWriter
+     * @throws IOException IO 异常
+     */
     public <T> PositionDeleteWriter<T> buildPositionWriter() throws IOException {
       Preconditions.checkState(
           equalityFieldIds == null, "Cannot create position delete file using delete field ids");
@@ -956,10 +1071,22 @@ public class Parquet {
     }
   }
 
+  /**
+   * 创建 Parquet 读取器 Builder。
+   *
+   * @param file 输入文件
+   * @return ReadBuilder 实例
+   */
   public static ReadBuilder read(InputFile file) {
     return new ReadBuilder(file);
   }
 
+  /**
+   * Parquet 读取器 Builder：配置投影 schema、过滤、split 范围、加密、批量大小等， build() 返回 CloseableIterable。
+   *
+   * <p>设计意图：双路径——提供 readerFunc/batchedReaderFunc 时走 Iceberg 原生
+   * ParquetReader/VectorizedParquetReader；否则走 parquet-mr ParquetReadBuilder + AvroReadSupport。
+   */
   public static class ReadBuilder {
     private final InputFile file;
     private final Map<String, String> properties = Maps.newHashMap();
@@ -984,11 +1111,11 @@ public class Parquet {
     }
 
     /**
-     * Restricts the read to the given range: [start, start + length).
+     * 限定读取范围为 [start, start + length) 的字节区间，用于 split 读取。
      *
-     * @param newStart the start position for this read
-     * @param newLength the length of the range this read should scan
-     * @return this builder for method chaining
+     * @param newStart 起始字节偏移
+     * @param newLength 读取长度
+     * @return this builder
      */
     public ReadBuilder split(long newStart, long newLength) {
       this.start = newStart;
@@ -1077,6 +1204,16 @@ public class Parquet {
       return this;
     }
 
+    /**
+     * 构建读取器迭代器。
+     *
+     * <p>逻辑：构造解密属性；若提供 readerFunc/batchedReaderFunc，构造 ParquetReadOptions （清理可能冲突的属性、设置
+     * range/解密），按是否批量选择 VectorizedParquetReader 或 ParquetReader；否则走 parquet-mr
+     * ParquetReadBuilder，按是否提供 filter 启用 stats/dictionary/bloom/record 过滤。
+     *
+     * @param <D> 数据类型
+     * @return 可关闭迭代器
+     */
     @SuppressWarnings({"unchecked", "checkstyle:CyclomaticComplexity"})
     public <D> CloseableIterable<D> build() {
       FileDecryptionProperties fileDecryptionProperties = null;
@@ -1250,14 +1387,16 @@ public class Parquet {
   }
 
   /**
-   * Combines several files into one
+   * 将多个 Parquet 文件合并为一个文件。
    *
-   * @param inputFiles an {@link Iterable} of parquet files. The order of iteration determines the
-   *     order in which content of files are read and written to the {@code outputFile}
-   * @param outputFile the output parquet file containing all the data from {@code inputFiles}
-   * @param rowGroupSize the row group size to use when writing the {@code outputFile}
-   * @param schema the schema of the data
-   * @param metadata extraMetadata to write at the footer of the {@code outputFile}
+   * <p>逻辑：创建 ParquetFileWriter，按迭代顺序逐个 appendFile，最后 end 写入 footer 元数据。
+   *
+   * @param inputFiles 输入 Parquet 文件迭代器，顺序决定合并后数据顺序
+   * @param outputFile 输出 Parquet 文件
+   * @param rowGroupSize 输出文件的 row group 大小
+   * @param schema 数据 schema
+   * @param metadata 写入 footer 的额外元数据
+   * @throws IOException IO 异常
    */
   public static void concat(
       Iterable<File> inputFiles,

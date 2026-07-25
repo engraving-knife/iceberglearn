@@ -47,6 +47,13 @@ import org.apache.spark.sql.connector.read.SupportsRuntimeFiltering;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.In;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkCopyOnWriteScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering {
 
   private final TableScan scan;
@@ -87,20 +94,36 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   Long snapshotId() {
     return snapshot != null ? snapshot.snapshotId() : null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     return estimateStatistics(snapshot);
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @return 结果对象
+   */
   public NamedReference[] filterAttributes() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());
     return new NamedReference[] {file};
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @param filters 参数
+   */
   @Override
   public void filter(Filter[] filters) {
     Preconditions.checkState(
@@ -138,6 +161,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
   }
 
   // should be accessible to the write
+  /** 执行该方法的具体逻辑。 */
   synchronized List<FileScanTask> files() {
     if (files == null) {
       try (CloseableIterable<FileScanTask> filesIterable = scan.planFiles()) {
@@ -150,6 +174,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
     return files;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected synchronized List<CombinedScanTask> tasks() {
     if (tasks == null) {
@@ -165,6 +190,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
     return tasks;
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -184,6 +210,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
         && Objects.equals(filteredLocations, that.filteredLocations);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -194,6 +221,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
         filteredLocations);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -201,6 +229,7 @@ class SparkCopyOnWriteScan extends SparkScan implements SupportsRuntimeFiltering
         table(), expectedSchema().asStruct(), filterExpressions(), caseSensitive());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Long currentSnapshotId() {
     Snapshot currentSnapshot = table().currentSnapshot();
     return currentSnapshot != null ? currentSnapshot.snapshotId() : null;

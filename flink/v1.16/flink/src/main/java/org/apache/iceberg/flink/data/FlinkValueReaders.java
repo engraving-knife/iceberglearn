@@ -41,56 +41,76 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 
+/**
+ * Flink 专用的 Avro 值读取器工厂与内部实现集合。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：为各种 Iceberg 类型提供对应的 Avro ValueReader， 把 Avro 编码数据读取为 Flink {@link
+ * RowData}/{@link ArrayData}/{@link MapData}/{@link StringData} 等。
+ *
+ * <p>设计意图：工厂模式 + 单例，按类型提供 reader 实例；被 {@link FlinkAvroReader} 调用。
+ */
 public class FlinkValueReaders {
 
   private FlinkValueReaders() {}
 
+  /** 返回字符串读取器单例。 */
   static ValueReader<StringData> strings() {
     return StringReader.INSTANCE;
   }
 
+  /** 构造枚举读取器。 */
   static ValueReader<StringData> enums(List<String> symbols) {
     return new EnumReader(symbols);
   }
 
+  /** 返回 16 字节定长读取器（用于 UUID）。 */
   static ValueReader<byte[]> uuids() {
     return ValueReaders.fixed(16);
   }
 
+  /** 返回微秒时间读取器单例。 */
   static ValueReader<Integer> timeMicros() {
     return TimeMicrosReader.INSTANCE;
   }
 
+  /** 返回毫秒时间戳读取器单例。 */
   static ValueReader<TimestampData> timestampMills() {
     return TimestampMillsReader.INSTANCE;
   }
 
+  /** 返回微秒时间戳读取器单例。 */
   static ValueReader<TimestampData> timestampMicros() {
     return TimestampMicrosReader.INSTANCE;
   }
 
+  /** 构造 Decimal 读取器。 */
   static ValueReader<DecimalData> decimal(
       ValueReader<byte[]> unscaledReader, int precision, int scale) {
     return new DecimalReader(unscaledReader, precision, scale);
   }
 
+  /** 构造数组读取器。 */
   static ValueReader<ArrayData> array(ValueReader<?> elementReader) {
     return new ArrayReader(elementReader);
   }
 
+  /** 构造数组形式 map 读取器。 */
   static ValueReader<MapData> arrayMap(ValueReader<?> keyReader, ValueReader<?> valueReader) {
     return new ArrayMapReader(keyReader, valueReader);
   }
 
+  /** 构造 map 读取器。 */
   static ValueReader<MapData> map(ValueReader<?> keyReader, ValueReader<?> valueReader) {
     return new MapReader(keyReader, valueReader);
   }
 
+  /** 构造 struct 读取器，携带字段常量。 */
   static ValueReader<RowData> struct(
       List<ValueReader<?>> readers, Types.StructType struct, Map<Integer, ?> idToConstant) {
     return new StructReader(readers, struct, idToConstant);
   }
 
+  /** 字符串读取器：把 Avro Utf8 转为 Flink StringData。 */
   private static class StringReader implements ValueReader<StringData> {
     private static final StringReader INSTANCE = new StringReader();
 
@@ -109,6 +129,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 枚举读取器：按索引返回预构造的 StringData。 */
   private static class EnumReader implements ValueReader<StringData> {
     private final StringData[] symbols;
 
@@ -126,6 +147,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** Decimal 读取器：从字节数组构造 BigDecimal 再转 DecimalData。 */
   private static class DecimalReader implements ValueReader<DecimalData> {
     private final ValueReader<byte[]> bytesReader;
     private final int precision;
@@ -145,6 +167,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 时间读取器：微秒转毫秒（Flink 仅支持毫秒精度）。 */
   private static class TimeMicrosReader implements ValueReader<Integer> {
     private static final TimeMicrosReader INSTANCE = new TimeMicrosReader();
 
@@ -156,6 +179,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 毫秒时间戳读取器：直接转 TimestampData。 */
   private static class TimestampMillsReader implements ValueReader<TimestampData> {
     private static final TimestampMillsReader INSTANCE = new TimestampMillsReader();
 
@@ -165,6 +189,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 微秒时间戳读取器：微秒转毫秒+纳秒。 */
   private static class TimestampMicrosReader implements ValueReader<TimestampData> {
     private static final TimestampMicrosReader INSTANCE = new TimestampMicrosReader();
 
@@ -181,6 +206,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 数组读取器：按 chunk 读取元素并构造 GenericArrayData。 */
   private static class ArrayReader implements ValueReader<ArrayData> {
     private final ValueReader<?> elementReader;
     private final List<Object> reusedList = Lists.newArrayList();
@@ -207,6 +233,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** 把 key/value 列表转为 GenericMapData。 */
   private static MapData kvArrayToMap(List<Object> keyList, List<Object> valueList) {
     Map<Object, Object> map = Maps.newHashMap();
     Object[] keys = keyList.toArray();
@@ -218,6 +245,7 @@ public class FlinkValueReaders {
     return new GenericMapData(map);
   }
 
+  /** 数组形式 map 读取器：交替读 key/value 并构造 GenericMapData。 */
   private static class ArrayMapReader implements ValueReader<MapData> {
     private final ValueReader<?> keyReader;
     private final ValueReader<?> valueReader;
@@ -250,6 +278,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** map 读取器：按 Avro map 块读取 key/value 并构造 GenericMapData。 */
   private static class MapReader implements ValueReader<MapData> {
     private final ValueReader<?> keyReader;
     private final ValueReader<?> valueReader;
@@ -282,6 +311,7 @@ public class FlinkValueReaders {
     }
   }
 
+  /** struct 读取器：基于 GenericRowData 构造行数据。 */
   private static class StructReader extends ValueReaders.StructReader<RowData> {
     private final int numFields;
 

@@ -35,13 +35,18 @@ import org.apache.spark.sql.internal.SQLConf
 import scala.collection.compat.immutable.ArraySeq
 
 /**
- * A rule that is inspired by DistributionAndOrderingUtils in Spark but supports Iceberg transforms.
+ * Spark 物理执行相关组件。
  *
- * Note that similarly to the original rule in Spark, it does not let AQE pick the number of shuffle
- * partitions. See SPARK-34230 for context.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 ExtendedDistributionAndOrderingUtils。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 object ExtendedDistributionAndOrderingUtils {
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def prepareQuery(write: Write, query: LogicalPlan, conf: SQLConf): LogicalPlan = write match {
     case write: RequiresDistributionAndOrdering =>
       val numPartitions = write.requiredNumPartitions()

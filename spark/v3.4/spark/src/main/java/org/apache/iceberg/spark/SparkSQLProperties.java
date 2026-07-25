@@ -17,7 +17,15 @@
  * under the License.
  */
 package org.apache.iceberg.spark;
-
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark SQL 属性常量定义，列出控制 Iceberg Spark 行为的 SQL conf 键名与默认值。
+ *
+ * <p>设计意图：以常量类集中管理 SQL 配置键。
+ *
+ * <p>上下游关系：由 SparkReadConf / SparkWriteConf / SparkUtil 引用。
+ */
 public class SparkSQLProperties {
 
   private SparkSQLProperties() {}

@@ -80,6 +80,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestPositionDeletesTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 位置删除表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestPositionDeletesTable extends SparkCatalogTestBase {
 
@@ -100,6 +107,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
   @Parameterized.Parameters(
       name =
           "formatVersion = {0}, catalogName = {1}, implementation = {2}, config = {3}, fileFormat = {4}")
+  /** 参数。 */
   public static Object[][] parameters() {
     return new Object[][] {
       {
@@ -123,6 +131,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     };
   }
 
+  /** 测试位置删除表。 */
   public TestPositionDeletesTable(
       String catalogName, String implementation, Map<String, String> config, FileFormat format) {
     super(catalogName, implementation, config);
@@ -131,6 +140,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试空值行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullRows() throws IOException {
     String tableName = "null_rows";
@@ -158,6 +168,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedTable() throws IOException {
     // Create table with two partitions
@@ -187,6 +198,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试 testSelect 场景：验证 Select 相关操作的行为与结果。 */
   @Test
   public void testSelect() throws IOException {
     // Create table with two partitions
@@ -248,6 +260,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试split任务场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSplitTasks() throws IOException {
     String tableName = "big_table";
@@ -298,6 +311,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionFilter() throws IOException {
     // Create table with two partitions
@@ -340,6 +354,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区转换过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionTransformFilter() throws IOException {
     // Create table with two partitions
@@ -383,6 +398,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区演进替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionEvolutionReplace() throws Exception {
     // Create table with spec (data)
@@ -434,6 +450,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区演进添加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionEvolutionAdd() throws Exception {
     // Create unpartitioned table
@@ -488,6 +505,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区演进移除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionEvolutionRemove() throws Exception {
     // Create table with spec (data)
@@ -543,6 +561,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试分区规格id过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSpecIdFilter() throws Exception {
     // Create table with spec (data)
@@ -598,6 +617,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试模式演进添加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSchemaEvolutionAdd() throws Exception {
     // Create table with original schema
@@ -659,6 +679,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试模式演进移除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSchemaEvolutionRemove() throws Exception {
     // Create table with original schema
@@ -721,6 +742,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWrite() throws IOException, NoSuchTableException {
     String tableName = "test_write";
@@ -783,6 +805,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写非分区空值行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteUnpartitionedNullRows() throws Exception {
     String tableName = "write_null_rows";
@@ -834,6 +857,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写mixed行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteMixedRows() throws Exception {
     String tableName = "write_mixed_rows";
@@ -914,6 +938,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写分区演进添加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWritePartitionEvolutionAdd() throws Exception {
     // Create unpartitioned table
@@ -1022,6 +1047,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写分区演进disallowed场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWritePartitionEvolutionDisallowed() throws Exception {
     // Create unpartitioned table
@@ -1068,6 +1094,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写模式演进添加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteSchemaEvolutionAdd() throws Exception {
     // Create table with original schema
@@ -1175,6 +1202,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试写模式演进移除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteSchemaEvolutionRemove() throws Exception {
     // Create table with original schema
@@ -1262,6 +1290,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 测试normal写非allowed场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNormalWritesNotAllowed() throws IOException {
     String tableName = "test_normal_write_not_allowed";
@@ -1286,14 +1315,17 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     dropTable(tableName);
   }
 
+  /** 实际。 */
   private StructLikeSet actual(String tableName, Table table) {
     return actual(tableName, table, null, null);
   }
 
+  /** 实际。 */
   private StructLikeSet actual(String tableName, Table table, String filter) {
     return actual(tableName, table, filter, null);
   }
 
+  /** 实际。 */
   private StructLikeSet actual(String tableName, Table table, String filter, List<String> cols) {
     Dataset<Row> df =
         spark
@@ -1328,6 +1360,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     return set;
   }
 
+  /** 创建表。 */
   protected Table createTable(String name, Schema schema, PartitionSpec spec) {
     Map<String, String> properties =
         ImmutableMap.of(
@@ -1339,16 +1372,19 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
         TableIdentifier.of("default", name), schema, spec, properties);
   }
 
+  /** 删除表。 */
   protected void dropTable(String name) {
     validationCatalog.dropTable(TableIdentifier.of("default", name), false);
   }
 
+  /** 位置删除。 */
   private PositionDelete<GenericRecord> positionDelete(CharSequence path, Long position) {
     PositionDelete<GenericRecord> posDelete = PositionDelete.create();
     posDelete.set(path, position, null);
     return posDelete;
   }
 
+  /** 位置删除。 */
   private PositionDelete<GenericRecord> positionDelete(
       Schema tableSchema, CharSequence path, Long position, Object... values) {
     PositionDelete<GenericRecord> posDelete = PositionDelete.create();
@@ -1360,6 +1396,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     return posDelete;
   }
 
+  /** 期望。 */
   private StructLikeSet expected(
       Table testTable,
       List<PositionDelete<?>> deletes,
@@ -1399,6 +1436,7 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     return set;
   }
 
+  /** 期望。 */
   private StructLikeSet expected(
       Table testTable,
       List<PositionDelete<?>> deletes,
@@ -1407,10 +1445,12 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     return expected(testTable, deletes, partitionStruct, testTable.spec().specId(), deleteFilePath);
   }
 
+  /** 数据文件。 */
   private DataFile dataFile(Table tab, Object... partValues) throws IOException {
     return dataFile(tab, partValues, partValues);
   }
 
+  /** 数据文件。 */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   private DataFile dataFile(Table tab, Object[] partDataValues, Object[] partFieldValues)
       throws IOException {
@@ -1460,11 +1500,13 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
         tab, Files.localOutput(temp.newFile()), partitionInfo, records);
   }
 
+  /** 删除文件。 */
   private Pair<List<PositionDelete<?>>, DeleteFile> deleteFile(
       Table tab, DataFile dataFile, Object... partValues) throws IOException {
     return deleteFile(tab, dataFile, partValues, partValues);
   }
 
+  /** 删除文件。 */
   private Pair<List<PositionDelete<?>>, DeleteFile> deleteFile(
       Table tab, DataFile dataFile, Object[] partDataValues, Object[] partFieldValues)
       throws IOException {
@@ -1509,12 +1551,14 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
     return Pair.of(deletes, deleteFile);
   }
 
+  /** stage任务。 */
   private <T extends ScanTask> void stageTask(
       Table tab, String fileSetID, CloseableIterable<T> tasks) {
     ScanTaskSetManager taskSetManager = ScanTaskSetManager.get();
     taskSetManager.stageTasks(tab, fileSetID, Lists.newArrayList(tasks));
   }
 
+  /** 提交。 */
   private void commit(
       Table baseTab,
       Table posDeletesTable,
@@ -1544,10 +1588,12 @@ public class TestPositionDeletesTable extends SparkCatalogTestBase {
         .commit();
   }
 
+  /** 提交。 */
   private void commit(Table baseTab, Table posDeletesTable, String fileSetID, int expectedFiles) {
     commit(baseTab, posDeletesTable, fileSetID, expectedFiles, expectedFiles);
   }
 
+  /** 任务。 */
   private CloseableIterable<ScanTask> tasks(
       Table posDeletesTable, String partitionColumn, String partitionValue) {
 

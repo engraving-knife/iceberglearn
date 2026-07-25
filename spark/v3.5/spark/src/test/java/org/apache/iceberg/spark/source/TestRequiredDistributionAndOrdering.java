@@ -32,18 +32,28 @@ import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRequiredDistributionAndOrdering 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 必需分布与排序 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
 
+  /** 测试必需分布与排序。 */
   public TestRequiredDistributionAndOrdering(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 删除测试表。 */
   @After
   public void dropTestTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试默认local排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultLocalSort() throws NoSuchTableException {
     sql(
@@ -73,6 +83,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试分区列areprepended用于range分布场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionColumnsArePrependedForRangeDistribution() throws NoSuchTableException {
     sql(
@@ -109,6 +120,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试排序顺序includes分区列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortOrderIncludesPartitionColumns() throws NoSuchTableException {
     sql(
@@ -141,6 +153,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试disabled分布与排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDisabledDistributionAndOrdering() {
     sql(
@@ -176,6 +189,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
                 + "and by partition within each spec. Either cluster the incoming records or switch to fanout writers.");
   }
 
+  /** 测试哈希分布场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashDistribution() throws NoSuchTableException {
     sql(
@@ -212,6 +226,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试排序桶转换无扩展场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortBucketTransformsWithoutExtensions() throws NoSuchTableException {
     sql(
@@ -238,6 +253,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试range分布带quoted列names场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeDistributionWithQuotedColumnsNames() throws NoSuchTableException {
     sql(
@@ -274,6 +290,7 @@ public class TestRequiredDistributionAndOrdering extends SparkCatalogTestBase {
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试哈希分布带quoted列names场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashDistributionWithQuotedColumnsNames() throws NoSuchTableException {
     sql(

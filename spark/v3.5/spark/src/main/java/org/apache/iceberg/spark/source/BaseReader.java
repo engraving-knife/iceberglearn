@@ -65,9 +65,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Base class of Spark readers.
+ * 所属模块：iceberg-spark v3.5
  *
- * @param <T> is the Java class returned by this reader whose objects contain one or more rows.
+ * <p>职责：Spark 读取器基类，封装扫描任务、Schema 投影、指标统计与读取上下文的公共逻辑。
+ *
+ * <p>设计意图：采用模板方法模式，沉淀列裁剪、删除文件处理、指标累计等通用流程。
+ *
+ * <p>上下游关系：被所有行式/列式 Reader 继承；依赖 SparkReadConf 与 Iceberg FileScanTask。
  */
 abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(BaseReader.class);
@@ -104,27 +108,27 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
         nameMappingString != null ? NameMappingParser.fromJson(nameMappingString) : null;
     this.counter = new DeleteCounter();
   }
-
+  /** 打开资源。 */
   protected abstract CloseableIterator<T> open(TaskT task);
-
+  /** 执行 referencedFiles 相关操作。 */
   protected abstract Stream<ContentFile<?>> referencedFiles(TaskT task);
-
+  /** 执行 expectedSchema 相关操作。 */
   protected Schema expectedSchema() {
     return expectedSchema;
   }
-
+  /** 执行 caseSensitive 相关操作。 */
   protected boolean caseSensitive() {
     return caseSensitive;
   }
-
+  /** 执行 nameMapping 相关操作。 */
   protected NameMapping nameMapping() {
     return nameMapping;
   }
-
+  /** 执行 table 相关操作。 */
   protected Table table() {
     return table;
   }
-
+  /** 执行 counter 相关操作。 */
   protected DeleteCounter counter() {
     return counter;
   }
@@ -155,7 +159,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       throw e;
     }
   }
-
+  /** 返回值。 */
   public T get() {
     return current;
   }
@@ -172,11 +176,11 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       tasks.next();
     }
   }
-
+  /** 返回 InputFile 属性。 */
   protected InputFile getInputFile(String location) {
     return inputFiles().get(location);
   }
-
+  /** 执行 inputFiles 相关操作。 */
   private Map<String, InputFile> inputFiles() {
     if (lazyInputFiles == null) {
       Stream<EncryptedInputFile> encryptedFiles =
@@ -192,12 +196,12 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
 
     return lazyInputFiles;
   }
-
+  /** 转换为 EncryptedInputFile。 */
   private EncryptedInputFile toEncryptedInputFile(ContentFile<?> file) {
     InputFile inputFile = table.io().newInputFile(file.path().toString());
     return EncryptedFiles.encryptedInput(inputFile, file.keyMetadata());
   }
-
+  /** 执行 constantsMap 相关操作。 */
   protected Map<Integer, ?> constantsMap(ContentScanTask<?> task, Schema readSchema) {
     if (readSchema.findField(MetadataColumns.PARTITION_COLUMN_ID) != null) {
       StructType partitionType = Partitioning.partitionType(table);
@@ -206,7 +210,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       return PartitionUtil.constantsMap(task, BaseReader::convertConstant);
     }
   }
-
+  /** 执行 convertConstant 相关操作。 */
   protected static Object convertConstant(Type type, Object value) {
     if (value == null) {
       return null;
@@ -261,17 +265,17 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       super(filePath, deletes, tableSchema, expectedSchema, counter);
       this.asStructLike = new InternalRowWrapper(SparkSchemaUtil.convert(requiredSchema()));
     }
-
+    /** 执行 asStructLike 相关操作。 */
     @Override
     protected StructLike asStructLike(InternalRow row) {
       return asStructLike.wrap(row);
     }
-
+    /** 返回 InputFile 属性。 */
     @Override
     protected InputFile getInputFile(String location) {
       return BaseReader.this.getInputFile(location);
     }
-
+    /** 执行 markRowDeleted 相关操作。 */
     @Override
     protected void markRowDeleted(InternalRow row) {
       if (!row.getBoolean(columnIsDeletedPosition())) {

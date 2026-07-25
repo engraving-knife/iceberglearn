@@ -39,9 +39,22 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestContinuousIcebergEnumerator 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestContinuousIcebergEnumerator 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestContinuousIcebergEnumerator {
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
+  /**
+   * 测试场景：Discover Split When No Reader Registered。
+   *
+   * <p>验证该方法在 Discover Split When No Reader Registered 条件下的行为是否符合预期。
+   */
   @Test
   public void testDiscoverSplitWhenNoReaderRegistered() throws Exception {
     TestingSplitEnumeratorContext<IcebergSourceSplit> enumeratorContext =
@@ -72,6 +85,11 @@ public class TestContinuousIcebergEnumerator {
     Assert.assertEquals(IcebergSourceSplitStatus.UNASSIGNED, pendingSplit.status());
   }
 
+  /**
+   * 测试场景：Discover When Reader Registered。
+   *
+   * <p>验证该方法在 Discover When Reader Registered 条件下的行为是否符合预期。
+   */
   @Test
   public void testDiscoverWhenReaderRegistered() throws Exception {
     TestingSplitEnumeratorContext<IcebergSourceSplit> enumeratorContext =
@@ -101,6 +119,11 @@ public class TestContinuousIcebergEnumerator {
         .contains(splits.get(0));
   }
 
+  /**
+   * 测试场景：Requesting Reader Unavailable When Split Discovered。
+   *
+   * <p>验证该方法在 Requesting Reader Unavailable When Split Discovered 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequestingReaderUnavailableWhenSplitDiscovered() throws Exception {
     TestingSplitEnumeratorContext<IcebergSourceSplit> enumeratorContext =
@@ -148,6 +171,11 @@ public class TestContinuousIcebergEnumerator {
         .contains(splits.get(0));
   }
 
+  /**
+   * 测试场景：Throttling Discovery。
+   *
+   * <p>验证该方法在 Throttling Discovery 条件下的行为是否符合预期。
+   */
   @Test
   public void testThrottlingDiscovery() throws Exception {
     // create 10 splits
@@ -227,6 +255,11 @@ public class TestContinuousIcebergEnumerator {
         splits.subList(0, 3), enumeratorContext.getSplitAssignments().get(2).getAssignedSplits());
   }
 
+  /**
+   * 测试场景：Transient Planning Errors With Successful Retry。
+   *
+   * <p>验证该方法在 Transient Planning Errors With Successful Retry 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransientPlanningErrorsWithSuccessfulRetry() throws Exception {
     TestingSplitEnumeratorContext<IcebergSourceSplit> enumeratorContext =
@@ -260,6 +293,11 @@ public class TestContinuousIcebergEnumerator {
     Assert.assertEquals(IcebergSourceSplitStatus.UNASSIGNED, pendingSplit.status());
   }
 
+  /**
+   * 测试场景：Over Max Allowed Planning Errors。
+   *
+   * <p>验证该方法在 Over Max Allowed Planning Errors 条件下的行为是否符合预期。
+   */
   @Test
   public void testOverMaxAllowedPlanningErrors() throws Exception {
     TestingSplitEnumeratorContext<IcebergSourceSplit> enumeratorContext =
@@ -295,6 +333,11 @@ public class TestContinuousIcebergEnumerator {
         .hasMessageContaining("Failed to discover new split");
   }
 
+  /**
+   * 测试场景：Planning Ignoring Errors。
+   *
+   * <p>验证该方法在 Planning Ignoring Errors 条件下的行为是否符合预期。
+   */
   @Test
   public void testPlanningIgnoringErrors() throws Exception {
     int expectedFailures = 3;
@@ -334,6 +377,7 @@ public class TestContinuousIcebergEnumerator {
     Assert.assertEquals(IcebergSourceSplitStatus.UNASSIGNED, pendingSplit.status());
   }
 
+  /** 辅助方法：createEnumerator，create Enumerator。 */
   private static ContinuousIcebergEnumerator createEnumerator(
       SplitEnumeratorContext<IcebergSourceSplit> context,
       ScanContext scanContext,

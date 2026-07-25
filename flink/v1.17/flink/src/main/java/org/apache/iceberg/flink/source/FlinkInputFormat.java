@@ -37,7 +37,25 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
 import org.apache.iceberg.util.ThreadPools;
 
-/** Flink {@link InputFormat} for Iceberg. */
+/**
+ * 文件级说明：Iceberg 表的 Flink {@link InputFormat} 实现（旧版 Source API）。
+ *
+ * <p>所属模块：iceberg-flink（source 子包），用于 Flink 批处理模式读取 Iceberg 表。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>从 Iceberg 表扫描数据文件，生成 {@link FlinkInputSplit}。
+ *   <li>通过 {@link DataIterator} 逐条读取 RowData。
+ *   <li>支持本地性感知的 split 分配（LocatableInputSplitAssigner）。
+ * </ul>
+ *
+ * <p>设计意图：兼容 Flink 旧版 Source API（InputFormat），与 FLIP-27 新版 Source API 并存。 对于 BaseMetadataTable 使用
+ * DataTaskReader，普通表使用 RowDataFileScanTaskReader。
+ *
+ * <p>上下游关系：被 Flink Table API 通过 InputFormatSourceFunction 调用； 内部委托 {@link
+ * RowDataFileScanTaskReader} 读取数据。
+ */
 public class FlinkInputFormat extends RichInputFormat<RowData, FlinkInputSplit> {
 
   private static final long serialVersionUID = 1L;
@@ -51,6 +69,15 @@ public class FlinkInputFormat extends RichInputFormat<RowData, FlinkInputSplit> 
   private transient DataIterator<RowData> iterator;
   private transient long currentReadCount = 0L;
 
+  /**
+   * 构造方法。
+   *
+   * @param tableLoader 表加载器
+   * @param tableSchema 表 schema
+   * @param io 文件 IO
+   * @param encryption 加密管理器
+   * @param context 扫描上下文
+   */
   FlinkInputFormat(
       TableLoader tableLoader,
       Schema tableSchema,

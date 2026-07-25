@@ -47,6 +47,13 @@ import org.apache.iceberg.util.DateTimeUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkAvroReaderWriter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkAvroReaderWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkAvroReaderWriter extends DataTest {
 
   private static final int NUM_RECORDS = 100;
@@ -63,12 +70,14 @@ public class TestFlinkAvroReaderWriter extends DataTest {
           Types.NestedField.optional(8, "bigint", Types.LongType.get()),
           Types.NestedField.optional(9, "decimal", Types.DecimalType.of(4, 2)));
 
+  /** 辅助方法：writeAndValidate，write And Validate。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     List<Record> expectedRecords = RandomGenericData.generate(schema, NUM_RECORDS, 1991L);
     writeAndValidate(schema, expectedRecords, NUM_RECORDS);
   }
 
+  /** 辅助方法：writeAndValidate，write And Validate。 */
   private void writeAndValidate(Schema schema, List<Record> expectedRecords, int numRecord)
       throws IOException {
     RowType flinkSchema = FlinkSchemaUtil.convert(schema);
@@ -129,6 +138,7 @@ public class TestFlinkAvroReaderWriter extends DataTest {
     }
   }
 
+  /** 辅助方法：recordNumType，record Num Type。 */
   private Record recordNumType(
       int id,
       int intV,
@@ -153,6 +163,11 @@ public class TestFlinkAvroReaderWriter extends DataTest {
     return record;
   }
 
+  /**
+   * 测试场景：Numeric Types。
+   *
+   * <p>验证该方法在 Numeric Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testNumericTypes() throws IOException {
 

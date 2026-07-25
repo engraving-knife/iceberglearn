@@ -22,6 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestListeners 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestListeners 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestListeners {
   static {
     Listeners.register(TestListener.get()::event1, Event1.class);
@@ -35,6 +42,7 @@ public class TestListeners {
   public static class TestListener {
     private static final TestListener INSTANCE = new TestListener();
 
+    /** 辅助方法：get。 */
     public static TestListener get() {
       return INSTANCE;
     }
@@ -42,15 +50,22 @@ public class TestListeners {
     private Event1 e1 = null;
     private Event2 e2 = null;
 
+    /** 辅助方法：event1。 */
     public void event1(Event1 event) {
       this.e1 = event;
     }
 
+    /** 辅助方法：event2。 */
     public void event2(Event2 event) {
       this.e2 = event;
     }
   }
 
+  /**
+   * 测试场景：Event 1。
+   *
+   * <p>验证该方法在 Event 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testEvent1() {
     Event1 e1 = new Event1();
@@ -60,6 +75,11 @@ public class TestListeners {
     assertThat(TestListener.get().e1).isEqualTo(e1);
   }
 
+  /**
+   * 测试场景：Event 2。
+   *
+   * <p>验证该方法在 Event 2 条件下的行为是否符合预期。
+   */
   @Test
   public void testEvent2() {
     Event2 e2 = new Event2();
@@ -69,6 +89,11 @@ public class TestListeners {
     assertThat(TestListener.get().e2).isEqualTo(e2);
   }
 
+  /**
+   * 测试场景：Multiple Listeners。
+   *
+   * <p>验证该方法在 Multiple Listeners 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleListeners() {
     TestListener other = new TestListener();

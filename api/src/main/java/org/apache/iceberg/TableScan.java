@@ -18,59 +18,71 @@
  */
 package org.apache.iceberg;
 
-/** API for configuring a table scan. */
+/**
+ * 文件级说明：表扫描配置接口。
+ *
+ * <p>所属模块：iceberg-api（核心接口层，由 core 实现）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义表扫描的配置契约，产出 {@link FileScanTask}（组合为 {@link CombinedScanTask}）。
+ *   <li>支持基于快照 ID、引用（branch/tag）或时间戳的时间旅行读取。
+ *   <li>提供（已废弃的）增量 append 扫描便捷方法，建议改用 {@link Table#newIncrementalAppendScan()}。
+ * </ul>
+ *
+ * <p>设计意图：扫描对象是不可变的配置载体，每次配置变更返回新的 {@code TableScan} 实例， 便于链式调用与并发共享。将配置与执行分离，扫描规划延迟到 {@code
+ * planFiles()} 时执行。
+ *
+ * <p>上下游关系：由 {@link Table#newScan()} 创建；被引擎批式读取器消费。
+ */
 public interface TableScan extends Scan<TableScan, FileScanTask, CombinedScanTask> {
   /**
-   * Returns the {@link Table} from which this scan loads data.
+   * 返回本次扫描所读取数据的 {@link Table}。
    *
-   * @return this scan's table
+   * @return 扫描所属的表
    */
   Table table();
 
   /**
-   * Create a new {@link TableScan} from this scan's configuration that will use the given snapshot
-   * by ID.
+   * 基于当前扫描配置，创建一个使用指定快照 ID 的新 {@link TableScan}（时间旅行读取）。
    *
-   * @param snapshotId a snapshot ID
-   * @return a new scan based on this with the given snapshot ID
-   * @throws IllegalArgumentException if the snapshot cannot be found
+   * @param snapshotId 目标快照 ID
+   * @return 基于该快照 ID 的新扫描对象
+   * @throws IllegalArgumentException 若快照不存在
    */
   TableScan useSnapshot(long snapshotId);
 
   /**
-   * Create a new {@link TableScan} from this scan's configuration that will use the given
-   * reference.
+   * 基于当前扫描配置，创建一个使用指定引用（branch 或 tag）的新 {@link TableScan}。
    *
-   * @param ref reference
-   * @return a new scan based on the given reference.
-   * @throws IllegalArgumentException if a reference with the given name could not be found
+   * <p>默认抛出 {@link UnsupportedOperationException}，由具体实现覆写。
+   *
+   * @param ref 引用名称
+   * @return 基于该引用的新扫描对象
+   * @throws IllegalArgumentException 若指定名称的引用不存在
    */
   default TableScan useRef(String ref) {
     throw new UnsupportedOperationException("Using a reference is not supported");
   }
 
   /**
-   * Create a new {@link TableScan} from this scan's configuration that will use the most recent
-   * snapshot as of the given time in milliseconds on the branch in the scan or main if no branch is
-   * set.
+   * 基于当前扫描配置，创建一个"时间旅行"到指定时间点的新 {@link TableScan}：使用扫描分支上 （未设置分支时为 main 分支）不超过给定时间的最新快照。
    *
-   * @param timestampMillis a timestamp in milliseconds.
-   * @return a new scan based on this with the current snapshot at the given time
-   * @throws IllegalArgumentException if the snapshot cannot be found or time travel is attempted on
-   *     a tag
+   * @param timestampMillis 时间戳（毫秒）
+   * @return 基于该时间点快照的新扫描对象
+   * @throws IllegalArgumentException 若找不到对应快照，或对 tag 引用尝试时间旅行
    */
   TableScan asOfTime(long timestampMillis);
 
   /**
-   * Create a new {@link TableScan} to read appended data from {@code fromSnapshotId} exclusive to
-   * {@code toSnapshotId} inclusive.
+   * 创建一个新的 {@link TableScan}，读取从 {@code fromSnapshotId}（不含）到 {@code toSnapshotId} （含）之间新增的 append
+   * 数据。
    *
-   * @param fromSnapshotId the last snapshot id read by the user, exclusive
-   * @param toSnapshotId read append data up to this snapshot id
-   * @return a table scan which can read append data from {@code fromSnapshotId} exclusive and up to
-   *     {@code toSnapshotId} inclusive
-   * @deprecated since 1.0.0, will be removed in 2.0.0; use {@link Table#newIncrementalAppendScan()}
-   *     instead.
+   * @param fromSnapshotId 用户上次读取的最后一个快照 ID（不含）
+   * @param toSnapshotId 读取 append 数据直到该快照 ID（含）
+   * @return 可读取指定区间 append 数据的表扫描
+   * @deprecated 自 1.0.0 起，将在 2.0.0 移除；请改用 {@link Table#newIncrementalAppendScan()}
    */
   @Deprecated
   default TableScan appendsBetween(long fromSnapshotId, long toSnapshotId) {
@@ -78,14 +90,11 @@ public interface TableScan extends Scan<TableScan, FileScanTask, CombinedScanTas
   }
 
   /**
-   * Create a new {@link TableScan} to read appended data from {@code fromSnapshotId} exclusive to
-   * the current snapshot inclusive.
+   * 创建一个新的 {@link TableScan}，读取从 {@code fromSnapshotId}（不含）到当前快照（含）之间 新增的 append 数据。
    *
-   * @param fromSnapshotId - the last snapshot id read by the user, exclusive
-   * @return a table scan which can read append data from {@code fromSnapshotId} exclusive and up to
-   *     current snapshot inclusive
-   * @deprecated since 1.0.0, will be removed in 2.0.0; use {@link Table#newIncrementalAppendScan()}
-   *     instead.
+   * @param fromSnapshotId 用户上次读取的最后一个快照 ID（不含）
+   * @return 可读取指定区间 append 数据的表扫描
+   * @deprecated 自 1.0.0 起，将在 2.0.0 移除；请改用 {@link Table#newIncrementalAppendScan()}
    */
   @Deprecated
   default TableScan appendsAfter(long fromSnapshotId) {
@@ -93,12 +102,11 @@ public interface TableScan extends Scan<TableScan, FileScanTask, CombinedScanTas
   }
 
   /**
-   * Returns the {@link Snapshot} that will be used by this scan.
+   * 返回本次扫描将使用的 {@link Snapshot}。
    *
-   * <p>If the snapshot was not configured using {@link #asOfTime(long)} or {@link
-   * #useSnapshot(long)}, the current table snapshot will be used.
+   * <p>若未通过 {@link #asOfTime(long)} 或 {@link #useSnapshot(long)} 指定，则使用表的当前快照。
    *
-   * @return the Snapshot this scan will use
+   * @return 本次扫描使用的快照
    */
   Snapshot snapshot();
 }

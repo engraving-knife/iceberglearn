@@ -28,6 +28,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.spark.sql.RuntimeConfig;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 配置解析器，将 SparkSession 配置、表属性、选项按优先级合并解析为结构化配置。
+ *
+ * <p>设计意图：采用建造者模式聚合多种配置来源，统一处理默认值与校验。
+ *
+ * <p>上下游关系：被 SparkReadConf / SparkWriteConf 及各 SparkAction 使用。
+ */
 class SparkConfParser {
 
   private final Map<String, String> properties;
@@ -39,19 +48,19 @@ class SparkConfParser {
     this.sessionConf = spark.conf();
     this.options = options;
   }
-
+  /** 执行 booleanConf 相关操作。 */
   public BooleanConfParser booleanConf() {
     return new BooleanConfParser();
   }
-
+  /** 执行 intConf 相关操作。 */
   public IntConfParser intConf() {
     return new IntConfParser();
   }
-
+  /** 执行 longConf 相关操作。 */
   public LongConfParser longConf() {
     return new LongConfParser();
   }
-
+  /** 执行 stringConf 相关操作。 */
   public StringConfParser stringConf() {
     return new StringConfParser();
   }
@@ -59,27 +68,27 @@ class SparkConfParser {
   class BooleanConfParser extends ConfParser<BooleanConfParser, Boolean> {
     private Boolean defaultValue;
     private boolean negate = false;
-
+    /** 执行 self 相关操作。 */
     @Override
     protected BooleanConfParser self() {
       return this;
     }
-
+    /** 执行 defaultValue 相关操作。 */
     public BooleanConfParser defaultValue(boolean value) {
       this.defaultValue = value;
       return self();
     }
-
+    /** 执行 defaultValue 相关操作。 */
     public BooleanConfParser defaultValue(String value) {
       this.defaultValue = Boolean.parseBoolean(value);
       return self();
     }
-
+    /** 执行 negate 相关操作。 */
     public BooleanConfParser negate() {
       this.negate = true;
       return self();
     }
-
+    /** 解析输入。 */
     public boolean parse() {
       Preconditions.checkArgument(defaultValue != null, "Default value cannot be null");
       boolean value = parse(Boolean::parseBoolean, defaultValue);
@@ -89,22 +98,22 @@ class SparkConfParser {
 
   class IntConfParser extends ConfParser<IntConfParser, Integer> {
     private Integer defaultValue;
-
+    /** 执行 self 相关操作。 */
     @Override
     protected IntConfParser self() {
       return this;
     }
-
+    /** 执行 defaultValue 相关操作。 */
     public IntConfParser defaultValue(int value) {
       this.defaultValue = value;
       return self();
     }
-
+    /** 解析输入。 */
     public int parse() {
       Preconditions.checkArgument(defaultValue != null, "Default value cannot be null");
       return parse(Integer::parseInt, defaultValue);
     }
-
+    /** 执行 parseOptional 相关操作。 */
     public Integer parseOptional() {
       return parse(Integer::parseInt, null);
     }
@@ -112,22 +121,22 @@ class SparkConfParser {
 
   class LongConfParser extends ConfParser<LongConfParser, Long> {
     private Long defaultValue;
-
+    /** 执行 self 相关操作。 */
     @Override
     protected LongConfParser self() {
       return this;
     }
-
+    /** 执行 defaultValue 相关操作。 */
     public LongConfParser defaultValue(long value) {
       this.defaultValue = value;
       return self();
     }
-
+    /** 解析输入。 */
     public long parse() {
       Preconditions.checkArgument(defaultValue != null, "Default value cannot be null");
       return parse(Long::parseLong, defaultValue);
     }
-
+    /** 执行 parseOptional 相关操作。 */
     public Long parseOptional() {
       return parse(Long::parseLong, null);
     }
@@ -135,22 +144,22 @@ class SparkConfParser {
 
   class StringConfParser extends ConfParser<StringConfParser, String> {
     private String defaultValue;
-
+    /** 执行 self 相关操作。 */
     @Override
     protected StringConfParser self() {
       return this;
     }
-
+    /** 执行 defaultValue 相关操作。 */
     public StringConfParser defaultValue(String value) {
       this.defaultValue = value;
       return self();
     }
-
+    /** 解析输入。 */
     public String parse() {
       Preconditions.checkArgument(defaultValue != null, "Default value cannot be null");
       return parse(Function.identity(), defaultValue);
     }
-
+    /** 执行 parseOptional 相关操作。 */
     public String parseOptional() {
       return parse(Function.identity(), null);
     }
@@ -160,24 +169,24 @@ class SparkConfParser {
     private final List<String> optionNames = Lists.newArrayList();
     private String sessionConfName;
     private String tablePropertyName;
-
+    /** 执行 self 相关操作。 */
     protected abstract ThisT self();
-
+    /** 执行 option 相关操作。 */
     public ThisT option(String name) {
       this.optionNames.add(name);
       return self();
     }
-
+    /** 执行 sessionConf 相关操作。 */
     public ThisT sessionConf(String name) {
       this.sessionConfName = name;
       return self();
     }
-
+    /** 执行 tableProperty 相关操作。 */
     public ThisT tableProperty(String name) {
       this.tablePropertyName = name;
       return self();
     }
-
+    /** 解析输入。 */
     protected T parse(Function<String, T> conversion, T defaultValue) {
       if (!optionNames.isEmpty()) {
         for (String optionName : optionNames) {

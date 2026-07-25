@@ -26,6 +26,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
 /** MapDataStatistics uses map to count key frequency */
 @Internal
+/**
+ * 基于 Map 的数据统计实现，记录各分区键的分布计数。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：用 Map 累积每个分区键的出现次数，支持合并。
+ *
+ * <p>设计意图：实现 DataStatistics 接口；被 DataStatisticsOperator 调用。
+ */
 class MapDataStatistics implements DataStatistics<MapDataStatistics, Map<RowData, Long>> {
   private final Map<RowData, Long> statistics;
 

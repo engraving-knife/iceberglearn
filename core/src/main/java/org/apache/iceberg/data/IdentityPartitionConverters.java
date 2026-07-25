@@ -23,10 +23,32 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.DateTimeUtil;
 
+/**
+ * 恒等分区值转换器：将 Iceberg 内部存储表示转换为通用 Java 值。
+ *
+ * <p>所属模块：iceberg-core，data 包内的分区值转换工具。
+ *
+ * <p>职责：将分区列的内部存储表示（如 long 微秒、int 天数）转换为 Iceberg 通用 Java 值 （如
+ * LocalTime、LocalDate），用于在读取/写入时与外部系统交互。
+ *
+ * <p>设计意图：Iceberg 内部以紧凑形式存储时间类型（微秒/天数），但在与引擎或用户交互时 需转为 Java 时间 API 类型。本类集中处理这类转换，与 {@link
+ * org.apache.iceberg.util.DateTimeUtil} 配合完成。FIXED 类型从 Avro 的 GenericData.Fixed 提取原始字节数组。
+ *
+ * <p>上下游关系：被分区值读取/转换流程调用，将内部表示转为通用值。
+ */
 public class IdentityPartitionConverters {
   private IdentityPartitionConverters() {}
 
-  /** Conversions from internal representations to Iceberg generic values. */
+  /**
+   * 将内部存储表示转换为 Iceberg 通用值。
+   *
+   * <p>逻辑：null 直接返回；STRING 转为 toString；TIME 从微秒转 LocalTime；DATE 从天数转 LocalDate； TIMESTAMP 按是否带时区分别转
+   * OffsetDateTime 或 LocalDateTime；FIXED 从 Avro GenericData.Fixed 提取字节数组；其余类型原样返回。
+   *
+   * @param type 字段类型
+   * @param value 内部存储表示的值
+   * @return 转换后的通用 Java 值
+   */
   public static Object convertConstant(Type type, Object value) {
     if (value == null) {
       return null;

@@ -23,14 +23,27 @@ import java.util.Arrays;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExceptionUtil 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestExceptionUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExceptionUtil {
 
   private static class CustomCheckedException extends Exception {
+    /** 辅助方法：CustomCheckedException。 */
     private CustomCheckedException(String message) {
       super(message);
     }
   }
 
+  /**
+   * 测试场景：Run Safely。
+   *
+   * <p>验证该方法在 Run Safely 条件下的行为是否符合预期。
+   */
   @Test
   public void testRunSafely() {
     CustomCheckedException exc = new CustomCheckedException("test");
@@ -57,6 +70,11 @@ public class TestExceptionUtil {
         .containsExactly(suppressedOne, suppressedTwo);
   }
 
+  /**
+   * 测试场景：Run Safely Two Exceptions。
+   *
+   * <p>验证该方法在 Run Safely Two Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testRunSafelyTwoExceptions() {
     CustomCheckedException exc = new CustomCheckedException("test");
@@ -86,6 +104,11 @@ public class TestExceptionUtil {
         .containsExactly(suppressedOne, suppressedTwo);
   }
 
+  /**
+   * 测试场景：Run Safely Three Exceptions。
+   *
+   * <p>验证该方法在 Run Safely Three Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testRunSafelyThreeExceptions() {
     CustomCheckedException exc = new CustomCheckedException("test");
@@ -116,6 +139,11 @@ public class TestExceptionUtil {
         .containsExactly(suppressedOne, suppressedTwo);
   }
 
+  /**
+   * 测试场景：Run Safely Runtime Exceptions。
+   *
+   * <p>验证该方法在 Run Safely Runtime Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testRunSafelyRuntimeExceptions() {
     RuntimeException exc = new RuntimeException("test");

@@ -30,6 +30,15 @@ import org.apache.iceberg.spark.SparkReadConf;
 import org.apache.iceberg.util.TableScanUtil;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：暂存扫描，描述已暂存但未提交数据的扫描计划。
+ *
+ * <p>设计意图：在分阶段写入场景下提供对暂存数据的扫描能力。
+ *
+ * <p>上下游关系：由 SparkStagedScanBuilder 创建；继承 SparkScan。
+ */
 class SparkStagedScan extends SparkScan {
 
   private final String taskSetId;
@@ -47,7 +56,7 @@ class SparkStagedScan extends SparkScan {
     this.splitLookback = readConf.splitLookback();
     this.openFileCost = readConf.splitOpenFileCost();
   }
-
+  /** 执行 taskGroups 相关操作。 */
   @Override
   protected List<ScanTaskGroup<ScanTask>> taskGroups() {
     if (taskGroups == null) {
@@ -63,7 +72,7 @@ class SparkStagedScan extends SparkScan {
     }
     return taskGroups;
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -81,12 +90,12 @@ class SparkStagedScan extends SparkScan {
         && Objects.equals(splitLookback, that.splitLookback)
         && Objects.equals(openFileCost, that.openFileCost);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table().name(), taskSetId, splitSize, splitSize, openFileCost);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(

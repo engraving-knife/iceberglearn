@@ -42,6 +42,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkFileRewriter 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark文件rewriter 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkFileRewriter extends SparkTestBase {
 
   private static final TableIdentifier TABLE_IDENT = TableIdentifier.of("default", "tbl");
@@ -53,11 +60,13 @@ public class TestSparkFileRewriter extends SparkTestBase {
       PartitionSpec.builderFor(SCHEMA).identity("dep").build();
   private static final SortOrder SORT_ORDER = SortOrder.builderFor(SCHEMA).asc("id").build();
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     catalog.dropTable(TABLE_IDENT);
   }
 
+  /** 测试binpack数据select文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackDataSelectFiles() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -70,6 +79,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     checkDataFileGroupWithTooMuchData(rewriter);
   }
 
+  /** 测试排序数据select文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortDataSelectFiles() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -82,6 +92,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     checkDataFileGroupWithTooMuchData(rewriter);
   }
 
+  /** 测试z顺序数据select文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderDataSelectFiles() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -95,6 +106,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     checkDataFileGroupWithTooMuchData(rewriter);
   }
 
+  /** 检查数据文件size过滤。 */
   private void checkDataFileSizeFiltering(SizeBasedDataRewriter rewriter) {
     FileScanTask tooSmallTask = new MockFileScanTask(100L);
     FileScanTask optimal = new MockFileScanTask(450);
@@ -115,6 +127,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     Assert.assertEquals("Must rewrite 2 files", 2, group.size());
   }
 
+  /** 检查数据文件删除threshold。 */
   private void checkDataFilesDeleteThreshold(SizeBasedDataRewriter rewriter) {
     FileScanTask tooManyDeletesTask = MockFileScanTask.mockTaskWithDeletes(1000L, 3);
     FileScanTask optimalTask = MockFileScanTask.mockTaskWithDeletes(1000L, 1);
@@ -134,6 +147,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     Assert.assertEquals("Must rewrite 1 file", 1, group.size());
   }
 
+  /** 检查数据文件分组带enough文件。 */
   private void checkDataFileGroupWithEnoughFiles(SizeBasedDataRewriter rewriter) {
     List<FileScanTask> tasks =
         ImmutableList.of(
@@ -157,6 +171,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     Assert.assertEquals("Must rewrite 4 files", 4, group.size());
   }
 
+  /** 检查数据文件分组带enough数据。 */
   private void checkDataFileGroupWithEnoughData(SizeBasedDataRewriter rewriter) {
     List<FileScanTask> tasks =
         ImmutableList.of(
@@ -177,6 +192,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     Assert.assertEquals("Must rewrite 3 files", 3, group.size());
   }
 
+  /** 检查数据文件分组带toomuch数据。 */
   private void checkDataFileGroupWithTooMuchData(SizeBasedDataRewriter rewriter) {
     List<FileScanTask> tasks = ImmutableList.of(new MockFileScanTask(2000L));
 
@@ -195,6 +211,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
     Assert.assertEquals("Must rewrite big file", 1, group.size());
   }
 
+  /** 测试invalidconstructorusages排序数据场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidConstructorUsagesSortData() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -213,6 +230,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         .hasMessageContaining("the provided sort order is null or empty");
   }
 
+  /** 测试invalidconstructorusagesz顺序数据场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidConstructorUsagesZOrderData() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA, SPEC);
@@ -235,6 +253,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         .hasMessageContaining("all columns provided were identity partition columns");
   }
 
+  /** 测试binpack数据valid选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackDataValidOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -253,6 +272,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         rewriter.validOptions());
   }
 
+  /** 测试排序数据valid选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortDataValidOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -273,6 +293,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         rewriter.validOptions());
   }
 
+  /** 测试z顺序数据valid选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderDataValidOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -296,6 +317,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         rewriter.validOptions());
   }
 
+  /** 测试invalid值用于binpack数据选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidValuesForBinPackDataOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -309,6 +331,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         .hasMessageContaining("'delete-file-threshold' is set to -1 but must be >= 0");
   }
 
+  /** 测试invalid值用于排序数据选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidValuesForSortDataOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -327,6 +350,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         .hasMessageContaining("'compression-factor' is set to 0.0 but must be > 0");
   }
 
+  /** 测试invalid值用于z顺序数据选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidValuesForZOrderDataOptions() {
     Table table = catalog.createTable(TABLE_IDENT, SCHEMA);
@@ -358,6 +382,7 @@ public class TestSparkFileRewriter extends SparkTestBase {
         .hasMessageContaining("'var-length-contribution' was set to 0");
   }
 
+  /** 校验sizebasedrewriter选项。 */
   private void validateSizeBasedRewriterOptions(SizeBasedFileRewriter<?, ?> rewriter) {
     Map<String, String> invalidTargetSizeOptions =
         ImmutableMap.of(SizeBasedFileRewriter.TARGET_FILE_SIZE_BYTES, "0");

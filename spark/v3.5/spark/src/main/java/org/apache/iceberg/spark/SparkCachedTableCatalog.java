@@ -42,7 +42,15 @@ import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
-/** An internal table catalog that is capable of loading tables from a cache. */
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：支持表缓存的目录包装器，在 SparkCatalog 之上叠加内存表缓存能力。
+ *
+ * <p>设计意图：通过委托模式包装底层 catalog，缓存已加载表对象以减少重复元数据读取。
+ *
+ * <p>上下游关系：由 SparkCatalog 在启用缓存时使用；依赖 SparkTableCache。
+ */
 public class SparkCachedTableCatalog implements TableCatalog, SupportsFunctions {
 
   private static final String CLASS_NAME = SparkCachedTableCatalog.class.getName();
@@ -55,7 +63,7 @@ public class SparkCachedTableCatalog implements TableCatalog, SupportsFunctions 
   private static final SparkTableCache TABLE_CACHE = SparkTableCache.get();
 
   private String name = null;
-
+  /** 执行 listTables 相关操作。 */
   @Override
   public Identifier[] listTables(String[] namespace) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support listing tables");
@@ -85,24 +93,24 @@ public class SparkCachedTableCatalog implements TableCatalog, SupportsFunctions 
     long snapshotId = SnapshotUtil.snapshotIdAsOfTime(table.first(), timestampMillis);
     return new SparkTable(table.first(), snapshotId, false /* refresh eagerly */);
   }
-
+  /** 执行 invalidateTable 相关操作。 */
   @Override
   public void invalidateTable(Identifier ident) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support table invalidation");
   }
-
+  /** 执行 createTable 相关操作。 */
   @Override
   public SparkTable createTable(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
       throws TableAlreadyExistsException {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support creating tables");
   }
-
+  /** 执行 alterTable 相关操作。 */
   @Override
   public SparkTable alterTable(Identifier ident, TableChange... changes) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support altering tables");
   }
-
+  /** 执行 dropTable 相关操作。 */
   @Override
   public boolean dropTable(Identifier ident) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support dropping tables");
@@ -112,17 +120,17 @@ public class SparkCachedTableCatalog implements TableCatalog, SupportsFunctions 
   public boolean purgeTable(Identifier ident) throws UnsupportedOperationException {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support purging tables");
   }
-
+  /** 执行 renameTable 相关操作。 */
   @Override
   public void renameTable(Identifier oldIdent, Identifier newIdent) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support renaming tables");
   }
-
+  /** 执行 initialize 相关操作。 */
   @Override
   public void initialize(String catalogName, CaseInsensitiveStringMap options) {
     this.name = catalogName;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return name;
@@ -197,7 +205,7 @@ public class SparkCachedTableCatalog implements TableCatalog, SupportsFunctions 
       return Pair.of(table, null);
     }
   }
-
+  /** 执行 parseIdent 相关操作。 */
   private Pair<String, List<String>> parseIdent(Identifier ident) {
     int hashIndex = ident.name().lastIndexOf('#');
     if (hashIndex != -1 && !ident.name().endsWith("#")) {

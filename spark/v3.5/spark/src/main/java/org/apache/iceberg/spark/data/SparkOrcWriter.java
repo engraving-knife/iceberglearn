@@ -38,11 +38,23 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.SpecializedGetters;
 
-/** This class acts as an adaptor from an OrcFileAppender to a FileAppender&lt;InternalRow&gt;. */
+/**
+ * 将 OrcFileAppender 适配为 FileAppender&lt;InternalRow&gt; 的 ORC 行写入器。
+ *
+ * <p>所属模块：iceberg-spark（data 子包）。实现 {@link OrcRowWriter}，结合 Iceberg Schema 与 ORC TypeDescription 构建
+ * {@link InternalRowWriter}，把 Spark {@link InternalRow} 写入 ORC 列式批，并收集字段指标。
+ *
+ * <p>设计意图：通过 {@link OrcSchemaWithTypeVisitor} 同时遍历 Iceberg 与 ORC 类型，由 {@link WriteBuilder} 生成对应
+ * {@link OrcValueWriter}；{@link InternalRowWriter} 利用 {@link FieldGetter} 按 ORC 类型从 Spark 行高效取值。
+ *
+ * <p>上下游关系：由 Iceberg ORC 文件 appender 在 Spark 写路径使用；依赖 {@link SparkOrcValueWriters} 与 {@link
+ * GenericOrcWriters} 提供具体值写入实现。
+ */
 public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
 
   private final InternalRowWriter writer;
 
+  /** 以 Iceberg Schema 与 ORC TypeDescription 构造，顶层必须为 struct。 */
   public SparkOrcWriter(Schema iSchema, TypeDescription orcSchema) {
     Preconditions.checkArgument(
         orcSchema.getCategory() == TypeDescription.Category.STRUCT,
@@ -52,25 +64,29 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         (InternalRowWriter) OrcSchemaWithTypeVisitor.visit(iSchema, orcSchema, new WriteBuilder());
   }
 
+  /** 将一行写入 ORC 列式批。 */
   @Override
   public void write(InternalRow value, VectorizedRowBatch output) {
     Preconditions.checkArgument(value != null, "value must not be null");
     writer.writeRow(value, output);
   }
 
+  /** 返回各列的子写入器列表。 */
   @Override
   public List<OrcValueWriter<?>> writers() {
     return writer.writers();
   }
 
+  /** 返回写入过程中收集的字段指标流。 */
   @Override
   public Stream<FieldMetrics<?>> metrics() {
     return writer.metrics();
   }
 
+  /** Iceberg+ORC 类型访问构建器：为 record/list/map/primitive 生成对应 OrcValueWriter。 */
   private static class WriteBuilder extends OrcSchemaWithTypeVisitor<OrcValueWriter<?>> {
     private WriteBuilder() {}
-
+    /** 执行 record 相关操作。 */
     @Override
     public OrcValueWriter<?> record(
         Types.StructType iStruct,
@@ -79,19 +95,19 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         List<OrcValueWriter<?>> fields) {
       return new InternalRowWriter(fields, record.getChildren());
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public OrcValueWriter<?> list(
         Types.ListType iList, TypeDescription array, OrcValueWriter<?> element) {
       return SparkOrcValueWriters.list(element, array.getChildren());
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public OrcValueWriter<?> map(
         Types.MapType iMap, TypeDescription map, OrcValueWriter<?> key, OrcValueWriter<?> value) {
       return SparkOrcValueWriters.map(key, value, map.getChildren());
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public OrcValueWriter<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (primitive.getCategory()) {
@@ -130,6 +146,7 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
     }
   }
 
+  /** InternalRow 的 struct 写入器，按列类型用 FieldGetter 取值。 */
   private static class InternalRowWriter extends GenericOrcWriters.StructWriter<InternalRow> {
     private final List<FieldGetter<?>> fieldGetters;
 
@@ -141,13 +158,19 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         fieldGetters.add(createFieldGetter(orcType));
       }
     }
-
+    /** 返回值。 */
     @Override
     protected Object get(InternalRow struct, int index) {
       return fieldGetters.get(index).getFieldOrNull(struct, index);
     }
   }
 
+  /**
+   * 按 ORC 类型创建 Spark 行字段取值器。
+   *
+   * <p>逻辑：根据类型选择 SpecializedGetters 对应方法（BOOLEAN→getBoolean 等），UUID 二进制 特殊处理为 UTF8String，DECIMAL
+   * 携带精度标度；外层包装空值判断返回 null。
+   */
   static FieldGetter<?> createFieldGetter(TypeDescription fieldType) {
     final FieldGetter<?> fieldGetter;
     switch (fieldType.getCategory()) {
@@ -219,6 +242,7 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
     };
   }
 
+  /** 从 Spark 复杂数据持有者（InternalRow/ArrayData 等）按序号取值的函数式接口。 */
   interface FieldGetter<T> extends Serializable {
 
     /**

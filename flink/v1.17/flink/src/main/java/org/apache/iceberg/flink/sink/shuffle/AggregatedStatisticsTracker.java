@@ -26,9 +26,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AggregatedStatisticsTracker is used by {@link DataStatisticsCoordinator} to track the in progress
- * {@link AggregatedStatistics} received from {@link DataStatisticsOperator} subtasks for specific
- * checkpoint.
+ * 聚合统计追踪器，由 {@link DataStatisticsCoordinator} 使用，追踪某 checkpoint 下各子任务上报的统计并聚合。
+ *
+ * <p>所属模块：iceberg-flink（sink shuffle 侧）。
+ *
+ * <p>职责：收集 {@link DataStatisticsOperator} 各子任务上报的 {@link DataStatisticsEvent}，合并为 {@link
+ * AggregatedStatistics}，在满足完成条件时返回给协调器下发。
+ *
+ * <p>设计意图：当多数子任务（≥90% 阈值）已上报时即可视为该 checkpoint 聚合完成，容忍部分子任务滞后； 收到旧 checkpoint 事件时忽略，收到新 checkpoint
+ * 事件时切换并按阈值决定是否保留旧聚合结果。
+ *
+ * <p>上下游关系：被 {@link DataStatisticsCoordinator} 调用；上游为各子任务的统计事件。
  */
 class AggregatedStatisticsTracker<D extends DataStatistics<D, S>, S> {
   private static final Logger LOG = LoggerFactory.getLogger(AggregatedStatisticsTracker.class);
@@ -39,6 +47,13 @@ class AggregatedStatisticsTracker<D extends DataStatistics<D, S>, S> {
   private final Set<Integer> inProgressSubtaskSet;
   private volatile AggregatedStatistics<D, S> inProgressStatistics;
 
+  /**
+   * 构造追踪器。
+   *
+   * @param operatorName 算子名（用于日志）
+   * @param statisticsSerializer 统计序列化器
+   * @param parallelism 子任务并行度
+   */
   AggregatedStatisticsTracker(
       String operatorName,
       TypeSerializer<DataStatistics<D, S>> statisticsSerializer,
@@ -49,6 +64,22 @@ class AggregatedStatisticsTracker<D extends DataStatistics<D, S>, S> {
     this.inProgressSubtaskSet = Sets.newHashSet();
   }
 
+  /**
+   * 更新某子任务的统计并在满足完成条件时返回聚合结果。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>收到比当前更旧的 checkpoint 事件：忽略。
+   *   <li>收到更新 checkpoint 事件：对旧 checkpoint 的聚合按 90% 阈值决定是否作为完成结果，随后清空并开启新 checkpoint 聚合。
+   *   <li>将子任务统计合并进 inProgressStatistics；重复子任务忽略。
+   *   <li>全部子任务到齐时立即返回完成结果，并为下一 checkpoint 预建空聚合。
+   * </ul>
+   *
+   * @param subtask 子任务索引
+   * @param event 统计事件
+   * @return 完成的聚合统计，未完成返回 null
+   */
   AggregatedStatistics<D, S> updateAndCheckCompletion(
       int subtask, DataStatisticsEvent<D, S> event) {
     long checkpointId = event.checkpointId();
@@ -126,6 +157,7 @@ class AggregatedStatisticsTracker<D extends DataStatistics<D, S>, S> {
     return completedStatistics;
   }
 
+  /** 返回当前进行中的聚合统计（仅供测试）。 */
   @VisibleForTesting
   AggregatedStatistics<D, S> inProgressStatistics() {
     return inProgressStatistics;

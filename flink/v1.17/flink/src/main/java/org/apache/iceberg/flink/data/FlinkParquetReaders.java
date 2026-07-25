@@ -55,6 +55,25 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * 文件级说明：将 Parquet 列解码为 Flink {@link RowData} 字段的读取器工厂集合。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 data 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供各 Iceberg 原始类型与复合类型到 Flink 类型的 Parquet 读取器构建方法。
+ *   <li>处理 Iceberg schema 与 Parquet schema 的字段 ID 映射与列投影。
+ *   <li>把 Parquet 底层值转换为 Flink 的 {@code StringData}/{@code DecimalData}/ {@code TimestampData}
+ *       等内部表示。
+ * </ul>
+ *
+ * <p>设计意图：作为静态工厂集合，集中管理 Parquet 到 Flink 的类型映射， 供 {@code FlinkParquetReader} 在 schema 访问时按需调用。
+ *
+ * <p>上下游关系：上游为 {@code FlinkParquetReader}，下游为 Iceberg 的 {@code ParquetValueReaders} 与 Parquet 列读取
+ * API。
+ */
 public class FlinkParquetReaders {
   private FlinkParquetReaders() {}
 

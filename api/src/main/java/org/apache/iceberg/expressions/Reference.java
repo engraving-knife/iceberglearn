@@ -19,11 +19,26 @@
 package org.apache.iceberg.expressions;
 
 /**
- * Represents a variable reference in an {@link Expression expression}.
+ * 表达式中的变量引用接口：表示对一个字段的引用，是 {@link Term} 的子接口。
  *
+ * <p>所属模块：iceberg-api（term 体系的引用分支；与 {@link Literal} 配对构成谓词）。
+ *
+ * <p>职责：声明 {@link #name()} 返回引用所指向的字段名。
+ *
+ * <p>设计意图：把“按名字引用字段”这一共性从具体形态（未绑定 {@link NamedReference} / 已绑定 {@link
+ * BoundReference}）中抽出，便于访问者按引用统一处理。
+ *
+ * <p>上下游关系：由 {@link Expressions#ref} 等构造；被谓词 / 聚合作为 term 使用。
+ *
+ * @param <T> 引用字段的 Java 类型
  * @see BoundReference
  * @see NamedReference
  */
 public interface Reference<T> extends Term {
+  /**
+   * 返回引用的字段名。
+   *
+   * @return 字段名
+   */
   String name();
 }

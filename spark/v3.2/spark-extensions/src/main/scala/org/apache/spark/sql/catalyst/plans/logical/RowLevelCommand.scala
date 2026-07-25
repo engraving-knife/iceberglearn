@@ -21,6 +21,13 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Expression
 
+/**
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 RowLevelCommand。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 trait RowLevelCommand extends Command with SupportsSubquery {
   def condition: Option[Expression]
   def rewritePlan: Option[LogicalPlan]

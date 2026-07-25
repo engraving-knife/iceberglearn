@@ -52,6 +52,13 @@ import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
 import org.projectnessie.model.Reference;
 
+/**
+ * 文件级说明：测试 TestBranchVisibility 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestBranchVisibility 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestBranchVisibility extends BaseTestIceberg {
 
   private final TableIdentifier tableIdentifier1 = TableIdentifier.of("test-ns", "table1");
@@ -59,10 +66,12 @@ public class TestBranchVisibility extends BaseTestIceberg {
   private NessieCatalog testCatalog;
   private int schemaCounter = 1;
 
+  /** 辅助方法：TestBranchVisibility。 */
   public TestBranchVisibility() {
     super("main");
   }
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() throws NessieNotFoundException, NessieConflictException {
     createTable(tableIdentifier1, 1); // table 1
@@ -71,6 +80,7 @@ public class TestBranchVisibility extends BaseTestIceberg {
     testCatalog = initCatalog("test");
   }
 
+  /** 辅助方法：after。 */
   @AfterEach
   public void after() throws NessieNotFoundException, NessieConflictException {
     catalog.dropTable(tableIdentifier1);
@@ -83,6 +93,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     testCatalog = null;
   }
 
+  /**
+   * 测试场景：Branch No Change。
+   *
+   * <p>验证该方法在 Branch No Change 条件下的行为是否符合预期。
+   */
   @Test
   public void testBranchNoChange() {
     testCatalogEquality(catalog, testCatalog, true, true, () -> {});
@@ -98,6 +113,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
         catalog, testCatalog, false, false, () -> updateSchema(catalog, tableIdentifier2));
   }
 
+  /**
+   * 测试场景：Catalog On Reference。
+   *
+   * <p>验证该方法在 Catalog On Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testCatalogOnReference() {
     updateSchema(catalog, tableIdentifier1);
@@ -112,6 +132,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     testCatalogEquality(refHashCatalog, catalog, true, true, () -> {});
   }
 
+  /**
+   * 测试场景：Catalog With Table Names。
+   *
+   * <p>验证该方法在 Catalog With Table Names 条件下的行为是否符合预期。
+   */
   @Test
   public void testCatalogWithTableNames() {
     updateSchema(testCatalog, tableIdentifier2);
@@ -131,6 +156,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
         .isEqualTo(metadataLocation(testCatalog, tableIdentifier1));
   }
 
+  /**
+   * 测试场景：Concurrent Changes。
+   *
+   * <p>验证该方法在 Concurrent Changes 条件下的行为是否符合预期。
+   */
   @Test
   public void testConcurrentChanges() {
     NessieCatalog emptyTestCatalog = initCatalog("test");
@@ -140,6 +170,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     updateSchema(emptyTestCatalog, tableIdentifier1);
   }
 
+  /**
+   * 测试场景：Schema Snapshot。
+   *
+   * <p>验证该方法在 Schema Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaSnapshot() throws Exception {
 
@@ -185,6 +220,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     Assertions.assertThat(metadataOn2).isNotEqualTo(metadataOnTest).isNotEqualTo(metadataOnTest2);
   }
 
+  /**
+   * 测试场景：Metadata Location。
+   *
+   * <p>验证该方法在 Metadata Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testMetadataLocation() throws Exception {
     String branch1 = "test";
@@ -321,6 +361,7 @@ public class TestBranchVisibility extends BaseTestIceberg {
     verifyRefState(catalog, tableIdentifier1, snapshotIdOnTest, 0);
   }
 
+  /** 辅助方法：verifyRefState。 */
   private void verifyRefState(
       NessieCatalog catalog, TableIdentifier identifier, long snapshotId, int schemaId)
       throws Exception {
@@ -330,18 +371,21 @@ public class TestBranchVisibility extends BaseTestIceberg {
         .containsExactly(snapshotId, schemaId);
   }
 
+  /** 辅助方法：snapshotIdFromNessie。 */
   private long snapshotIdFromNessie(NessieCatalog catalog, TableIdentifier identifier)
       throws Exception {
     IcebergTable icebergTable = loadIcebergTable(catalog, identifier);
     return icebergTable.getSnapshotId();
   }
 
+  /** 辅助方法：snapshotIdFromMetadata。 */
   private long snapshotIdFromMetadata(NessieCatalog catalog, String metadataLocation) {
     Snapshot snapshot =
         TableMetadataParser.read(catalog.fileIO(), metadataLocation).currentSnapshot();
     return snapshot != null ? snapshot.snapshotId() : -1;
   }
 
+  /** 辅助方法：loadIcebergTable。 */
   private IcebergTable loadIcebergTable(NessieCatalog catalog, TableIdentifier identifier)
       throws NessieNotFoundException {
     ContentKey key = NessieUtil.toKey(identifier);
@@ -354,6 +398,7 @@ public class TestBranchVisibility extends BaseTestIceberg {
         .orElseThrow(NullPointerException::new);
   }
 
+  /** 辅助方法：addRow。 */
   private String addRow(
       NessieCatalog catalog, TableIdentifier identifier, String fileName, Map<String, Object> data)
       throws Exception {
@@ -375,6 +420,7 @@ public class TestBranchVisibility extends BaseTestIceberg {
     return metadataLocation(catalog, identifier);
   }
 
+  /** 辅助方法：verifySchema。 */
   private void verifySchema(NessieCatalog catalog, TableIdentifier identifier, Type... types) {
     Assertions.assertThat(catalog.loadTable(identifier))
         .extracting(t -> t.schema().columns().stream().map(NestedField::type))
@@ -382,10 +428,12 @@ public class TestBranchVisibility extends BaseTestIceberg {
         .containsExactly(types);
   }
 
+  /** 辅助方法：updateSchema。 */
   private void updateSchema(NessieCatalog catalog, TableIdentifier identifier) {
     updateSchema(catalog, identifier, Types.LongType.get());
   }
 
+  /** 辅助方法：updateSchema。 */
   private void updateSchema(NessieCatalog catalog, TableIdentifier identifier, Type type) {
     // Run via `Transaction` to exercise the whole code path ran via Spark (Spark SQL)
     Transaction tx = catalog.loadTable(identifier).newTransaction();
@@ -393,6 +441,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     tx.commitTransaction();
   }
 
+  /**
+   * 测试场景：Catalog Equality。
+   *
+   * <p>验证该方法在 Catalog Equality 条件下的行为是否符合预期。
+   */
   private void testCatalogEquality(
       NessieCatalog catalog,
       NessieCatalog compareCatalog,
@@ -444,6 +497,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     }
   }
 
+  /**
+   * 测试场景：With Ref And Hash。
+   *
+   * <p>验证该方法在 With Ref And Hash 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithRefAndHash() throws NessieConflictException, NessieNotFoundException {
     String testBranch = "testBranch";
@@ -491,6 +549,11 @@ public class TestBranchVisibility extends BaseTestIceberg {
     Assertions.assertThat(nessieCatalog.listTables(namespaceAB)).hasSize(2);
   }
 
+  /**
+   * 测试场景：Different Table Same Name。
+   *
+   * <p>验证该方法在 Different Table Same Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testDifferentTableSameName() throws NessieConflictException, NessieNotFoundException {
     String branch1 = "branch1";

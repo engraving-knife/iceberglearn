@@ -19,42 +19,41 @@
 package org.apache.iceberg;
 
 /**
- * API for appending new files in a table.
+ * 表数据追加 API：将新的数据文件累积追加到表中，并生成一个新 {@link Snapshot} 作为当前快照。
  *
- * <p>This API accumulates file additions, produces a new {@link Snapshot} of the table, and commits
- * that snapshot as the current.
+ * <p>所属模块：iceberg-api（顶层公共 API，定义表更新契约）。
  *
- * <p>When committing, these changes will be applied to the latest table snapshot. Commit conflicts
- * will be resolved by applying the changes to the new latest snapshot and reattempting the commit.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>累积待追加的 {@link DataFile} 或 {@link ManifestFile}。
+ *   <li>提交时基于最新表快照应用追加，生成新快照并切换为当前。
+ * </ul>
+ *
+ * <p>设计意图：提交时如果检测到表已前进到更新的快照，会自动把本次追加重新应用到新的最新快照上 再重试提交，从而实现乐观并发控制下的冲突解决。继承 {@link SnapshotUpdate}
+ * 以复用快照提交与 指标上报等通用能力。
+ *
+ * <p>上下游关系：由 {@link Table#newAppend()} 创建；下游被 core 模块的 {@code SnapshotAppendFiles} 等实现类落地为元数据变更。
  */
 public interface AppendFiles extends SnapshotUpdate<AppendFiles> {
   /**
-   * Append a {@link DataFile} to the table.
+   * 向表中追加一个数据文件。
    *
-   * @param file a data file
-   * @return this for method chaining
+   * @param file 待追加的数据文件
+   * @return this，便于链式调用
    */
   AppendFiles appendFile(DataFile file);
 
   /**
-   * Append a {@link ManifestFile} to the table.
+   * 向表中追加一个清单文件（manifest）。
    *
-   * <p>The manifest must contain only appended files. All files in the manifest will be appended to
-   * the table in the snapshot created by this update.
+   * <p>逻辑：清单中的所有条目都会作为新增数据文件追加到本次更新生成的快照中。默认情况下， 清单会被重写以统一为本更新分配的 snapshot ID；若允许清单条目继承提交时的
+   * snapshot ID， 则提交成功后该清单会并入表元数据，由快照过期机制统一回收，不应手动删除。
    *
-   * <p>By default, the manifest will be rewritten to assign all entries this update's snapshot ID.
-   * In that case, it is always the responsibility of the caller to manage the lifecycle of the
-   * original manifest.
+   * <p>设计意图：支持外部已经预生成的清单直接并入，避免重复读取与重写大量条目，提升大批量 数据追加场景的性能。
    *
-   * <p>If manifest entries are allowed to inherit the snapshot ID assigned on commit, the manifest
-   * should never be deleted manually if the commit succeeds as it will become part of the table
-   * metadata and will be cleaned up on expiry. If the manifest gets merged with others while
-   * preparing a new snapshot, it will be deleted automatically if this operation is successful. If
-   * the commit fails, the manifest will never be deleted and it is up to the caller whether to
-   * delete or reuse it.
-   *
-   * @param file a manifest file
-   * @return this for method chaining
+   * @param file 待追加的清单文件（必须只含新增文件条目）
+   * @return this，便于链式调用
    */
   AppendFiles appendManifest(ManifestFile file);
 }

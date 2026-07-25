@@ -44,7 +44,15 @@ import org.apache.spark.sql.catalog.Column;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructType;
 
-/** Helper methods for working with Spark/Hive metadata. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark Schema 工具类，提供 Iceberg Schema 与 Spark StructType 之间互转、列裁剪、属性生成等静态方法。
+ *
+ * <p>设计意图：作为 Schema 转换的门面，封装类型访问器与修正逻辑。
+ *
+ * <p>上下游关系：被几乎所有需要类型转换的组件调用。
+ */
 public class SparkSchemaUtil {
   private SparkSchemaUtil() {}
 
@@ -301,7 +309,7 @@ public class SparkSchemaUtil {
             .asStructType()
             .fields());
   }
-
+  /** 执行 identitySpec 相关操作。 */
   private static PartitionSpec identitySpec(Schema schema, Collection<Column> columns) {
     List<String> names = Lists.newArrayList();
     for (Column column : columns) {
@@ -312,7 +320,7 @@ public class SparkSchemaUtil {
 
     return identitySpec(schema, names);
   }
-
+  /** 执行 identitySpec 相关操作。 */
   private static PartitionSpec identitySpec(Schema schema, List<String> partitionNames) {
     if (partitionNames == null || partitionNames.isEmpty()) {
       return null;
@@ -346,7 +354,7 @@ public class SparkSchemaUtil {
     }
     return result;
   }
-
+  /** 执行 validateMetadataColumnReferences 相关操作。 */
   public static void validateMetadataColumnReferences(Schema tableSchema, Schema readSchema) {
     List<String> conflictingColumnNames =
         readSchema.columns().stream()
@@ -362,7 +370,7 @@ public class SparkSchemaUtil {
             + "Please, use ALTER TABLE statements to rename the conflicting table columns.",
         conflictingColumnNames);
   }
-
+  /** 执行 indexQuotedNameById 相关操作。 */
   public static Map<Integer, String> indexQuotedNameById(Schema schema) {
     Function<String, String> quotingFunc = name -> String.format("`%s`", name.replace("`", "``"));
     return TypeUtil.indexQuotedNameById(schema.asStruct(), quotingFunc);

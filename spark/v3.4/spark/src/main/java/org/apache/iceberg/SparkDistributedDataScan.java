@@ -45,29 +45,13 @@ import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.sql.SparkSession;
 
 /**
- * A batch data scan that can utilize Spark cluster resources for planning.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>This scan remotely filters manifests, fetching only the relevant data and delete files to the
- * driver. The delete file assignment is done locally after the remote filtering step. Such approach
- * is beneficial if the remote parallelism is much higher than the number of driver cores.
+ * <p>职责：基于 Spark 分布式扫描的数据扫描实现，在 Spark 集群上并行执行 Iceberg 扫描以加速大表统计。
  *
- * <p>This scan is best suited for queries with selective filters on lower/upper bounds across all
- * partitions, or against poorly clustered metadata. This allows job planning to benefit from highly
- * concurrent remote filtering while not incurring high serialization and data transfer costs. This
- * class is also useful for full table scans over large tables but the cost of bringing data and
- * delete file details to the driver may become noticeable. Make sure to follow the performance tips
- * below in such cases.
+ * <p>设计意图：将扫描任务分发到 Executor 并行执行，再在 Driver 汇总结果。
  *
- * <p>Ensure the filtered metadata size doesn't exceed the driver's max result size. For large table
- * scans, consider increasing `spark.driver.maxResultSize` to avoid job failures.
- *
- * <p>Performance tips:
- *
- * <ul>
- *   <li>Enable Kryo serialization (`spark.serializer`)
- *   <li>Increase the number of driver cores (`spark.driver.cores`)
- *   <li>Tune the number of threads used to fetch task results (`spark.resultGetter.threads`)
- * </ul>
+ * <p>上下游关系：由 SparkActions 等在需要分布式扫描时使用。
  */
 public class SparkDistributedDataScan extends BaseDistributedDataScan {
 
@@ -96,35 +80,35 @@ public class SparkDistributedDataScan extends BaseDistributedDataScan {
     this.sparkContext = JavaSparkContext.fromSparkContext(spark.sparkContext());
     this.readConf = readConf;
   }
-
+  /** 创建 RefinedScan 实例。 */
   @Override
   protected BatchScan newRefinedScan(
       Table newTable, Schema newSchema, TableScanContext newContext) {
     return new SparkDistributedDataScan(spark, newTable, readConf, newSchema, newContext);
   }
-
+  /** 执行 remoteParallelism 相关操作。 */
   @Override
   protected int remoteParallelism() {
     return readConf.parallelism();
   }
-
+  /** 执行 dataPlanningMode 相关操作。 */
   @Override
   protected PlanningMode dataPlanningMode() {
     return readConf.dataPlanningMode();
   }
-
+  /** 执行 shouldCopyRemotelyPlannedDataFiles 相关操作。 */
   @Override
   protected boolean shouldCopyRemotelyPlannedDataFiles() {
     return false;
   }
-
+  /** 执行 planDataRemotely 相关操作。 */
   @Override
   protected Iterable<CloseableIterable<DataFile>> planDataRemotely(
       List<ManifestFile> dataManifests, boolean withColumnStats) {
     JobGroupInfo info = new JobGroupInfo(DATA_PLANNING_JOB_GROUP_ID, jobDesc("data"));
     return withJobGroupInfo(info, () -> doPlanDataRemotely(dataManifests, withColumnStats));
   }
-
+  /** 执行 doPlanDataRemotely 相关操作。 */
   private Iterable<CloseableIterable<DataFile>> doPlanDataRemotely(
       List<ManifestFile> dataManifests, boolean withColumnStats) {
     scanMetrics().scannedDataManifests().increment(dataManifests.size());
@@ -141,18 +125,18 @@ public class SparkDistributedDataScan extends BaseDistributedDataScan {
 
     return Iterables.transform(dataFileGroups, CloseableIterable::withNoopClose);
   }
-
+  /** 执行 deletePlanningMode 相关操作。 */
   @Override
   protected PlanningMode deletePlanningMode() {
     return readConf.deletePlanningMode();
   }
-
+  /** 执行 planDeletesRemotely 相关操作。 */
   @Override
   protected DeleteFileIndex planDeletesRemotely(List<ManifestFile> deleteManifests) {
     JobGroupInfo info = new JobGroupInfo(DELETE_PLANNING_JOB_GROUP_ID, jobDesc("deletes"));
     return withJobGroupInfo(info, () -> doPlanDeletesRemotely(deleteManifests));
   }
-
+  /** 执行 doPlanDeletesRemotely 相关操作。 */
   private DeleteFileIndex doPlanDeletesRemotely(List<ManifestFile> deleteManifests) {
     scanMetrics().scannedDeleteManifests().increment(deleteManifests.size());
 
@@ -175,18 +159,18 @@ public class SparkDistributedDataScan extends BaseDistributedDataScan {
   private <T> T withJobGroupInfo(JobGroupInfo info, Supplier<T> supplier) {
     return JobGroupUtils.withJobGroupInfo(sparkContext, info, supplier);
   }
-
+  /** 执行 jobDesc 相关操作。 */
   private String jobDesc(String type) {
     List<String> options = Lists.newArrayList();
     options.add("snapshot_id=" + snapshot().snapshotId());
     String optionsAsString = COMMA.join(options);
     return String.format("Planning %s (%s) for %s", type, optionsAsString, table().name());
   }
-
+  /** 转换为 Beans。 */
   private List<ManifestFileBean> toBeans(List<ManifestFile> manifests) {
     return manifests.stream().map(ManifestFileBean::fromManifest).collect(Collectors.toList());
   }
-
+  /** 执行 tableBroadcast 相关操作。 */
   private Broadcast<Table> tableBroadcast() {
     if (tableBroadcast == null) {
       Table serializableTable = SerializableTableWithSize.copyOf(table());
@@ -200,15 +184,15 @@ public class SparkDistributedDataScan extends BaseDistributedDataScan {
     int[] partitionIds = IntStream.range(0, rdd.getNumPartitions()).toArray();
     return Arrays.asList(rdd.collectPartitions(partitionIds));
   }
-
+  /** 执行 liveFilesCount 相关操作。 */
   private int liveFilesCount(List<ManifestFile> manifests) {
     return manifests.stream().mapToInt(this::liveFilesCount).sum();
   }
-
+  /** 执行 liveFilesCount 相关操作。 */
   private int liveFilesCount(ManifestFile manifest) {
     return manifest.existingFilesCount() + manifest.addedFilesCount();
   }
-
+  /** 创建 TableScanContext 实例。 */
   private static TableScanContext newTableScanContext(Table table) {
     if (table instanceof BaseTable) {
       MetricsReporter reporter = ((BaseTable) table).reporter();

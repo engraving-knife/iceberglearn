@@ -56,10 +56,20 @@ import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.IntegerType
 import scala.collection.compat.immutable.ArraySeq
 
+/**
+ * 工具类。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：对象 DistributionAndOrderingUtils。
+ */
 object DistributionAndOrderingUtils {
 
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def prepareQuery(
       requiredDistribution: Distribution,
       requiredOrdering: Array[SortOrder],
@@ -98,6 +108,10 @@ object DistributionAndOrderingUtils {
     queryWithDistributionAndOrdering
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   private def toCatalyst(
       expr: Expression,
       query: LogicalPlan,
@@ -105,6 +119,10 @@ object DistributionAndOrderingUtils {
 
     // we cannot perform the resolution in the analyzer since we need to optimize expressions
     // in nodes like OverwriteByExpression before constructing a logical write
+    /**
+     * 解析引用或表达式。
+     * @return 结果对象
+     */
     def resolve(parts: Seq[String]): NamedExpression = {
       query.resolve(parts, resolver) match {
         case Some(attr) =>
@@ -141,6 +159,10 @@ object DistributionAndOrderingUtils {
     }
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   private def toCatalyst(direction: SortDirection): catalyst.expressions.SortDirection = {
     direction match {
       case SortDirection.ASCENDING => catalyst.expressions.Ascending
@@ -148,6 +170,10 @@ object DistributionAndOrderingUtils {
     }
   }
 
+  /**
+   * 转换为catalyst。
+   * @return 结果对象
+   */
   private def toCatalyst(nullOrdering: NullOrdering): catalyst.expressions.NullOrdering = {
     nullOrdering match {
       case NullOrdering.NULLS_FIRST => catalyst.expressions.NullsFirst
@@ -155,6 +181,12 @@ object DistributionAndOrderingUtils {
     }
   }
 
+  /**
+   * 工具类。
+   *
+   * <p>所属模块：iceberg-spark v3.3。
+   * 类型：对象 BucketTransform。
+   */
   private object BucketTransform {
     def unapply(transform: Transform): Option[(Int, FieldReference)] = transform match {
       case bt: BucketTransform => bt.columns match {
@@ -167,12 +199,24 @@ object DistributionAndOrderingUtils {
     }
   }
 
+  /**
+   * 工具类。
+   *
+   * <p>所属模块：iceberg-spark v3.3。
+   * 类型：对象 Lit。
+   */
   private object Lit {
     def unapply[T](literal: Literal[T]): Some[(T, DataType)] = {
       Some((literal.value, literal.dataType))
     }
   }
 
+  /**
+   * 工具类。
+   *
+   * <p>所属模块：iceberg-spark v3.3。
+   * 类型：对象 TruncateTransform。
+   */
   private object TruncateTransform {
     def unapply(transform: Transform): Option[(FieldReference, Int)] = transform match {
       case at @ ApplyTransform(name, _) if name.equalsIgnoreCase("truncate")  => at.args match {

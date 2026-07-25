@@ -29,6 +29,31 @@ import org.apache.iceberg.io.TaskWriter;
 import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 
+/**
+ * 文件级说明：Iceberg 流式写入算子，将输入数据写入 Iceberg 数据文件。
+ *
+ * <p>所属模块：iceberg-flink（sink 子包），继承 Flink 的 {@link AbstractStreamOperator}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>接收上游数据，委托 {@link TaskWriter} 写入数据文件和删除文件。
+ *   <li>在 checkpoint barrier 到达时（prepareSnapshotPreBarrier）flush 当前 writer 并产出 WriteResult。
+ *   <li>在有界流结束时（endInput）flush 剩余文件。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>ChainingStrategy.ALWAYS：允许与上游算子链式调用，减少序列化开销。
+ *   <li>每次 checkpoint 时 flush 并重建 writer，保证 exactly-once 语义。
+ *   <li>flush 后将 writer 置 null，防止 endInput 后的重复 flush。
+ * </ul>
+ *
+ * <p>上下游关系：上游为 {@code DataStream<RowData>}；下游为 {@link IcebergFilesCommitter}（接收 WriteResult）。
+ *
+ * @param <T> 输入数据类型
+ */
 class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
     implements OneInputStreamOperator<T, WriteResult>, BoundedOneInput {
 
@@ -42,12 +67,23 @@ class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
   private transient int attemptId;
   private transient IcebergStreamWriterMetrics writerMetrics;
 
+  /**
+   * 构造方法。
+   *
+   * @param fullTableName 完整表名（用于指标注册）
+   * @param taskWriterFactory 任务写入器工厂
+   */
   IcebergStreamWriter(String fullTableName, TaskWriterFactory<T> taskWriterFactory) {
     this.fullTableName = fullTableName;
     this.taskWriterFactory = taskWriterFactory;
     setChainingStrategy(ChainingStrategy.ALWAYS);
   }
 
+  /**
+   * 算子初始化。
+   *
+   * <p>逻辑：获取 subTaskId 和 attemptId → 初始化写入指标 → 初始化 TaskWriterFactory → 创建首个 writer。
+   */
   @Override
   public void open() {
     this.subTaskId = getRuntimeContext().getIndexOfThisSubtask();
@@ -61,17 +97,26 @@ class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
     this.writer = taskWriterFactory.create();
   }
 
+  /**
+   * checkpoint barrier 到达时触发 flush。
+   *
+   * <p>逻辑：flush 当前 writer 的 WriteResult 到下游 → 重建新的 writer 供下一周期使用。 保证 checkpoint 之间的数据一致性。
+   *
+   * @param checkpointId checkpoint id
+   */
   @Override
   public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
     flush();
     this.writer = taskWriterFactory.create();
   }
 
+  /** 处理一条输入记录，委托 writer 写入。 */
   @Override
   public void processElement(StreamRecord<T> element) throws Exception {
     writer.write(element.getValue());
   }
 
+  /** 关闭算子，释放 writer 资源。 */
   @Override
   public void close() throws Exception {
     super.close();
@@ -81,6 +126,11 @@ class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
     }
   }
 
+  /**
+   * 有界流输入结束时的处理。
+   *
+   * <p>逻辑：flush 剩余文件到下游。对于未启用 checkpoint 的有界流，确保不丢失数据。
+   */
   @Override
   public void endInput() throws IOException {
     // For bounded stream, it may don't enable the checkpoint mechanism so we'd better to emit the
@@ -101,7 +151,11 @@ class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
         .toString();
   }
 
-  /** close all open files and emit files to downstream committer operator */
+  /**
+   * 关闭所有打开的文件，将 WriteResult 发送到下游 committer 算子。
+   *
+   * <p>逻辑：complete writer 获取 WriteResult → 更新指标 → 发送到下游 → 记录 flush 耗时 → 将 writer 置 null 防止重复 flush。
+   */
   private void flush() throws IOException {
     if (writer == null) {
       return;

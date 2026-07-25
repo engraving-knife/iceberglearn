@@ -54,15 +54,19 @@ import org.apache.spark.sql.execution.datasources.v2.ExtendedDataSourceV2Implici
 import scala.collection.compat.immutable.ArraySeq
 
 /**
- * A rule that adds a runtime filter for row-level commands.
+ * Spark 物理执行相关组件。
  *
- * Note that only group-based rewrite plans (i.e. ReplaceData) are taken into account.
- * Row-based rewrite plans are subject to usual runtime filtering.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 RowLevelCommandDynamicPruning。
  */
 case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[LogicalPlan] with PredicateHelper {
 
   import ExtendedDataSourceV2Implicits._
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     // apply special dynamic filtering only for plans that don't support deltas
     case RewrittenRowLevelCommand(
@@ -94,11 +98,16 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
 
   }
 
+  /** 判断是否candidate。 */
   private def isCandidate(command: RowLevelCommand): Boolean = command.condition match {
     case Some(cond) if cond != Literal.TrueLiteral => true
     case _ => false
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildMatchingRowsPlan(
       relation: DataSourceV2Relation,
       command: RowLevelCommand): LogicalPlan = {
@@ -133,6 +142,10 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
     }
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildDynamicPruningCond(
       matchingRowsPlan: LogicalPlan,
       buildKeys: Seq[Attribute],
@@ -145,6 +158,10 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
     dynamicPruningSubqueries.reduce(And)
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildAttrMap(
       tableAttrs: Seq[Attribute],
       scanAttrs: Seq[Attribute]): AttributeMap[Attribute] = {
@@ -159,6 +176,10 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
   }
 
   // borrowed from OptimizeSubqueries in Spark
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def optimizeSubquery(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
     _.containsPattern(PLAN_EXPRESSION)) {
     case s: SubqueryExpression =>
@@ -170,6 +191,10 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
   }
 
   // borrowed from OptimizeSubqueries in Spark
+  /**
+   * 移除元素或项。
+   * @return 结果对象
+   */
   private def removeTopLevelSort(plan: LogicalPlan): LogicalPlan = {
     if (!plan.containsPattern(SORT)) {
       return plan

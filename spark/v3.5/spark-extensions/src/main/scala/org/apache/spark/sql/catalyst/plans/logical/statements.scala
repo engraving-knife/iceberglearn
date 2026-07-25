@@ -22,23 +22,36 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Expression
 
 /**
- * A CALL statement, as parsed from SQL.
+ * SQL 解析得到的 CALL 语句节点。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。表示尚未解析的存储过程调用语句，
+ * 包含过程的多段名与参数列表，是解析阶段（Parser）产物，供后续分析阶段绑定实际过程。
  */
 case class CallStatement(name: Seq[String], args: Seq[CallArgument]) extends LeafParsedStatement
 
 /**
- * An argument in a CALL statement.
+ * CALL 语句参数的基类（密封特质）。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。统一抽象命名参数与位置参数，
+ * 携带参数对应的 Spark 表达式 {@link Expression}。使用 sealed 限定子类型，便于穷举匹配。
  */
 sealed trait CallArgument {
+  /** 该参数对应的 Spark 表达式。 */
   def expr: Expression
 }
 
 /**
- * An argument in a CALL statement identified by name.
+ * CALL 语句中的命名参数（name => expr 形式）。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。用于 CALL proc(arg => value) 语法，
+ * 按名称将实参绑定到过程形参。
  */
 case class NamedArgument(name: String, expr: Expression) extends CallArgument
 
 /**
- * An argument in a CALL statement identified by position.
+ * CALL 语句中的位置参数。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。用于 CALL proc(value1, value2) 语法，
+ * 按位置顺序将实参绑定到过程形参。
  */
 case class PositionalArgument(expr: Expression) extends CallArgument

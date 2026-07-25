@@ -61,7 +61,15 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkParquetReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 SparkParquet读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkParquetReader extends AvroDataTest {
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     Assume.assumeTrue(
@@ -95,6 +103,7 @@ public class TestSparkParquetReader extends AvroDataTest {
     }
   }
 
+  /** 行从文件。 */
   protected List<InternalRow> rowsFromFile(InputFile inputFile, Schema schema) throws IOException {
     try (CloseableIterable<InternalRow> reader =
         Parquet.read(inputFile)
@@ -105,6 +114,7 @@ public class TestSparkParquetReader extends AvroDataTest {
     }
   }
 
+  /** 表从input文件。 */
   protected Table tableFromInputFile(InputFile inputFile, Schema schema) throws IOException {
     HadoopTables tables = new HadoopTables();
     Table table =
@@ -128,6 +138,7 @@ public class TestSparkParquetReader extends AvroDataTest {
     return table;
   }
 
+  /** 测试int96时间戳produced通过Spark是否读correctly场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInt96TimestampProducedBySparkIsReadCorrectly() throws IOException {
     String outputFilePath =

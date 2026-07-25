@@ -48,6 +48,15 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 文件追加器工厂，创建向 Iceberg 数据/删除文件追加内容的 FileAppender。
+ *
+ * <p>设计意图：工厂模式，按文件格式与 Schema 构建对应写入器。
+ *
+ * <p>上下游关系：由 SparkWrite / SparkPositionDeltaWrite 使用。
+ */
 class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
   private final Map<String, String> properties;
   private final Schema writeSchema;
@@ -76,7 +85,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
     this.eqDeleteRowSchema = eqDeleteRowSchema;
     this.posDeleteRowSchema = posDeleteRowSchema;
   }
-
+  /** 执行 builderFor 相关操作。 */
   static Builder builderFor(Table table, Schema writeSchema, StructType dsSchema) {
     return new Builder(table, writeSchema, dsSchema);
   }
@@ -142,7 +151,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
           posDeleteRowSchema);
     }
   }
-
+  /** 执行 lazyEqDeleteSparkType 相关操作。 */
   private StructType lazyEqDeleteSparkType() {
     if (eqDeleteSparkType == null) {
       Preconditions.checkNotNull(eqDeleteRowSchema, "Equality delete row schema shouldn't be null");
@@ -150,7 +159,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
     }
     return eqDeleteSparkType;
   }
-
+  /** 执行 lazyPosDeleteSparkType 相关操作。 */
   private StructType lazyPosDeleteSparkType() {
     if (posDeleteSparkType == null) {
       Preconditions.checkNotNull(
@@ -159,7 +168,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
     }
     return posDeleteSparkType;
   }
-
+  /** 创建 Appender 实例。 */
   @Override
   public FileAppender<InternalRow> newAppender(OutputFile file, FileFormat fileFormat) {
     MetricsConfig metricsConfig = MetricsConfig.fromProperties(properties);
@@ -198,7 +207,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
       throw new RuntimeIOException(e);
     }
   }
-
+  /** 创建 DataWriter 实例。 */
   @Override
   public DataWriter<InternalRow> newDataWriter(
       EncryptedOutputFile file, FileFormat format, StructLike partition) {
@@ -210,7 +219,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
         partition,
         file.keyMetadata());
   }
-
+  /** 创建 EqDeleteWriter 实例。 */
   @Override
   public EqualityDeleteWriter<InternalRow> newEqDeleteWriter(
       EncryptedOutputFile file, FileFormat format, StructLike partition) {
@@ -265,7 +274,7 @@ class SparkAppenderFactory implements FileAppenderFactory<InternalRow> {
       throw new UncheckedIOException("Failed to create new equality delete writer", e);
     }
   }
-
+  /** 创建 PosDeleteWriter 实例。 */
   @Override
   public PositionDeleteWriter<InternalRow> newPosDeleteWriter(
       EncryptedOutputFile file, FileFormat format, StructLike partition) {

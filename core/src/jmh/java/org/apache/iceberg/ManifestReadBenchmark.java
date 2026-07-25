@@ -48,6 +48,14 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Timeout;
 
+/**
+ * 测试类：ManifestReadBenchmark，用于验证 Manifest Read Benchmark 相关功能。
+ *
+ * <p>所属模块：iceberg-core（基准测试目录 src/jmh）。 职责：针对 Manifest Read Benchmark 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JMH 基准测试框架，通过构造典型数据集与读取场景， 测量清单读取/指标计数等操作的性能基线。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Measurement(iterations = 5)
@@ -62,6 +70,7 @@ public class ManifestReadBenchmark {
   private String baseDir;
   private String manifestListFile;
 
+  /** 辅助方法：before。 */
   @Setup
   public void before() {
     baseDir =
@@ -105,6 +114,7 @@ public class ManifestReadBenchmark {
     }
   }
 
+  /** 辅助方法：after。 */
   @TearDown
   public void after() throws IOException {
     if (baseDir != null) {
@@ -117,6 +127,7 @@ public class ManifestReadBenchmark {
     manifestListFile = null;
   }
 
+  /** 辅助方法：read manifest file。 */
   @Benchmark
   @Threads(1)
   public void readManifestFile() throws IOException {
@@ -136,6 +147,7 @@ public class ManifestReadBenchmark {
     }
   }
 
+  /** 辅助方法：random metrics。 */
   private Metrics randomMetrics(Random random) {
     long rowCount = 100000L + random.nextInt(1000);
     Map<Integer, Long> columnSizes = Maps.newHashMap();

@@ -29,15 +29,43 @@ import software.amazon.awssdk.services.s3.model.S3Request;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
+/**
+ * 文件级说明：S3 请求构建工具类，集中处理 SSE 加密与 ACL 权限注入。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>为不同 S3 请求类型（PutObject、CreateMultipartUpload、UploadPart、GetObject、HeadObject）
+ *       统一注入服务端加密（SSE-KMS / SSE-S3 / SSE-C）相关字段。
+ *   <li>为写请求统一注入对象 ACL（Canned ACL）权限。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>不同 S3 请求 builder 暴露的 SSE setter 不同：PutObject/CreateMultipartUpload 同时支持 SSE-S3/KMS/Custom，而
+ *       UploadPart/GetObject/HeadObject 仅支持 SSE-C。本类通过 {@code Function} 回调抽象 setter，对不支持的字段传入 NULL
+ *       setter 实现统一分支。
+ *   <li>工具类模式，私有构造器 + 静态方法，无状态。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link S3OutputStream}、{@link S3InputStream} 在构建具体 S3 请求时调用； 读取 {@link
+ * S3FileIOProperties} 中的 SSE 类型、KMS key、ACL 等配置。
+ */
 @SuppressWarnings("UnnecessaryLambda")
 public class S3RequestUtil {
 
+  /** 始终返回 null 的 SSE setter 占位，用于不支持 SSE-S3/KMS 的请求类型。 */
   private static final Function<ServerSideEncryption, S3Request.Builder> NULL_SSE_SETTER =
       sse -> null;
+  /** 始终返回 null 的字符串 setter 占位，用于不支持 KMS key 的请求类型。 */
   private static final Function<String, S3Request.Builder> NULL_STRING_SETTER = s -> null;
 
   private S3RequestUtil() {}
 
+  /** 为 PutObject 请求 builder 注入 SSE 加密配置。 */
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties, PutObjectRequest.Builder requestBuilder) {
     configureEncryption(
@@ -49,6 +77,7 @@ public class S3RequestUtil {
         requestBuilder::sseCustomerKeyMD5);
   }
 
+  /** 为 CreateMultipartUpload 请求 builder 注入 SSE 加密配置。 */
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties, CreateMultipartUploadRequest.Builder requestBuilder) {
     configureEncryption(
@@ -60,6 +89,7 @@ public class S3RequestUtil {
         requestBuilder::sseCustomerKeyMD5);
   }
 
+  /** 为 UploadPart 请求 builder 注入 SSE-C 加密配置（仅支持 SSE-C）。 */
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties, UploadPartRequest.Builder requestBuilder) {
     configureEncryption(
@@ -71,6 +101,7 @@ public class S3RequestUtil {
         requestBuilder::sseCustomerKeyMD5);
   }
 
+  /** 为 GetObject 请求 builder 注入 SSE-C 加密配置（仅支持 SSE-C 解密）。 */
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties, GetObjectRequest.Builder requestBuilder) {
     configureEncryption(
@@ -82,6 +113,7 @@ public class S3RequestUtil {
         requestBuilder::sseCustomerKeyMD5);
   }
 
+  /** 为 HeadObject 请求 builder 注入 SSE-C 加密配置（仅支持 SSE-C）。 */
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties, HeadObjectRequest.Builder requestBuilder) {
     configureEncryption(
@@ -93,6 +125,17 @@ public class S3RequestUtil {
         requestBuilder::sseCustomerKeyMD5);
   }
 
+  /**
+   * 通用 SSE 注入实现，按 SSE 类型分发：NONE 不处理；KMS 设置 AWS_KMS 与 KMS key； S3 设置 AES256；CUSTOM 设置 SSE-C 算法、客户密钥与
+   * MD5。
+   *
+   * @param s3FileIOProperties S3 FileIO 配置
+   * @param encryptionSetter SSE 类型 setter，不支持时传 NULL_SSE_SETTER
+   * @param kmsKeySetter KMS key setter，不支持时传 NULL_STRING_SETTER
+   * @param customAlgorithmSetter SSE-C 算法 setter
+   * @param customKeySetter SSE-C 客户密钥 setter
+   * @param customMd5Setter SSE-C MD5 setter
+   */
   @SuppressWarnings("ReturnValueIgnored")
   static void configureEncryption(
       S3FileIOProperties s3FileIOProperties,
@@ -128,16 +171,24 @@ public class S3RequestUtil {
     }
   }
 
+  /** 为 PutObject 请求 builder 注入对象 ACL 权限。 */
   static void configurePermission(
       S3FileIOProperties s3FileIOProperties, PutObjectRequest.Builder requestBuilder) {
     configurePermission(s3FileIOProperties, requestBuilder::acl);
   }
 
+  /** 为 CreateMultipartUpload 请求 builder 注入对象 ACL 权限。 */
   static void configurePermission(
       S3FileIOProperties s3FileIOProperties, CreateMultipartUploadRequest.Builder requestBuilder) {
     configurePermission(s3FileIOProperties, requestBuilder::acl);
   }
 
+  /**
+   * 通用 ACL 注入实现，调用 setter 设置配置的 Canned ACL。
+   *
+   * @param s3FileIOProperties S3 FileIO 配置
+   * @param aclSetter ACL setter 回调
+   */
   @SuppressWarnings("ReturnValueIgnored")
   static void configurePermission(
       S3FileIOProperties s3FileIOProperties,

@@ -44,10 +44,19 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.sql.vectorized.ColumnarMap;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg ORC 文件的向量化 Spark 读取器构建器，生成列式批读取器。
+ *
+ * <p>设计意图：基于 ArrowVectorAccessorFactory 构建列向量，支持向量化批量读取。
+ *
+ * <p>上下游关系：由 BatchDataReader 在向量化 ORC 读取时使用。
+ */
 public class VectorizedSparkOrcReaders {
 
   private VectorizedSparkOrcReaders() {}
-
+  /** 执行 buildReader 相关操作。 */
   public static OrcBatchReader<ColumnarBatch> buildReader(
       Schema expectedSchema, TypeDescription fileSchema, Map<Integer, ?> idToConstant) {
     Converter converter =
@@ -55,7 +64,7 @@ public class VectorizedSparkOrcReaders {
 
     return new OrcBatchReader<ColumnarBatch>() {
       private long batchOffsetInFile;
-
+      /** 读取数据。 */
       @Override
       public ColumnarBatch read(VectorizedRowBatch batch) {
         BaseOrcColumnVector cv =
@@ -74,7 +83,7 @@ public class VectorizedSparkOrcReaders {
         columnarBatch.setNumRows(batch.size);
         return columnarBatch;
       }
-
+      /** 设置 BatchContext 属性。 */
       @Override
       public void setBatchContext(long batchOffsetInFile) {
         this.batchOffsetInFile = batchOffsetInFile;
@@ -97,7 +106,7 @@ public class VectorizedSparkOrcReaders {
     private ReadBuilder(Map<Integer, ?> idToConstant) {
       this.idToConstant = idToConstant;
     }
-
+    /** 执行 record 相关操作。 */
     @Override
     public Converter record(
         Types.StructType iStruct,
@@ -106,17 +115,17 @@ public class VectorizedSparkOrcReaders {
         List<Converter> fields) {
       return new StructConverter(iStruct, fields, idToConstant);
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public Converter list(Types.ListType iList, TypeDescription array, Converter element) {
       return new ArrayConverter(iList, element);
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public Converter map(Types.MapType iMap, TypeDescription map, Converter key, Converter value) {
       return new MapConverter(iMap, key, value);
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public Converter primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       final OrcValueReader<?> primitiveValueReader;
@@ -194,15 +203,15 @@ public class VectorizedSparkOrcReaders {
       this.isSelectedInUse = isSelectedInUse;
       this.selected = selected;
     }
-
+    /** 关闭资源。 */
     @Override
     public void close() {}
-
+    /** 判断是否存在 Null。 */
     @Override
     public boolean hasNull() {
       return !vector.noNulls;
     }
-
+    /** 执行 numNulls 相关操作。 */
     @Override
     public int numNulls() {
       if (numNulls == null) {
@@ -210,7 +219,7 @@ public class VectorizedSparkOrcReaders {
       }
       return numNulls;
     }
-
+    /** 执行 numNullsHelper 相关操作。 */
     private int numNullsHelper() {
       if (vector.isRepeating) {
         if (vector.isNull[0]) {
@@ -230,77 +239,77 @@ public class VectorizedSparkOrcReaders {
         return count;
       }
     }
-
+    /** 返回 RowIndex 属性。 */
     protected int getRowIndex(int rowId) {
       int row = isSelectedInUse ? selected[rowId] : rowId;
       return vector.isRepeating ? 0 : row;
     }
-
+    /** 判断是否 NullAt。 */
     @Override
     public boolean isNullAt(int rowId) {
       return vector.isNull[getRowIndex(rowId)];
     }
-
+    /** 返回 Boolean 属性。 */
     @Override
     public boolean getBoolean(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Byte 属性。 */
     @Override
     public byte getByte(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Short 属性。 */
     @Override
     public short getShort(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Int 属性。 */
     @Override
     public int getInt(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Long 属性。 */
     @Override
     public long getLong(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Float 属性。 */
     @Override
     public float getFloat(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Double 属性。 */
     @Override
     public double getDouble(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Decimal 属性。 */
     @Override
     public Decimal getDecimal(int rowId, int precision, int scale) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 UTF8String 属性。 */
     @Override
     public UTF8String getUTF8String(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Binary 属性。 */
     @Override
     public byte[] getBinary(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Array 属性。 */
     @Override
     public ColumnarArray getArray(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Map 属性。 */
     @Override
     public ColumnarMap getMap(int rowId) {
       throw new UnsupportedOperationException();
     }
-
+    /** 返回 Child 属性。 */
     @Override
     public ColumnVector getChild(int ordinal) {
       throw new UnsupportedOperationException();
@@ -325,32 +334,32 @@ public class VectorizedSparkOrcReaders {
       this.primitiveValueReader = primitiveValueReader;
       this.batchOffsetInFile = batchOffsetInFile;
     }
-
+    /** 返回 Boolean 属性。 */
     @Override
     public boolean getBoolean(int rowId) {
       return (Boolean) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Int 属性。 */
     @Override
     public int getInt(int rowId) {
       return (Integer) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Long 属性。 */
     @Override
     public long getLong(int rowId) {
       return (Long) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Float 属性。 */
     @Override
     public float getFloat(int rowId) {
       return (Float) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Double 属性。 */
     @Override
     public double getDouble(int rowId) {
       return (Double) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Decimal 属性。 */
     @Override
     public Decimal getDecimal(int rowId, int precision, int scale) {
       // TODO: Is it okay to assume that (precision,scale) parameters == (precision,scale) of the
@@ -358,12 +367,12 @@ public class VectorizedSparkOrcReaders {
       // and return a Decimal with (precision,scale) of the decimal type?
       return (Decimal) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 UTF8String 属性。 */
     @Override
     public UTF8String getUTF8String(int rowId) {
       return (UTF8String) primitiveValueReader.read(vector, getRowIndex(rowId));
     }
-
+    /** 返回 Binary 属性。 */
     @Override
     public byte[] getBinary(int rowId) {
       return (byte[]) primitiveValueReader.read(vector, getRowIndex(rowId));
@@ -378,7 +387,7 @@ public class VectorizedSparkOrcReaders {
       this.listType = listType;
       this.elementConverter = elementConverter;
     }
-
+    /** 执行类型/值转换。 */
     @Override
     public ColumnVector convert(
         org.apache.orc.storage.ql.exec.vector.ColumnVector vector,
@@ -391,6 +400,7 @@ public class VectorizedSparkOrcReaders {
           elementConverter.convert(listVector.child, batchSize, batchOffsetInFile, false, null);
 
       return new BaseOrcColumnVector(listType, batchSize, vector, isSelectedInUse, selected) {
+        /** 返回 Array 属性。 */
         @Override
         public ColumnarArray getArray(int rowId) {
           int index = getRowIndex(rowId);
@@ -411,7 +421,7 @@ public class VectorizedSparkOrcReaders {
       this.keyConverter = keyConverter;
       this.valueConverter = valueConverter;
     }
-
+    /** 执行类型/值转换。 */
     @Override
     public ColumnVector convert(
         org.apache.orc.storage.ql.exec.vector.ColumnVector vector,
@@ -426,6 +436,7 @@ public class VectorizedSparkOrcReaders {
           valueConverter.convert(mapVector.values, batchSize, batchOffsetInFile, false, null);
 
       return new BaseOrcColumnVector(mapType, batchSize, vector, isSelectedInUse, selected) {
+        /** 返回 Map 属性。 */
         @Override
         public ColumnarMap getMap(int rowId) {
           int index = getRowIndex(rowId);
@@ -452,7 +463,7 @@ public class VectorizedSparkOrcReaders {
       this.fieldConverters = fieldConverters;
       this.idToConstant = idToConstant;
     }
-
+    /** 执行类型/值转换。 */
     @Override
     public ColumnVector convert(
         org.apache.orc.storage.ql.exec.vector.ColumnVector vector,
@@ -487,6 +498,7 @@ public class VectorizedSparkOrcReaders {
       }
 
       return new BaseOrcColumnVector(structType, batchSize, vector, isSelectedInUse, selected) {
+        /** 返回 Child 属性。 */
         @Override
         public ColumnVector getChild(int ordinal) {
           return fieldVectors.get(ordinal);

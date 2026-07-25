@@ -22,10 +22,20 @@ import java.util.Arrays;
 import org.apache.arrow.vector.DecimalVector;
 import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
 
+/** 文件级说明：Decimal 向量写入工具，处理 Parquet 大端字节与 Arrow 原生字节序的转换与填充。所属模块：iceberg-arrow 的 parquet 子包。 */
 public class DecimalVectorUtil {
 
   private DecimalVectorUtil() {}
 
+  /**
+   * 以大端字节序将 Decimal 值写入向量指定位置，写入前先填充到 16 字节。
+   *
+   * <p>设计意图：预先填充可避免 Arrow 内部 setBigEndian 调用 Unsafe.setMemory 的开销。
+   *
+   * @param vector 目标 Decimal 向量
+   * @param idx 行下标
+   * @param value 大端字节
+   */
   public static void setBigEndian(DecimalVector vector, int idx, byte[] value) {
     byte[] paddedBytes = DecimalVectorUtil.padBigEndianBytes(value, DecimalVector.TYPE_WIDTH);
     vector.setBigEndian(idx, paddedBytes);
@@ -43,6 +53,17 @@ public class DecimalVectorUtil {
    * @return The new byte array
    */
   @VisibleForTesting
+  /**
+   * 将大端字节数组填充/截断到指定长度，保持符号扩展。
+   *
+   * <p>逻辑：长度相等直接返回；短于目标则在高位补 0x00（正数）或 0xFF（负数，依据首字节 符号位）做符号扩展；长于目标抛出异常。避免 Arrow 内部
+   * Unsafe.setMemory 的填充开销。
+   *
+   * @param bigEndianBytes 原始大端字节
+   * @param newLength 目标长度
+   * @return 填充后的字节数组
+   * @throws IllegalArgumentException 若原数组长度大于目标长度
+   */
   static byte[] padBigEndianBytes(byte[] bigEndianBytes, int newLength) {
     if (bigEndianBytes.length == newLength) {
       return bigEndianBytes;

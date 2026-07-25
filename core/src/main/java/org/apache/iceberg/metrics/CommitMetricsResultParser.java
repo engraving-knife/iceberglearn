@@ -24,17 +24,57 @@ import java.io.IOException;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * {@link CommitMetricsResult} 的 JSON 序列化/反序列化器（包级可见）。
+ *
+ * <p>所属模块：iceberg-core，度量包内负责把提交度量结果在对象与 JSON 之间转换， 供 REST 上报、日志输出及跨进程传输使用。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link CommitMetricsResult} 的各非空字段写入 JSON 对象，字段名为对应度量常量。
+ *   <li>从 JSON 对象按字段名还原 {@link CommitMetricsResult}，委托 {@link CounterResultParser} 与 {@link
+ *       TimerResultParser} 处理子结构。
+ * </ul>
+ *
+ * <p>设计意图：仅序列化非 null 字段以精简输出；反序列化时字段缺失视为该指标未采集， 与可空语义保持一致。无状态，故构造为私有且仅提供静态方法。
+ *
+ * <p>上下游关系：被 {@link CommitReportParser} 调用以序列化提交报告中的 metrics 字段； 也被 REST 模块（如 {@code
+ * ReportMetricsRequestParser}）间接使用。
+ */
 class CommitMetricsResultParser {
   private CommitMetricsResultParser() {}
 
+  /**
+   * 将提交度量结果序列化为紧凑 JSON 字符串。
+   *
+   * @param metrics 提交度量结果
+   * @return JSON 字符串
+   */
   static String toJson(CommitMetricsResult metrics) {
     return toJson(metrics, false);
   }
 
+  /**
+   * 将提交度量结果序列化为 JSON 字符串，可选择是否美化输出。
+   *
+   * @param metrics 提交度量结果
+   * @param pretty 是否美化（缩进）输出
+   * @return JSON 字符串
+   */
   static String toJson(CommitMetricsResult metrics, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(metrics, gen), pretty);
   }
 
+  /**
+   * 将提交度量结果写入 {@link JsonGenerator}。
+   *
+   * <p>逻辑：依次检查每个度量字段，非 null 时写入对应字段名并委托对应子解析器输出其值， null 字段被跳过以保持 JSON 精简。整体包裹在起始/结束对象之间。
+   *
+   * @param metrics 提交度量结果，不能为 null
+   * @param gen JSON 生成器
+   * @throws IOException 写入失败时抛出
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   static void toJson(CommitMetricsResult metrics, JsonGenerator gen) throws IOException {
     Preconditions.checkArgument(null != metrics, "Invalid commit metrics: null");
@@ -164,10 +204,25 @@ class CommitMetricsResultParser {
     gen.writeEndObject();
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link CommitMetricsResult}。
+   *
+   * @param json JSON 字符串
+   * @return 提交度量结果
+   */
   static CommitMetricsResult fromJson(String json) {
     return JsonUtil.parse(json, CommitMetricsResultParser::fromJson);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link CommitMetricsResult}。
+   *
+   * <p>逻辑：校验节点为对象后，按各度量字段名委托 {@link CounterResultParser}/{@link TimerResultParser} 逐字段解析，
+   * 缺失字段由子解析器返回 null，最终由 ImmutableBuilder 构建。
+   *
+   * @param json JSON 节点，不能为 null 且必须为对象
+   * @return 提交度量结果
+   */
   static CommitMetricsResult fromJson(JsonNode json) {
     Preconditions.checkArgument(null != json, "Cannot parse commit metrics from null object");
     Preconditions.checkArgument(

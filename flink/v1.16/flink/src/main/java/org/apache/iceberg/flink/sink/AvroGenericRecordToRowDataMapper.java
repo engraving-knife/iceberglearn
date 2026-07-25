@@ -28,15 +28,13 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.utils.TypeConversions;
-import org.apache.iceberg.avro.AvroSchemaUtil;
 
 /**
- * This util class converts Avro GenericRecord to Flink RowData. <br>
- * <br>
- * Internally it uses Flink {@link AvroToRowDataConverters}. Because of the precision difference
- * between how Iceberg schema (micro) and Flink {@link AvroToRowDataConverters} (milli) deal with
- * time type, we can't directly use the Avro Schema converted from Iceberg schema via {@link
- * AvroSchemaUtil#convert(org.apache.iceberg.Schema, String)}.
+ * Avro GenericRecord 转 Flink RowData 的 MapFunction 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把 Avro GenericRecord 转换为 Flink RowData。
+ *
+ * <p>设计意图：适配器模式；被需要 Avro 输入的 sink 算子调用。
  */
 public class AvroGenericRecordToRowDataMapper implements MapFunction<GenericRecord, RowData> {
 

@@ -33,7 +33,15 @@ import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSpark3Util 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Spark3工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSpark3Util extends SparkTestBase {
+  /** 测试describe排序顺序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDescribeSortOrder() {
     Schema schema =
@@ -83,6 +91,7 @@ public class TestSpark3Util extends SparkTestBase {
         Spark3Util.describe(multiOrder));
   }
 
+  /** 测试describe模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDescribeSchema() {
     Schema schema =
@@ -100,6 +109,7 @@ public class TestSpark3Util extends SparkTestBase {
         Spark3Util.describe(schema));
   }
 
+  /** 测试加载Iceberg表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testLoadIcebergTable() throws Exception {
     spark.conf().set("spark.sql.catalog.hive", SparkCatalog.class.getName());
@@ -113,6 +123,7 @@ public class TestSpark3Util extends SparkTestBase {
     Assert.assertTrue(table.name().equals(tableFullName));
   }
 
+  /** 测试加载Iceberg目录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testLoadIcebergCatalog() throws Exception {
     spark.conf().set("spark.sql.catalog.test_cat", SparkCatalog.class.getName());
@@ -122,6 +133,7 @@ public class TestSpark3Util extends SparkTestBase {
         "Should retrieve underlying catalog class", catalog instanceof CachingCatalog);
   }
 
+  /** 构建排序顺序。 */
   private SortOrder buildSortOrder(String transform, Schema schema, int sourceId) {
     String jsonString =
         "{\n"

@@ -84,33 +84,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * A Spark TableCatalog implementation that wraps an Iceberg {@link Catalog}.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>This supports the following catalog configuration options:
+ * <p>职责：Iceberg 的 Spark TableCatalog 实现，将 Iceberg Catalog 包装为 Spark V2 目录，支持建表、改名、删除、分支标签管理等。
  *
- * <ul>
- *   <li><code>type</code> - catalog type, "hive" or "hadoop" or "rest". To specify a non-hive or
- *       hadoop catalog, use the <code>catalog-impl</code> option.
- *   <li><code>uri</code> - the Hive Metastore URI for Hive catalog or REST URI for REST catalog
- *   <li><code>warehouse</code> - the warehouse path (Hadoop catalog only)
- *   <li><code>catalog-impl</code> - a custom {@link Catalog} implementation to use
- *   <li><code>io-impl</code> - a custom {@link org.apache.iceberg.io.FileIO} implementation to use
- *   <li><code>metrics-reporter-impl</code> - a custom {@link
- *       org.apache.iceberg.metrics.MetricsReporter} implementation to use
- *   <li><code>default-namespace</code> - a namespace to use as the default
- *   <li><code>cache-enabled</code> - whether to enable catalog cache
- *   <li><code>cache.case-sensitive</code> - whether the catalog cache should compare table
- *       identifiers in a case sensitive way
- *   <li><code>cache.expiration-interval-ms</code> - interval in millis before expiring tables from
- *       catalog cache. Refer to {@link CatalogProperties#CACHE_EXPIRATION_INTERVAL_MS} for further
- *       details and significant values.
- *   <li><code>table-default.$tablePropertyKey</code> - table property $tablePropertyKey default at
- *       catalog level
- *   <li><code>table-override.$tablePropertyKey</code> - table property $tablePropertyKey enforced
- *       at catalog level
- * </ul>
+ * <p>设计意图：采用委托模式代理底层 Iceberg Catalog（Hive/Hadoop/REST/自定义），并通过分支/标签/快照后缀解析支持时间旅行。
  *
- * <p>
+ * <p>上下游关系：被 SparkSession 注册为 catalog 插件；依赖 CachingCatalog、SparkTable、StagedSparkTable。
  */
 public class SparkCatalog extends BaseCatalog {
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
@@ -220,7 +200,7 @@ public class SparkCatalog extends BaseCatalog {
       throw new IllegalArgumentException("Unknown Spark table type: " + table.getClass().getName());
     }
   }
-
+  /** 执行 createTable 相关操作。 */
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
@@ -239,7 +219,7 @@ public class SparkCatalog extends BaseCatalog {
       throw new TableAlreadyExistsException(ident);
     }
   }
-
+  /** 执行 stageCreate 相关操作。 */
   @Override
   public StagedTable stageCreate(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
@@ -258,7 +238,7 @@ public class SparkCatalog extends BaseCatalog {
       throw new TableAlreadyExistsException(ident);
     }
   }
-
+  /** 执行 stageReplace 相关操作。 */
   @Override
   public StagedTable stageReplace(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
@@ -277,7 +257,7 @@ public class SparkCatalog extends BaseCatalog {
       throw new NoSuchTableException(ident);
     }
   }
-
+  /** 执行 stageCreateOrReplace 相关操作。 */
   @Override
   public StagedTable stageCreateOrReplace(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties) {
@@ -338,12 +318,12 @@ public class SparkCatalog extends BaseCatalog {
       throw new NoSuchTableException(ident);
     }
   }
-
+  /** 执行 dropTable 相关操作。 */
   @Override
   public boolean dropTable(Identifier ident) {
     return dropTableWithoutPurging(ident);
   }
-
+  /** 执行 purgeTable 相关操作。 */
   @Override
   public boolean purgeTable(Identifier ident) {
     try {
@@ -371,7 +351,7 @@ public class SparkCatalog extends BaseCatalog {
       return false;
     }
   }
-
+  /** 执行 dropTableWithoutPurging 相关操作。 */
   private boolean dropTableWithoutPurging(Identifier ident) {
     if (isPathIdentifier(ident)) {
       return tables.dropTable(((PathIdentifier) ident).location(), false /* don't purge data */);
@@ -379,7 +359,7 @@ public class SparkCatalog extends BaseCatalog {
       return icebergCatalog.dropTable(buildIdentifier(ident), false /* don't purge data */);
     }
   }
-
+  /** 执行 renameTable 相关操作。 */
   @Override
   public void renameTable(Identifier from, Identifier to)
       throws NoSuchTableException, TableAlreadyExistsException {
@@ -393,21 +373,21 @@ public class SparkCatalog extends BaseCatalog {
       throw new TableAlreadyExistsException(to);
     }
   }
-
+  /** 执行 invalidateTable 相关操作。 */
   @Override
   public void invalidateTable(Identifier ident) {
     if (!isPathIdentifier(ident)) {
       icebergCatalog.invalidateTable(buildIdentifier(ident));
     }
   }
-
+  /** 执行 listTables 相关操作。 */
   @Override
   public Identifier[] listTables(String[] namespace) {
     return icebergCatalog.listTables(Namespace.of(namespace)).stream()
         .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
         .toArray(Identifier[]::new);
   }
-
+  /** 执行 defaultNamespace 相关操作。 */
   @Override
   public String[] defaultNamespace() {
     if (defaultNamespace != null) {
@@ -416,7 +396,7 @@ public class SparkCatalog extends BaseCatalog {
 
     return new String[0];
   }
-
+  /** 执行 listNamespaces 相关操作。 */
   @Override
   public String[][] listNamespaces() {
     if (asNamespaceCatalog != null) {
@@ -442,7 +422,7 @@ public class SparkCatalog extends BaseCatalog {
 
     throw new NoSuchNamespaceException(namespace);
   }
-
+  /** 执行 loadNamespaceMetadata 相关操作。 */
   @Override
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
@@ -456,7 +436,7 @@ public class SparkCatalog extends BaseCatalog {
 
     throw new NoSuchNamespaceException(namespace);
   }
-
+  /** 执行 createNamespace 相关操作。 */
   @Override
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
@@ -478,7 +458,7 @@ public class SparkCatalog extends BaseCatalog {
           "Namespaces are not supported by catalog: " + catalogName);
     }
   }
-
+  /** 执行 alterNamespace 相关操作。 */
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
@@ -513,7 +493,7 @@ public class SparkCatalog extends BaseCatalog {
       throw new NoSuchNamespaceException(namespace);
     }
   }
-
+  /** 执行 dropNamespace 相关操作。 */
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
@@ -527,7 +507,7 @@ public class SparkCatalog extends BaseCatalog {
 
     return false;
   }
-
+  /** 执行 initialize 相关操作。 */
   @Override
   public final void initialize(String name, CaseInsensitiveStringMap options) {
     this.cacheEnabled =
@@ -577,12 +557,12 @@ public class SparkCatalog extends BaseCatalog {
         EnvironmentContext.ENGINE_VERSION, sparkSession.sparkContext().version());
     EnvironmentContext.put(CatalogProperties.APP_ID, sparkSession.sparkContext().applicationId());
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return catalogName;
   }
-
+  /** 执行 commitChanges 相关操作。 */
   private static void commitChanges(
       org.apache.iceberg.Table table,
       SetProperty setLocation,
@@ -623,11 +603,11 @@ public class SparkCatalog extends BaseCatalog {
 
     transaction.commitTransaction();
   }
-
+  /** 判断是否 PathIdentifier。 */
   private static boolean isPathIdentifier(Identifier ident) {
     return ident instanceof PathIdentifier;
   }
-
+  /** 执行 checkNotPathIdentifier 相关操作。 */
   private static void checkNotPathIdentifier(Identifier identifier, String method) {
     if (identifier instanceof PathIdentifier) {
       throw new IllegalArgumentException(
@@ -635,7 +615,7 @@ public class SparkCatalog extends BaseCatalog {
               "Cannot pass path based identifier to %s method. %s is a path.", method, identifier));
     }
   }
-
+  /** 执行 load 相关操作。 */
   private Table load(Identifier ident) {
     if (isPathIdentifier(ident)) {
       return loadFromPathIdentifier((PathIdentifier) ident);
@@ -700,7 +680,7 @@ public class SparkCatalog extends BaseCatalog {
       throw e;
     }
   }
-
+  /** 执行 parseLocationString 相关操作。 */
   private Pair<String, List<String>> parseLocationString(String location) {
     int hashIndex = location.lastIndexOf('#');
     if (hashIndex != -1 && !location.endsWith("#")) {
@@ -711,7 +691,7 @@ public class SparkCatalog extends BaseCatalog {
       return Pair.of(location, ImmutableList.of());
     }
   }
-
+  /** 执行 loadFromPathIdentifier 相关操作。 */
   @SuppressWarnings("CyclomaticComplexity")
   private Table loadFromPathIdentifier(PathIdentifier ident) {
     Pair<String, List<String>> parsed = parseLocationString(ident.location());
@@ -793,7 +773,7 @@ public class SparkCatalog extends BaseCatalog {
       return new SparkTable(table, snapshotId, !cacheEnabled);
     }
   }
-
+  /** 执行 namespaceToIdentifier 相关操作。 */
   private Identifier namespaceToIdentifier(String[] namespace) {
     Preconditions.checkArgument(
         namespace.length > 0, "Cannot convert empty namespace to identifier");
@@ -801,13 +781,13 @@ public class SparkCatalog extends BaseCatalog {
     String name = namespace[ns.length];
     return Identifier.of(ns, name);
   }
-
+  /** 创建 Builder 实例。 */
   private Catalog.TableBuilder newBuilder(Identifier ident, Schema schema) {
     return isPathIdentifier(ident)
         ? tables.buildTable(((PathIdentifier) ident).location(), schema)
         : icebergCatalog.buildTable(buildIdentifier(ident), schema);
   }
-
+  /** 执行 icebergCatalog 相关操作。 */
   @Override
   public Catalog icebergCatalog() {
     return icebergCatalog;

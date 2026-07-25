@@ -60,6 +60,25 @@ import org.apache.iceberg.util.LocationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：基于 JDBC 的 Catalog 实现，用关系数据库存储 Iceberg 表元信息。
+ *
+ * <p>所属模块：iceberg-core（jdbc 子包）。职责：实现 {@link org.apache.iceberg.catalog.Catalog} 接口，通过 JDBC
+ * 连接在数据库表中管理命名空间和表的创建/删除/列举/加载等操作。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>把 Iceberg catalog 元信息（表名 → metadata 路径的映射）存储在 JDBC 数据库中， 支持任何提供 JDBC
+ *       驱动的数据库（MySQL、PostgreSQL、SQLite 等）。
+ *   <li>表结构由 {@link JdbcUtil} 定义，catalog 操作通过 {@link JdbcClientPool} 管理连接。
+ *   <li>表元信息（TableMetadata）存储在外部文件系统中，JDBC 只存储指向 metadata 文件的指针。
+ *   <li>继承 {@link BaseMetastoreCatalog} 复用通用逻辑。
+ * </ul>
+ *
+ * <p>上下游关系：依赖 {@link JdbcClientPool}（连接池）、{@link JdbcUtil}（SQL 常量与工具）、 {@link
+ * JdbcTableOperations}（表操作）；被用户作为 Catalog 实例使用。
+ */
 public class JdbcCatalog extends BaseMetastoreCatalog
     implements Configurable<Object>, SupportsNamespaces, Closeable {
 
@@ -92,11 +111,19 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 初始化 JDBC Catalog，加载配置并建表。
+   *
+   * @param config 配置对象
+   * @param hadoopConf Hadoop 配置
+   */
   public void initialize(String name, Map<String, String> properties) {
     Preconditions.checkNotNull(properties, "Invalid catalog properties: null");
+    // 读取并校验 JDBC 连接 URI
     String uri = properties.get(CatalogProperties.URI);
     Preconditions.checkNotNull(uri, "JDBC connection URI is required");
 
+    // 读取并校验仓库路径
     String inputWarehouseLocation = properties.get(CatalogProperties.WAREHOUSE_LOCATION);
     Preconditions.checkArgument(
         inputWarehouseLocation != null && inputWarehouseLocation.length() > 0,
@@ -109,6 +136,7 @@ public class JdbcCatalog extends BaseMetastoreCatalog
       this.catalogName = name;
     }
 
+    // 初始化 FileIO（优先使用 ioBuilder，否则按配置加载默认实现）
     if (null != ioBuilder) {
       this.io = ioBuilder.apply(properties);
     } else {
@@ -118,6 +146,7 @@ public class JdbcCatalog extends BaseMetastoreCatalog
       this.io = CatalogUtil.loadFileIO(ioImpl, properties, conf);
     }
 
+    // 创建 JDBC 连接池
     LOG.debug("Connecting to JDBC database {}", uri);
     if (null != clientPoolBuilder) {
       this.connections = clientPoolBuilder.apply(properties);
@@ -125,6 +154,7 @@ public class JdbcCatalog extends BaseMetastoreCatalog
       this.connections = new JdbcClientPool(uri, properties);
     }
 
+    // 按需初始化数据库表结构
     try {
       if (initializeCatalogTables) {
         initializeCatalogTables();
@@ -193,6 +223,13 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 删除表。
+   *
+   * @param identifier 表标识符
+   * @param purge 是否同时删除数据文件
+   * @return true 如果删除成功
+   */
   public boolean dropTable(TableIdentifier identifier, boolean purge) {
     TableOperations ops = newTableOps(identifier);
     TableMetadata lastMetadata = null;
@@ -228,6 +265,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 列出指定命名空间下的所有表。
+   *
+   * @param namespace 命名空间
+   * @return 表标识符列表
+   */
   public List<TableIdentifier> listTables(Namespace namespace) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
@@ -243,6 +286,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 重命名表。
+   *
+   * @param from 原表标识符
+   * @param to 新表标识符
+   */
   public void renameTable(TableIdentifier from, TableIdentifier to) {
     int updatedRecords =
         execute(
@@ -282,6 +331,13 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 创建命名空间。
+   *
+   * @param namespace 命名空间
+   * @param metadata 命名空间元数据
+   * @param properties 属性映射
+   */
   public void createNamespace(Namespace namespace, Map<String, String> metadata) {
     if (namespaceExists(namespace)) {
       throw new AlreadyExistsException("Namespace already exists: %s", namespace);
@@ -302,6 +358,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 列出指定命名空间下的子命名空间。
+   *
+   * @param namespace 命名空间
+   * @return 子命名空间列表
+   */
   public List<Namespace> listNamespaces() {
     List<Namespace> namespaces = Lists.newArrayList();
     namespaces.addAll(
@@ -374,6 +436,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 加载命名空间元数据。
+   *
+   * @param namespace 命名空间
+   * @return 元数据映射
+   */
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
     if (!namespaceExists(namespace)) {
@@ -399,6 +467,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 删除命名空间。
+   *
+   * @param namespace 命名空间
+   * @return true 如果删除成功
+   */
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
     if (!namespaceExists(namespace)) {
       return false;
@@ -485,6 +559,12 @@ public class JdbcCatalog extends BaseMetastoreCatalog
   }
 
   @Override
+  /**
+   * 检查命名空间是否存在。
+   *
+   * @param namespace 命名空间
+   * @return true 如果存在
+   */
   public boolean namespaceExists(Namespace namespace) {
     return JdbcUtil.namespaceExists(catalogName, connections, namespace);
   }

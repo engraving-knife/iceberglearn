@@ -30,22 +30,38 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestWapWorkflow，用于验证 Wap Workflow 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Wap Workflow 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestWapWorkflow extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：wap workflow。 */
   public TestWapWorkflow(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setup table properties。 */
   @Before
   public void setupTableProperties() {
     table.updateProperties().set(TableProperties.WRITE_AUDIT_PUBLISH_ENABLED, "true").commit();
   }
 
+  /**
+   * 测试场景：cherry pick overwrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickOverwrite() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -68,6 +84,11 @@ public class TestWapWorkflow extends TableTestBase {
     validateTableFiles(table, FILE_B);
   }
 
+  /**
+   * 测试场景：cherry pick overwrite fails if current has changed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickOverwriteFailsIfCurrentHasChanged() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -97,6 +118,11 @@ public class TestWapWorkflow extends TableTestBase {
     validateTableFiles(table, FILE_A, FILE_C);
   }
 
+  /**
+   * 测试场景：current snapshot operation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCurrentSnapshotOperation() {
 
@@ -140,6 +166,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 2, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：set current snapshot no wap。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetCurrentSnapshotNoWAP() {
 
@@ -171,6 +202,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 3, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：rollback on invalid non ancestor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollbackOnInvalidNonAncestor() {
 
@@ -218,6 +254,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 1, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：rollback and cherrypick。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollbackAndCherrypick() {
     // first snapshot
@@ -258,6 +299,11 @@ public class TestWapWorkflow extends TableTestBase {
     Assert.assertEquals("Count all snapshots", 5, base.snapshots().size());
   }
 
+  /**
+   * 测试场景：rollback to time。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollbackToTime() {
 
@@ -285,6 +331,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Should have all three snapshots in the system", 3, base.snapshots().size());
   }
 
+  /**
+   * 测试场景：with cherry picking。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWithCherryPicking() {
 
@@ -332,6 +383,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 2, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：with two phase cherry picking。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWithTwoPhaseCherryPicking() {
 
@@ -427,6 +483,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 3, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：with commits between cherry picking。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWithCommitsBetweenCherryPicking() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -542,6 +603,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 4, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：with cherry picking with commit retry。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWithCherryPickingWithCommitRetry() {
 
@@ -603,6 +669,11 @@ public class TestWapWorkflow extends TableTestBase {
         "Snapshot log should indicate number of snapshots committed", 2, base.snapshotLog().size());
   }
 
+  /**
+   * 测试场景：cherrypicking ancestor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherrypickingAncestor() {
 
@@ -657,6 +728,11 @@ public class TestWapWorkflow extends TableTestBase {
         .hasMessage("Cannot cherrypick snapshot 1: already an ancestor");
   }
 
+  /**
+   * 测试场景：duplicate cherrypick。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDuplicateCherrypick() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -713,6 +789,11 @@ public class TestWapWorkflow extends TableTestBase {
             "Duplicate request to cherry pick wap id that was published already: 123456789");
   }
 
+  /**
+   * 测试场景：non wap cherrypick。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNonWapCherrypick() {
     table.newAppend().appendFile(FILE_A).commit();

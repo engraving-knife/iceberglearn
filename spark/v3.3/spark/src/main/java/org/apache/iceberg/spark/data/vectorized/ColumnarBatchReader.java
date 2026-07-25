@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.arrow.vectorized.BaseBatchReader;
-import org.apache.iceberg.arrow.vectorized.VectorizedArrowReader;
 import org.apache.iceberg.arrow.vectorized.VectorizedArrowReader.DeletedVectorReader;
 import org.apache.iceberg.data.DeleteFilter;
 import org.apache.iceberg.deletes.PositionDeleteIndex;
@@ -37,21 +36,25 @@ import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
 /**
- * {@link VectorizedReader} that returns Spark's {@link ColumnarBatch} to support Spark's vectorized
- * read path. The {@link ColumnarBatch} returned is created by passing in the Arrow vectors
- * populated via delegated read calls to {@linkplain VectorizedArrowReader VectorReader(s)}.
+ * Spark 向量化读取 Iceberg 数据的列式访问组件的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ColumnarBatchReader。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
   private final boolean hasIsDeletedColumn;
   private DeleteFilter<InternalRow> deletes = null;
   private long rowStartPosInBatch = 0;
 
+  /** 构造 ColumnarBatchReader 实例。 */
   public ColumnarBatchReader(List<VectorizedReader<?>> readers) {
     super(readers);
     this.hasIsDeletedColumn =
         readers.stream().anyMatch(reader -> reader instanceof DeletedVectorReader);
   }
 
+  /** 设置rowgroupinfo。 */
   @Override
   public void setRowGroupInfo(
       PageReadStore pageStore, Map<ColumnPath, ColumnChunkMetaData> metaData, long rowPosition) {
@@ -59,10 +62,12 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
     this.rowStartPosInBatch = rowPosition;
   }
 
+  /** 设置deletefilter。 */
   public void setDeleteFilter(DeleteFilter<InternalRow> deleteFilter) {
     this.deletes = deleteFilter;
   }
 
+  /** 读取数据。 */
   @Override
   public final ColumnarBatch read(ColumnarBatch reuse, int numRowsToRead) {
     if (reuse == null) {
@@ -74,6 +79,13 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
     return columnarBatch;
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件，处理列式批量数据。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ColumnBatchLoader。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private class ColumnBatchLoader {
     private final int numRowsToRead;
     // the rowId mapping to skip deleted rows for all column vectors inside a batch, it is null when
@@ -92,6 +104,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     ColumnarBatch loadDataToColumnBatch() {
       int numRowsUndeleted = initRowIdMapping();
 
@@ -115,6 +128,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       return newColumnarBatch;
     }
 
+    /** 读取数据。 */
     ColumnVector[] readDataToColumnVectors() {
       ColumnVector[] arrowColumnVectors = new ColumnVector[readers.length];
 
@@ -136,10 +150,12 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       return arrowColumnVectors;
     }
 
+    /** 判断是否包含eqdeletes。 */
     boolean hasEqDeletes() {
       return deletes != null && deletes.hasEqDeletes();
     }
 
+    /** 执行初始化。 */
     int initRowIdMapping() {
       Pair<int[], Integer> posDeleteRowIdMapping = posDelRowIdMapping();
       if (posDeleteRowIdMapping != null) {
@@ -151,6 +167,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     Pair<int[], Integer> posDelRowIdMapping() {
       if (deletes != null && deletes.hasPosDeletes()) {
         return buildPosDelRowIdMapping(deletes.deletedRowPositions());
@@ -159,16 +176,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       }
     }
 
-    /**
-     * Build a row id mapping inside a batch, which skips deleted rows. Here is an example of how we
-     * delete 2 rows in a batch with 8 rows in total. [0,1,2,3,4,5,6,7] -- Original status of the
-     * row id mapping array [F,F,F,F,F,F,F,F] -- Original status of the isDeleted array Position
-     * delete 2, 6 [0,1,3,4,5,7,-,-] -- After applying position deletes [Set Num records to 6]
-     * [F,F,T,F,F,F,T,F] -- After applying position deletes
-     *
-     * @param deletedRowPositions a set of deleted row positions
-     * @return the mapping array and the new num of rows in a batch, null if no row is deleted
-     */
+    /** 构造并返回目标对象。 */
     Pair<int[], Integer> buildPosDelRowIdMapping(PositionDeleteIndex deletedRowPositions) {
       if (deletedRowPositions == null) {
         return null;
@@ -199,6 +207,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       }
     }
 
+    /** 执行初始化。 */
     int[] initEqDeleteRowIdMapping() {
       int[] eqDeleteRowIdMapping = null;
       if (hasEqDeletes()) {
@@ -211,16 +220,7 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
       return eqDeleteRowIdMapping;
     }
 
-    /**
-     * Filter out the equality deleted rows. Here is an example, [0,1,2,3,4,5,6,7] -- Original
-     * status of the row id mapping array [F,F,F,F,F,F,F,F] -- Original status of the isDeleted
-     * array Position delete 2, 6 [0,1,3,4,5,7,-,-] -- After applying position deletes [Set Num
-     * records to 6] [F,F,T,F,F,F,T,F] -- After applying position deletes Equality delete 1 <= x <=
-     * 3 [0,4,5,7,-,-,-,-] -- After applying equality deletes [Set Num records to 4]
-     * [F,T,T,T,F,F,T,F] -- After applying equality deletes
-     *
-     * @param columnarBatch the {@link ColumnarBatch} to apply the equality delete
-     */
+    /** 执行核心逻辑。 */
     void applyEqDelete(ColumnarBatch columnarBatch) {
       Iterator<InternalRow> it = columnarBatch.rowIterator();
       int rowId = 0;

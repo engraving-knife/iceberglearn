@@ -18,8 +18,14 @@
  */
 package org.apache.iceberg.spark;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkSQLProperties。
+ */
 public class SparkSQLProperties {
 
+  /** 构造 SparkSQLProperties 实例。 */
   private SparkSQLProperties() {}
 
   // Controls whether vectorized reads are enabled

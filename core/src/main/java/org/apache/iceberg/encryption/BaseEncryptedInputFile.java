@@ -20,21 +20,40 @@ package org.apache.iceberg.encryption;
 
 import org.apache.iceberg.io.InputFile;
 
+/**
+ * 文件级说明：{@link EncryptedInputFile} 的基础实现。
+ *
+ * <p>所属模块：iceberg-core（加密包），实现 iceberg-api 的 {@link EncryptedInputFile} 接口， 把一个返回密文字节的 {@link
+ * InputFile} 与其密钥元数据简单捆绑在一起。
+ *
+ * <p>职责：仅作数据持有者，持有加密输入文件引用与 {@link EncryptionKeyMetadata}，不执行任何加解密。
+ *
+ * <p>设计意图：作为最朴素的不可变包装实现，由工厂 {@link EncryptedFiles#encryptedInput} 创建， 供 {@link
+ * org.apache.iceberg.encryption.EncryptionManager} 在解密时读取密钥元数据。
+ */
 class BaseEncryptedInputFile implements EncryptedInputFile {
 
   private final InputFile encryptedInputFile;
   private final EncryptionKeyMetadata keyMetadata;
 
+  /**
+   * 构造加密输入文件包装。
+   *
+   * @param encryptedInputFile 返回密文字节的底层输入文件
+   * @param keyMetadata 该文件对应的密钥元数据
+   */
   BaseEncryptedInputFile(InputFile encryptedInputFile, EncryptionKeyMetadata keyMetadata) {
     this.encryptedInputFile = encryptedInputFile;
     this.keyMetadata = keyMetadata;
   }
 
+  /** 返回返回密文字节的底层输入文件。 */
   @Override
   public InputFile encryptedInputFile() {
     return encryptedInputFile;
   }
 
+  /** 返回该文件的密钥元数据。 */
   @Override
   public EncryptionKeyMetadata keyMetadata() {
     return keyMetadata;

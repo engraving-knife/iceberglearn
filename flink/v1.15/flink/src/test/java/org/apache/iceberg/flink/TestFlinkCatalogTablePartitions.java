@@ -35,6 +35,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkCatalogTablePartitions 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkCatalogTablePartitions 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
 
   private String tableName = "test_table";
@@ -43,6 +51,7 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
 
   @Parameterized.Parameters(
       name = "catalogName={0}, baseNamespace={1}, format={2}, cacheEnabled={3}")
+  /** 辅助方法：parameters，parameters。 */
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
     for (FileFormat format :
@@ -58,6 +67,7 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
     return parameters;
   }
 
+  /** 辅助方法：TestFlinkCatalogTablePartitions，Flink Catalog Table Partitions。 */
   public TestFlinkCatalogTablePartitions(
       String catalogName, Namespace baseNamespace, FileFormat format, boolean cacheEnabled) {
     super(catalogName, baseNamespace);
@@ -65,6 +75,7 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
     config.put(CatalogProperties.CACHE_ENABLED, String.valueOf(cacheEnabled));
   }
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -74,6 +85,7 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
     sql("USE %s", DATABASE);
   }
 
+  /** 辅助方法：cleanNamespaces，clean Namespaces。 */
   @After
   public void cleanNamespaces() {
     sql("DROP TABLE IF EXISTS %s.%s", flinkDatabase, tableName);
@@ -81,6 +93,11 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：List Partitions With Unpartitioned Table。
+   *
+   * <p>验证该方法在 List Partitions With Unpartitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testListPartitionsWithUnpartitionedTable() {
     sql(
@@ -96,6 +113,11 @@ public class TestFlinkCatalogTablePartitions extends FlinkCatalogTestBase {
         () -> flinkCatalog.listPartitions(objectPath));
   }
 
+  /**
+   * 测试场景：List Partitions With Partitioned Table。
+   *
+   * <p>验证该方法在 List Partitions With Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testListPartitionsWithPartitionedTable()
       throws TableNotExistException, TableNotPartitionedException {

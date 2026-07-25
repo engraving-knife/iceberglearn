@@ -54,7 +54,19 @@ import org.projectnessie.model.TableReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Nessie implementation of Iceberg Catalog. */
+/**
+ * 基于 Nessie 的 Iceberg Catalog 实现。
+ *
+ * <p>所属模块：iceberg-nessie。职责：把 Iceberg 表元数据指针（metadata.json 的 location） 作为 Nessie 的 {@code
+ * IcebergTable} 内容条目存储，借助 Nessie 的分支/标签（branch/tag）引用 模型实现"引用感知"的表管理——可在不同分支上独立提交、回滚与时间旅行。
+ *
+ * <p>设计意图：继承 {@link BaseMetastoreCatalog} 复用"元数据文件存 FS、指针存 Nessie"的模板， 仅实现 {@code
+ * newTableOps}/{@code defaultWarehouseLocation} 等少量抽象方法；通过 Nessie API v1/v2 双协议适配、{@code
+ * Configurable} 注入 Hadoop 配置、{@code CloseableGroup} 管理资源关闭， 兼容多运行环境。默认关闭 GC（{@code
+ * gc.enabled=false}），因为 Nessie 自身管理文件生命周期。
+ *
+ * <p>上下游：向上被引擎（Spark/Flink 等）通过 {@code Catalog} 接口调用；向下依赖 Nessie Client 与 {@link FileIO}（读写元数据文件）。
+ */
 public class NessieCatalog extends BaseMetastoreCatalog
     implements AutoCloseable, SupportsNamespaces, Configurable<Object> {
 
@@ -79,8 +91,15 @@ public class NessieCatalog extends BaseMetastoreCatalog
   private Map<String, String> catalogOptions = DEFAULT_CATALOG_OPTIONS;
   private CloseableGroup closeableGroup;
 
+  /** 无参构造，用于动态加载 Catalog，字段由 {@link #initialize} 初始化。 */
   public NessieCatalog() {}
 
+  /**
+   * 根据配置初始化 Catalog：加载 FileIO、解析 Nessie 引用（ref/hash）、按 API 版本构建 Nessie 客户端。
+   *
+   * <p>逻辑：读取 fileIOImpl、剥离 nessie 前缀后解析 ref 与 hash；按 client-api-version（默认 1） 构建
+   * NessieApiV1/V2；最后委托 {@link #initialize(String, NessieIcebergClient, FileIO, Map)} 完成初始化。
+   */
   @SuppressWarnings("checkstyle:HiddenField")
   @Override
   public void initialize(String name, Map<String, String> options) {
@@ -127,13 +146,12 @@ public class NessieCatalog extends BaseMetastoreCatalog
   }
 
   /**
-   * An alternative way to initialize the catalog using a pre-configured {@link NessieIcebergClient}
-   * and {@link FileIO} instance.
+   * 使用预配置的 {@link NessieIcebergClient} 与 {@link FileIO} 初始化 Catalog 的替代入口。
    *
-   * @param name The name of the catalog, defaults to "nessie" if <code>null</code>
-   * @param client The pre-configured {@link NessieIcebergClient} instance to use
-   * @param fileIO The {@link FileIO} instance to use
-   * @param catalogOptions The catalog options to use
+   * @param name Catalog 名称，为 null 时默认 "nessie"
+   * @param client 预配置的 {@link NessieIcebergClient}
+   * @param fileIO {@link FileIO} 实例
+   * @param catalogOptions Catalog 选项
    */
   @SuppressWarnings("checkstyle:HiddenField")
   public void initialize(
@@ -153,6 +171,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
     closeableGroup.setSuppressCloseFailure(true);
   }
 
+  /** 校验 warehouse location 必须配置，否则告警并抛出 IllegalStateException。 */
   @SuppressWarnings("checkstyle:HiddenField")
   private String validateWarehouseLocation(String name, Map<String, String> catalogOptions) {
     String warehouseLocation = catalogOptions.get(CatalogProperties.WAREHOUSE_LOCATION);
@@ -185,6 +204,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return warehouseLocation;
   }
 
+  /** 创建 Nessie 客户端构建器：指定自定义构建器类名则反射调用其 builder 方法，否则用默认 HttpClientBuilder。 */
   private static NessieClientBuilder createNessieClientBuilder(String customBuilder) {
     NessieClientBuilder clientBuilder;
     if (customBuilder != null) {
@@ -201,6 +221,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return clientBuilder;
   }
 
+  /** 关闭 Catalog 及其持有的 client 与 fileIO 资源。 */
   @Override
   public void close() throws IOException {
     if (null != closeableGroup) {
@@ -208,11 +229,13 @@ public class NessieCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /** 返回 Catalog 名称。 */
   @Override
   public String name() {
     return name;
   }
 
+  /** 为指定表标识符构造 {@link NessieTableOperations}，解析表名中的引用信息并绑定对应 Nessie 引用。 */
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
     TableReference tr = parseTableReference(tableIdentifier);
@@ -225,6 +248,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
         catalogOptions);
   }
 
+  /** 计算表默认仓库路径：基于 warehouse 与命名空间/表名拼接，并追加 UUID 避免同名表跨引用路径冲突。 */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier table) {
     String location;
@@ -247,11 +271,13 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return location + "_" + UUID.randomUUID();
   }
 
+  /** 列出指定命名空间下的所有表。 */
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     return client.listTables(namespace);
   }
 
+  /** 删除表：解析表名中的引用并委托 client 执行，purge 控制是否清理数据文件。 */
   @Override
   public boolean dropTable(TableIdentifier identifier, boolean purge) {
     TableReference tableReference = parseTableReference(identifier);
@@ -260,6 +286,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
         .dropTable(identifierWithoutTableReference(identifier, tableReference), purge);
   }
 
+  /** 重命名表：校验源与目标引用名一致后委托 client 执行。 */
   @Override
   public void renameTable(TableIdentifier from, TableIdentifier to) {
     TableReference fromTableReference = parseTableReference(from);
@@ -286,22 +313,24 @@ public class NessieCatalog extends BaseMetastoreCatalog
                 identifierWithoutTableReference(to, toTableReference), name()));
   }
 
+  /** 创建命名空间。 */
   @Override
   public void createNamespace(Namespace namespace, Map<String, String> metadata) {
     client.createNamespace(namespace, metadata);
   }
 
+  /** 列出指定命名空间下的子命名空间。 */
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
     return client.listNamespaces(namespace);
   }
 
   /**
-   * Load the given namespace and return its properties.
+   * 加载命名空间并返回其属性。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @return a string map of properties for the given namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist
+   * @param namespace 命名空间
+   * @return 命名空间属性映射
+   * @throws NoSuchNamespaceException 命名空间不存在
    */
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
@@ -309,41 +338,49 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return client.loadNamespaceMetadata(namespace);
   }
 
+  /** 删除命名空间，非空时抛 {@link NamespaceNotEmptyException}。 */
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
     return client.dropNamespace(namespace);
   }
 
+  /** 为命名空间设置属性。 */
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties) {
     return client.setProperties(namespace, properties);
   }
 
+  /** 移除命名空间的指定属性。 */
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties) {
     return client.removeProperties(namespace, properties);
   }
 
+  /** 注入 Hadoop 配置（实现 {@link Configurable}）。 */
   @Override
   public void setConf(Object conf) {
     this.config = conf;
   }
 
+  /** 返回当前引用的 hash（仅测试可见）。 */
   @VisibleForTesting
   String currentHash() {
     return client.getRef().getHash();
   }
 
+  /** 返回当前引用名（仅测试可见）。 */
   @VisibleForTesting
   String currentRefName() {
     return client.getRef().getName();
   }
 
+  /** 返回 FileIO（仅测试可见）。 */
   @VisibleForTesting
   FileIO fileIO() {
     return fileIO;
   }
 
+  /** 解析表标识符中的 Nessie 引用（ref#hash），不支持按时间戳引用。 */
   private TableReference parseTableReference(TableIdentifier tableIdentifier) {
     TableReference tr = TableReference.parse(tableIdentifier.name());
     Preconditions.checkArgument(
@@ -353,6 +390,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return tr;
   }
 
+  /** 去除表标识符中的引用信息，返回纯表名标识符。 */
   private TableIdentifier identifierWithoutTableReference(
       TableIdentifier identifier, TableReference tableReference) {
     if (tableReference.hasReference()) {
@@ -361,6 +399,7 @@ public class NessieCatalog extends BaseMetastoreCatalog
     return identifier;
   }
 
+  /** 返回 Catalog 选项映射。 */
   @Override
   protected Map<String, String> properties() {
     return catalogOptions;

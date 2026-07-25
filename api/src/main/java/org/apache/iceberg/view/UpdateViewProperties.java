@@ -22,31 +22,34 @@ import java.util.Map;
 import org.apache.iceberg.PendingUpdate;
 
 /**
- * API for updating view properties.
+ * 更新视图属性的 API。
  *
- * <p>Apply returns the updated view properties as a map for validation.
+ * <p>所属模块：iceberg-api。继承自 {@link PendingUpdate}（产出属性 Map），是 view 模块的属性变更入口。
  *
- * <p>When committing, these changes will be applied to the current view metadata. Commit conflicts
- * will be resolved by applying the pending changes to the new view metadata.
+ * <p>职责：以键值对方式新增/修改、删除视图属性，提交时将变更应用到当前视图元数据。
+ *
+ * <p>设计意图：apply 阶段返回更新后的属性 Map 供调用方校验；提交冲突时，把待提交变更重新应用到 新视图元数据以实现乐观并发冲突解决。
+ *
+ * <p>上下游关系：由 {@link View#updateProperties()} 创建；提交后影响 {@link View} 的属性。
  */
 public interface UpdateViewProperties extends PendingUpdate<Map<String, String>> {
 
   /**
-   * Add a key/value property to the view.
+   * 为视图添加一个键值对属性。
    *
-   * @param key a String key
-   * @param value a String value
-   * @return this for method chaining
-   * @throws NullPointerException If either the key or value is null
+   * @param key 属性键
+   * @param value 属性值
+   * @return this，便于链式调用
+   * @throws NullPointerException 当 key 或 value 为 null 时
    */
   UpdateViewProperties set(String key, String value);
 
   /**
-   * Remove the given property key from the view.
+   * 从视图中移除指定键的属性。
    *
-   * @param key a String key
-   * @return this for method chaining
-   * @throws NullPointerException If the key is null
+   * @param key 属性键
+   * @return this，便于链式调用
+   * @throws NullPointerException 当 key 为 null 时
    */
   UpdateViewProperties remove(String key);
 }

@@ -65,9 +65,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Base class of Spark readers.
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
  *
- * @param <T> is the Java class returned by this reader whose objects contain one or more rows.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 BaseReader。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
  */
 abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(BaseReader.class);
@@ -105,30 +109,42 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     this.counter = new DeleteCounter();
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract CloseableIterator<T> open(TaskT task);
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract Stream<ContentFile<?>> referencedFiles(TaskT task);
 
+  /** 执行该方法的具体逻辑。 */
   protected Schema expectedSchema() {
     return expectedSchema;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected boolean caseSensitive() {
     return caseSensitive;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected NameMapping nameMapping() {
     return nameMapping;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Table table() {
     return table;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected DeleteCounter counter() {
     return counter;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 对应结果
+   */
   public boolean next() throws IOException {
     try {
       while (true) {
@@ -156,10 +172,16 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 对应结果
+   */
   public T get() {
     return current;
   }
 
+  /** 释放底层资源。 */
   @Override
   public void close() throws IOException {
     InputFileBlockHolder.unset();
@@ -173,10 +195,12 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     }
   }
 
+  /** 返回inputfile。 */
   protected InputFile getInputFile(String location) {
     return inputFiles().get(location);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Map<String, InputFile> inputFiles() {
     if (lazyInputFiles == null) {
       Stream<EncryptedInputFile> encryptedFiles =
@@ -193,11 +217,13 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     return lazyInputFiles;
   }
 
+  /** 转换为encryptedinputfile。 */
   private EncryptedInputFile toEncryptedInputFile(ContentFile<?> file) {
     InputFile inputFile = table.io().newInputFile(file.path().toString());
     return EncryptedFiles.encryptedInput(inputFile, file.keyMetadata());
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Map<Integer, ?> constantsMap(ContentScanTask<?> task, Schema readSchema) {
     if (readSchema.findField(MetadataColumns.PARTITION_COLUMN_ID) != null) {
       StructType partitionType = Partitioning.partitionType(table);
@@ -207,6 +233,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     }
   }
 
+  /** 把输入转换为另一种表示。 */
   protected static Object convertConstant(Type type, Object value) {
     if (value == null) {
       return null;
@@ -234,6 +261,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
         StructType structType = (StructType) type;
 
         if (structType.fields().isEmpty()) {
+          /** 执行该方法的具体逻辑。 */
           return new GenericInternalRow();
         }
 
@@ -248,12 +276,20 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
               convertConstant(fieldType, struct.get(index, fieldType.typeId().javaClass()));
         }
 
+        /** 执行该方法的具体逻辑。 */
         return new GenericInternalRow(values);
       default:
     }
     return value;
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现，实现 DELETE 行级操作。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkDeleteFilter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   protected class SparkDeleteFilter extends DeleteFilter<InternalRow> {
     private final InternalRowWrapper asStructLike;
 
@@ -262,16 +298,19 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       this.asStructLike = new InternalRowWrapper(SparkSchemaUtil.convert(requiredSchema()));
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected StructLike asStructLike(InternalRow row) {
       return asStructLike.wrap(row);
     }
 
+    /** 返回inputfile。 */
     @Override
     protected InputFile getInputFile(String location) {
       return BaseReader.this.getInputFile(location);
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected void markRowDeleted(InternalRow row) {
       if (!row.getBoolean(columnIsDeletedPosition())) {

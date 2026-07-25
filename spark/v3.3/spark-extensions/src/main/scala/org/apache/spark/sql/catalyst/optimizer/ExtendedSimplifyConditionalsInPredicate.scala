@@ -36,10 +36,19 @@ import org.apache.spark.sql.catalyst.trees.TreePattern.IF
 import org.apache.spark.sql.types.BooleanType
 
 /**
- * A rule similar to SimplifyConditionalsInPredicate in Spark but applies to Iceberg row-level commands.
+ * Spark Catalyst 优化器规则。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 ExtendedSimplifyConditionalsInPredicate。
+ * <p>设计意图：实现类，提供具体行为。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan.transformWithPruning(
     _.containsAnyPattern(CASE_WHEN, IF)) {
 
@@ -56,6 +65,10 @@ object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
         notMatchedActions = simplifyConditional(notMatchedActions))
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def simplifyConditional(e: Expression): Expression = e match {
     case And(left, right) => And(simplifyConditional(left), simplifyConditional(right))
     case Or(left, right) => Or(simplifyConditional(left), simplifyConditional(right))
@@ -81,6 +94,10 @@ object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
       e
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def simplifyConditional(mergeActions: Seq[MergeAction]): Seq[MergeAction] = {
     mergeActions.map {
       case u @ UpdateAction(Some(cond), _) => u.copy(condition = Some(simplifyConditional(cond)))

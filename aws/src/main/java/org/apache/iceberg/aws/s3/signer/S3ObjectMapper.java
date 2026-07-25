@@ -40,6 +40,32 @@ import org.apache.iceberg.rest.RESTSerializers.OAuthTokenResponseSerializer;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
+/**
+ * 文件级说明：S3 签名场景专用的 Jackson ObjectMapper 持有者。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供懒加载、线程安全的单例 {@link ObjectMapper}，供 S3 签名请求/响应 JSON 序列化使用。
+ *   <li>注册 S3SignRequest/S3SignResponse 以及 Iceberg REST 通用 ErrorResponse/OAuthTokenResponse 的自定义
+ *       Jackson 序列化器与反序列化器。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>双重检查锁懒加载：避免类加载期就构建 ObjectMapper，减少冷启动开销； volatile isInitialized 保证多线程可见性。
+ *   <li>独立 ObjectMapper：与 Iceberg REST 主 ObjectMapper 隔离，避免 S3 签名专用配置 （字段可见性、kebab-case
+ *       命名、忽略未知字段）影响其他序列化场景。
+ *   <li>Jackson 版本兼容：使用已 deprecated 的 PropertyNamingStrategy.KebabCaseStrategy， 而非 2.14 引入的
+ *       PropertyNamingStrategies.KebabCaseStrategy.INSTANCE， 因为 Spark 仍依赖 Jackson 2.13.x。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link S3SignRequestParser}、{@link S3SignResponseParser} 间接使用； 注册的序列化器/反序列化器分别代理到对应
+ * Parser 的 toJson/fromJson。
+ */
 public class S3ObjectMapper {
 
   private static final JsonFactory FACTORY = new JsonFactory();
@@ -48,6 +74,13 @@ public class S3ObjectMapper {
 
   private S3ObjectMapper() {}
 
+  /**
+   * 返回已初始化的 ObjectMapper 单例，首次调用时双重检查锁完成配置。
+   *
+   * <p>初始化逻辑：设置字段可见性为 ANY、忽略未知字段、命名策略为 kebab-case， 并注册自定义 SimpleModule。
+   *
+   * @return 已配置的 ObjectMapper
+   */
   static ObjectMapper mapper() {
     if (!isInitialized) {
       synchronized (S3ObjectMapper.class) {
@@ -67,6 +100,12 @@ public class S3ObjectMapper {
     return MAPPER;
   }
 
+  /**
+   * 构造 SimpleModule，注册 ErrorResponse、OAuthTokenResponse、S3SignRequest、S3SignResponse
+   * 的自定义序列化器与反序列化器。
+   *
+   * @return 已注册序列化器的 SimpleModule
+   */
   public static SimpleModule initModule() {
     return new SimpleModule()
         .addSerializer(ErrorResponse.class, new ErrorResponseSerializer())
@@ -83,6 +122,7 @@ public class S3ObjectMapper {
         .addDeserializer(ImmutableS3SignResponse.class, new S3SignResponseDeserializer<>());
   }
 
+  /** S3SignRequest 的 Jackson 序列化器，委托 {@link S3SignRequestParser#toJson}。 */
   public static class S3SignRequestSerializer<T extends S3SignRequest> extends JsonSerializer<T> {
     @Override
     public void serialize(T request, JsonGenerator gen, SerializerProvider serializers)
@@ -91,6 +131,7 @@ public class S3ObjectMapper {
     }
   }
 
+  /** S3SignRequest 的 Jackson 反序列化器，委托 {@link S3SignRequestParser#fromJson}。 */
   public static class S3SignRequestDeserializer<T extends S3SignRequest>
       extends JsonDeserializer<T> {
     @Override
@@ -100,6 +141,7 @@ public class S3ObjectMapper {
     }
   }
 
+  /** S3SignResponse 的 Jackson 序列化器，委托 {@link S3SignResponseParser#toJson}。 */
   public static class S3SignResponseSerializer<T extends S3SignResponse> extends JsonSerializer<T> {
     @Override
     public void serialize(T request, JsonGenerator gen, SerializerProvider serializers)
@@ -108,6 +150,7 @@ public class S3ObjectMapper {
     }
   }
 
+  /** S3SignResponse 的 Jackson 反序列化器，委托 {@link S3SignResponseParser#fromJson}。 */
   public static class S3SignResponseDeserializer<T extends S3SignResponse>
       extends JsonDeserializer<T> {
     @Override

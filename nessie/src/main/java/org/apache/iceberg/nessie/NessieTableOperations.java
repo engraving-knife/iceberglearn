@@ -44,17 +44,26 @@ import org.projectnessie.model.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Nessie implementation of Iceberg TableOperations. */
+/**
+ * 基于 Nessie 的 Iceberg TableOperations 实现。
+ *
+ * <p>所属模块：iceberg-nessie。职责：把"元数据文件存 FS、指针存 Nessie"的模式落地—— {@code doRefresh} 从 Nessie 读取 {@link
+ * IcebergTable} 内容条目获取 metadata location 并加载元数据； {@code doCommit} 写入新元数据文件后，通过 Nessie 的 CAS（compare
+ * metadata pointer）原子更新条目， 失败时按 {@code CommitFailedException}/{@code CommitStateUnknownException}
+ * 语义上报。
+ *
+ * <p>设计意图：继承 {@link BaseMetastoreTableOperations} 复用元数据文件读写与 {@code checkCommitStatus} 状态检查骨架；把
+ * Nessie 的冲突异常（{@code NessieConflictException}/{@code NessieReferenceConflictException}） 适配为
+ * Iceberg 的提交异常体系；通过 {@code NESSIE_COMMIT_ID_PROPERTY} 记录加载来源 commit ID， 便于分支切换时判断是否需要重新加载。
+ */
 public class NessieTableOperations extends BaseMetastoreTableOperations {
 
   private static final Logger LOG = LoggerFactory.getLogger(NessieTableOperations.class);
 
-  /**
-   * Name of the `{@link TableMetadata} property that holds the Nessie commit-ID from which the
-   * metadata has been loaded.
-   */
+  /** {@link TableMetadata} 属性名，记录加载该元数据时的 Nessie commit ID。 */
   public static final String NESSIE_COMMIT_ID_PROPERTY = "nessie.commit.id";
 
+  /** 属性名，设置后关闭 Nessie GC 相关告警。 */
   public static final String NESSIE_GC_NO_WARNING_PROPERTY = "nessie.gc.no-warning";
 
   private final NessieIcebergClient client;
@@ -63,7 +72,7 @@ public class NessieTableOperations extends BaseMetastoreTableOperations {
   private final FileIO fileIO;
   private final Map<String, String> catalogOptions;
 
-  /** Create a nessie table operations given a table identifier. */
+  /** 根据表标识符（{@link ContentKey}）构造 Nessie 表操作对象。 */
   NessieTableOperations(
       ContentKey key,
       NessieIcebergClient client,
@@ -75,11 +84,19 @@ public class NessieTableOperations extends BaseMetastoreTableOperations {
     this.catalogOptions = catalogOptions;
   }
 
+  /** 返回表名（{@link ContentKey} 的字符串形式）。 */
   @Override
   protected String tableName() {
     return key.toString();
   }
 
+  /**
+   * 从 Nessie 刷新表元数据。
+   *
+   * <p>逻辑：先 refresh Nessie 引用；再按 key 查询 Nessie 内容条目，若条目不存在且当前已有元数据则抛 {@link
+   * NoSuchTableException}；若条目存在则解包为 {@link IcebergTable} 获取 metadata location； 最后通过 {@code
+   * refreshFromMetadataLocation} 加载并补充 Nessie 特有属性。
+   */
   @Override
   protected void doRefresh() {
     try {
@@ -130,6 +147,13 @@ public class NessieTableOperations extends BaseMetastoreTableOperations {
                 reference));
   }
 
+  /**
+   * 提交表元数据到 Nessie。
+   *
+   * <p>逻辑：先写入新元数据文件；调用 {@code client.commitTable} 通过 Nessie CAS 原子更新条目。 冲突时尝试转为专用异常或抛 {@link
+   * CommitFailedException}；网络异常抛 {@link CommitStateUnknownException}；引用不存在抛
+   * RuntimeException。失败时删除已写的新元数据文件。
+   */
   @Override
   protected void doCommit(TableMetadata base, TableMetadata metadata) {
     boolean newTable = base == null;
@@ -167,6 +191,11 @@ public class NessieTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 将 Nessie 引用冲突异常映射为 Iceberg 专用异常。
+   *
+   * <p>逻辑：仅当服务端返回单一冲突时，按冲突类型（命名空间缺失/非空、key 不存在/已存在） 抛出对应的 Iceberg 异常；否则不处理由调用方走通用冲突路径。
+   */
   private static void maybeThrowSpecializedException(NessieReferenceConflictException ex) {
     // Check if the server returned 'ReferenceConflicts' information
     ReferenceConflicts referenceConflicts = ex.getErrorDetails();
@@ -199,6 +228,7 @@ public class NessieTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /** 返回用于读写表文件的 {@link FileIO}。 */
   @Override
   public FileIO io() {
     return fileIO;

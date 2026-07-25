@@ -28,6 +28,13 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.hadoop.HadoopTables;
 import org.junit.Before;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceHadoopTables 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Iceberg源Hadoop表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceHadoopTables extends TestIcebergSourceTablesBase {
 
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
@@ -35,6 +42,7 @@ public class TestIcebergSourceHadoopTables extends TestIcebergSourceTablesBase {
   File tableDir = null;
   String tableLocation = null;
 
+  /** 初始化表。 */
   @Before
   public void setupTable() throws Exception {
     this.tableDir = temp.newFolder();
@@ -43,27 +51,32 @@ public class TestIcebergSourceHadoopTables extends TestIcebergSourceTablesBase {
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** 创建表。 */
   @Override
   public Table createTable(
       TableIdentifier ident, Schema schema, PartitionSpec spec, Map<String, String> properties) {
     return TABLES.create(schema, spec, properties, tableLocation);
   }
 
+  /** 删除表。 */
   @Override
   public void dropTable(TableIdentifier ident) {
     TABLES.dropTable(tableLocation);
   }
 
+  /** 加载表。 */
   @Override
   public Table loadTable(TableIdentifier ident, String entriesSuffix) {
     return TABLES.load(loadLocation(ident, entriesSuffix));
   }
 
+  /** 加载路径。 */
   @Override
   public String loadLocation(TableIdentifier ident, String entriesSuffix) {
     return String.format("%s#%s", loadLocation(ident), entriesSuffix);
   }
 
+  /** 加载路径。 */
   @Override
   public String loadLocation(TableIdentifier ident) {
     return tableLocation;

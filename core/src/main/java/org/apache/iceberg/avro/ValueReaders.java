@@ -46,6 +46,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.UUIDUtil;
 
+/**
+ * 文件级说明：Avro 值读取器的具体实现工厂（静态方法集合），提供各 Iceberg 类型的 {@link ValueReader} 实现。
+ *
+ * <p>所属模块：iceberg-core（avro 子包）。职责：为 boolean/int/long/float/double/string/
+ * bytes/uuid/decimal/date/time/timestamp 等 primitive 类型，以及 struct/list/map 等 复合类型，提供具体的 {@link
+ * ValueReader} 实现类和工厂方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用工厂模式：每个类型有对应的 Reader 实现类（私有静态内部类），通过静态工厂方法创建。
+ *   <li>struct reader 支持列裁剪：按 projectedFields 只读必要列，减少 IO。
+ *   <li>支持对象复用（reuse 参数），减少 GC 压力。
+ *   <li>decimal/uuid 等特殊类型做专门解码，保证与 Iceberg 内部表示一致。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link GenericAvroReader}、反射读取器等按 schema 类型组合调用。
+ */
 public class ValueReaders {
   private ValueReaders() {}
 
@@ -53,26 +71,56 @@ public class ValueReaders {
     return NullReader.INSTANCE;
   }
 
+  /**
+   * 创建 boolean 类型读取器。
+   *
+   * @return boolean ValueReader
+   */
   public static ValueReader<Boolean> booleans() {
     return BooleanReader.INSTANCE;
   }
 
+  /**
+   * 创建 int 类型读取器。
+   *
+   * @return int ValueReader
+   */
   public static ValueReader<Integer> ints() {
     return IntegerReader.INSTANCE;
   }
 
+  /**
+   * 创建 long 类型读取器。
+   *
+   * @return long ValueReader
+   */
   public static ValueReader<Long> longs() {
     return LongReader.INSTANCE;
   }
 
+  /**
+   * 创建 float 类型读取器。
+   *
+   * @return float ValueReader
+   */
   public static ValueReader<Float> floats() {
     return FloatReader.INSTANCE;
   }
 
+  /**
+   * 创建 double 类型读取器。
+   *
+   * @return double ValueReader
+   */
   public static ValueReader<Double> doubles() {
     return DoubleReader.INSTANCE;
   }
 
+  /**
+   * 创建 string 类型读取器。
+   *
+   * @return string ValueReader
+   */
   public static ValueReader<String> strings() {
     return StringReader.INSTANCE;
   }
@@ -85,6 +133,11 @@ public class ValueReaders {
     return new EnumReader(symbols);
   }
 
+  /**
+   * 创建 UUID 类型读取器。
+   *
+   * @return UUID ValueReader
+   */
   public static ValueReader<UUID> uuids() {
     return UUIDReader.INSTANCE;
   }
@@ -134,6 +187,13 @@ public class ValueReaders {
     return new ArrayMapReader<>(keyReader, valueReader);
   }
 
+  /**
+   * 创建 map 类型读取器。
+   *
+   * @param keyReader key ValueReader
+   * @param valueReader value ValueReader
+   * @return map ValueReader
+   */
   public static <K, V> ValueReader<Map<K, V>> map(
       ValueReader<K> keyReader, ValueReader<V> valueReader) {
     return new MapReader<>(keyReader, valueReader);

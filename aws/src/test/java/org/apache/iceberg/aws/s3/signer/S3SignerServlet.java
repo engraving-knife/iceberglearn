@@ -92,6 +92,7 @@ public class S3SignerServlet extends HttpServlet {
     private final Predicate<S3SignRequest> requestExpectation;
     private final String assertMessage;
 
+    /** 辅助方法：SignRequestValidator。 */
     public SignRequestValidator(
         Predicate<S3SignRequest> requestExpectation,
         Predicate<S3SignRequest> requestMatcher,
@@ -108,35 +109,42 @@ public class S3SignerServlet extends HttpServlet {
     }
   }
 
+  /** 辅助方法：S3SignerServlet。 */
   public S3SignerServlet(ObjectMapper mapper) {
     this.mapper = mapper;
   }
 
+  /** 辅助方法：S3SignerServlet。 */
   public S3SignerServlet(ObjectMapper mapper, List<SignRequestValidator> s3SignRequestValidators) {
     this.mapper = mapper;
     this.s3SignRequestValidators = s3SignRequestValidators;
   }
 
+  /** 辅助方法：doGet。 */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) {
     execute(request, response);
   }
 
+  /** 辅助方法：doHead。 */
   @Override
   protected void doHead(HttpServletRequest request, HttpServletResponse response) {
     execute(request, response);
   }
 
+  /** 辅助方法：doPost。 */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) {
     execute(request, response);
   }
 
+  /** 辅助方法：doDelete。 */
   @Override
   protected void doDelete(HttpServletRequest request, HttpServletResponse response) {
     execute(request, response);
   }
 
+  /** 辅助方法：handleOAuth。 */
   private OAuthTokenResponse handleOAuth(Map<String, String> requestMap) {
     String grantType = requestMap.get("grant_type");
     switch (grantType) {
@@ -170,6 +178,7 @@ public class S3SignerServlet extends HttpServlet {
     }
   }
 
+  /** 辅助方法：signRequest。 */
   private S3SignResponse signRequest(S3SignRequest request) {
     AwsS3V4SignerParams signingParams =
         AwsS3V4SignerParams.builder()
@@ -209,6 +218,7 @@ public class S3SignerServlet extends HttpServlet {
     return ImmutableS3SignResponse.builder().uri(request.uri()).headers(headers).build();
   }
 
+  /** 辅助方法：execute。 */
   protected void execute(HttpServletRequest request, HttpServletResponse response) {
     response.setStatus(HttpServletResponse.SC_OK);
     responseHeaders.forEach(response::setHeader);

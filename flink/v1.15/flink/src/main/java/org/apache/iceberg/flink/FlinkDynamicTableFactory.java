@@ -43,28 +43,41 @@ import org.apache.iceberg.flink.source.IcebergTableSource;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
+/**
+ * Flink Iceberg DynamicTable 工厂，实现 source 与 sink 的创建。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：实现 {@link DynamicTableSourceFactory} 与 {@link
+ * DynamicTableSinkFactory}，根据 connector 选项创建 {@link IcebergTableSource} 或 {@link IcebergTableSink}。
+ *
+ * <p>设计意图：SPI 工厂模式；支持两种模式——若由 {@link FlinkCatalog} 创建则使用已有 catalog， 否则按 catalog-name/catalog-type
+ * 等属性按需创建 catalog 与表。 上下游：被 Flink TableEnvironment 通过 DynamicTableFactory 调用。
+ */
 public class FlinkDynamicTableFactory
     implements DynamicTableSinkFactory, DynamicTableSourceFactory {
   static final String FACTORY_IDENTIFIER = "iceberg";
 
+  /** catalog 名属性，必填。 */
   private static final ConfigOption<String> CATALOG_NAME =
       ConfigOptions.key("catalog-name")
           .stringType()
           .noDefaultValue()
           .withDescription("Catalog name");
 
+  /** catalog 类型属性，可选 custom/hadoop/hive，必填。 */
   private static final ConfigOption<String> CATALOG_TYPE =
       ConfigOptions.key(FlinkCatalogFactory.ICEBERG_CATALOG_TYPE)
           .stringType()
           .noDefaultValue()
           .withDescription("Catalog type, the optional types are: custom, hadoop, hive.");
 
+  /** catalog 数据库名属性，默认 default。 */
   private static final ConfigOption<String> CATALOG_DATABASE =
       ConfigOptions.key("catalog-database")
           .stringType()
           .defaultValue(FlinkCatalogFactory.DEFAULT_DATABASE_NAME)
           .withDescription("Database name managed in the iceberg catalog.");
 
+  /** catalog 表名属性。 */
   private static final ConfigOption<String> CATALOG_TABLE =
       ConfigOptions.key("catalog-table")
           .stringType()
@@ -73,14 +86,17 @@ public class FlinkDynamicTableFactory
 
   private final FlinkCatalog catalog;
 
+  /** 默认构造，catalog 为 null（按属性创建 catalog）。 */
   public FlinkDynamicTableFactory() {
     this.catalog = null;
   }
 
+  /** 基于 FlinkCatalog 构造工厂。 */
   public FlinkDynamicTableFactory(FlinkCatalog catalog) {
     this.catalog = catalog;
   }
 
+  /** 创建 DynamicTableSource，按是否绑定 FlinkCatalog 选择 TableLoader 构造方式。 */
   @Override
   public DynamicTableSource createDynamicTableSource(Context context) {
     ObjectIdentifier objectIdentifier = context.getObjectIdentifier();
@@ -103,6 +119,7 @@ public class FlinkDynamicTableFactory
     return new IcebergTableSource(tableLoader, tableSchema, tableProps, context.getConfiguration());
   }
 
+  /** 创建 DynamicTableSink，按是否绑定 FlinkCatalog 选择 TableLoader 构造方式。 */
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
     ObjectIdentifier objectIdentifier = context.getObjectIdentifier();
@@ -146,6 +163,12 @@ public class FlinkDynamicTableFactory
     return FACTORY_IDENTIFIER;
   }
 
+  /**
+   * 当未绑定 FlinkCatalog 时，按表属性创建 catalog、数据库、表（如不存在），并返回 TableLoader。
+   *
+   * <p>逻辑：解析 catalog-name/catalog-database/catalog-table；用 FlinkCatalogFactory 创建
+   * FlinkCatalog；若数据库或表不存在则自动创建；最后返回基于 catalog 的 TableLoader。
+   */
   private static TableLoader createTableLoader(
       CatalogBaseTable catalogBaseTable,
       Map<String, String> tableProps,
@@ -202,6 +225,7 @@ public class FlinkDynamicTableFactory
         flinkCatalog.getCatalogLoader(), TableIdentifier.of(catalogDatabase, catalogTable));
   }
 
+  /** 基于已绑定的 FlinkCatalog 与 ObjectPath 创建 TableLoader。 */
   private static TableLoader createTableLoader(FlinkCatalog catalog, ObjectPath objectPath) {
     Preconditions.checkNotNull(catalog, "Flink catalog cannot be null");
     return TableLoader.fromCatalog(catalog.getCatalogLoader(), catalog.toIdentifier(objectPath));

@@ -27,6 +27,22 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 文件级说明：内存版 OutputFile 实现，把写入内容保存在字节缓冲区中。
+ *
+ * <p>所属模块：iceberg-core（inmemory 子包）。职责：实现 {@link org.apache.iceberg.io.OutputFile} 接口，把写入的数据保存在内存
+ * ByteArrayOutputStream 中，并提供转换为 InputFile 的能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>不依赖磁盘 IO，所有写入在内存完成，适合测试。
+ *   <li>内部用 InMemoryPositionOutputStream 跟踪写入位置。
+ *   <li>写入完成后可转为 InMemoryInputFile 供读取链路使用，形成闭环。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link InMemoryFileIO} 创建；被写入链路当作普通 OutputFile 使用。
+ */
 public class InMemoryOutputFile implements OutputFile {
 
   private final String location;
@@ -63,6 +79,11 @@ public class InMemoryOutputFile implements OutputFile {
   }
 
   @Override
+  /**
+   * 创建输出流，写入内存缓冲区。
+   *
+   * @return 位置追踪输出流
+   */
   public PositionOutputStream create() {
     if (exists || (parentFileIO != null && parentFileIO.fileExists(location))) {
       throw new AlreadyExistsException("Already exists");
@@ -71,6 +92,13 @@ public class InMemoryOutputFile implements OutputFile {
   }
 
   @Override
+  /**
+   * 创建或覆盖输出流。
+   *
+   * <p>设计要点：先清空已有内容再创建新输出流。
+   *
+   * @return 位置追踪输出流
+   */
   public PositionOutputStream createOrOverwrite() {
     exists = true;
     contents = new ByteArrayOutputStream();
@@ -78,6 +106,11 @@ public class InMemoryOutputFile implements OutputFile {
   }
 
   @Override
+  /**
+   * 返回文件路径标识。
+   *
+   * @return 文件路径字符串
+   */
   public String location() {
     return location;
   }

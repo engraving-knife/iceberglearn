@@ -196,13 +196,13 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
   }
 
   /**
-   * Validate the Glue table is Iceberg table by checking its parameters. If the table properties
-   * check does not pass, for Iceberg it is equivalent to not having a table in the catalog. We
-   * throw a {@link NoSuchIcebergTableException} in that case.
+   * 校验 Glue 表是否为 Iceberg 表（通过检查 TABLE_TYPE 参数）。
    *
-   * @param table glue table
-   * @param fullName full table name for logging
-   * @throws NoSuchIcebergTableException if the table is not an Iceberg table
+   * <p>若校验不通过，对 Iceberg 而言等同于 catalog 中不存在该表，抛出 {@link NoSuchIcebergTableException}。
+   *
+   * @param table Glue 表对象
+   * @param fullName 完整表名（用于日志）
+   * @throws NoSuchIcebergTableException 表不是 Iceberg 表
    */
   static void checkIfTableIsIceberg(Table table, String fullName) {
     String tableType = table.parameters().get(TABLE_TYPE_PROP);
@@ -213,6 +213,13 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
         tableType);
   }
 
+  /**
+   * 根据配置初始化 FileIO，未指定实现类时默认使用 S3FileIO。
+   *
+   * @param properties catalog 属性
+   * @param hadoopConf Hadoop 配置
+   * @return FileIO 实例
+   */
   protected static FileIO initializeFileIO(Map<String, String> properties, Object hadoopConf) {
     String fileIOImpl = properties.get(CatalogProperties.FILE_IO_IMPL);
     if (fileIOImpl == null) {
@@ -224,6 +231,13 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * LakeFormation 场景下为新表创建临时 Glue 表，以获取表 ARN 用于凭证申请。
+   *
+   * @param base 当前元数据（null 表示新表）
+   * @param metadataLocation 元数据位置
+   * @return true 表示创建了临时表
+   */
   private boolean createGlueTempTableIfNecessary(TableMetadata base, String metadataLocation) {
     if (awsProperties.glueLakeFormationEnabled() && base == null) {
       // LakeFormation credential require TableArn as input，so creating a dummy table
@@ -253,6 +267,11 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 通过 LockManager 获取提交锁，获取失败抛 IllegalStateException。
+   *
+   * @param newMetadataLocation 新元数据位置（作为锁的 owner 信息）
+   */
   private void lock(String newMetadataLocation) {
     if (lockManager != null && !lockManager.acquire(commitLockEntityId, newMetadataLocation)) {
       throw new IllegalStateException(
@@ -262,6 +281,13 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 校验 Glue 中的元数据位置与 base 一致，不一致则抛 CommitFailedException。
+   *
+   * @param glueTable Glue 表对象
+   * @param base 当前元数据（null 表示新表）
+   * @throws CommitFailedException 元数据位置不匹配
+   */
   private void checkMetadataLocation(Table glueTable, TableMetadata base) {
     String glueMetadataLocation =
         glueTable != null ? glueTable.parameters().get(METADATA_LOCATION_PROP) : null;
@@ -273,6 +299,7 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /** 查询 Glue 表，不存在时返回 null（EntityNotFoundException 被吞掉）。 */
   private Table getGlueTable() {
     try {
       GetTableResponse response =
@@ -288,6 +315,16 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 准备要写入 Glue 表的参数 Map。
+   *
+   * <p>逻辑：保留已有参数，设置 TABLE_TYPE 为 ICEBERG，更新 METADATA_LOCATION， 若存在当前元数据位置则设置
+   * PREVIOUS_METADATA_LOCATION。
+   *
+   * @param glueTable 当前 Glue 表（null 表示新表）
+   * @param newMetadataLocation 新元数据位置
+   * @return 参数 Map
+   */
   private Map<String, String> prepareProperties(Table glueTable, String newMetadataLocation) {
     Map<String, String> properties =
         glueTable != null ? Maps.newHashMap(glueTable.parameters()) : Maps.newHashMap();
@@ -300,6 +337,22 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     return properties;
   }
 
+  /**
+   * 将表属性持久化到 Glue Data Catalog。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>已有表：构建 UpdateTableRequest，设置 TableInput（含 schema、location、属性等）， 若 LockManager 未配置则尝试用
+   *       versionId 做乐观锁，调用 updateTable。
+   *   <li>新表：构建 CreateTableRequest，同样设置 TableInput，调用 createTable。
+   * </ul>
+   *
+   * @param glueTable 当前 Glue 表（null 表示新表）
+   * @param parameters 表参数
+   * @param metadata 表元数据
+   * @param retryDetector 重试检测器
+   */
   @VisibleForTesting
   void persistGlueTable(
       Table glueTable,
@@ -349,6 +402,15 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 将 AWS Glue 服务异常映射为 Iceberg 异常。
+   *
+   * <p>逻辑：ConcurrentModificationException → CommitFailedException； AlreadyExistsException →
+   * AlreadyExistsException；EntityNotFoundException → NotFoundException； AccessDeniedException →
+   * ForbiddenException；ValidationException → ValidationException； 5xx 服务端错误直接上抛，其他状态码也上抛。
+   *
+   * @param persistFailure AWS 服务异常
+   */
   private void handleAWSExceptions(AwsServiceException persistFailure) {
     if (persistFailure instanceof ConcurrentModificationException) {
       throw new CommitFailedException(
@@ -384,6 +446,12 @@ class GlueTableOperations extends BaseMetastoreTableOperations {
     }
   }
 
+  /**
+   * 提交后清理：失败时删除未提交的元数据文件，释放提交锁。
+   *
+   * @param commitStatus 提交状态
+   * @param metadataLocation 元数据位置
+   */
   @VisibleForTesting
   void cleanupMetadataAndUnlock(CommitStatus commitStatus, String metadataLocation) {
     try {

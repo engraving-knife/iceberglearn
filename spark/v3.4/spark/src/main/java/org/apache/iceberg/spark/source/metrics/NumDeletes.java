@@ -21,20 +21,29 @@ package org.apache.iceberg.spark.source.metrics;
 import java.text.NumberFormat;
 import org.apache.spark.sql.connector.metric.CustomMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：已处理删除行数指标，定义指标名与聚合方式。
+ *
+ * <p>设计意图：实现 Spark CustomMetric，在 Driver 端聚合各任务删除行数。
+ *
+ * <p>上下游关系：由 BaseReader 上报；由 Spark UI 展示。
+ */
 public class NumDeletes implements CustomMetric {
 
   public static final String DISPLAY_STRING = "number of row deletes applied";
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "numDeletes";
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return DISPLAY_STRING;
   }
-
+  /** 执行 aggregateTaskMetrics 相关操作。 */
   @Override
   public String aggregateTaskMetrics(long[] taskMetrics) {
     long sum = initialValue;

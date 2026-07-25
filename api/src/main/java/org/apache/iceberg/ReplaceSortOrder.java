@@ -19,14 +19,21 @@
 package org.apache.iceberg;
 
 /**
- * API for replacing table sort order with a newly created order.
+ * 用新建排序替换表当前 sort order 的 API。
  *
- * <p>The table sort order is used to sort incoming records in engines that can request an ordering.
+ * <p>所属模块：iceberg-api（表更新操作接口层）。
  *
- * <p>Apply returns the new sort order for validation.
+ * <p>职责：在表元数据中用新的 {@link SortOrder} 替换原排序，用于指导支持排序的引擎在写入 时对记录排序。同时继承 {@link
+ * SortOrderBuilder}，可通过链式方法构建新排序。
  *
- * <p>When committing, these changes will be applied to the current table metadata. Commit conflicts
- * will be resolved by applying the pending changes to the new table metadata.
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>{@code apply()} 返回新的 sort order 供校验。
+ *   <li>提交时将变更应用到当前表元数据；若发生冲突，则把待提交变更应用到新的表元数据后 重试。
+ * </ul>
+ *
+ * <p>上下游关系：继承 {@link PendingUpdate} 与 {@link SortOrderBuilder}；由 core 模块实现， 被引擎/用户调用以更新排序。
  */
 public interface ReplaceSortOrder
     extends PendingUpdate<SortOrder>, SortOrderBuilder<ReplaceSortOrder> {}

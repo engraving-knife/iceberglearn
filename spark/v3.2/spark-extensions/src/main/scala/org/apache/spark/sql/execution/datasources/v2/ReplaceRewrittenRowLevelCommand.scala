@@ -24,9 +24,17 @@ import org.apache.spark.sql.catalyst.plans.logical.RowLevelCommand
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
- * Replaces operations such as DELETE and MERGE with the corresponding rewrite plans.
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 ReplaceRewrittenRowLevelCommand。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 object ReplaceRewrittenRowLevelCommand extends Rule[LogicalPlan] {
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     case c: RowLevelCommand if c.rewritePlan.isDefined =>
       c.rewritePlan.get

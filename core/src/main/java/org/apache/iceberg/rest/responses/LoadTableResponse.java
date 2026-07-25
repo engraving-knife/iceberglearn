@@ -27,12 +27,18 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTResponse;
 
 /**
- * A REST response that is used when a table is successfully loaded.
+ * 文件级说明：加载表的 REST 响应模型。
  *
- * <p>This class is used whenever the response to a request is a table's requested metadata and the
- * associated location of its metadata, to reduce code duplication. This includes using this class
- * as the response for {@link org.apache.iceberg.rest.requests.CreateTableRequest}, including when
- * that request is used to commit an already staged table creation as part of a transaction.
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：封装表元数据（{@link org.apache.iceberg.TableMetadata}）及其 metadata location，
+ * 用于加载表、创建表、注册表、更新表等操作的统一响应。
+ *
+ * <p>设计意图：将 metadata 与 metadata-location 一起返回，减少代码重复； 同时携带可选的配置属性（config）用于表级覆盖。使用 Builder
+ * 模式保证不可变性。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.rest.CatalogHandlers} 的多个方法返回， 由 {@link
+ * org.apache.iceberg.rest.RESTTableOperations} 消费。
  */
 public class LoadTableResponse implements RESTResponse {
 

@@ -38,8 +38,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestManifestReader，用于验证 Manifest Reader 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Manifest Reader 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestManifestReader extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
@@ -51,10 +60,16 @@ public class TestManifestReader extends TableTestBase {
               "dataSequenceNumber", "fileOrdinal", "fileSequenceNumber", "fromProjectionPos")
           .build();
 
+  /** 辅助方法：manifest reader。 */
   public TestManifestReader(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：manifest reader with empty inheritable metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReaderWithEmptyInheritableMetadata() throws IOException {
     ManifestFile manifest = writeManifest(1000L, manifestEntry(Status.EXISTING, 1000L, FILE_A));
@@ -66,6 +81,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：reader with filter without select。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReaderWithFilterWithoutSelect() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE_A, FILE_B, FILE_C);
@@ -82,6 +102,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：invalid usage。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidUsage() throws IOException {
     ManifestFile manifest = writeManifest(FILE_A, FILE_B);
@@ -90,6 +115,11 @@ public class TestManifestReader extends TableTestBase {
         .hasMessage("Cannot read from ManifestFile with null (unassigned) snapshot ID");
   }
 
+  /**
+   * 测试场景：manifest reader with partition metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReaderWithPartitionMetadata() throws IOException {
     ManifestFile manifest = writeManifest(1000L, manifestEntry(Status.EXISTING, 123L, FILE_A));
@@ -106,6 +136,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：manifest reader with updated partition metadata for 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestReaderWithUpdatedPartitionMetadataForV1Table() throws IOException {
     PartitionSpec spec =
@@ -130,6 +165,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：data file positions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFilePositions() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE_A, FILE_B, FILE_C);
@@ -144,6 +184,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：delete file positions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFilePositions() throws IOException {
     Assume.assumeTrue("Delete files only work for format version 2", formatVersion == 2);
@@ -161,6 +206,11 @@ public class TestManifestReader extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：data file split offsets null when invalid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFileSplitOffsetsNullWhenInvalid() throws IOException {
     DataFile invalidOffset =

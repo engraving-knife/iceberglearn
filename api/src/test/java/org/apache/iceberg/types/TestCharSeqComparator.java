@@ -33,6 +33,11 @@ import org.junit.jupiter.api.Test;
  * operation can be used: a &lt; b is equivalent to compare(a, b) &lt; 0.
  */
 public class TestCharSeqComparator {
+  /**
+   * 测试场景：String And Utf 8。
+   *
+   * <p>验证该方法在 String And Utf 8 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringAndUtf8() {
     String s1 = "abc";
@@ -45,6 +50,11 @@ public class TestCharSeqComparator {
     assertThat(utf8Comp.compare(s1, s2)).as("Should consider String and Utf8 equal").isZero();
   }
 
+  /**
+   * 测试场景：Seq Length。
+   *
+   * <p>验证该方法在 Seq Length 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeqLength() {
     String s1 = "abc";
@@ -69,6 +79,11 @@ public class TestCharSeqComparator {
         .isGreaterThan(0);
   }
 
+  /**
+   * 测试场景：Char Order Before Length。
+   *
+   * <p>验证该方法在 Char Order Before Length 条件下的行为是否符合预期。
+   */
   @Test
   public void testCharOrderBeforeLength() {
     // abcd < adc even though abcd is longer
@@ -90,6 +105,11 @@ public class TestCharSeqComparator {
         .isLessThan(0);
   }
 
+  /**
+   * 测试场景：Null Handling。
+   *
+   * <p>验证该方法在 Null Handling 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHandling() {
     String s1 = "abc";

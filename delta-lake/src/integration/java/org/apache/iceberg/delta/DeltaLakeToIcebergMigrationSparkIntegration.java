@@ -24,21 +24,19 @@ import org.apache.iceberg.spark.Spark3Util;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 
-/** An example class shows how to use the delta lake migration actions in SparkContext. */
+/**
+ * 文件级说明：DeltaLakeToIcebergMigrationSparkIntegration 集成测试。
+ *
+ * <p>所属模块：iceberg-delta-lake。职责：验证 Deltalake到Iceberg迁移Spark集成 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 class DeltaLakeToIcebergMigrationSparkIntegration {
 
+  /** 构造方法：DeltaLakeToIcebergMigrationSparkIntegration。 */
   private DeltaLakeToIcebergMigrationSparkIntegration() {}
 
-  /**
-   * Example of how to use a {@link SparkSession}, a table identifier and a delta table location to
-   * construct an action for snapshotting the delta table to an iceberg table.
-   *
-   * @param spark a SparkSession with iceberg catalog configured.
-   * @param newTableIdentifier can be both 2 parts and 3 parts identifier, if it is 2 parts, the
-   *     default spark catalog will be used
-   * @param deltaTableLocation the location of the delta table
-   * @return an instance of snapshot delta lake table action.
-   */
+  /** 辅助方法：快照Deltalake表。 */
   static SnapshotDeltaLakeTable snapshotDeltaLakeTable(
       SparkSession spark, String newTableIdentifier, String deltaTableLocation) {
     Preconditions.checkArgument(

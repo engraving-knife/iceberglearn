@@ -39,6 +39,23 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Manifest 文件读写入口工厂，提供 ManifestReader/Writer 的创建方法。
+ *
+ * <p>所属模块：iceberg-core。职责：作为 manifest 文件（Avro 格式，记录数据文件清单） 的读写入口，提供 read/write 工厂方法，封装 Avro
+ * reader/writer 的初始化。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>工厂模式：隐藏 Avro 读写器的创建细节（schema 转换、reader/writer 组合）。
+ *   <li>支持列裁剪：读取时可指定只读部分列，减少 IO。
+ *   <li>支持 metadata 继承：通过 InheritableMetadata 在读取时补全上下文。
+ * </ul>
+ *
+ * <p>上下游关系：被扫描链路（{@link ManifestGroup}）和写入链路（{@link MergingSnapshotProducer}） 调用；依赖 Avro 子包的
+ * reader/writer。
+ */
 public class ManifestFiles {
   private ManifestFiles() {}
 
@@ -78,12 +95,24 @@ public class ManifestFiles {
                 cacheDurationMs(fileIO), cacheTotalBytes(fileIO), cacheMaxContentLength(fileIO)));
   }
 
+  /**
+   * 清空指定 FileIO 关联的 manifest 缓存。
+   *
+   * @param fileIO 文件 IO 实例
+   */
   /** Drop manifest file cache object for a FileIO if exists. */
   public static synchronized void dropCache(FileIO fileIO) {
     CONTENT_CACHES.invalidate(fileIO);
     CONTENT_CACHES.cleanUp();
   }
 
+  /**
+   * 读取 manifest 文件中所有数据文件的路径。
+   *
+   * @param manifest manifest 文件元信息
+   * @param io 文件 IO
+   * @return 文件路径的可迭代集合
+   */
   /**
    * Returns a {@link CloseableIterable} of file paths in the {@link ManifestFile}.
    *
@@ -97,6 +126,13 @@ public class ManifestFiles {
         entry -> entry.file().path().toString());
   }
 
+  /**
+   * 创建数据文件 manifest 读取器（不带列裁剪）。
+   *
+   * @param manifest manifest 文件元信息
+   * @param io 文件 IO
+   * @return ManifestReader 实例
+   */
   /**
    * Returns a new {@link ManifestReader} for a {@link ManifestFile}.
    *
@@ -133,6 +169,13 @@ public class ManifestFiles {
   }
 
   /**
+   * 创建数据文件 manifest 写入器。
+   *
+   * @param spec 分区规格
+   * @param outputFile 输出文件
+   * @return ManifestWriter 实例
+   */
+  /**
    * Create a new {@link ManifestWriter}.
    *
    * <p>Manifests created by this writer have all entry snapshot IDs set to null. All entries will
@@ -168,6 +211,15 @@ public class ManifestFiles {
   }
 
   /**
+   * 创建删除文件 manifest 读取器。
+   *
+   * @param manifest manifest 文件元信息
+   * @param io 文件 IO
+   * @param columns 需要读取的列 ID 集合
+   * @param nameMapping 字段名映射（可为 null）
+   * @return ManifestReader 实例
+   */
+  /**
    * Returns a new {@link ManifestReader} for a {@link ManifestFile}.
    *
    * @param manifest a {@link ManifestFile}
@@ -187,6 +239,15 @@ public class ManifestFiles {
         file, manifest.partitionSpecId(), specsById, inheritableMetadata, FileType.DELETE_FILES);
   }
 
+  /**
+   * 创建删除文件 manifest 写入器。
+   *
+   * @param spec 分区规格
+   * @param outputFile 输出文件
+   * @param snapshotId 当前快照 ID
+   * @param appendSequenceNumber 追加序列号
+   * @return ManifestWriter 实例
+   */
   /**
    * Create a new {@link ManifestWriter} for the given format version.
    *
@@ -209,6 +270,13 @@ public class ManifestFiles {
   }
 
   /**
+   * 把 ManifestFile 元信息编码为字节数组（用于缓存）。
+   *
+   * @param manifestFile manifest 文件元信息
+   * @return 编码后的字节数组
+   * @throws IOException 编码失败时抛出
+   */
+  /**
    * Encode the {@link ManifestFile} to a byte array by using avro encoder.
    *
    * @param manifestFile a {@link ManifestFile}, which should always be a {@link
@@ -221,6 +289,13 @@ public class ManifestFiles {
     return AvroEncoderUtil.encode(genericManifestFile, MANIFEST_AVRO_SCHEMA);
   }
 
+  /**
+   * 从字节数组解码 ManifestFile 元信息。
+   *
+   * @param manifestData 编码后的字节数组
+   * @return ManifestFile 实例
+   * @throws IOException 解码失败时抛出
+   */
   /**
    * Decode the binary data into a {@link ManifestFile}.
    *

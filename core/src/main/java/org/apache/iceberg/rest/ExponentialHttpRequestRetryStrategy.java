@@ -43,35 +43,41 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 
 /**
- * Defines an exponential HTTP request retry strategy and provides the same characteristics as the
- * {@link org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy}, using the following list
- * of non-retriable I/O exception classes:
+ * 文件级说明：指数退避 HTTP 请求重试策略。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 客户端 HTTP 传输层的重试策略，供 {@link HTTPClient} 使用）。
+ *
+ * <p>职责：
  *
  * <ul>
- *   <li>InterruptedIOException
- *   <li>UnknownHostException
- *   <li>ConnectException
- *   <li>ConnectionClosedException
- *   <li>NoRouteToHostException
- *   <li>SSLException
+ *   <li>在 I/O 异常或特定 HTTP 状态码（429、503）时决定是否重试请求。
+ *   <li>计算重试间隔，采用指数退避 + 抖动（jitter）策略，避免重试风暴。
+ *   <li>遵循服务端 Retry-After 响应头（如果存在）。
  * </ul>
  *
- * The following retriable HTTP status codes are defined:
+ * <p>设计意图：基于 Apache HttpClient 5 的 {@link HttpRequestRetryStrategy} 接口实现， 与 {@link
+ * org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy} 行为基本一致， 主要差异在 {@link
+ * #getRetryInterval(HttpResponse, int, HttpContext)} 中改为指数退避 （2^execCount 秒，上限 64
+ * 秒）并附加随机抖动，以更好应对服务端限流场景。
  *
- * <ul>
- *   <li>SC_TOO_MANY_REQUESTS (429)
- *   <li>SC_SERVICE_UNAVAILABLE (503)
- * </ul>
+ * <p>不可重试的异常类：InterruptedIOException、UnknownHostException、ConnectException、
+ * ConnectionClosedException、NoRouteToHostException、SSLException。
  *
- * Most code and behavior is taken from {@link
- * org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy}, with minor modifications to
- * {@link #getRetryInterval(HttpResponse, int, HttpContext)} to achieve exponential backoff.
+ * <p>可重试的 HTTP 状态码：429（TOO_MANY_REQUESTS）、503（SERVICE_UNAVAILABLE）。
+ *
+ * <p>上下游关系：被 {@link HTTPClient} 在构建 HttpClient 时设置为重试策略。
  */
 class ExponentialHttpRequestRetryStrategy implements HttpRequestRetryStrategy {
   private final int maxRetries;
   private final Set<Class<? extends IOException>> nonRetriableExceptions;
   private final Set<Integer> retriableCodes;
 
+  /**
+   * 构造指数退避重试策略。
+   *
+   * @param maximumRetries 最大重试次数，必须为正数
+   * @throws IllegalArgumentException 若 maximumRetries <= 0
+   */
   ExponentialHttpRequestRetryStrategy(int maximumRetries) {
     Preconditions.checkArgument(
         maximumRetries > 0, "Cannot set retries to %s, the value must be positive", maximumRetries);
@@ -88,6 +94,17 @@ class ExponentialHttpRequestRetryStrategy implements HttpRequestRetryStrategy {
             SSLException.class);
   }
 
+  /**
+   * 判断 I/O 异常时是否应重试请求。
+   *
+   * <p>逻辑：超过最大重试次数则不重试；异常属于不可重试类则不重试；请求已取消则不重试； 仅当请求方法为幂等（GET/HEAD 等）时才重试。
+   *
+   * @param request HTTP 请求
+   * @param exception 发生的 I/O 异常
+   * @param execCount 已执行次数（含当前）
+   * @param context HTTP 上下文
+   * @return 允许重试返回 true
+   */
   @Override
   public boolean retryRequest(
       HttpRequest request, IOException exception, int execCount, HttpContext context) {
@@ -115,11 +132,38 @@ class ExponentialHttpRequestRetryStrategy implements HttpRequestRetryStrategy {
     return Method.isIdempotent(request.getMethod());
   }
 
+  /**
+   * 判断 HTTP 响应状态码是否应重试。
+   *
+   * <p>逻辑：未超过最大重试次数且状态码为可重试码（429/503）时返回 true。
+   *
+   * @param response HTTP 响应
+   * @param execCount 已执行次数（含当前）
+   * @param context HTTP 上下文
+   * @return 允许重试返回 true
+   */
   @Override
   public boolean retryRequest(HttpResponse response, int execCount, HttpContext context) {
     return execCount <= maxRetries && retriableCodes.contains(response.getCode());
   }
 
+  /**
+   * 计算重试等待间隔。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>优先解析 Retry-After 响应头：先尝试按秒数解析，失败则按 HTTP 日期解析。
+   *   <li>若 Retry-After 有效（正值）则直接使用。
+   *   <li>否则采用指数退避：delay = 1000 * 2^(execCount-1)，上限 64 秒。
+   *   <li>附加随机抖动 jitter（delay 的 10%），避免重试同步风暴。
+   * </ol>
+   *
+   * @param response HTTP 响应
+   * @param execCount 已执行次数（含当前）
+   * @param context HTTP 上下文
+   * @return 重试等待时间
+   */
   @Override
   public TimeValue getRetryInterval(HttpResponse response, int execCount, HttpContext context) {
     // a server may send a 429 / 503 with a Retry-After header

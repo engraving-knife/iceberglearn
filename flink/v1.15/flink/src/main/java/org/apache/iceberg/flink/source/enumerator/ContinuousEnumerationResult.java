@@ -22,6 +22,13 @@ import java.util.Collection;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 连续枚举结果，承载增量扫描产出的分片与枚举位置。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装一次增量发现的分片列表与新的扫描位置。
+ *
+ * <p>设计意图：值对象；被 ContinuousSplitPlanner 返回。
+ */
 class ContinuousEnumerationResult {
   private final Collection<IcebergSourceSplit> splits;
   private final IcebergEnumeratorPosition fromPosition;

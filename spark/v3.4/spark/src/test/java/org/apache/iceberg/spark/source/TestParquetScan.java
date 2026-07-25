@@ -58,17 +58,26 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestParquetScan 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Parquet扫描 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestParquetScan extends AvroDataTest {
   private static final Configuration CONF = new Configuration();
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestParquetScan.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestParquetScan.spark;
@@ -78,6 +87,7 @@ public class TestParquetScan extends AvroDataTest {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "vectorized = {0}")
   public static Object[] parameters() {
     return new Object[] {false, true};
@@ -85,10 +95,12 @@ public class TestParquetScan extends AvroDataTest {
 
   private final boolean vectorized;
 
+  /** 测试Parquet扫描。 */
   public TestParquetScan(boolean vectorized) {
     this.vectorized = vectorized;
   }
 
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     Assume.assumeTrue(
@@ -117,6 +129,7 @@ public class TestParquetScan extends AvroDataTest {
     }
   }
 
+  /** 测试空表投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyTableProjection() throws IOException {
     Types.StructType structType =
@@ -142,6 +155,7 @@ public class TestParquetScan extends AvroDataTest {
     assertThat(rows).hasSize(100);
   }
 
+  /** 创建表。 */
   private Table createTable(Schema schema) throws IOException {
     File parent = temp.newFolder("parquet");
     File location = new File(parent, "test");
@@ -149,6 +163,7 @@ public class TestParquetScan extends AvroDataTest {
     return tables.create(schema, PartitionSpec.unpartitioned(), location.toString());
   }
 
+  /** 写记录。 */
   private void writeRecords(Table table, List<GenericData.Record> records) throws IOException {
     File dataFolder = new File(table.location(), "data");
     dataFolder.mkdirs();
@@ -171,6 +186,7 @@ public class TestParquetScan extends AvroDataTest {
     table.newAppend().appendFile(file).commit();
   }
 
+  /** 辅助方法：configureVectorization。 */
   private void configureVectorization(Table table) {
     table
         .updateProperties()

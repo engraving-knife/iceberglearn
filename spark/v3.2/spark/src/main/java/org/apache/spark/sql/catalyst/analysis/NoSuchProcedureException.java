@@ -22,7 +22,15 @@ import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import scala.Option;
 
+/**
+ * Spark Catalyst 分析阶段的规则或检查，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 NoSuchProcedureException。
+ *
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+ */
 public class NoSuchProcedureException extends AnalysisException {
+  /** 构造 NoSuchProcedureException 实例。 */
   public NoSuchProcedureException(Identifier ident) {
     super(
         "Procedure " + ident + " not found",

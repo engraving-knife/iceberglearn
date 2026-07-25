@@ -27,12 +27,22 @@ import org.apache.iceberg.io.FileWriterFactory;
 import org.apache.iceberg.io.TestRollingFileWriters;
 import org.apache.iceberg.util.ArrayUtil;
 
+/**
+ * 文件级说明：测试 TestFlinkRollingFileWriters 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkRollingFileWriters 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkRollingFileWriters extends TestRollingFileWriters<RowData> {
 
+  /** 辅助方法：TestFlinkRollingFileWriters，Flink Rolling File Writers。 */
   public TestFlinkRollingFileWriters(FileFormat fileFormat, boolean partitioned) {
     super(fileFormat, partitioned);
   }
 
+  /** 辅助方法：newWriterFactory，new Writer Factory。 */
   @Override
   protected FileWriterFactory<RowData> newWriterFactory(
       Schema dataSchema,
@@ -49,6 +59,7 @@ public class TestFlinkRollingFileWriters extends TestRollingFileWriters<RowData>
         .build();
   }
 
+  /** 辅助方法：toRow，to Row。 */
   @Override
   protected RowData toRow(Integer id, String data) {
     return SimpleDataUtil.createRowData(id, data);

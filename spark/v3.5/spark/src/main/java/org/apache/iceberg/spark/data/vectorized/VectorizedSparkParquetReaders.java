@@ -32,6 +32,24 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Spark 向量化 Parquet 读取器工厂。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），data.vectorized 子包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>构造 Iceberg Schema + Parquet MessageType 对应的 {@link ColumnarBatchReader}。
+ *   <li>在静态初始化时配置 Arrow 的 unsafe 内存访问与关闭 null 检查以提升读取性能。
+ *   <li>通过自定义 {@link ReaderBuilder} 把 {@link DeleteFilter} 注入到 reader。
+ * </ul>
+ *
+ * <p>设计意图：复用 iceberg-core 的 {@link VectorizedReaderBuilder} 与 {@link TypeWithSchemaVisitor} 构造
+ * reader 树，仅覆盖 vectorizedReader 方法注入 DeleteFilter；Arrow 属性仅在用户未显式配置时 设置默认值，避免覆盖用户意图。
+ *
+ * <p>上下游关系：被 Spark 向量化读取路径调用构造 reader；产出 ColumnarBatchReader 被 Spark 向量化执行引擎消费。
+ */
 public class VectorizedSparkParquetReaders {
 
   private static final Logger LOG = LoggerFactory.getLogger(VectorizedSparkParquetReaders.class);
@@ -51,6 +69,18 @@ public class VectorizedSparkParquetReaders {
 
   private VectorizedSparkParquetReaders() {}
 
+  /**
+   * 构造向量化 Parquet 读取器。
+   *
+   * <p>逻辑：用 {@link TypeWithSchemaVisitor} 访问 expectedSchema.asStruct 与 fileSchema， 通过 ReaderBuilder
+   * 构造 reader 树，根节点为 ColumnarBatchReader。
+   *
+   * @param expectedSchema Iceberg 期望 schema
+   * @param fileSchema Parquet 文件 schema
+   * @param idToConstant 字段 ID 到常量值的映射
+   * @param deleteFilter 删除过滤器
+   * @return ColumnarBatchReader 实例
+   */
   public static ColumnarBatchReader buildReader(
       Schema expectedSchema,
       MessageType fileSchema,
@@ -69,8 +99,7 @@ public class VectorizedSparkParquetReaders {
                 deleteFilter));
   }
 
-  // enables unsafe memory access to avoid costly checks to see if index is within bounds
-  // as long as it is not configured explicitly (see BoundsChecking in Arrow)
+  /** 启用 Arrow unsafe 内存访问以跳过昂贵的越界检查（仅当用户未显式配置时）。 */
   private static void enableUnsafeMemoryAccess() {
     String value = confValue(ENABLE_UNSAFE_MEMORY_ACCESS, ENABLE_UNSAFE_MEMORY_ACCESS_ENV);
     if (value == null) {
@@ -81,8 +110,7 @@ public class VectorizedSparkParquetReaders {
     }
   }
 
-  // disables expensive null checks for every get call in favor of Iceberg nullability
-  // as long as it is not configured explicitly (see NullCheckingForGet in Arrow)
+  /** 关闭 Arrow 每次 get 的 null 检查，改用 Iceberg 自身的可空性管理（仅当用户未显式配置时）。 */
   private static void disableNullCheckForGet() {
     String value = confValue(ENABLE_NULL_CHECK_FOR_GET, ENABLE_NULL_CHECK_FOR_GET_ENV);
     if (value == null) {
@@ -93,6 +121,7 @@ public class VectorizedSparkParquetReaders {
     }
   }
 
+  /** 优先从系统属性、其次从环境变量读取配置值。 */
   private static String confValue(String propName, String envName) {
     String propValue = System.getProperty(propName);
     if (propValue != null) {
@@ -102,9 +131,16 @@ public class VectorizedSparkParquetReaders {
     return System.getenv(envName);
   }
 
+  /**
+   * 自定义 {@link VectorizedReaderBuilder}：在构造 reader 时注入 {@link DeleteFilter}。
+   *
+   * <p>设计意图：复用父类的 reader 树构造逻辑，仅覆盖 vectorizedReader 把 DeleteFilter 设置到根 ColumnarBatchReader
+   * 上，使读取时能应用位置/等值删除。
+   */
   private static class ReaderBuilder extends VectorizedReaderBuilder {
     private final DeleteFilter<InternalRow> deleteFilter;
 
+    /** 构造 ReaderBuilder，保存 deleteFilter。 */
     ReaderBuilder(
         Schema expectedSchema,
         MessageType parquetSchema,
@@ -116,6 +152,7 @@ public class VectorizedSparkParquetReaders {
       this.deleteFilter = deleteFilter;
     }
 
+    /** 调用父类构造 reader，若有 deleteFilter 则注入到 ColumnarBatchReader。 */
     @Override
     protected VectorizedReader<?> vectorizedReader(List<VectorizedReader<?>> reorderedFields) {
       VectorizedReader<?> reader = super.vectorizedReader(reorderedFields);

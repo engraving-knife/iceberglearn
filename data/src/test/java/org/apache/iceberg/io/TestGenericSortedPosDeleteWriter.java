@@ -50,6 +50,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestGenericSortedPosDeleteWriter 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericSortedPosDeleteWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericSortedPosDeleteWriter extends TableTestBase {
   private static final int FORMAT_V2 = 2;
 
@@ -58,16 +65,19 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
   private OutputFileFactory fileFactory;
   private Record gRecord;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}")
   public static Object[] parameters() {
     return new Object[][] {new Object[] {"avro"}, new Object[] {"orc"}, new Object[] {"parquet"}};
   }
 
+  /** 辅助方法：TestGenericSortedPosDeleteWriter。 */
   public TestGenericSortedPosDeleteWriter(String fileFormat) {
     super(FORMAT_V2);
     this.format = FileFormat.fromString(fileFormat);
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -83,10 +93,12 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
     table.updateProperties().defaultFormat(format).commit();
   }
 
+  /** 辅助方法：createEncryptedOutputFile。 */
   private EncryptedOutputFile createEncryptedOutputFile() {
     return fileFactory.newOutputFile();
   }
 
+  /** 辅助方法：prepareDataFile。 */
   private DataFile prepareDataFile(FileAppenderFactory<Record> appenderFactory, List<Record> rowSet)
       throws IOException {
     DataWriter<Record> writer =
@@ -100,6 +112,7 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
     return writer.toDataFile();
   }
 
+  /** 辅助方法：createRow。 */
   private Record createRow(Integer id, String data) {
     Record row = gRecord.copy();
     row.setField("id", id);
@@ -107,12 +120,14 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
     return row;
   }
 
+  /** 辅助方法：expectedRowSet。 */
   private StructLikeSet expectedRowSet(Iterable<Record> records) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     records.forEach(set::add);
     return set;
   }
 
+  /** 辅助方法：actualRowSet。 */
   private StructLikeSet actualRowSet(String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     try (CloseableIterable<Record> reader = IcebergGenerics.read(table).select(columns).build()) {
@@ -121,6 +136,11 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
     return set;
   }
 
+  /**
+   * 测试场景：Sorted Pos Delete。
+   *
+   * <p>验证该方法在 Sorted Pos Delete 条件下的行为是否符合预期。
+   */
   @Test
   public void testSortedPosDelete() throws IOException {
     List<Record> rowSet =
@@ -170,6 +190,11 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
         "Should have the expected records", expectedRowSet(expectedData), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Sorted Pos Delete With Schema And Null Row。
+   *
+   * <p>验证该方法在 Sorted Pos Delete With Schema And Null Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testSortedPosDeleteWithSchemaAndNullRow() throws IOException {
     List<Record> rowSet =
@@ -192,6 +217,11 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
         "Should fail because the appender are required non-null rows to write", caughtError);
   }
 
+  /**
+   * 测试场景：Sorted Pos Delete With Row。
+   *
+   * <p>验证该方法在 Sorted Pos Delete With Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testSortedPosDeleteWithRow() throws IOException {
     List<Record> rowSet =
@@ -242,6 +272,11 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
         "Should have the expected records", expectedRowSet(expectedData), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Multiple Flush。
+   *
+   * <p>验证该方法在 Multiple Flush 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleFlush() throws IOException {
     FileAppenderFactory<Record> appenderFactory =
@@ -306,6 +341,7 @@ public class TestGenericSortedPosDeleteWriter extends TableTestBase {
         "Should have no record.", expectedRowSet(ImmutableList.of()), actualRowSet("*"));
   }
 
+  /** 辅助方法：readRecordsAsList。 */
   private List<Record> readRecordsAsList(Schema schema, CharSequence path) throws IOException {
     CloseableIterable<Record> iterable;
 

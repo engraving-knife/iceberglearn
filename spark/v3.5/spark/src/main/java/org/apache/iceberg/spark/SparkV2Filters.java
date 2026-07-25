@@ -67,6 +67,15 @@ import org.apache.spark.sql.connector.expressions.filter.Predicate;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark DataSource V2 谓词转换工具，将 Spark V2 Predicate 转换为 Iceberg Expression。
+ *
+ * <p>设计意图：面向 Spark 3 的新版 Predicate API，实现下推。
+ *
+ * <p>上下游关系：由 SparkScanBuilder 使用。
+ */
 public class SparkV2Filters {
 
   public static final Set<String> SUPPORTED_FUNCTIONS =
@@ -110,7 +119,7 @@ public class SparkV2Filters {
           .buildOrThrow();
 
   private SparkV2Filters() {}
-
+  /** 执行类型/值转换。 */
   public static Expression convert(Predicate[] predicates) {
     Expression expression = Expressions.alwaysTrue();
     for (Predicate predicate : predicates) {
@@ -122,7 +131,7 @@ public class SparkV2Filters {
 
     return expression;
   }
-
+  /** 执行类型/值转换。 */
   @SuppressWarnings({"checkstyle:CyclomaticComplexity", "checkstyle:MethodLength"})
   public static Expression convert(Predicate predicate) {
     Operation op = FILTERS.get(predicate.name());
@@ -308,7 +317,7 @@ public class SparkV2Filters {
 
     return null;
   }
-
+  /** 执行 predicateChildren 相关操作。 */
   private static Pair<UnboundTerm<Object>, Object> predicateChildren(Predicate predicate) {
     if (canConvertToTerm(leftChild(predicate)) && isLiteral(rightChild(predicate))) {
       UnboundTerm<Object> term = toTerm(leftChild(predicate));
@@ -322,7 +331,7 @@ public class SparkV2Filters {
       return null;
     }
   }
-
+  /** 执行 child 相关操作。 */
   @SuppressWarnings("unchecked")
   private static <T> T child(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -330,7 +339,7 @@ public class SparkV2Filters {
         children.length == 1, "Predicate should have one child: %s", predicate);
     return (T) children[0];
   }
-
+  /** 执行 leftChild 相关操作。 */
   @SuppressWarnings("unchecked")
   private static <T> T leftChild(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -338,7 +347,7 @@ public class SparkV2Filters {
         children.length == 2, "Predicate should have two children: %s", predicate);
     return (T) children[0];
   }
-
+  /** 执行 rightChild 相关操作。 */
   @SuppressWarnings("unchecked")
   private static <T> T rightChild(Predicate predicate) {
     org.apache.spark.sql.connector.expressions.Expression[] children = predicate.children();
@@ -346,21 +355,21 @@ public class SparkV2Filters {
         children.length == 2, "Predicate should have two children: %s", predicate);
     return (T) children[1];
   }
-
+  /** 执行 childAtIndex 相关操作。 */
   @SuppressWarnings("unchecked")
   private static <T> T childAtIndex(Predicate predicate, int index) {
     return (T) predicate.children()[index];
   }
-
+  /** 执行 canConvertToTerm 相关操作。 */
   private static boolean canConvertToTerm(
       org.apache.spark.sql.connector.expressions.Expression expr) {
     return isRef(expr) || isSystemFunc(expr);
   }
-
+  /** 判断是否 Ref。 */
   private static boolean isRef(org.apache.spark.sql.connector.expressions.Expression expr) {
     return expr instanceof NamedReference;
   }
-
+  /** 判断是否 SystemFunc。 */
   private static boolean isSystemFunc(org.apache.spark.sql.connector.expressions.Expression expr) {
     if (expr instanceof UserDefinedScalarFunc) {
       UserDefinedScalarFunc udf = (UserDefinedScalarFunc) expr;
@@ -371,11 +380,11 @@ public class SparkV2Filters {
 
     return false;
   }
-
+  /** 判断是否 Literal。 */
   private static boolean isLiteral(org.apache.spark.sql.connector.expressions.Expression expr) {
     return expr instanceof Literal;
   }
-
+  /** 执行 convertLiteral 相关操作。 */
   private static Object convertLiteral(Literal<?> literal) {
     if (literal.value() instanceof UTF8String) {
       return ((UTF8String) literal.value()).toString();
@@ -384,7 +393,7 @@ public class SparkV2Filters {
     }
     return literal.value();
   }
-
+  /** 执行 handleEqual 相关操作。 */
   private static UnboundPredicate<Object> handleEqual(UnboundTerm<Object> term, Object value) {
     if (value == null) {
       return isNull(term);
@@ -394,7 +403,7 @@ public class SparkV2Filters {
       return equal(term, value);
     }
   }
-
+  /** 执行 handleNotEqual 相关操作。 */
   private static UnboundPredicate<Object> handleNotEqual(UnboundTerm<Object> term, Object value) {
     if (NaNUtil.isNaN(value)) {
       return notNaN(term);
@@ -402,7 +411,7 @@ public class SparkV2Filters {
       return notEqual(term, value);
     }
   }
-
+  /** 判断是否存在 NoInFilter。 */
   private static boolean hasNoInFilter(Predicate predicate) {
     Operation op = FILTERS.get(predicate.name());
 
@@ -426,7 +435,7 @@ public class SparkV2Filters {
 
     return false;
   }
-
+  /** 判断是否 SupportedInPredicate。 */
   private static boolean isSupportedInPredicate(Predicate predicate) {
     if (!canConvertToTerm(childAtIndex(predicate, 0))) {
       return false;
@@ -445,7 +454,7 @@ public class SparkV2Filters {
       return null;
     }
   }
-
+  /** 执行 udfToTerm 相关操作。 */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   private static UnboundTerm<Object> udfToTerm(UserDefinedScalarFunc udf) {
     org.apache.spark.sql.connector.expressions.Expression[] children = udf.children();

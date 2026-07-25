@@ -29,9 +29,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A table loader that will only reload a table after a certain interval has passed. WARNING: This
- * table loader should be used carefully when used with writer tasks. It could result in heavy load
- * on a catalog for jobs with many writers.
+ * 带刷新间隔缓存的表加载器。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），实现 {@link SerializableSupplier}。
+ *
+ * <p>职责：在内存中缓存 Iceberg {@link Table} 实例，仅当距上次加载超过指定间隔时才重新加载， 避免每次写入都访问 catalog。
+ *
+ * <p>设计意图：写入任务高频访问表元数据，直接每次加载会冲击 catalog；通过时间窗口缓存降低负载。 警告：writer 数量很多时仍可能对 catalog
+ * 造成较大压力，需谨慎配置刷新间隔。
+ *
+ * <p>上下游关系：被 sink writer 用于获取/刷新表实例；上游依赖 {@link TableLoader}。
  */
 class CachingTableSupplier implements SerializableSupplier<Table> {
 
@@ -43,6 +50,13 @@ class CachingTableSupplier implements SerializableSupplier<Table> {
   private long lastLoadTimeMillis;
   private transient Table table;
 
+  /**
+   * 构造缓存供应器。
+   *
+   * @param initialTable 初始表实例（不可为 null）
+   * @param tableLoader 表加载器（不可为 null）
+   * @param tableRefreshInterval 刷新间隔（不可为 null）
+   */
   CachingTableSupplier(
       SerializableTable initialTable, TableLoader tableLoader, Duration tableRefreshInterval) {
     Preconditions.checkArgument(initialTable != null, "initialTable cannot be null");
@@ -56,6 +70,7 @@ class CachingTableSupplier implements SerializableSupplier<Table> {
     this.lastLoadTimeMillis = System.currentTimeMillis();
   }
 
+  /** 返回当前缓存的表实例；若被序列化清空则回退到初始表。 */
   @Override
   public Table get() {
     if (table == null) {
@@ -64,10 +79,16 @@ class CachingTableSupplier implements SerializableSupplier<Table> {
     return table;
   }
 
+  /** 返回构造时传入的初始表实例。 */
   Table initialTable() {
     return initialTable;
   }
 
+  /**
+   * 在超过刷新间隔时重新加载表。
+   *
+   * <p>逻辑：比较当前时间与上次加载时间，超时则打开 tableLoader 并 loadTable，更新缓存与时间戳； 加载异常时仅告警不抛出，避免影响写入。
+   */
   void refreshTable() {
     if (System.currentTimeMillis() > lastLoadTimeMillis + tableRefreshInterval.toMillis()) {
       try {

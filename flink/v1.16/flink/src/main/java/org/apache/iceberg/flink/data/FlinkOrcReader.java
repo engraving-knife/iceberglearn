@@ -35,28 +35,41 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.storage.ql.exec.vector.StructColumnVector;
 import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 
+/**
+ * 把 ORC 向量化数据读取为 Flink {@link RowData} 的 OrcRowReader 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 Iceberg schema 与 ORC TypeDescription 构造 {@link
+ * OrcValueReader}，读取时将 ORC 列向量转换为 Flink RowData。
+ *
+ * <p>设计意图：适配器模式，把 Iceberg ORC 读取能力适配到 Flink RowData； 上下游：被 Flink ORC 读取算子调用。
+ */
 public class FlinkOrcReader implements OrcRowReader<RowData> {
   private final OrcValueReader<?> reader;
 
+  /** 构造函数，使用空常量 Map。 */
   public FlinkOrcReader(Schema iSchema, TypeDescription readSchema) {
     this(iSchema, readSchema, ImmutableMap.of());
   }
 
+  /** 构造函数，携带字段常量（如隐藏分区列常量）。 */
   public FlinkOrcReader(Schema iSchema, TypeDescription readSchema, Map<Integer, ?> idToConstant) {
     this.reader =
         OrcSchemaWithTypeVisitor.visit(iSchema, readSchema, new ReadBuilder(idToConstant));
   }
 
+  /** 从 ORC 向量化批次中读取一行数据。 */
   @Override
   public RowData read(VectorizedRowBatch batch, int row) {
     return (RowData) reader.read(new StructColumnVector(batch.size, batch.cols), row);
   }
 
+  /** 设置批上下文（文件内偏移），用于读取 position。 */
   @Override
   public void setBatchContext(long batchOffsetInFile) {
     reader.setBatchContext(batchOffsetInFile);
   }
 
+  /** ORC schema 访问者实现，按 Iceberg 类型构造 Flink RowData 的 OrcValueReader。 */
   private static class ReadBuilder extends OrcSchemaWithTypeVisitor<OrcValueReader<?>> {
     private final Map<Integer, ?> idToConstant;
 
@@ -64,6 +77,7 @@ public class FlinkOrcReader implements OrcRowReader<RowData> {
       this.idToConstant = idToConstant;
     }
 
+    /** 构造 struct 类型的 OrcValueReader。 */
     @Override
     public OrcValueReader<RowData> record(
         Types.StructType iStruct,
@@ -73,12 +87,14 @@ public class FlinkOrcReader implements OrcRowReader<RowData> {
       return FlinkOrcReaders.struct(fields, iStruct, idToConstant);
     }
 
+    /** 构造数组类型的 OrcValueReader。 */
     @Override
     public OrcValueReader<ArrayData> list(
         Types.ListType iList, TypeDescription array, OrcValueReader<?> elementReader) {
       return FlinkOrcReaders.array(elementReader);
     }
 
+    /** 构造 map 类型的 OrcValueReader。 */
     @Override
     public OrcValueReader<MapData> map(
         Types.MapType iMap,
@@ -88,6 +104,12 @@ public class FlinkOrcReader implements OrcRowReader<RowData> {
       return FlinkOrcReaders.map(keyReader, valueReader);
     }
 
+    /**
+     * 构造基本类型的 OrcValueReader。
+     *
+     * <p>逻辑：按 Iceberg 类型 ID 分派到 boolean/int/long/float/double/date/time/timestamp/string/decimal
+     * 等读取器。
+     */
     @Override
     public OrcValueReader<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (iPrimitive.typeId()) {

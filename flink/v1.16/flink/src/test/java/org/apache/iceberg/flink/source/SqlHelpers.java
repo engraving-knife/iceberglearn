@@ -26,9 +26,18 @@ import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 文件级说明：测试 SqlHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 SqlHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class SqlHelpers {
+  /** 辅助方法：SqlHelpers，Sql Helpers。 */
   private SqlHelpers() {}
 
+  /** 辅助方法：sql，sql。 */
   public static List<Row> sql(TableEnvironment tableEnv, String query, Object... args) {
     TableResult tableResult = tableEnv.executeSql(String.format(query, args));
     try (CloseableIterator<Row> iter = tableResult.collect()) {
@@ -39,6 +48,7 @@ public class SqlHelpers {
     }
   }
 
+  /** 辅助方法：sqlOptionsToString，sql Options To String。 */
   public static String sqlOptionsToString(Map<String, String> sqlOptions) {
     StringBuilder builder = new StringBuilder();
     sqlOptions.forEach((key, value) -> builder.append(optionToKv(key, value)).append(","));
@@ -54,6 +64,7 @@ public class SqlHelpers {
     return optionStr;
   }
 
+  /** 辅助方法：optionToKv，option To Kv。 */
   private static String optionToKv(String key, Object value) {
     return "'" + key + "'='" + value + "'";
   }

@@ -25,6 +25,16 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 父字段索引访问者：遍历 schema 构建字段 ID→父字段 ID 的映射。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#indexParents} 使用）。
+ *
+ * <p>职责：后序遍历类型树，为每个子字段记录其父字段的 ID；顶层字段的父 ID 不记录。
+ *
+ * <p>设计意图：使用 idStack 维护当前字段 ID 路径，beforeField/afterField 压栈/弹栈； struct 的子字段、list 元素、map key/value
+ * 均以当前栈顶（父字段 ID）为父。
+ */
 public class IndexParents extends TypeUtil.SchemaVisitor<Map<Integer, Integer>> {
   private final Map<Integer, Integer> idToParent = Maps.newHashMap();
   private final Deque<Integer> idStack = Lists.newLinkedList();

@@ -53,6 +53,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestAppenderFactory 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestAppenderFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestAppenderFactory<T> extends TableTestBase {
   private static final int FORMAT_V2 = 2;
 
@@ -62,6 +69,7 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
   private PartitionKey partition = null;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}, Partitioned={1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -74,12 +82,14 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     };
   }
 
+  /** 辅助方法：TestAppenderFactory。 */
   public TestAppenderFactory(String fileFormat, boolean partitioned) {
     super(FORMAT_V2);
     this.format = FileFormat.fromString(fileFormat);
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws Exception {
@@ -99,13 +109,17 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     table.updateProperties().defaultFormat(format).commit();
   }
 
+  /** 辅助方法：createAppenderFactory。 */
   protected abstract FileAppenderFactory<T> createAppenderFactory(
       List<Integer> equalityFieldIds, Schema eqDeleteSchema, Schema posDeleteRowSchema);
 
+  /** 辅助方法：createRow。 */
   protected abstract T createRow(Integer id, String data);
 
+  /** 辅助方法：expectedRowSet。 */
   protected abstract StructLikeSet expectedRowSet(Iterable<T> records) throws IOException;
 
+  /** 辅助方法：actualRowSet。 */
   private StructLikeSet actualRowSet(String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     try (CloseableIterable<Record> reader = IcebergGenerics.read(table).select(columns).build()) {
@@ -114,6 +128,7 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     return set;
   }
 
+  /** 辅助方法：createPartitionKey。 */
   private PartitionKey createPartitionKey() {
     if (table.spec().isUnpartitioned()) {
       return null;
@@ -127,6 +142,7 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     return partitionKey;
   }
 
+  /** 辅助方法：createEncryptedOutputFile。 */
   private EncryptedOutputFile createEncryptedOutputFile() {
     if (partition == null) {
       return fileFactory.newOutputFile();
@@ -135,6 +151,11 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Row Set。
+   *
+   * <p>验证该方法在 Row Set 条件下的行为是否符合预期。
+   */
   private List<T> testRowSet() {
     return Lists.newArrayList(
         createRow(1, "aaa"),
@@ -144,6 +165,7 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
         createRow(5, "eee"));
   }
 
+  /** 辅助方法：prepareDataFile。 */
   private DataFile prepareDataFile(List<T> rowSet, FileAppenderFactory<T> appenderFactory)
       throws IOException {
     DataWriter<T> writer =
@@ -157,6 +179,11 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
     return writer.toDataFile();
   }
 
+  /**
+   * 测试场景：Data Writer。
+   *
+   * <p>验证该方法在 Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataWriter() throws IOException {
     FileAppenderFactory<T> appenderFactory = createAppenderFactory(null, null, null);
@@ -170,6 +197,11 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
         "Should have the expected records.", expectedRowSet(rowSet), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Eq Delete Writer。
+   *
+   * <p>验证该方法在 Eq Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqDeleteWriter() throws IOException {
     List<Integer> equalityFieldIds = Lists.newArrayList(table.schema().findField("id").fieldId());
@@ -209,6 +241,11 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
         "Should have the expected records", expectedRowSet(expected), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Pos Delete Writer。
+   *
+   * <p>验证该方法在 Pos Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testPosDeleteWriter() throws IOException {
     // Initialize FileAppenderFactory without pos-delete row schema.
@@ -258,6 +295,11 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
         "Should have the expected records", expectedRowSet(expected), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Pos Delete Writer With Row Schema。
+   *
+   * <p>验证该方法在 Pos Delete Writer With Row Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testPosDeleteWriterWithRowSchema() throws IOException {
     FileAppenderFactory<T> appenderFactory = createAppenderFactory(null, null, table.schema());
@@ -325,6 +367,7 @@ public abstract class TestAppenderFactory<T> extends TableTestBase {
         "Should have the expected records", expectedRowSet(expected), actualRowSet("*"));
   }
 
+  /** 辅助方法：createReader。 */
   private CloseableIterable<Record> createReader(Schema schema, InputFile inputFile) {
     switch (format) {
       case PARQUET:

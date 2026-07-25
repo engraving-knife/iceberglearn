@@ -30,20 +30,37 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 测试类：DataTableScanTestBase，用于验证 Data Table Scan 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Data Table Scan 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class DataTableScanTestBase<
         ScanT extends Scan<ScanT, T, G>, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends ScanTestBase<ScanT, T, G> {
 
+  /** 辅助方法：data table scan test base。 */
   public DataTableScanTestBase(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：use ref。 */
   protected abstract ScanT useRef(ScanT scan, String ref);
 
+  /** 辅助方法：use snapshot。 */
   protected abstract ScanT useSnapshot(ScanT scan, long snapshotId);
 
+  /** 辅助方法：as of time。 */
   protected abstract ScanT asOfTime(ScanT scan, long timestampMillis);
 
+  /**
+   * 测试场景：task row counts。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTaskRowCounts() {
     Assume.assumeTrue(formatVersion == 2);
@@ -75,6 +92,7 @@ public abstract class DataTableScanTestBase<
     }
   }
 
+  /** 辅助方法：new data file。 */
   protected DataFile newDataFile(String partitionPath) {
     return DataFiles.builder(table.spec())
         .withPath("/path/to/data-" + UUID.randomUUID() + ".parquet")
@@ -85,6 +103,7 @@ public abstract class DataTableScanTestBase<
         .build();
   }
 
+  /** 辅助方法：new delete file。 */
   protected DeleteFile newDeleteFile(String partitionPath) {
     return FileMetadata.deleteFileBuilder(table.spec())
         .ofPositionDeletes()
@@ -96,6 +115,11 @@ public abstract class DataTableScanTestBase<
         .build();
   }
 
+  /**
+   * 测试场景：scan from branch tip。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testScanFromBranchTip() throws IOException {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -112,6 +136,11 @@ public abstract class DataTableScanTestBase<
     validateExpectedFileScanTasks(mainScan, ImmutableList.of(FILE_A.path(), FILE_D.path()));
   }
 
+  /**
+   * 测试场景：scan from tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testScanFromTag() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -124,6 +153,11 @@ public abstract class DataTableScanTestBase<
         mainScan, ImmutableList.of(FILE_A.path(), FILE_B.path(), FILE_C.path()));
   }
 
+  /**
+   * 测试场景：scan from ref when snapshot set fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testScanFromRefWhenSnapshotSetFails() {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -135,6 +169,11 @@ public abstract class DataTableScanTestBase<
         .hasMessage("Cannot override ref, already set snapshot id=1");
   }
 
+  /**
+   * 测试场景：setting snapshot when ref set fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSettingSnapshotWhenRefSetFails() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -148,6 +187,11 @@ public abstract class DataTableScanTestBase<
         .hasMessage("Cannot override snapshot, already set snapshot id=2");
   }
 
+  /**
+   * 测试场景：branch time travel fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBranchTimeTravelFails() {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -162,6 +206,11 @@ public abstract class DataTableScanTestBase<
         .hasMessage("Cannot override snapshot, already set snapshot id=1");
   }
 
+  /**
+   * 测试场景：setting multiple refs fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSettingMultipleRefsFails() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -174,6 +223,11 @@ public abstract class DataTableScanTestBase<
         .hasMessage("Cannot override ref, already set snapshot id=2");
   }
 
+  /**
+   * 测试场景：setting invalid ref fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSettingInvalidRefFails() {
     Assertions.assertThatThrownBy(() -> useRef(newScan(), "nonexisting"))
@@ -181,6 +235,7 @@ public abstract class DataTableScanTestBase<
         .hasMessage("Cannot find ref nonexisting");
   }
 
+  /** 辅助方法：validate expected file scan tasks。 */
   private void validateExpectedFileScanTasks(ScanT scan, List<CharSequence> expectedFileScanPaths)
       throws IOException {
     try (CloseableIterable<T> scanTasks = scan.planFiles()) {
@@ -193,6 +248,11 @@ public abstract class DataTableScanTestBase<
     }
   }
 
+  /**
+   * 测试场景：sequence numbers through plan files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSequenceNumbersThroughPlanFiles() {
     Assume.assumeTrue(formatVersion == 2);

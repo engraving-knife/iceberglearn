@@ -24,22 +24,34 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.util.SerializableSupplier;
 
 /**
- * An interface that extends the Hadoop {@link Configurable} interface to offer better serialization
- * support for customizable Iceberg objects such as {@link org.apache.iceberg.io.FileIO}.
+ * 文件级说明：扩展 Hadoop {@link Configurable} 接口，为可序列化的 Iceberg 对象提供更友好的 Hadoop 配置序列化支持。
  *
- * <p>If an object is serialized and needs to use Hadoop configuration, it is recommended for the
- * object to implement this interface so that a serializable supplier of configuration can be
- * provided instead of an actual Hadoop configuration which is not serializable.
+ * <p>所属模块：iceberg-core 的 hadoop 包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>继承 Hadoop {@link Configurable}，保留 {@code setConf/getConf} 的标准语义。
+ *   <li>新增 {@link #serializeConfWith(Function)}，允许调用方提供一个把 {@link Configuration} 转换为 {@link
+ *       SerializableSupplier} 的序列化函数。
+ * </ul>
+ *
+ * <p>设计意图：Hadoop 的 {@link Configuration} 本身不可序列化，但像 {@link org.apache.iceberg.io.FileIO}
+ * 这类对象往往需要跨进程/跨任务序列化 （如 Spark/Flink 任务分发）。实现本接口的对象可在序列化前用传入的函数把 {@link Configuration} 转为可序列化的
+ * supplier，从而安全地随对象一起传输，避免直接 携带不可序列化的 {@link Configuration}。
+ *
+ * <p>上下游关系：被 {@link HadoopFileIO} 等需要持久化 Hadoop 配置的类实现；由 引擎集成层在序列化前调用 {@link
+ * #serializeConfWith(Function)} 注入序列化策略。
  */
 public interface HadoopConfigurable extends Configurable {
 
   /**
-   * Take a function that serializes Hadoop configuration into a supplier. An implementation is
-   * supposed to pass in its current Hadoop configuration into this function, and the result can be
-   * safely serialized for future use.
+   * 注册一个用于序列化 Hadoop {@link Configuration} 的函数。
    *
-   * @param confSerializer A function that takes Hadoop configuration and returns a serializable
-   *     supplier of it.
+   * <p>逻辑：实现方应将自身当前的 Hadoop {@link Configuration} 传入该函数， 并用返回的 {@link SerializableSupplier}
+   * 替换内部持有的不可序列化配置引用， 从而保证后续序列化操作安全可靠。
+   *
+   * @param confSerializer 一个把 Hadoop {@link Configuration} 转换为可序列化 supplier 的函数
    */
   void serializeConfWith(
       Function<Configuration, SerializableSupplier<Configuration>> confSerializer);

@@ -45,6 +45,14 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
+/**
+ * 文件级说明：IcebergSourceBenchmark 性能基准测试。
+ *
+ * <p>所属模块：iceberg-spark（v3.3）。职责：对 Iceberg数据源 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Warmup(iterations = 3)
@@ -58,32 +66,38 @@ public abstract class IcebergSourceBenchmark {
 
   protected abstract Configuration initHadoopConf();
 
+  /** 辅助方法：Hadoop配置。 */
   protected final Configuration hadoopConf() {
     return hadoopConf;
   }
 
   protected abstract Table initTable();
 
+  /** 辅助方法：表。 */
   protected final Table table() {
     return table;
   }
 
+  /** 辅助方法：Spark。 */
   protected final SparkSession spark() {
     return spark;
   }
 
+  /** 辅助方法：新建表路径。 */
   protected String newTableLocation() {
     String tmpDir = hadoopConf.get("hadoop.tmp.dir");
     Path tablePath = new Path(tmpDir, "spark-iceberg-table-" + UUID.randomUUID());
     return tablePath.toString();
   }
 
+  /** 辅助方法：数据路径。 */
   protected String dataLocation() {
     Map<String, String> properties = table.properties();
     return properties.getOrDefault(
         TableProperties.WRITE_DATA_LOCATION, String.format("%s/data", table.location()));
   }
 
+  /** 辅助方法：清理文件。 */
   protected void cleanupFiles() throws IOException {
     try (FileSystem fileSystem = FileSystem.get(hadoopConf)) {
       Path dataPath = new Path(dataLocation());
@@ -93,6 +107,7 @@ public abstract class IcebergSourceBenchmark {
     }
   }
 
+  /** 辅助方法：初始化Spark。 */
   protected void setupSpark(boolean enableDictionaryEncoding) {
     SparkSession.Builder builder = SparkSession.builder().config("spark.ui.enabled", false);
     if (!enableDictionaryEncoding) {
@@ -107,22 +122,27 @@ public abstract class IcebergSourceBenchmark {
     hadoopConf.forEach(entry -> sparkHadoopConf.set(entry.getKey(), entry.getValue()));
   }
 
+  /** 辅助方法：初始化Spark。 */
   protected void setupSpark() {
     setupSpark(false);
   }
 
+  /** 辅助方法：tear下推Spark。 */
   protected void tearDownSpark() {
     spark.stop();
   }
 
+  /** 辅助方法：物化。 */
   protected void materialize(Dataset<?> ds) {
     ds.queryExecution().toRdd().toJavaRDD().foreach(record -> {});
   }
 
+  /** 辅助方法：物化。 */
   protected void materialize(Dataset<?> ds, Blackhole blackhole) {
     blackhole.consume(ds.queryExecution().toRdd().toJavaRDD().count());
   }
 
+  /** 辅助方法：追加as文件。 */
   protected void appendAsFile(Dataset<Row> ds) {
     // ensure the schema is precise (including nullability)
     StructType sparkSchema = SparkSchemaUtil.convert(table.schema());
@@ -135,6 +155,7 @@ public abstract class IcebergSourceBenchmark {
         .save(table.location());
   }
 
+  /** 辅助方法：带SQL配置。 */
   protected void withSQLConf(Map<String, String> conf, Action action) {
     SQLConf sqlConf = SQLConf.get();
 
@@ -170,6 +191,7 @@ public abstract class IcebergSourceBenchmark {
     }
   }
 
+  /** 辅助方法：带表属性。 */
   protected void withTableProperties(Map<String, String> props, Action action) {
     Map<String, String> tableProps = table.properties();
     Map<String, String> currentPropValues = Maps.newHashMap();
@@ -203,6 +225,7 @@ public abstract class IcebergSourceBenchmark {
     }
   }
 
+  /** 辅助方法：文件格式。 */
   protected FileFormat fileFormat() {
     throw new UnsupportedOperationException("Unsupported file format");
   }

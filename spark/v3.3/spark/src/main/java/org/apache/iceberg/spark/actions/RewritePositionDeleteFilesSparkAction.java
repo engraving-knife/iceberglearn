@@ -68,7 +68,15 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Spark implementation of {@link RewritePositionDeleteFiles}. */
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 RewritePositionDeleteFilesSparkAction。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 public class RewritePositionDeleteFilesSparkAction
     extends BaseSnapshotUpdateSparkAction<RewritePositionDeleteFilesSparkAction>
     implements RewritePositionDeleteFiles {
@@ -99,17 +107,29 @@ public class RewritePositionDeleteFilesSparkAction
     this.rewriter = new SparkBinPackPositionDeletesRewriter(spark(), table);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected RewritePositionDeleteFilesSparkAction self() {
     return this;
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @param expression 参数
+   * @return 结果对象
+   */
   @Override
   public RewritePositionDeleteFilesSparkAction filter(Expression expression) {
     filter = Expressions.and(filter, expression);
     return this;
   }
 
+  /**
+   * 执行具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public RewritePositionDeleteFiles.Result execute() {
     if (table.currentSnapshot() == null) {
@@ -136,6 +156,7 @@ public class RewritePositionDeleteFilesSparkAction
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLikeMap<List<List<PositionDeletesScanTask>>> planFileGroups() {
     CloseableIterable<PositionDeletesScanTask> fileTasks = planFiles();
 
@@ -153,6 +174,7 @@ public class RewritePositionDeleteFilesSparkAction
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<PositionDeletesScanTask> planFiles() {
     Table deletesTable =
         MetadataTableUtils.createMetadataTableInstance(table, MetadataTableType.POSITION_DELETES);
@@ -163,6 +185,7 @@ public class RewritePositionDeleteFilesSparkAction
         task -> (PositionDeletesScanTask) task);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLikeMap<List<PositionDeletesScanTask>> groupByPartition(
       StructType partitionType, Iterable<PositionDeletesScanTask> tasks) {
     StructLikeMap<List<PositionDeletesScanTask>> filesByPartition =
@@ -182,15 +205,18 @@ public class RewritePositionDeleteFilesSparkAction
     return filesByPartition;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLikeMap<List<List<PositionDeletesScanTask>>> fileGroupsByPartition(
       StructLikeMap<List<PositionDeletesScanTask>> filesByPartition) {
     return filesByPartition.transformValues(this::planFileGroups);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<List<PositionDeletesScanTask>> planFileGroups(List<PositionDeletesScanTask> tasks) {
     return ImmutableList.copyOf(rewriter.planFileGroups(tasks));
   }
 
+  /** 重写计划或文件。 */
   private RewritePositionDeletesGroup rewriteDeleteFiles(
       RewriteExecutionContext ctx, RewritePositionDeletesGroup fileGroup) {
     String desc = jobDesc(fileGroup, ctx);
@@ -204,6 +230,7 @@ public class RewritePositionDeleteFilesSparkAction
     return fileGroup;
   }
 
+  /** 重写计划或文件。 */
   private ExecutorService rewriteService() {
     return MoreExecutors.getExitingExecutorService(
         (ThreadPoolExecutor)
@@ -214,10 +241,13 @@ public class RewritePositionDeleteFilesSparkAction
                     .build()));
   }
 
+  /** 提交事务或写入结果。 */
   private RewritePositionDeletesCommitManager commitManager() {
+    /** 重写计划或文件。 */
     return new RewritePositionDeletesCommitManager(table);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Result doExecute(
       RewriteExecutionContext ctx,
       Stream<RewritePositionDeletesGroup> groupStream,
@@ -272,6 +302,7 @@ public class RewritePositionDeleteFilesSparkAction
                   + "another Iceberg operation will be ignored. This mode will create additional snapshots in the table "
                   + "history, one for each commit.",
               PARTIAL_PROGRESS_ENABLED, PARTIAL_PROGRESS_MAX_COMMITS);
+      /** 执行该方法的具体逻辑。 */
       throw new RuntimeException(errorMessage, e);
     }
 
@@ -285,6 +316,7 @@ public class RewritePositionDeleteFilesSparkAction
         .build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Result doExecuteWithPartialProgress(
       RewriteExecutionContext ctx,
       Stream<RewritePositionDeletesGroup> groupStream,
@@ -328,6 +360,7 @@ public class RewritePositionDeleteFilesSparkAction
         .build();
   }
 
+  /** 转换为groupstream。 */
   private Stream<RewritePositionDeletesGroup> toGroupStream(
       RewriteExecutionContext ctx,
       Map<StructLike, List<List<PositionDeletesScanTask>>> groupsByPartition) {
@@ -342,6 +375,7 @@ public class RewritePositionDeleteFilesSparkAction
         .sorted(RewritePositionDeletesGroup.comparator(rewriteJobOrder));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private RewritePositionDeletesGroup newRewriteGroup(
       RewriteExecutionContext ctx, StructLike partition, List<PositionDeletesScanTask> tasks) {
     int globalIndex = ctx.currentGlobalIndex();
@@ -352,9 +386,11 @@ public class RewritePositionDeleteFilesSparkAction
             .partitionIndex(partitionIndex)
             .partition(partition)
             .build();
+    /** 重写计划或文件。 */
     return new RewritePositionDeletesGroup(info, tasks);
   }
 
+  /** 校验前置条件或参数。 */
   private void validateAndInitOptions() {
     Set<String> validOptions = Sets.newHashSet(rewriter.validOptions());
     validOptions.addAll(VALID_OPTIONS);
@@ -402,6 +438,7 @@ public class RewritePositionDeleteFilesSparkAction
         PARTIAL_PROGRESS_ENABLED);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private String jobDesc(RewritePositionDeletesGroup group, RewriteExecutionContext ctx) {
     StructLike partition = group.info().partition();
     if (partition.size() > 0) {
@@ -426,6 +463,15 @@ public class RewritePositionDeleteFilesSparkAction
     }
   }
 
+  /**
+   * 基于 Spark 执行的 Iceberg 表维护动作的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 RewriteExecutionContext。
+   *
+   * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+   *
+   * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+   */
   static class RewriteExecutionContext {
     private final StructLikeMap<Integer> numGroupsByPartition;
     private final int totalGroupCount;
@@ -440,23 +486,46 @@ public class RewritePositionDeleteFilesSparkAction
       this.groupIndex = new AtomicInteger(1);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public int currentGlobalIndex() {
       return groupIndex.getAndIncrement();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     public int currentPartitionIndex(StructLike partition) {
       return partitionIndexMap.merge(partition, 1, Integer::sum);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     public int groupsInPartition(StructLike partition) {
       return numGroupsByPartition.get(partition);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public int totalGroupCount() {
       return totalGroupCount;
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLike coercePartition(PositionDeletesScanTask task, StructType partitionType) {
     return PartitionUtil.coercePartition(partitionType, task.spec(), task.partition());
   }

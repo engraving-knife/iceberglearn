@@ -25,6 +25,13 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 
 /** One-time split enumeration at the start-up for batch execution */
 @Internal
+/**
+ * 静态模式 Iceberg enumerator，一次性分配全部分片后结束。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：在启动时完成全部扫描并分配，不进行增量枚举。
+ *
+ * <p>设计意图：继承 AbstractIcebergEnumerator；被 Flink Source 框架调用。
+ */
 public class StaticIcebergEnumerator extends AbstractIcebergEnumerator {
   private final SplitAssigner assigner;
 

@@ -41,18 +41,28 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFileRewriteCoordinator 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 文件重写coordinator 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestFileRewriteCoordinator extends SparkCatalogTestBase {
 
+  /** 测试文件重写coordinator。 */
   public TestFileRewriteCoordinator(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试binpack重写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackRewrite() throws NoSuchTableException, IOException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -113,6 +123,7 @@ public class TestFileRewriteCoordinator extends SparkCatalogTestBase {
     Assert.assertEquals("Row count must match", 4000L, rowCount);
   }
 
+  /** 测试排序重写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortRewrite() throws NoSuchTableException, IOException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -183,6 +194,7 @@ public class TestFileRewriteCoordinator extends SparkCatalogTestBase {
     Assert.assertEquals("Row count must match", 4000L, rowCount);
   }
 
+  /** 测试提交多个重写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCommitMultipleRewrites() throws NoSuchTableException, IOException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -263,6 +275,7 @@ public class TestFileRewriteCoordinator extends SparkCatalogTestBase {
     Assert.assertEquals("Row count must match", 4000L, rowCount);
   }
 
+  /** 新建df。 */
   private Dataset<Row> newDF(int numRecords) {
     List<SimpleRecord> data = Lists.newArrayListWithExpectedSize(numRecords);
     for (int index = 0; index < numRecords; index++) {

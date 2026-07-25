@@ -18,7 +18,21 @@
  */
 package org.apache.iceberg.mr.mapreduce;
 
+/**
+ * 文件级说明：标记接口，表示持有内部 {@link IcebergSplit} 的切分容器。
+ *
+ * <p>所属模块：iceberg-mr（mapreduce 子包；为需要在外层 split（如 Hive FileSplit）中 嵌入 IcebergSplit 的实现提供统一访问契约）。
+ *
+ * <p>职责：定义 {@link #icebergSplit()} 方法，让外层 split 实现该接口即可暴露内部的 IcebergSplit，供 RecordReader 取用。
+ *
+ * <p>设计意图：Hive 等引擎要求 split 是特定 FileSplit 子类，因此 Iceberg 用外层包装类 携带 Hive 要求的字段，同时实现本接口以暴露真正的 Iceberg
+ * 切分。
+ *
+ * <p>上下游关系：上游由 {@link org.apache.iceberg.mr.hive.HiveIcebergSplit} 实现； 被 {@link
+ * org.apache.iceberg.mr.hive.HiveIcebergInputFormat#getRecordReader} 等调用。
+ */
 public interface IcebergSplitContainer {
 
+  /** 返回内部封装的 Iceberg 切分。 */
   IcebergSplit icebergSplit();
 }

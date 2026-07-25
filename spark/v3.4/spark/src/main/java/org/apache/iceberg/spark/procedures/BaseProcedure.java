@@ -52,6 +52,15 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import scala.Option;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：存储过程基类，提供 SparkSession、表加载、参数解析与结果构建的公共骨架。
+ *
+ * <p>设计意图：采用模板方法模式，沉淀过程调用公共流程。
+ *
+ * <p>上下游关系：被所有 Procedure 实现继承；依赖 Spark3Util 加载表。
+ */
 abstract class BaseProcedure implements Procedure {
   protected static final DataType STRING_MAP =
       DataTypes.createMapType(DataTypes.StringType, DataTypes.StringType);
@@ -67,18 +76,18 @@ abstract class BaseProcedure implements Procedure {
     this.spark = SparkSession.active();
     this.tableCatalog = tableCatalog;
   }
-
+  /** 执行 spark 相关操作。 */
   protected SparkSession spark() {
     return this.spark;
   }
-
+  /** 执行 actions 相关操作。 */
   protected SparkActions actions() {
     if (actions == null) {
       this.actions = SparkActions.get(spark);
     }
     return actions;
   }
-
+  /** 执行 tableCatalog 相关操作。 */
   protected TableCatalog tableCatalog() {
     return this.tableCatalog;
   }
@@ -112,7 +121,7 @@ abstract class BaseProcedure implements Procedure {
 
     return result;
   }
-
+  /** 转换为 Identifier。 */
   protected Identifier toIdentifier(String identifierAsString, String argName) {
     CatalogAndIdentifier catalogAndIdentifier =
         toCatalogAndIdentifier(identifierAsString, argName, tableCatalog);
@@ -126,7 +135,7 @@ abstract class BaseProcedure implements Procedure {
 
     return catalogAndIdentifier.identifier();
   }
-
+  /** 转换为 CatalogAndIdentifier。 */
   protected CatalogAndIdentifier toCatalogAndIdentifier(
       String identifierAsString, String argName, CatalogPlugin catalog) {
     Preconditions.checkArgument(
@@ -137,7 +146,7 @@ abstract class BaseProcedure implements Procedure {
     return Spark3Util.catalogAndIdentifier(
         "identifier for arg " + argName, spark, identifierAsString, catalog);
   }
-
+  /** 执行 loadSparkTable 相关操作。 */
   protected SparkTable loadSparkTable(Identifier ident) {
     try {
       Table table = tableCatalog.loadTable(ident);
@@ -150,19 +159,19 @@ abstract class BaseProcedure implements Procedure {
       throw new RuntimeException(errMsg, e);
     }
   }
-
+  /** 执行 loadRows 相关操作。 */
   protected Dataset<Row> loadRows(Identifier tableIdent, Map<String, String> options) {
     String tableName = Spark3Util.quotedFullIdentifier(tableCatalog().name(), tableIdent);
     return spark().read().options(options).table(tableName);
   }
-
+  /** 执行 refreshSparkCache 相关操作。 */
   protected void refreshSparkCache(Identifier ident, Table table) {
     CacheManager cacheManager = spark.sharedState().cacheManager();
     DataSourceV2Relation relation =
         DataSourceV2Relation.create(table, Option.apply(tableCatalog), Option.apply(ident));
     cacheManager.recacheByPlan(spark, relation);
   }
-
+  /** 执行 filterExpression 相关操作。 */
   protected Expression filterExpression(Identifier ident, String where) {
     try {
       String name = Spark3Util.quotedFullIdentifier(tableCatalog.name(), ident);
@@ -173,25 +182,25 @@ abstract class BaseProcedure implements Procedure {
       throw new IllegalArgumentException("Cannot parse predicates in where option: " + where, e);
     }
   }
-
+  /** 创建 InternalRow 实例。 */
   protected InternalRow newInternalRow(Object... values) {
     return new GenericInternalRow(values);
   }
 
   protected abstract static class Builder<T extends BaseProcedure> implements ProcedureBuilder {
     private TableCatalog tableCatalog;
-
+    /** 返回带 TableCatalog 设置的副本。 */
     @Override
     public Builder<T> withTableCatalog(TableCatalog newTableCatalog) {
       this.tableCatalog = newTableCatalog;
       return this;
     }
-
+    /** 构建目标对象。 */
     @Override
     public T build() {
       return doBuild();
     }
-
+    /** 执行 doBuild 相关操作。 */
     protected abstract T doBuild();
 
     TableCatalog tableCatalog() {

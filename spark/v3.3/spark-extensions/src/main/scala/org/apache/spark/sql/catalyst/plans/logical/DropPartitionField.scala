@@ -22,11 +22,22 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 DropPartitionField。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class DropPartitionField(table: Seq[String], transform: Transform) extends LeafCommand {
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"DropPartitionField ${table.quoted} ${transform.describe}"
   }

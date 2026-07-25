@@ -32,6 +32,13 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplitStatus;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 @Internal
+/**
+ * IcebergEnumeratorState 的序列化器，用于 checkpoint 持久化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把 enumerator 完整状态序列化为字节流。
+ *
+ * <p>设计意图：实现 SimpleVersionedSerializer；被 Flink Source 框架调用。
+ */
 public class IcebergEnumeratorStateSerializer
     implements SimpleVersionedSerializer<IcebergEnumeratorState> {
 

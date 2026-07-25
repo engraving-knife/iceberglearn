@@ -61,6 +61,13 @@ import org.apache.spark.sql.types.TimestampType;
 import org.apache.spark.unsafe.types.CalendarInterval;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 StructInternalRow。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class StructInternalRow extends InternalRow {
   private final Types.StructType type;
   private StructLike struct;
@@ -69,56 +76,80 @@ class StructInternalRow extends InternalRow {
     this.type = type;
   }
 
+  /** 构造 StructInternalRow 实例。 */
   private StructInternalRow(Types.StructType type, StructLike struct) {
     this.type = type;
     this.struct = struct;
   }
 
+  /** 设置struct。 */
   public StructInternalRow setStruct(StructLike newStruct) {
     this.struct = newStruct;
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public int numFields() {
     return struct.size();
   }
 
+  /** 设置nullat。 */
   @Override
   public void setNullAt(int i) {
     throw new UnsupportedOperationException("StructInternalRow is read-only");
   }
 
+  /**
+   * 更新数据或状态。
+   *
+   * @param i 参数
+   * @param value 参数
+   */
   @Override
   public void update(int i, Object value) {
     throw new UnsupportedOperationException("StructInternalRow is read-only");
   }
 
+  /**
+   * 返回当前对象的副本。
+   *
+   * @return 结果对象
+   */
   @Override
   public InternalRow copy() {
     return this;
   }
 
+  /** 判断是否nullat。 */
   @Override
   public boolean isNullAt(int ordinal) {
     return struct.get(ordinal, Object.class) == null;
   }
 
+  /** 返回boolean。 */
   @Override
   public boolean getBoolean(int ordinal) {
     return struct.get(ordinal, Boolean.class);
   }
 
+  /** 返回byte。 */
   @Override
   public byte getByte(int ordinal) {
     return (byte) (int) struct.get(ordinal, Integer.class);
   }
 
+  /** 返回short。 */
   @Override
   public short getShort(int ordinal) {
     return (short) (int) struct.get(ordinal, Integer.class);
   }
 
+  /** 返回int。 */
   @Override
   public int getInt(int ordinal) {
     Object integer = struct.get(ordinal, Object.class);
@@ -133,6 +164,7 @@ class StructInternalRow extends InternalRow {
     }
   }
 
+  /** 返回long。 */
   @Override
   public long getLong(int ordinal) {
     Object longVal = struct.get(ordinal, Object.class);
@@ -149,40 +181,48 @@ class StructInternalRow extends InternalRow {
     }
   }
 
+  /** 返回float。 */
   @Override
   public float getFloat(int ordinal) {
     return struct.get(ordinal, Float.class);
   }
 
+  /** 返回double。 */
   @Override
   public double getDouble(int ordinal) {
     return struct.get(ordinal, Double.class);
   }
 
+  /** 返回decimal。 */
   @Override
   public Decimal getDecimal(int ordinal, int precision, int scale) {
     return isNullAt(ordinal) ? null : getDecimalInternal(ordinal, precision, scale);
   }
 
+  /** 返回decimalinternal。 */
   private Decimal getDecimalInternal(int ordinal, int precision, int scale) {
     return Decimal.apply(struct.get(ordinal, BigDecimal.class));
   }
 
+  /** 返回utf8string。 */
   @Override
   public UTF8String getUTF8String(int ordinal) {
     return isNullAt(ordinal) ? null : getUTF8StringInternal(ordinal);
   }
 
+  /** 返回utf8stringinternal。 */
   private UTF8String getUTF8StringInternal(int ordinal) {
     CharSequence seq = struct.get(ordinal, CharSequence.class);
     return UTF8String.fromString(seq.toString());
   }
 
+  /** 返回binary。 */
   @Override
   public byte[] getBinary(int ordinal) {
     return isNullAt(ordinal) ? null : getBinaryInternal(ordinal);
   }
 
+  /** 返回binaryinternal。 */
   private byte[] getBinaryInternal(int ordinal) {
     Object bytes = struct.get(ordinal, Object.class);
 
@@ -197,42 +237,57 @@ class StructInternalRow extends InternalRow {
     }
   }
 
+  /** 返回interval。 */
   @Override
   public CalendarInterval getInterval(int ordinal) {
     throw new UnsupportedOperationException("Unsupported type: interval");
   }
 
+  /** 返回struct。 */
   @Override
   public InternalRow getStruct(int ordinal, int numFields) {
     return isNullAt(ordinal) ? null : getStructInternal(ordinal, numFields);
   }
 
+  /** 返回structinternal。 */
   private InternalRow getStructInternal(int ordinal, int numFields) {
+    /** 执行该方法的具体逻辑。 */
     return new StructInternalRow(
         type.fields().get(ordinal).type().asStructType(), struct.get(ordinal, StructLike.class));
   }
 
+  /** 返回array。 */
   @Override
   public ArrayData getArray(int ordinal) {
     return isNullAt(ordinal) ? null : getArrayInternal(ordinal);
   }
 
+  /** 返回arrayinternal。 */
   private ArrayData getArrayInternal(int ordinal) {
     return collectionToArrayData(
         type.fields().get(ordinal).type().asListType().elementType(),
         struct.get(ordinal, Collection.class));
   }
 
+  /** 返回map。 */
   @Override
   public MapData getMap(int ordinal) {
     return isNullAt(ordinal) ? null : getMapInternal(ordinal);
   }
 
+  /** 返回mapinternal。 */
   private MapData getMapInternal(int ordinal) {
     return mapToMapData(
         type.fields().get(ordinal).type().asMapType(), struct.get(ordinal, Map.class));
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ordinal 参数
+   * @param dataType 参数
+   * @return 对应结果
+   */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public Object get(int ordinal, DataType dataType) {
@@ -275,14 +330,17 @@ class StructInternalRow extends InternalRow {
     return null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private MapData mapToMapData(Types.MapType mapType, Map<?, ?> map) {
     // make a defensive copy to ensure entries do not change
     List<Map.Entry<?, ?>> entries = ImmutableList.copyOf(map.entrySet());
+    /** 执行该方法的具体逻辑。 */
     return new ArrayBasedMapData(
         collectionToArrayData(mapType.keyType(), Lists.transform(entries, Map.Entry::getKey)),
         collectionToArrayData(mapType.valueType(), Lists.transform(entries, Map.Entry::getValue)));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private ArrayData collectionToArrayData(Type elementType, Collection<?> values) {
     switch (elementType.typeId()) {
       case BOOLEAN:
@@ -338,6 +396,7 @@ class StructInternalRow extends InternalRow {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private <T> GenericArrayData fillArray(
       Collection<?> values, Function<Object[], BiConsumer<Integer, T>> makeSetter) {
@@ -355,9 +414,11 @@ class StructInternalRow extends InternalRow {
       index += 1;
     }
 
+    /** 执行该方法的具体逻辑。 */
     return new GenericArrayData(array);
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -372,6 +433,7 @@ class StructInternalRow extends InternalRow {
     return type.equals(that.type) && struct.equals(that.struct);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(type, struct);

@@ -26,9 +26,19 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * An equality delete writer capable of writing to multiple specs and partitions that requires the
- * incoming delete records to be properly clustered by partition spec and by partition within each
- * spec.
+ * 文件级说明：聚簇式 equality-delete 写入器。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：继承 {@link ClusteredWriter}，向多个 spec/partition 写入 equality-delete 记录， 要求输入按分区聚簇。每个分区内通过
+ * {@link RollingEqualityDeleteWriter} 实现文件滚动。
+ *
+ * <p>设计意图：将 ClusteredWriter 模板方法落地到 equality-delete 场景。equality-delete 不引用 数据文件，因此 addResult 中校验
+ * referencesDataFiles 为 false。
+ *
+ * <p>上下游关系：由引擎集成层在能保证分区聚簇时创建；实现 {@link PartitioningWriter}。
+ *
+ * @param <T> 行记录类型
  */
 public class ClusteredEqualityDeleteWriter<T> extends ClusteredWriter<T, DeleteWriteResult> {
 
@@ -38,6 +48,14 @@ public class ClusteredEqualityDeleteWriter<T> extends ClusteredWriter<T, DeleteW
   private final long targetFileSizeInBytes;
   private final List<DeleteFile> deleteFiles;
 
+  /**
+   * 构造聚簇式 equality-delete 写入器。
+   *
+   * @param writerFactory 写入器工厂
+   * @param fileFactory 输出文件工厂
+   * @param io FileIO 实例
+   * @param targetFileSizeInBytes 目标文件大小
+   */
   public ClusteredEqualityDeleteWriter(
       FileWriterFactory<T> writerFactory,
       OutputFileFactory fileFactory,
@@ -50,12 +68,18 @@ public class ClusteredEqualityDeleteWriter<T> extends ClusteredWriter<T, DeleteW
     this.deleteFiles = Lists.newArrayList();
   }
 
+  /** 为每个分区创建 equality-delete 滚动写入器。 */
   @Override
   protected FileWriter<T, DeleteWriteResult> newWriter(PartitionSpec spec, StructLike partition) {
     return new RollingEqualityDeleteWriter<>(
         writerFactory, fileFactory, io, targetFileSizeInBytes, spec, partition);
   }
 
+  /**
+   * 将删除文件加入聚合列表。
+   *
+   * @throws IllegalArgumentException 若结果引用了数据文件
+   */
   @Override
   protected void addResult(DeleteWriteResult result) {
     Preconditions.checkArgument(
@@ -63,6 +87,7 @@ public class ClusteredEqualityDeleteWriter<T> extends ClusteredWriter<T, DeleteW
     deleteFiles.addAll(result.deleteFiles());
   }
 
+  /** 返回所有删除文件的聚合结果。 */
   @Override
   protected DeleteWriteResult aggregatedResult() {
     return new DeleteWriteResult(deleteFiles);

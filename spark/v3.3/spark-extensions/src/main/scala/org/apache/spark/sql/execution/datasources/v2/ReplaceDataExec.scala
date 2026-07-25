@@ -24,7 +24,11 @@ import org.apache.spark.sql.connector.write.Write
 import org.apache.spark.sql.execution.SparkPlan
 
 /**
- * Physical plan node to replace data in existing tables.
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 ReplaceDataExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 case class ReplaceDataExec(
     query: SparkPlan,
@@ -34,6 +38,10 @@ case class ReplaceDataExec(
   override lazy val references: AttributeSet = query.outputSet
   override lazy val stringArgs: Iterator[Any] = Iterator(query, write)
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: SparkPlan): ReplaceDataExec = {
     copy(query = newChild)
   }

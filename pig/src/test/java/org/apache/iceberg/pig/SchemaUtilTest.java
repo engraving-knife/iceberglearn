@@ -40,8 +40,20 @@ import org.apache.pig.ResourceSchema;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 SchemaUtilTest 的功能。
+ *
+ * <p>所属模块：iceberg-pig。职责：验证 SchemaUtilTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class SchemaUtilTest {
 
+  /**
+   * 测试场景：Primitive。
+   *
+   * <p>验证该方法在 Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimitive() throws IOException {
     Schema icebergSchema =
@@ -61,6 +73,11 @@ public class SchemaUtilTest {
             "b:boolean,i:int,l:long,f:float,d:double,dec:bigdecimal,s:chararray,bi:bytearray");
   }
 
+  /**
+   * 测试场景：Complex。
+   *
+   * <p>验证该方法在 Complex 条件下的行为是否符合预期。
+   */
   @Test
   public void testComplex() throws IOException {
     convertToPigSchema(
@@ -76,6 +93,11 @@ public class SchemaUtilTest {
         null);
   }
 
+  /**
+   * 测试场景：invalid Map。
+   *
+   * <p>验证该方法在 invalid Map 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidMap() {
     assertThatThrownBy(
@@ -92,6 +114,11 @@ public class SchemaUtilTest {
         .hasMessageContaining("Unsupported map key type: int");
   }
 
+  /**
+   * 测试场景：nested Maps。
+   *
+   * <p>验证该方法在 nested Maps 条件下的行为是否符合预期。
+   */
   @Test
   public void nestedMaps() throws IOException {
     convertToPigSchema(
@@ -112,6 +139,11 @@ public class SchemaUtilTest {
         "");
   }
 
+  /**
+   * 测试场景：nested Bags。
+   *
+   * <p>验证该方法在 nested Bags 条件下的行为是否符合预期。
+   */
   @Test
   public void nestedBags() throws IOException {
     convertToPigSchema(
@@ -125,6 +157,11 @@ public class SchemaUtilTest {
         "");
   }
 
+  /**
+   * 测试场景：nested Tuples。
+   *
+   * <p>验证该方法在 nested Tuples 条件下的行为是否符合预期。
+   */
   @Test
   public void nestedTuples() throws IOException {
     convertToPigSchema(
@@ -145,6 +182,11 @@ public class SchemaUtilTest {
         "");
   }
 
+  /**
+   * 测试场景：complex Nested。
+   *
+   * <p>验证该方法在 complex Nested 条件下的行为是否符合预期。
+   */
   @Test
   public void complexNested() throws IOException {
     convertToPigSchema(
@@ -185,6 +227,11 @@ public class SchemaUtilTest {
         "");
   }
 
+  /**
+   * 测试场景：map Conversions。
+   *
+   * <p>验证该方法在 map Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void mapConversions() throws IOException {
     // consistent behavior for maps conversions. The below test case, correctly does not specify map
@@ -224,6 +271,11 @@ public class SchemaUtilTest {
         "A map key type does not need to be specified");
   }
 
+  /**
+   * 测试场景：Tuple In Map。
+   *
+   * <p>验证该方法在 Tuple In Map 条件下的行为是否符合预期。
+   */
   @Test
   public void testTupleInMap() throws IOException {
     Schema icebergSchema =
@@ -246,6 +298,11 @@ public class SchemaUtilTest {
     assertThat(pigSchema.toString()).isEqualTo("nested_list:[{(id:long,data:chararray)}]");
   }
 
+  /**
+   * 测试场景：Long In Bag。
+   *
+   * <p>验证该方法在 Long In Bag 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongInBag() throws IOException {
     Schema icebergSchema =
@@ -258,6 +315,11 @@ public class SchemaUtilTest {
     SchemaUtil.convert(icebergSchema);
   }
 
+  /**
+   * 测试场景：double Wrapping Tuples。
+   *
+   * <p>验证该方法在 double Wrapping Tuples 条件下的行为是否符合预期。
+   */
   @Test
   public void doubleWrappingTuples() throws IOException {
     // struct<a:array<struct<b:string>>> -> (a:{(b:chararray)})
@@ -279,6 +341,7 @@ public class SchemaUtilTest {
         "boolean (or anything non-tuple) element inside a bag should be wrapped inside a tuple");
   }
 
+  /** 辅助方法：convertToPigSchema。 */
   private static void convertToPigSchema(
       Schema icebergSchema, String expectedPigSchema, String assertMessage) throws IOException {
     ResourceSchema pigSchema = SchemaUtil.convert(icebergSchema);

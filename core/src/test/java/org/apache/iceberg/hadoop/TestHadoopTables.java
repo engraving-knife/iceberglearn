@@ -44,6 +44,14 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：TestHadoopTables，用于验证 Hadoop Tables 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Hadoop Tables 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestHadoopTables {
 
   private static final HadoopTables TABLES = new HadoopTables();
@@ -55,6 +63,11 @@ public class TestHadoopTables {
   @TempDir private File tableDir;
   @TempDir private File dataDir;
 
+  /**
+   * 测试场景：table exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableExists() {
     Assertions.assertThat(TABLES.exists(tableDir.toURI().toString())).isFalse();
@@ -63,6 +76,11 @@ public class TestHadoopTables {
     Assertions.assertThat(TABLES.exists(tableDir.toURI().toString())).isTrue();
   }
 
+  /**
+   * 测试场景：drop table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTable() {
     TABLES.create(SCHEMA, tableDir.toURI().toString());
@@ -73,6 +91,11 @@ public class TestHadoopTables {
         .hasMessageStartingWith("Table does not exist");
   }
 
+  /**
+   * 测试场景：drop table with purge。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTableWithPurge() throws IOException {
 
@@ -88,6 +111,11 @@ public class TestHadoopTables {
     Assertions.assertThat(TABLES.dropTable(tableDir.toURI().toString())).isFalse();
   }
 
+  /**
+   * 测试场景：drop table without purge。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTableWithoutPurge() throws IOException {
     createDummyTable(tableDir, dataDir);
@@ -102,6 +130,11 @@ public class TestHadoopTables {
     Assertions.assertThat(TABLES.dropTable(tableDir.toURI().toString())).isFalse();
   }
 
+  /**
+   * 测试场景：default sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultSortOrder() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).bucket("data", 16).build();
@@ -112,6 +145,11 @@ public class TestHadoopTables {
     Assertions.assertThat(sortOrder.isUnsorted()).as("Order must be unsorted").isTrue();
   }
 
+  /**
+   * 测试场景：custom sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCustomSortOrder() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).bucket("data", 16).build();
@@ -134,6 +172,11 @@ public class TestHadoopTables {
         .isEqualTo(transform);
   }
 
+  /**
+   * 测试场景：table name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableName() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).bucket("data", 16).build();
@@ -149,6 +192,7 @@ public class TestHadoopTables {
         .isEqualTo(location + "#snapshots");
   }
 
+  /** 辅助方法：create dummy table。 */
   private static void createDummyTable(File tableDir, File dataDir) throws IOException {
     Table table = TABLES.create(SCHEMA, tableDir.toURI().toString());
     AppendFiles append = table.newAppend();

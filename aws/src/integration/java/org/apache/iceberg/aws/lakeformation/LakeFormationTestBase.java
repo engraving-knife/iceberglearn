@@ -81,6 +81,13 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+/**
+ * 文件级说明：LakeFormationTestBase 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 LakeFormationTestBase 的功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 @SuppressWarnings({"VisibilityModifier", "HideUtilityClassConstructor"})
 public class LakeFormationTestBase {
 
@@ -121,6 +128,7 @@ public class LakeFormationTestBase {
   static LakeFormationClient lakeformation;
   static GlueClient glue;
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeClass
   public static void beforeClass() throws Exception {
     lfRegisterPathRoleName = LF_REGISTER_PATH_ROLE_PREFIX + UUID.randomUUID().toString();
@@ -253,6 +261,7 @@ public class LakeFormationTestBase {
     waitForIamConsistency();
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterClass
   public static void afterClass() {
     GetDataLakeSettingsResponse getDataLakeSettingsResponse =
@@ -272,6 +281,7 @@ public class LakeFormationTestBase {
     deregisterResource(testBucketPath);
   }
 
+  /** 辅助方法：grant数据库privileges。 */
   void grantDatabasePrivileges(String dbName, Permission... permissions) {
     Resource dbResource =
         Resource.builder().database(DatabaseResource.builder().name(dbName).build()).build();
@@ -283,6 +293,7 @@ public class LakeFormationTestBase {
             .build());
   }
 
+  /** 辅助方法：grant数据路径privileges。 */
   void grantDataPathPrivileges(String resourceLocation) {
     Resource dataLocationResource =
         Resource.builder()
@@ -299,14 +310,17 @@ public class LakeFormationTestBase {
             .build());
   }
 
+  /** 辅助方法：lfregister路径角色创建db。 */
   void lfRegisterPathRoleCreateDb(String dbName) {
     glueCatalogRegisterPathRole.createNamespace(Namespace.of(dbName));
   }
 
+  /** 辅助方法：lfregister路径角色删除db。 */
   void lfRegisterPathRoleDeleteDb(String dbName) {
     glueCatalogRegisterPathRole.dropNamespace(Namespace.of(dbName));
   }
 
+  /** 辅助方法：lfregister路径角色创建表。 */
   void lfRegisterPathRoleCreateTable(String dbName, String tableName) {
     glueCatalogRegisterPathRole.createTable(
         TableIdentifier.of(Namespace.of(dbName), tableName),
@@ -316,15 +330,18 @@ public class LakeFormationTestBase {
         null);
   }
 
+  /** 辅助方法：lfregister路径角色删除表。 */
   void lfRegisterPathRoleDeleteTable(String dbName, String tableName) {
     glueCatalogRegisterPathRole.dropTable(
         TableIdentifier.of(Namespace.of(dbName), tableName), false);
   }
 
+  /** 辅助方法：获取表路径。 */
   String getTableLocation(String tableName) {
     return testBucketPath + tableName;
   }
 
+  /** 辅助方法：grant创建dbpermission。 */
   void grantCreateDbPermission() {
     lakeformation.grantPermissions(
         GrantPermissionsRequest.builder()
@@ -334,6 +351,7 @@ public class LakeFormationTestBase {
             .build());
   }
 
+  /** 辅助方法：grant表privileges。 */
   void grantTablePrivileges(String dbName, String tableName, Permission... tableDdlPrivileges) {
     Resource tableResource =
         Resource.builder()
@@ -349,18 +367,22 @@ public class LakeFormationTestBase {
     lakeformation.grantPermissions(grantDataLakePrivilegesRequest);
   }
 
+  /** 辅助方法：获取randomdbname。 */
   String getRandomDbName() {
     return LF_TEST_DB_PREFIX + UUID.randomUUID().toString().replace("-", "");
   }
 
+  /** 辅助方法：获取random表name。 */
   String getRandomTableName() {
     return LF_TEST_TABLE_PREFIX + UUID.randomUUID().toString().replace("-", "");
   }
 
+  /** 辅助方法：waitForIamConsistency。 */
   private static void waitForIamConsistency() throws Exception {
     Thread.sleep(IAM_PROPAGATION_DELAY); // sleep to make sure IAM up to date
   }
 
+  /** 辅助方法：构建lakeformation客户端。 */
   private static LakeFormationClient buildLakeFormationClient(
       String roleArn, String sessionName, String region) {
     AssumeRoleRequest request =
@@ -384,6 +406,7 @@ public class LakeFormationTestBase {
     return clientBuilder.build();
   }
 
+  /** 辅助方法：构建Glue客户端。 */
   private static GlueClient buildGlueClient(String roleArn, String sessionName, String region) {
     AssumeRoleRequest request =
         AssumeRoleRequest.builder()
@@ -406,6 +429,7 @@ public class LakeFormationTestBase {
     return clientBuilder.build();
   }
 
+  /** 辅助方法：registerResource。 */
   private static void registerResource(String s3Location) {
     String arn = getArnForS3Location(s3Location);
     try {
@@ -425,6 +449,7 @@ public class LakeFormationTestBase {
     }
   }
 
+  /** 辅助方法：deregisterResource。 */
   private static void deregisterResource(String s3Location) {
     String arn = getArnForS3Location(s3Location);
     try {
@@ -435,6 +460,7 @@ public class LakeFormationTestBase {
     }
   }
 
+  /** 辅助方法：创建policyarn。 */
   private static String createPolicyArn(String policyName) {
     return String.format(
         "arn:%s:iam::%s:policy/%s",
@@ -443,12 +469,14 @@ public class LakeFormationTestBase {
         policyName);
   }
 
+  /** 辅助方法：创建andattach角色policy。 */
   private static void createAndAttachRolePolicy(
       String policyArn, String policyName, String policyDocument, String roleName) {
     createOrReplacePolicy(policyArn, policyName, policyDocument, roleName);
     attachRolePolicyIfNotExists(policyArn, policyName, roleName);
   }
 
+  /** 辅助方法：attach角色policyif非存在。 */
   private static void attachRolePolicyIfNotExists(
       String policyArn, String policyName, String roleName) {
     try {
@@ -462,6 +490,7 @@ public class LakeFormationTestBase {
     }
   }
 
+  /** 辅助方法：创建or替换policy。 */
   private static void createOrReplacePolicy(
       String policyArn, String policyName, String policyDocument, String roleName) {
     try {
@@ -493,6 +522,7 @@ public class LakeFormationTestBase {
     }
   }
 
+  /** 辅助方法：创建policy。 */
   private static void createPolicy(String policyName, String policyDocument) {
     LOG.info("Creating policy {} with version v1", policyName);
     iam.createPolicy(
@@ -502,6 +532,7 @@ public class LakeFormationTestBase {
             .build());
   }
 
+  /** 辅助方法：detachand删除角色policy。 */
   private static void detachAndDeleteRolePolicy(String policyArn, String roleName) {
     LOG.info("Detaching role policy {} if attached", policyArn);
     try {
@@ -519,6 +550,7 @@ public class LakeFormationTestBase {
     }
   }
 
+  /** 辅助方法：lfregister路径角色policydocfors3。 */
   private static String lfRegisterPathRolePolicyDocForS3() {
     return "{"
         + "\"Version\":\"2012-10-17\","
@@ -528,6 +560,7 @@ public class LakeFormationTestBase {
         + "\"Resource\": [\"*\"]}]}";
   }
 
+  /** 辅助方法：lfregister路径角色policydocforlakeformation。 */
   private static String lfRegisterPathRolePolicyDocForLakeFormation() {
     return "{"
         + "\"Version\":\"2012-10-17\","
@@ -546,6 +579,7 @@ public class LakeFormationTestBase {
         + "\"Resource\":[\"*\"]}]}";
   }
 
+  /** 辅助方法：lfregister路径角色policydocforiam。 */
   private static String lfRegisterPathRolePolicyDocForIam(String roleArn) {
     return "{\n"
         + "\"Version\":\"2012-10-17\","
@@ -562,6 +596,7 @@ public class LakeFormationTestBase {
         + "]}}";
   }
 
+  /** 辅助方法：lfprivileged角色policydoc。 */
   private static String lfPrivilegedRolePolicyDoc() {
     return "{"
         + "\"Version\":\"2012-10-17\","
@@ -574,6 +609,7 @@ public class LakeFormationTestBase {
         + "\"Resource\":[\"*\"]}]}";
   }
 
+  /** 辅助方法：put数据lakesettingsrequest。 */
   private static PutDataLakeSettingsRequest putDataLakeSettingsRequest(
       String adminArn, DataLakeSettings dataLakeSettings, boolean add) {
     List<DataLakePrincipal> dataLakeAdmins = Lists.newArrayList(dataLakeSettings.dataLakeAdmins());
@@ -596,6 +632,7 @@ public class LakeFormationTestBase {
     return PutDataLakeSettingsRequest.builder().dataLakeSettings(newDataLakeSettings).build();
   }
 
+  /** 辅助方法：获取arnfors3路径。 */
   private static String getArnForS3Location(String s3Location) {
     return s3Location.replace("s3://", "arn:aws:s3:::");
   }

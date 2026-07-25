@@ -34,7 +34,13 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
-/** Read Iceberg rows as {@link GenericRecord}. */
+/**
+ * Avro GenericRecord 读取函数，按 split 构造 GenericRecord 迭代器。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：调用 AvroGenericRecordFileScanTaskReader 读取数据。
+ *
+ * <p>设计意图：继承 DataIteratorReaderFunction；被 split reader 调用。
+ */
 public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<GenericRecord> {
   private final String tableName;
   private final Schema readSchema;

@@ -44,6 +44,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkDistributionAndOrderingUtil 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark分布与排序工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatalog {
 
   private static final Distribution UNSPECIFIED_DISTRIBUTION = Distributions.unspecified();
@@ -100,6 +107,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
             Expressions.column(MetadataColumns.ROW_POSITION.name()), SortDirection.ASCENDING)
       };
 
+  /** 删除表。 */
   @After
   public void dropTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -150,6 +158,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希写非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashWriteUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -161,6 +170,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range写非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWriteUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -172,6 +182,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试默认写非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultWriteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -191,6 +202,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希写非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashWriteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -210,6 +222,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试range写非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWriteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -231,6 +244,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认写分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultWritePartitionedUnsortedTable() {
     sql(
@@ -254,6 +268,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认写分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultWritePartitionedUnsortedTableFanout() {
     sql(
@@ -273,6 +288,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试哈希写分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashWritePartitionedUnsortedTable() {
     sql(
@@ -298,6 +314,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希写分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashWritePartitionedUnsortedTableFanout() {
     sql(
@@ -321,6 +338,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range写分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWritePartitionedUnsortedTable() {
     sql(
@@ -344,6 +362,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range写分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWritePartitionedUnsortedTableFanout() {
     sql(
@@ -371,6 +390,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认写分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultWritePartitionedSortedTable() {
     sql(
@@ -394,6 +414,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希写分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashWritePartitionedSortedTable() {
     sql(
@@ -422,6 +443,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range写分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWritePartitionedSortedTable() {
     sql(
@@ -445,6 +467,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkWriteDistributionAndOrdering(table, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range写分区sorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeWritePartitionedSortedTableFanout() {
     sql(
@@ -516,6 +539,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写删除非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteDeleteUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -528,6 +552,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写删除非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteDeleteUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -540,6 +565,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写删除非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteDeleteUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -553,6 +579,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写删除非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteDeleteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -571,6 +598,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无复制上写删除非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteDeleteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -591,6 +619,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写删除非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteDeleteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -611,6 +640,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试range复制上写删除非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteDeleteUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -632,6 +662,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写删除分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteDeletePartitionedUnsortedTable() {
     sql(
@@ -655,6 +686,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写删除分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteDeletePartitionedUnsortedTableFanout() {
     sql(
@@ -674,6 +706,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写删除分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteDeletePartitionedUnsortedTable() {
     sql(
@@ -696,6 +729,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无复制上写删除分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteDeletePartitionedUnsortedTableFanout() {
     sql(
@@ -716,6 +750,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写删除分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteDeletePartitionedUnsortedTable() {
     sql(
@@ -741,6 +776,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希复制上写删除分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteDeletePartitionedUnsortedTableFanout() {
     sql(
@@ -764,6 +800,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写删除分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteDeletePartitionedUnsortedTable() {
     sql(
@@ -787,6 +824,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写删除分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteDeletePartitionedUnsortedTableFanout() {
     sql(
@@ -813,6 +851,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写删除分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteDeletePartitionedSortedTable() {
     sql(
@@ -837,6 +876,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无复制上写删除分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteDeletePartitionedSortedTable() {
     sql(
@@ -861,6 +901,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写删除分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteDeletePartitionedSortedTable() {
     sql(
@@ -889,6 +930,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, DELETE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写删除分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteDeletePartitionedSortedTable() {
     sql(
@@ -960,6 +1002,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -972,6 +1015,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -984,6 +1028,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -997,6 +1042,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1015,6 +1061,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无复制上写更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1035,6 +1082,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1055,6 +1103,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试range复制上写更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1076,6 +1125,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteUpdatePartitionedUnsortedTable() {
     sql(
@@ -1099,6 +1149,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写更新分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteUpdatePartitionedUnsortedTableFanout() {
     sql(
@@ -1118,6 +1169,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteUpdatePartitionedUnsortedTable() {
     sql(
@@ -1140,6 +1192,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无复制上写更新分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteUpdatePartitionedUnsortedTableFanout() {
     sql(
@@ -1160,6 +1213,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteUpdatePartitionedUnsortedTable() {
     sql(
@@ -1185,6 +1239,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希复制上写更新分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteUpdatePartitionedUnsortedTableFanout() {
     sql(
@@ -1208,6 +1263,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteUpdatePartitionedUnsortedTable() {
     sql(
@@ -1231,6 +1287,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写更新分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteUpdatePartitionedUnsortedTableFanout() {
     sql(
@@ -1257,6 +1314,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteUpdatePartitionedSortedTable() {
     sql(
@@ -1281,6 +1339,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无复制上写更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteUpdatePartitionedSortedTable() {
     sql(
@@ -1305,6 +1364,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteUpdatePartitionedSortedTable() {
     sql(
@@ -1333,6 +1393,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteUpdatePartitionedSortedTable() {
     sql(
@@ -1403,6 +1464,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1414,6 +1476,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1425,6 +1488,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1436,6 +1500,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1455,6 +1520,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无复制上写合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1475,6 +1541,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1495,6 +1562,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试range复制上写合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1516,6 +1584,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteMergePartitionedUnsortedTable() {
     sql(
@@ -1539,6 +1608,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认复制上写合并分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteMergePartitionedUnsortedTableFanout() {
     sql(
@@ -1558,6 +1628,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无复制上写合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteMergePartitionedUnsortedTable() {
     sql(
@@ -1580,6 +1651,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无复制上写合并分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteMergePartitionedUnsortedTableFanout() {
     sql(
@@ -1599,6 +1671,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希复制上写合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteMergePartitionedUnsortedTable() {
     sql(
@@ -1624,6 +1697,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希复制上写合并分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteMergePartitionedUnsortedTableFanout() {
     sql(
@@ -1647,6 +1721,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range复制上写合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteMergePartitionedUnsortedTable() {
     sql(
@@ -1670,6 +1745,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写合并分区unsorted表fanout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteMergePartitionedUnsortedTableFanout() {
     sql(
@@ -1696,6 +1772,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认复制上写合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultCopyOnWriteMergePartitionedSortedTable() {
     sql(
@@ -1720,6 +1797,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无复制上写合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoneCopyOnWriteMergePartitionedSortedTable() {
     sql(
@@ -1744,6 +1822,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希复制上写合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashCopyOnWriteMergePartitionedSortedTable() {
     sql(
@@ -1772,6 +1851,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkCopyOnWriteDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range复制上写合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeCopyOnWriteMergePartitionedSortedTable() {
     sql(
@@ -1850,6 +1930,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta删除非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaDeleteUnpartitionedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1867,6 +1948,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta删除非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaDeleteUnpartitionedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1887,6 +1969,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta删除非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaDeleteUnpartitionedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -1905,6 +1988,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, DELETE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认位置delta删除分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaDeletePartitionedTable() {
     sql(
@@ -1927,6 +2011,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, SPEC_ID_PARTITION_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta删除分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaDeletePartitionedTable() {
     sql(
@@ -1948,6 +2033,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta删除分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaDeletePartitionedTable() {
     sql(
@@ -1972,6 +2058,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, DELETE, SPEC_ID_PARTITION_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta删除分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaDeletePartitionedTable() {
     sql(
@@ -2075,6 +2162,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2092,6 +2180,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2112,6 +2201,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta更新非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaUpdateUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2130,6 +2220,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认位置delta更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2156,6 +2247,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试无位置delta更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2184,6 +2276,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希位置delta更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2212,6 +2305,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, SPEC_ID_PARTITION_FILE_CLUSTERED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试range位置delta更新非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaUpdateUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2253,6 +2347,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认位置delta更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaUpdatePartitionedUnsortedTable() {
     sql(
@@ -2294,6 +2389,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaUpdatePartitionedUnsortedTable() {
     sql(
@@ -2329,6 +2425,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaUpdatePartitionedUnsortedTable() {
     sql(
@@ -2372,6 +2469,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta更新分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaUpdatePartitionedUnsortedTable() {
     sql(
@@ -2417,6 +2515,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, UPDATE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认位置delta更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaUpdatePartitionedSortedTable() {
     sql(
@@ -2457,6 +2556,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无位置delta更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaUpdatePartitionedSortedTable() {
     sql(
@@ -2490,6 +2590,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希位置delta更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaUpdatePartitionedSortedTable() {
     sql(
@@ -2532,6 +2633,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, UPDATE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range位置delta更新分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaUpdatePartitionedSortedTable() {
     sql(
@@ -2663,6 +2765,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2680,6 +2783,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2704,6 +2808,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta合并非分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaMergeUnpartitionedUnsortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2731,6 +2836,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试默认位置delta合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2764,6 +2870,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试无位置delta合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2792,6 +2899,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试哈希位置delta合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2827,6 +2935,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range位置delta合并非分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaMergeUnpartitionedSortedTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -2867,6 +2976,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试默认位置delta合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaMergePartitionedUnsortedTable() {
     sql(
@@ -2907,6 +3017,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaMergePartitionedUnsortedTable() {
     sql(
@@ -2942,6 +3053,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, EMPTY_ORDERING);
   }
 
+  /** 测试哈希位置delta合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaMergePartitionedUnsortedTable() {
     sql(
@@ -2984,6 +3096,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试range位置delta合并分区unsorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaMergePartitionedUnsortedTable() {
     sql(
@@ -3028,6 +3141,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, EMPTY_ORDERING);
   }
 
+  /** 测试无位置delta合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNonePositionDeltaMergePartitionedSortedTable() {
     sql(
@@ -3060,6 +3174,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
         table, MERGE, UNSPECIFIED_DISTRIBUTION, expectedOrdering);
   }
 
+  /** 测试默认位置delta合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultPositionDeltaMergePartitionedSortedTable() {
     sql(
@@ -3099,6 +3214,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试哈希位置delta合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashPositionDeltaMergePartitionedSortedTable() {
     sql(
@@ -3140,6 +3256,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 测试range位置delta合并分区sorted表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangePositionDeltaMergePartitionedSortedTable() {
     sql(
@@ -3182,6 +3299,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     checkPositionDeltaDistributionAndOrdering(table, MERGE, expectedDistribution, expectedOrdering);
   }
 
+  /** 检查写分布与排序。 */
   private void checkWriteDistributionAndOrdering(
       Table table, Distribution expectedDistribution, SortOrder[] expectedOrdering) {
     SparkWriteConf writeConf = new SparkWriteConf(spark, table, ImmutableMap.of());
@@ -3195,6 +3313,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     Assert.assertArrayEquals("Ordering must match", expectedOrdering, ordering);
   }
 
+  /** 检查复制上写分布与排序。 */
   private void checkCopyOnWriteDistributionAndOrdering(
       Table table,
       Command command,
@@ -3211,6 +3330,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     Assert.assertArrayEquals("Ordering must match", expectedOrdering, ordering);
   }
 
+  /** 检查位置delta分布与排序。 */
   private void checkPositionDeltaDistributionAndOrdering(
       Table table,
       Command command,
@@ -3227,6 +3347,7 @@ public class TestSparkDistributionAndOrderingUtil extends SparkTestBaseWithCatal
     Assert.assertArrayEquals("Ordering must match", expectedOrdering, ordering);
   }
 
+  /** enablefanout写入器。 */
   private void enableFanoutWriters(Table table) {
     table.updateProperties().set(SPARK_WRITE_PARTITIONED_FANOUT_ENABLED, "true").commit();
   }

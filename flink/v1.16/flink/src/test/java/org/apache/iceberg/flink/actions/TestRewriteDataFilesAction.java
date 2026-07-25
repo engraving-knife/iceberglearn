@@ -68,6 +68,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestRewriteDataFilesAction 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestRewriteDataFilesAction 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
 
@@ -79,18 +86,21 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
   private Table icebergTablePartitioned;
   private Table icebergTableWithPk;
 
+  /** 辅助方法：TestRewriteDataFilesAction，Rewrite Data Files Action。 */
   public TestRewriteDataFilesAction(
       String catalogName, Namespace baseNamespace, FileFormat format) {
     super(catalogName, baseNamespace);
     this.format = format;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     super.getTableEnv().getConfig().getConfiguration().set(CoreOptions.DEFAULT_PARALLELISM, 1);
     return super.getTableEnv();
   }
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "catalogName={0}, baseNamespace={1}, format={2}")
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
@@ -107,6 +117,7 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -134,6 +145,7 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
         validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, TABLE_NAME_WITH_PK));
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -144,6 +156,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Rewrite Data Files Empty Table。
+   *
+   * <p>验证该方法在 Rewrite Data Files Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteDataFilesEmptyTable() throws Exception {
     Assert.assertNull("Table must be empty", icebergTableUnPartitioned.currentSnapshot());
@@ -151,6 +168,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
     Assert.assertNull("Table must stay empty", icebergTableUnPartitioned.currentSnapshot());
   }
 
+  /**
+   * 测试场景：Rewrite Data Files Unpartitioned Table。
+   *
+   * <p>验证该方法在 Rewrite Data Files Unpartitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteDataFilesUnpartitionedTable() throws Exception {
     sql("INSERT INTO %s SELECT 1, 'hello'", TABLE_NAME_UNPARTITIONED);
@@ -183,6 +205,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
             SimpleDataUtil.createRecord(1, "hello"), SimpleDataUtil.createRecord(2, "world")));
   }
 
+  /**
+   * 测试场景：Rewrite Data Files Partitioned Table。
+   *
+   * <p>验证该方法在 Rewrite Data Files Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteDataFilesPartitionedTable() throws Exception {
     sql("INSERT INTO %s SELECT 1, 'hello' ,'a'", TABLE_NAME_PARTITIONED);
@@ -227,6 +254,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
             record.copy("id", 4, "data", "world", "spec", "b")));
   }
 
+  /**
+   * 测试场景：Rewrite Data Files With Filter。
+   *
+   * <p>验证该方法在 Rewrite Data Files With Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteDataFilesWithFilter() throws Exception {
     sql("INSERT INTO %s SELECT 1, 'hello' ,'a'", TABLE_NAME_PARTITIONED);
@@ -277,6 +309,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
             record.copy("id", 5, "data", "world", "spec", "b")));
   }
 
+  /**
+   * 测试场景：Rewrite Large Table Has Residuals。
+   *
+   * <p>验证该方法在 Rewrite Large Table Has Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteLargeTableHasResiduals() throws IOException {
     // all records belong to the same partition
@@ -406,6 +443,11 @@ public class TestRewriteDataFilesAction extends FlinkCatalogTestBase {
     SimpleDataUtil.assertTableRecords(icebergTableUnPartitioned, expected);
   }
 
+  /**
+   * 测试场景：Rewrite No Conflict With Equality Deletes。
+   *
+   * <p>验证该方法在 Rewrite No Conflict With Equality Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteNoConflictWithEqualityDeletes() throws IOException {
     // Add 2 data files

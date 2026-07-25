@@ -52,6 +52,13 @@ import org.projectnessie.versioned.storage.testextension.PersistExtension;
 @ExtendWith(PersistExtension.class)
 @NessieBackend(InmemoryBackendTestFactory.class)
 @NessieApiVersions // test all versions
+/**
+ * 文件级说明：测试 TestNessieCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestNessieCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
 
   @NessiePersist static Persist persist;
@@ -68,6 +75,7 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
   private String initialHashOfDefaultBranch;
   private String uri;
 
+  /** 辅助方法：setUp。 */
   @BeforeEach
   public void setUp(NessieClientFactory clientFactory, @NessieClientUri URI nessieUri)
       throws NessieNotFoundException {
@@ -79,6 +87,7 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
     catalog = initNessieCatalog("main");
   }
 
+  /** 辅助方法：afterEach。 */
   @AfterEach
   public void afterEach() throws IOException {
     resetData();
@@ -94,6 +103,7 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
     }
   }
 
+  /** 辅助方法：resetData。 */
   private void resetData() throws NessieConflictException, NessieNotFoundException {
     Branch defaultBranch = api.getDefaultBranch();
     for (Reference r : api.getAllReferences().get().getReferences()) {
@@ -110,6 +120,7 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
         .assign();
   }
 
+  /** 辅助方法：initNessieCatalog。 */
   private NessieCatalog initNessieCatalog(String ref) {
     NessieCatalog newCatalog = new NessieCatalog();
     newCatalog.setConf(hadoopConfig);
@@ -127,26 +138,31 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
     return newCatalog;
   }
 
+  /** 辅助方法：catalog。 */
   @Override
   protected NessieCatalog catalog() {
     return catalog;
   }
 
+  /** 辅助方法：requiresNamespaceCreate。 */
   @Override
   protected boolean requiresNamespaceCreate() {
     return true;
   }
 
+  /** 辅助方法：supportsNestedNamespaces。 */
   @Override
   protected boolean supportsNestedNamespaces() {
     return true;
   }
 
+  /** 辅助方法：supportsNamespaceProperties。 */
   @Override
   protected boolean supportsNamespaceProperties() {
     return true;
   }
 
+  /** 辅助方法：supportsServerSideRetry。 */
   @Override
   protected boolean supportsServerSideRetry() {
     // TODO: we do support retries, but a bunch of tests are currently failing
@@ -157,6 +173,11 @@ public class TestNessieCatalog extends CatalogTests<NessieCatalog> {
   @Override
   @Disabled(
       "Nessie does not differentiate between table creates & updates, thus a concurrent transaction does not fail")
+  /**
+   * 测试场景：Concurrent Create Transaction。
+   *
+   * <p>验证该方法在 Concurrent Create Transaction 条件下的行为是否符合预期。
+   */
   public void testConcurrentCreateTransaction() {
     super.testConcurrentCreateTransaction();
   }

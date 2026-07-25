@@ -37,6 +37,15 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Avro 文件的 Spark 读取器，将 Avro 记录转换为 Spark InternalRow。
+ *
+ * <p>设计意图：基于 AvroWithSparkSchemaVisitor 构建按列读取器，支持列裁剪。
+ *
+ * <p>上下游关系：由 EqualityDeleteRowReader 等在读取 Avro 删除文件时使用。
+ */
 public class SparkAvroReader implements DatumReader<InternalRow>, SupportsRowPosition {
 
   private final Schema readSchema;
@@ -55,7 +64,7 @@ public class SparkAvroReader implements DatumReader<InternalRow>, SupportsRowPos
         (ValueReader<InternalRow>)
             AvroSchemaWithTypeVisitor.visit(expectedSchema, readSchema, new ReadBuilder(constants));
   }
-
+  /** 设置 Schema 属性。 */
   @Override
   public void setSchema(Schema newFileSchema) {
     this.fileSchema = Schema.applyAliases(newFileSchema, readSchema);
@@ -65,7 +74,7 @@ public class SparkAvroReader implements DatumReader<InternalRow>, SupportsRowPos
   public InternalRow read(InternalRow reuse, Decoder decoder) throws IOException {
     return DecoderResolver.resolveAndRead(decoder, readSchema, fileSchema, reader, reuse);
   }
-
+  /** 设置 RowPositionSupplier 属性。 */
   @Override
   public void setRowPositionSupplier(Supplier<Long> posSupplier) {
     if (reader instanceof SupportsRowPosition) {
@@ -79,35 +88,35 @@ public class SparkAvroReader implements DatumReader<InternalRow>, SupportsRowPos
     private ReadBuilder(Map<Integer, ?> idToConstant) {
       this.idToConstant = idToConstant;
     }
-
+    /** 执行 record 相关操作。 */
     @Override
     public ValueReader<?> record(
         Types.StructType expected, Schema record, List<String> names, List<ValueReader<?>> fields) {
       return SparkValueReaders.struct(fields, expected, idToConstant);
     }
-
+    /** 执行 union 相关操作。 */
     @Override
     public ValueReader<?> union(Type expected, Schema union, List<ValueReader<?>> options) {
       return ValueReaders.union(options);
     }
-
+    /** 执行 array 相关操作。 */
     @Override
     public ValueReader<?> array(
         Types.ListType expected, Schema array, ValueReader<?> elementReader) {
       return SparkValueReaders.array(elementReader);
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ValueReader<?> map(
         Types.MapType expected, Schema map, ValueReader<?> keyReader, ValueReader<?> valueReader) {
       return SparkValueReaders.arrayMap(keyReader, valueReader);
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ValueReader<?> map(Types.MapType expected, Schema map, ValueReader<?> valueReader) {
       return SparkValueReaders.map(SparkValueReaders.strings(), valueReader);
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public ValueReader<?> primitive(Type.PrimitiveType expected, Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();

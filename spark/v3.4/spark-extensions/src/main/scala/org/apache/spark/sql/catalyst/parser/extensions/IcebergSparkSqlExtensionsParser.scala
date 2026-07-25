@@ -56,6 +56,12 @@ import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.StructType
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：Iceberg SQL 扩展解析器，在 Spark 原生解析器之上解析 Iceberg 专属语句（CALL、分支标签、ALTER 等）。
+ * <p>设计意图：委托 ANTLR 生成的 lexer/parser 解析扩展语法，并通过 AstBuilder 转换为逻辑计划。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册为解析器扩展；产出 Iceberg 逻辑计划节点。
+ */
 
 class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserInterface with ExtendedParser {
 
@@ -111,6 +117,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
   override def parseTableSchema(sqlText: String): StructType = {
     delegate.parseTableSchema(sqlText)
   }
+  /** 执行 parseSortOrder 相关操作。 */
 
   override def parseSortOrder(sqlText: String): java.util.List[RawOrderField] = {
     val fields = parse(sqlText) { parser => astBuilder.visitSingleOrder(parser.singleOrder()) }
@@ -137,6 +144,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       }
     }
   }
+  /** 执行 replaceRowLevelCommands 相关操作。 */
 
   private def replaceRowLevelCommands(plan: LogicalPlan): LogicalPlan = plan resolveOperatorsDown {
     case UpdateTable(UnresolvedIcebergTable(aliasedTable), assignments, condition) =>
@@ -155,6 +163,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
   }
 
   object UnresolvedIcebergTable {
+    /** 执行 unapply 相关操作。 */
 
     def unapply(plan: LogicalPlan): Option[LogicalPlan] = {
       EliminateSubqueryAliases(plan) match {
@@ -164,6 +173,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
           None
       }
     }
+    /** 判断是否 IcebergTable。 */
 
     private def isIcebergTable(multipartIdent: Seq[String]): Boolean = {
       val catalogAndIdentifier = Spark3Util.catalogAndIdentifier(SparkSession.active, multipartIdent.asJava)
@@ -177,12 +187,14 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
           false
       }
     }
+    /** 判断是否 IcebergTable。 */
 
     private def isIcebergTable(table: Table): Boolean = table match {
       case _: SparkTable => true
       case _ => false
     }
   }
+  /** 判断是否 IcebergCommand。 */
 
   private def isIcebergCommand(sqlText: String): Boolean = {
     val normalized = sqlText.toLowerCase(Locale.ROOT).trim()
@@ -207,6 +219,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
             normalized.contains("drop identifier fields") ||
             isSnapshotRefDdl(normalized)))
   }
+  /** 判断是否 SnapshotRefDdl。 */
 
   private def isSnapshotRefDdl(normalized: String): Boolean = {
     normalized.contains("create branch") ||
@@ -216,6 +229,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       normalized.contains("drop branch") ||
       normalized.contains("drop tag")
   }
+  /** 解析输入。 */
 
   protected def parse[T](command: String)(toResult: IcebergSqlExtensionsParser => T): T = {
     val lexer = new IcebergSqlExtensionsLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
@@ -255,6 +269,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
         throw new IcebergParseException(Option(command), e.message, position, position)
     }
   }
+  /** 执行 parseQuery 相关操作。 */
 
   override def parseQuery(sqlText: String): LogicalPlan = {
     parsePlan(sqlText)
@@ -271,13 +286,21 @@ object IcebergSparkSqlExtensionsParser {
 
 /* Copied from Apache Spark's to avoid dependency on Spark Internals */
 class UpperCaseCharStream(wrapped: CodePointCharStream) extends CharStream {
+  /** 执行 consume 相关操作。 */
   override def consume(): Unit = wrapped.consume
+  /** 返回 SourceName 属性。 */
   override def getSourceName(): String = wrapped.getSourceName
+  /** 执行 index 相关操作。 */
   override def index(): Int = wrapped.index
+  /** 执行 mark 相关操作。 */
   override def mark(): Int = wrapped.mark
+  /** 执行 release 相关操作。 */
   override def release(marker: Int): Unit = wrapped.release(marker)
+  /** 执行 seek 相关操作。 */
   override def seek(where: Int): Unit = wrapped.seek(where)
+  /** 返回大小。 */
   override def size(): Int = wrapped.size
+  /** 返回 Text 属性。 */
 
   override def getText(interval: Interval): String = wrapped.getText(interval)
 
@@ -308,6 +331,7 @@ case object IcebergSqlExtensionsPostProcessor extends IcebergSqlExtensionsBaseLi
   override def exitNonReserved(ctx: NonReservedContext): Unit = {
     replaceTokenByIdentifier(ctx, 0)(identity)
   }
+  /** 执行 replaceTokenByIdentifier 相关操作。 */
 
   private def replaceTokenByIdentifier(
       ctx: ParserRuleContext,
@@ -328,6 +352,7 @@ case object IcebergSqlExtensionsPostProcessor extends IcebergSqlExtensionsBaseLi
 
 /* Partially copied from Apache Spark's Parser to avoid dependency on Spark Internals */
 case object IcebergParseErrorListener extends BaseErrorListener {
+  /** 执行 syntaxError 相关操作。 */
   override def syntaxError(
       recognizer: Recognizer[_, _],
       offendingSymbol: scala.Any,
@@ -359,6 +384,7 @@ class IcebergParseException(
     message: String,
     val start: Origin,
     val stop: Origin) extends AnalysisException(message, start.line, start.startPosition) {
+  /** 执行 this 相关操作。 */
 
   def this(message: String, ctx: ParserRuleContext) = {
     this(Option(IcebergParserUtils.command(ctx)),
@@ -366,6 +392,7 @@ class IcebergParseException(
       IcebergParserUtils.position(ctx.getStart),
       IcebergParserUtils.position(ctx.getStop))
   }
+  /** 返回 Message 属性。 */
 
   override def getMessage: String = {
     val builder = new StringBuilder
@@ -388,6 +415,7 @@ class IcebergParseException(
     }
     builder.toString
   }
+  /** 返回带 Command 设置的副本。 */
 
   def withCommand(cmd: String): IcebergParseException = {
     new IcebergParseException(Option(cmd), message, start, stop)

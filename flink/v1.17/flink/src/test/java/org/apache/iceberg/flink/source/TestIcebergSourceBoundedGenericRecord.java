@@ -62,6 +62,14 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceBoundedGenericRecord 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestIcebergSourceBoundedGenericRecord 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergSourceBoundedGenericRecord {
   @ClassRule
@@ -74,6 +82,7 @@ public class TestIcebergSourceBoundedGenericRecord {
   public final HadoopCatalogResource catalogResource =
       new HadoopCatalogResource(TEMPORARY_FOLDER, TestFixtures.DATABASE, TestFixtures.TABLE);
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "format={0}, parallelism = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -86,11 +95,17 @@ public class TestIcebergSourceBoundedGenericRecord {
   private final FileFormat fileFormat;
   private final int parallelism;
 
+  /** 辅助方法：TestIcebergSourceBoundedGenericRecord，Iceberg Source Bounded Generic Record。 */
   public TestIcebergSourceBoundedGenericRecord(String format, int parallelism) {
     this.fileFormat = FileFormat.valueOf(format.toUpperCase(Locale.ENGLISH));
     this.parallelism = parallelism;
   }
 
+  /**
+   * 测试场景：Unpartitioned Table。
+   *
+   * <p>验证该方法在 Unpartitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedTable() throws Exception {
     Table table =
@@ -100,6 +115,11 @@ public class TestIcebergSourceBoundedGenericRecord {
     TestHelpers.assertRecords(run(), expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Partitioned Table。
+   *
+   * <p>验证该方法在 Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTable() throws Exception {
     String dateStr = "2020-03-20";
@@ -117,6 +137,11 @@ public class TestIcebergSourceBoundedGenericRecord {
     TestHelpers.assertRecords(run(), expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Projection。
+   *
+   * <p>验证该方法在 Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjection() throws Exception {
     Table table =
@@ -134,10 +159,12 @@ public class TestIcebergSourceBoundedGenericRecord {
         run(projectedSchema, Collections.emptyList(), Collections.emptyMap()), expectedRows);
   }
 
+  /** 辅助方法：run，run。 */
   private List<Row> run() throws Exception {
     return run(null, Collections.emptyList(), Collections.emptyMap());
   }
 
+  /** 辅助方法：run，run。 */
   private List<Row> run(
       Schema projectedSchema, List<Expression> filters, Map<String, String> options)
       throws Exception {

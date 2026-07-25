@@ -18,5 +18,13 @@
  */
 package org.apache.iceberg.rest;
 
-/** Interface to mark a REST response */
+/**
+ * 文件级说明：REST 响应标记接口。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 消息抽象层）。
+ *
+ * <p>职责：标记一个类为 REST 响应体，继承 {@link RESTMessage} 的 validate() 契约。
+ *
+ * <p>设计意图：空标记接口，使 {@link RESTClient} 的方法签名能通过泛型约束响应体类型。
+ */
 public interface RESTResponse extends RESTMessage {}

@@ -32,6 +32,15 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：查询快照祖先的存储过程，返回指定快照的所有祖先快照信息。
+ *
+ * <p>设计意图：通过遍历快照父链生成祖先列表，以行形式返回。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
+ */
 public class AncestorsOfProcedure extends BaseProcedure {
 
   private static final ProcedureParameter TABLE_PARAM =
@@ -52,26 +61,27 @@ public class AncestorsOfProcedure extends BaseProcedure {
   private AncestorsOfProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new Builder<AncestorsOfProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected AncestorsOfProcedure doBuild() {
         return new AncestorsOfProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -93,12 +103,12 @@ public class AncestorsOfProcedure extends BaseProcedure {
 
     return toOutputRow(icebergTable, snapshotIds);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "AncestorsOf";
   }
-
+  /** 转换为 OutputRow。 */
   private InternalRow[] toOutputRow(Table table, List<Long> snapshotIds) {
     if (snapshotIds.isEmpty()) {
       return new InternalRow[0];

@@ -36,8 +36,21 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestCatalogUtil，用于验证 Catalog Util 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Catalog Util 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCatalogUtil {
 
+  /**
+   * 测试场景：load custom catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog() {
     Map<String, String> options = Maps.newHashMap();
@@ -51,6 +64,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(((TestCatalog) catalog).catalogProperties).isEqualTo(options);
   }
 
+  /**
+   * 测试场景：load custom catalog with hadoop config。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog_withHadoopConfig() {
     Map<String, String> options = Maps.newHashMap();
@@ -66,6 +84,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(((TestCatalogConfigurable) catalog).configuration).isEqualTo(hadoopConf);
   }
 
+  /**
+   * 测试场景：load custom catalog no arg constructor not found。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog_NoArgConstructorNotFound() {
     Map<String, String> options = Maps.newHashMap();
@@ -82,6 +105,11 @@ public class TestCatalogUtil {
             "NoSuchMethodException: org.apache.iceberg.TestCatalogUtil$TestCatalogBadConstructor.<init>()");
   }
 
+  /**
+   * 测试场景：load custom catalog not implement catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog_NotImplementCatalog() {
     Map<String, String> options = Maps.newHashMap();
@@ -98,6 +126,11 @@ public class TestCatalogUtil {
         .hasMessageContaining("does not implement Catalog");
   }
 
+  /**
+   * 测试场景：load custom catalog constructor error catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog_ConstructorErrorCatalog() {
     Map<String, String> options = Maps.newHashMap();
@@ -112,6 +145,11 @@ public class TestCatalogUtil {
         .hasMessageContaining("NoClassDefFoundError: Error while initializing class");
   }
 
+  /**
+   * 测试场景：load custom catalog bad catalog name catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomCatalog_BadCatalogNameCatalog() {
     Map<String, String> options = Maps.newHashMap();
@@ -125,6 +163,11 @@ public class TestCatalogUtil {
         .hasMessageContaining("java.lang.ClassNotFoundException: CatalogDoesNotExist");
   }
 
+  /**
+   * 测试场景：load custom file i no arg。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomFileIO_noArg() {
     Map<String, String> properties = Maps.newHashMap();
@@ -134,6 +177,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(((TestFileIONoArg) fileIO).map).isEqualTo(properties);
   }
 
+  /**
+   * 测试场景：load custom file i hadoop config constructor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomFileIO_hadoopConfigConstructor() {
     Configuration configuration = new Configuration();
@@ -144,6 +192,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(((HadoopFileIO) fileIO).conf().get("key")).isEqualTo("val");
   }
 
+  /**
+   * 测试场景：load custom file i configurable。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomFileIO_configurable() {
     Configuration configuration = new Configuration();
@@ -155,6 +208,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(((TestFileIOConfigurable) fileIO).configuration).isEqualTo(configuration);
   }
 
+  /**
+   * 测试场景：load custom file i bad arg。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomFileIO_badArg() {
     Assertions.assertThatThrownBy(
@@ -163,6 +221,11 @@ public class TestCatalogUtil {
         .hasMessageStartingWith("Cannot initialize FileIO, missing no-arg constructor");
   }
 
+  /**
+   * 测试场景：load custom file i bad class。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomFileIO_badClass() {
     Assertions.assertThatThrownBy(
@@ -173,6 +236,11 @@ public class TestCatalogUtil {
         .hasMessageContaining("does not implement FileIO");
   }
 
+  /**
+   * 测试场景：build custom catalog with type set。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void buildCustomCatalog_withTypeSet() {
     Map<String, String> options = Maps.newHashMap();
@@ -186,6 +254,11 @@ public class TestCatalogUtil {
             "Cannot create catalog custom, both type and catalog-impl are set: type=hive, catalog-impl=CustomCatalog");
   }
 
+  /**
+   * 测试场景：load custom metrics reporter no arg。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomMetricsReporter_noArg() {
     Map<String, String> properties = Maps.newHashMap();
@@ -197,6 +270,11 @@ public class TestCatalogUtil {
     Assertions.assertThat(metricsReporter).isInstanceOf(TestMetricsReporterDefault.class);
   }
 
+  /**
+   * 测试场景：load custom metrics reporter bad arg。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomMetricsReporter_badArg() {
     Assertions.assertThatThrownBy(
@@ -209,6 +287,11 @@ public class TestCatalogUtil {
         .hasMessageContaining("missing no-arg constructor");
   }
 
+  /**
+   * 测试场景：load custom metrics reporter bad class。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void loadCustomMetricsReporter_badClass() {
     Assertions.assertThatThrownBy(
@@ -226,34 +309,41 @@ public class TestCatalogUtil {
     private String catalogName;
     private Map<String, String> catalogProperties;
 
+    /** 辅助方法：catalog。 */
     public TestCatalog() {}
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(String name, Map<String, String> properties) {
       this.catalogName = name;
       this.catalogProperties = properties;
     }
 
+    /** 辅助方法：new table ops。 */
     @Override
     protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：default warehouse location。 */
     @Override
     protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：list tables。 */
     @Override
     public List<TableIdentifier> listTables(Namespace namespace) {
       return null;
     }
 
+    /** 辅助方法：drop table。 */
     @Override
     public boolean dropTable(TableIdentifier identifier, boolean purge) {
       return false;
     }
 
+    /** 辅助方法：rename table。 */
     @Override
     public void renameTable(TableIdentifier from, TableIdentifier to) {}
   }
@@ -264,80 +354,97 @@ public class TestCatalogUtil {
     private Map<String, String> catalogProperties;
     private Configuration configuration;
 
+    /** 辅助方法：catalog configurable。 */
     public TestCatalogConfigurable() {}
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(String name, Map<String, String> properties) {
       this.catalogName = name;
       this.catalogProperties = properties;
     }
 
+    /** 辅助方法：set conf。 */
     @Override
     public void setConf(Configuration conf) {
       this.configuration = conf;
     }
 
+    /** 辅助方法：get conf。 */
     @Override
     public Configuration getConf() {
       return configuration;
     }
 
+    /** 辅助方法：new table ops。 */
     @Override
     protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：default warehouse location。 */
     @Override
     protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：list tables。 */
     @Override
     public List<TableIdentifier> listTables(Namespace namespace) {
       return null;
     }
 
+    /** 辅助方法：drop table。 */
     @Override
     public boolean dropTable(TableIdentifier identifier, boolean purge) {
       return false;
     }
 
+    /** 辅助方法：rename table。 */
     @Override
     public void renameTable(TableIdentifier from, TableIdentifier to) {}
   }
 
   public static class TestCatalogBadConstructor extends BaseMetastoreCatalog {
 
+    /** 辅助方法：catalog bad constructor。 */
     public TestCatalogBadConstructor(String arg) {}
 
+    /** 辅助方法：new table ops。 */
     @Override
     protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：default warehouse location。 */
     @Override
     protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
       return null;
     }
 
+    /** 辅助方法：list tables。 */
     @Override
     public List<TableIdentifier> listTables(Namespace namespace) {
       return null;
     }
 
+    /** 辅助方法：drop table。 */
     @Override
     public boolean dropTable(TableIdentifier identifier, boolean purge) {
       return false;
     }
 
+    /** 辅助方法：rename table。 */
     @Override
     public void renameTable(TableIdentifier from, TableIdentifier to) {}
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(String name, Map<String, String> properties) {}
   }
 
   public static class TestCatalogNoInterface {
+    /** 辅助方法：catalog no interface。 */
     public TestCatalogNoInterface() {}
   }
 
@@ -345,31 +452,38 @@ public class TestCatalogUtil {
 
     private Configuration configuration;
 
+    /** 辅助方法：file io configurable。 */
     public TestFileIOConfigurable() {}
 
+    /** 辅助方法：set conf。 */
     @Override
     public void setConf(Configuration conf) {
       this.configuration = conf;
     }
 
+    /** 辅助方法：get conf。 */
     @Override
     public Configuration getConf() {
       return configuration;
     }
 
+    /** 辅助方法：new input file。 */
     @Override
     public InputFile newInputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：new output file。 */
     @Override
     public OutputFile newOutputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：delete file。 */
     @Override
     public void deleteFile(String path) {}
 
+    /** 辅助方法：get configuration。 */
     public Configuration getConfiguration() {
       return configuration;
     }
@@ -379,25 +493,31 @@ public class TestCatalogUtil {
 
     private Map<String, String> map;
 
+    /** 辅助方法：file io no arg。 */
     public TestFileIONoArg() {}
 
+    /** 辅助方法：new input file。 */
     @Override
     public InputFile newInputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：new output file。 */
     @Override
     public OutputFile newOutputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：delete file。 */
     @Override
     public void deleteFile(String path) {}
 
+    /** 辅助方法：get map。 */
     public Map<String, String> getMap() {
       return map;
     }
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(Map<String, String> properties) {
       map = properties;
@@ -408,45 +528,54 @@ public class TestCatalogUtil {
 
     private final String arg;
 
+    /** 辅助方法：file io bad arg。 */
     public TestFileIOBadArg(String arg) {
       this.arg = arg;
     }
 
+    /** 辅助方法：new input file。 */
     @Override
     public InputFile newInputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：new output file。 */
     @Override
     public OutputFile newOutputFile(String path) {
       return null;
     }
 
+    /** 辅助方法：delete file。 */
     @Override
     public void deleteFile(String path) {}
 
+    /** 辅助方法：get arg。 */
     public String getArg() {
       return arg;
     }
   }
 
   public static class TestFileIONotImpl {
+    /** 辅助方法：file io not impl。 */
     public TestFileIONotImpl() {}
   }
 
   public static class TestMetricsReporterBadArg implements MetricsReporter {
     private final String arg;
 
+    /** 辅助方法：metrics reporter bad arg。 */
     public TestMetricsReporterBadArg(String arg) {
       this.arg = arg;
     }
 
+    /** 辅助方法：report。 */
     @Override
     public void report(MetricsReport report) {}
   }
 
   public static class TestMetricsReporterDefault implements MetricsReporter {
 
+    /** 辅助方法：report。 */
     @Override
     public void report(MetricsReport report) {}
   }

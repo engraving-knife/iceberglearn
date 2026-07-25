@@ -44,21 +44,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Contains ported code snippets from later Hive sources. We should get rid of this class as soon as
- * Hive 4 is released and Iceberg makes a dependency to that version.
+ * 文件级说明：从较新 Hive 源码移植的兼容性工具方法集合。
+ *
+ * <p>所属模块：iceberg-hive3（Iceberg 与 Hive3 集成模块）。
+ *
+ * <p>职责：在 Hive3 向量化执行路径中，提供 Hive 较新版本才具备的工具方法，
+ * 以弥补 Hive3 自身 API 的缺失，保证 Iceberg 向量化读取器能够正确获取
+ * MapWork 实例并填充分区列到向量批。
+ *
+ * <p>设计意图：临时性兼容层。当 Hive 4 发布且 Iceberg 切换至该版本依赖后，
+ * 此类应当被移除，直接调用 Hive 原生 API。
+ *
+ * <p>上下游关系：上游为 Hive3 任务执行环境（{@link JobConf}），下游为向量化记录读取器
+ * {@code HiveIcebergVectorizedRecordReader}。
  */
 public class CompatibilityHiveVectorUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(CompatibilityHiveVectorUtils.class);
 
+  /** 私有构造，工具类禁止实例化。 */
   private CompatibilityHiveVectorUtils() {}
 
   /**
-   * Returns serialized mapwork instance from a job conf - ported from Hive source code
-   * LlapHiveUtils#findMapWork
+   * 从 JobConf 中解析出序列化的 MapWork 实例（移植自 Hive 源码 LlapHiveUtils#findMapWork）。
    *
-   * @param job JobConf instance
-   * @return a serialized {@link MapWork} based on the given job conf
+   * <p>逻辑：
+   * <ol>
+   *   <li>优先按 SMB 合并工作前缀查找合并工作；若 SMB 暂不可用则直接返回 null。</li>
+   *   <li>若存在 inputName，则按 inputName 从合并工作缓存中获取；否则回退至普通 MapWork。</li>
+   * </ol>
+   *
+   * @param job JobConf 实例
+   * @return 基于给定 JobConf 解析出的 {@link MapWork}
    */
   public static MapWork findMapWork(JobConf job) {
     String inputName = job.get(Utilities.INPUT_NAME, null);
@@ -90,12 +107,17 @@ public class CompatibilityHiveVectorUtils {
   }
 
   /**
-   * Ported from Hive source code VectorizedRowBatchCtx#addPartitionColsToBatch
+   * 将分区列值写入向量化批的对应列向量（移植自 Hive 源码
+   * VectorizedRowBatchCtx#addPartitionColsToBatch）。
    *
-   * @param col ColumnVector to write the partition value into
-   * @param value partition value
-   * @param partitionColumnName partition key
-   * @param rowColumnTypeInfo column type description
+   * <p>逻辑：根据列类型枚举分支处理。null 值会标记列向量为无值且重复；
+   * 非空值按类型填入对应的 ColumnVector（Long/Double/Bytes/Decimal/Timestamp 等），
+   * 并设置 isRepeating=true，因为分区列对整批数据值相同。
+   *
+   * @param col 待写入的 ColumnVector
+   * @param value 分区值
+   * @param partitionColumnName 分区列名（仅用于异常信息）
+   * @param rowColumnTypeInfo 列类型描述
    */
   //  @SuppressWarnings({"AvoidNestedBlocks", "FallThrough", "MethodLength", "CyclomaticComplexity",
   // "Indentation"})

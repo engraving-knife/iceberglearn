@@ -24,6 +24,15 @@ import org.apache.iceberg.relocated.com.google.common.base.Splitter;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.spark.sql.connector.catalog.Identifier;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：基于路径的表标识符，当表通过文件路径而非 catalog 命名空间引用时使用。
+ *
+ * <p>设计意图：封装路径字符串以兼容 Spark TableIdentifier 接口，区分 catalog 表与路径表。
+ *
+ * <p>上下游关系：由 SparkCatalog / IcebergSource 在路径式访问时构造。
+ */
 public class PathIdentifier implements Identifier {
   private static final Splitter SPLIT = Splitter.on("/");
   private static final Joiner JOIN = Joiner.on("/");
@@ -40,17 +49,17 @@ public class PathIdentifier implements Identifier {
             ? new String[] {JOIN.join(pathParts.subList(0, pathParts.size() - 1))}
             : new String[0];
   }
-
+  /** 返回命名空间。 */
   @Override
   public String[] namespace() {
     return namespace;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return name;
   }
-
+  /** 返回路径。 */
   public String location() {
     return location;
   }

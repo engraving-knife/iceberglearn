@@ -37,16 +37,31 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 把 Avro 编码数据读取为 Flink {@link RowData} 的 DatumReader 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 expectedSchema 与 Avro 读 schema 构造 {@link ValueReader}，并在读取时通过
+ * {@link DecoderResolver} 处理读写 schema 不一致问题。
+ *
+ * <p>设计意图：适配器模式，把 Iceberg Avro 读取能力适配到 Flink RowData； 上下游：被 Flink 读取算子（如
+ * IcebergSourceSplitReader）调用。
+ */
 public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPosition {
 
   private final Schema readSchema;
   private final ValueReader<RowData> reader;
   private Schema fileSchema = null;
 
+  /** 构造函数，使用空常量 Map。 */
   public FlinkAvroReader(org.apache.iceberg.Schema expectedSchema, Schema readSchema) {
     this(expectedSchema, readSchema, ImmutableMap.of());
   }
 
+  /**
+   * 构造函数，携带字段常量（如隐藏分区列常量）。
+   *
+   * <p>逻辑：用 {@link AvroSchemaWithTypeVisitor} 按 expectedSchema 与 readSchema 构造 ValueReader。
+   */
   @SuppressWarnings("unchecked")
   public FlinkAvroReader(
       org.apache.iceberg.Schema expectedSchema, Schema readSchema, Map<Integer, ?> constants) {
@@ -56,16 +71,19 @@ public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPositio
             AvroSchemaWithTypeVisitor.visit(expectedSchema, readSchema, new ReadBuilder(constants));
   }
 
+  /** 设置文件实际 schema，并应用字段别名重映射。 */
   @Override
   public void setSchema(Schema newFileSchema) {
     this.fileSchema = Schema.applyAliases(newFileSchema, readSchema);
   }
 
+  /** 读取一行数据，处理读 schema 与文件 schema 的差异。 */
   @Override
   public RowData read(RowData reuse, Decoder decoder) throws IOException {
     return DecoderResolver.resolveAndRead(decoder, readSchema, fileSchema, reader, reuse);
   }
 
+  /** 注入行位置提供者，用于读取 position 信息。 */
   @Override
   public void setRowPositionSupplier(Supplier<Long> posSupplier) {
     if (reader instanceof SupportsRowPosition) {
@@ -73,6 +91,7 @@ public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPositio
     }
   }
 
+  /** Avro schema 访问者实现，按 Iceberg 类型构造 Flink RowData 的 ValueReader。 */
   private static class ReadBuilder extends AvroSchemaWithTypeVisitor<ValueReader<?>> {
     private final Map<Integer, ?> idToConstant;
 
@@ -80,34 +99,44 @@ public class FlinkAvroReader implements DatumReader<RowData>, SupportsRowPositio
       this.idToConstant = idToConstant;
     }
 
+    /** 构造 struct 类型的 ValueReader。 */
     @Override
     public ValueReader<?> record(
         Types.StructType expected, Schema record, List<String> names, List<ValueReader<?>> fields) {
       return FlinkValueReaders.struct(fields, expected.asStructType(), idToConstant);
     }
 
+    /** 构造 union（可选类型）的 ValueReader。 */
     @Override
     public ValueReader<?> union(Type expected, Schema union, List<ValueReader<?>> options) {
       return ValueReaders.union(options);
     }
 
+    /** 构造数组类型的 ValueReader。 */
     @Override
     public ValueReader<?> array(
         Types.ListType expected, Schema array, ValueReader<?> elementReader) {
       return FlinkValueReaders.array(elementReader);
     }
 
+    /** 构造 map（key 为数组形式）的 ValueReader。 */
     @Override
     public ValueReader<?> map(
         Types.MapType expected, Schema map, ValueReader<?> keyReader, ValueReader<?> valueReader) {
       return FlinkValueReaders.arrayMap(keyReader, valueReader);
     }
 
+    /** 构造 map（key 为字符串）的 ValueReader。 */
     @Override
     public ValueReader<?> map(Types.MapType expected, Schema map, ValueReader<?> valueReader) {
       return FlinkValueReaders.map(FlinkValueReaders.strings(), valueReader);
     }
 
+    /**
+     * 构造基本类型的 ValueReader。
+     *
+     * <p>逻辑：先按 Avro logicalType 处理 date/time/decimal/uuid 等； 再按 Avro primitive 类型分派到对应读取器。
+     */
     @Override
     public ValueReader<?> primitive(Type.PrimitiveType expected, Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();

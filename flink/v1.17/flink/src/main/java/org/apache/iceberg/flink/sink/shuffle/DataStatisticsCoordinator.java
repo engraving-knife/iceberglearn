@@ -44,11 +44,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataStatisticsCoordinator receives {@link DataStatisticsEvent} from {@link
- * DataStatisticsOperator} every subtask and then merge them together. Once aggregation for all
- * subtasks data statistics completes, DataStatisticsCoordinator will send the aggregated data
- * statistics back to {@link DataStatisticsOperator}. In the end a custom partitioner will
- * distribute traffic based on the aggregated data statistics to improve data clustering.
+ * 文件级说明：数据统计协调器，收集各子任务的数据统计并合并后下发。
+ *
+ * <p>所属模块：iceberg-flink（sink/shuffle 子包），实现 Flink 的 {@link OperatorCoordinator} 接口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>接收各 {@link DataStatisticsOperator} 子任务上报的 {@link DataStatisticsEvent}。
+ *   <li>使用 {@link AggregatedStatistics} 合并所有子任务的统计数据。
+ *   <li>聚合完成后将全局统计数据下发给各子任务，供自定义分区器优化数据聚类。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>单线程执行器（coordinatorExecutor）保证线程安全，所有操作通过 CoordinatorExecutorThreadFactory 提交。
+ *   <li>SubtaskGateways 管理各子任务的事件发送通道。
+ *   <li>AggregatedStatisticsTracker 跟踪各 checkpoint 的聚合进度。
+ * </ul>
+ *
+ * <p>上下游关系：接收来自 {@link DataStatisticsOperator} 子任务的事件；聚合结果下发回各子任务。
+ *
+ * @param <D> 数据统计类型
+ * @param <S> 统计结果类型
  */
 @Internal
 class DataStatisticsCoordinator<D extends DataStatistics<D, S>, S> implements OperatorCoordinator {
@@ -64,6 +83,13 @@ class DataStatisticsCoordinator<D extends DataStatistics<D, S>, S> implements Op
   private volatile AggregatedStatistics<D, S> completedStatistics;
   private volatile boolean started;
 
+  /**
+   * 构造方法。
+   *
+   * @param operatorName 算子名称
+   * @param context OperatorCoordinator 上下文
+   * @param statisticsSerializer 数据统计序列化器
+   */
   DataStatisticsCoordinator(
       String operatorName,
       OperatorCoordinator.Context context,

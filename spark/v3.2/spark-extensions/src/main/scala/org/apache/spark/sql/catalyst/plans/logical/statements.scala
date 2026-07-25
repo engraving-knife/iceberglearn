@@ -22,23 +22,39 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Expression
 
 /**
- * A CALL statement, as parsed from SQL.
+ * Spark Catalyst 逻辑计划节点，收集并汇报任务执行指标。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 CallStatement。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 case class CallStatement(name: Seq[String], args: Seq[CallArgument]) extends LeafParsedStatement
 
 /**
- * An argument in a CALL statement.
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 CallArgument。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 sealed trait CallArgument {
   def expr: Expression
 }
 
 /**
- * An argument in a CALL statement identified by name.
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 NamedArgument。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 case class NamedArgument(name: String, expr: Expression) extends CallArgument
 
 /**
- * An argument in a CALL statement identified by position.
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 PositionalArgument。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 case class PositionalArgument(expr: Expression) extends CallArgument

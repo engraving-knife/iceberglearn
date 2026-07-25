@@ -27,6 +27,13 @@ import org.apache.iceberg.transforms.Transforms;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestPartitionPaths 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestPartitionPaths 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestPartitionPaths {
   private static final Schema SCHEMA =
       new Schema(
@@ -34,6 +41,11 @@ public class TestPartitionPaths {
           Types.NestedField.optional(2, "data", Types.StringType.get()),
           Types.NestedField.optional(3, "ts", Types.TimestampType.withoutZone()));
 
+  /**
+   * 测试场景：Partition Path。
+   *
+   * <p>验证该方法在 Partition Path 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionPath() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).hour("ts").bucket("id", 10).build();
@@ -53,6 +65,11 @@ public class TestPartitionPaths {
         .isEqualTo("ts_hour=2017-12-01-10/id_bucket=" + idBucket);
   }
 
+  /**
+   * 测试场景：Escaped Strings。
+   *
+   * <p>验证该方法在 Escaped Strings 条件下的行为是否符合预期。
+   */
   @Test
   public void testEscapedStrings() {
     PartitionSpec spec =

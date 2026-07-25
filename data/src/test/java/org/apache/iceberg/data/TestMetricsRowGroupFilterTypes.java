@@ -78,6 +78,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestMetricsRowGroupFilterTypes 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestMetricsRowGroupFilterTypes 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestMetricsRowGroupFilterTypes {
   private static final Schema SCHEMA =
       new Schema(
@@ -135,6 +142,7 @@ public class TestMetricsRowGroupFilterTypes {
       LocalDateTime.parse("2018-06-29T10:02:34.000000", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
   private static final byte[] fixed = "abcd".getBytes(StandardCharsets.UTF_8);
 
+  /** 辅助方法：createInputFile。 */
   @Before
   public void createInputFile() throws IOException {
     List<Record> records = Lists.newArrayList();
@@ -174,6 +182,7 @@ public class TestMetricsRowGroupFilterTypes {
     }
   }
 
+  /** 辅助方法：createOrcInputFile。 */
   public void createOrcInputFile(List<Record> records) throws IOException {
     if (ORC_FILE.exists()) {
       Assert.assertTrue(ORC_FILE.delete());
@@ -198,6 +207,7 @@ public class TestMetricsRowGroupFilterTypes {
     ORC_FILE.deleteOnExit();
   }
 
+  /** 辅助方法：createParquetInputFile。 */
   public void createParquetInputFile(List<Record> records) throws IOException {
     if (PARQUET_FILE.exists()) {
       Assert.assertTrue(PARQUET_FILE.delete());
@@ -227,6 +237,7 @@ public class TestMetricsRowGroupFilterTypes {
   private final Object readValue;
   private final Object skipValue;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "format = {0} column = {1} readValue = {2} skipValue = {3}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -274,6 +285,7 @@ public class TestMetricsRowGroupFilterTypes {
     };
   }
 
+  /** 辅助方法：TestMetricsRowGroupFilterTypes。 */
   public TestMetricsRowGroupFilterTypes(
       String format, String column, Object readValue, Object skipValue) {
     this.format = FileFormat.fromString(format);
@@ -282,6 +294,11 @@ public class TestMetricsRowGroupFilterTypes {
     this.skipValue = skipValue;
   }
 
+  /**
+   * 测试场景：Eq。
+   *
+   * <p>验证该方法在 Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testEq() {
     boolean shouldRead = shouldRead(readValue);
@@ -291,6 +308,7 @@ public class TestMetricsRowGroupFilterTypes {
     Assert.assertFalse("Should skip: value is not in the row group: " + skipValue, shouldRead);
   }
 
+  /** 辅助方法：shouldRead。 */
   private boolean shouldRead(Object value) {
     switch (format) {
       case ORC:
@@ -303,6 +321,7 @@ public class TestMetricsRowGroupFilterTypes {
     }
   }
 
+  /** 辅助方法：shouldReadOrc。 */
   private boolean shouldReadOrc(Object value) {
     try (CloseableIterable<Record> reader =
         ORC.read(Files.localInput(ORC_FILE))
@@ -316,27 +335,33 @@ public class TestMetricsRowGroupFilterTypes {
     }
   }
 
+  /** 辅助方法：shouldReadParquet。 */
   private boolean shouldReadParquet(Object value) {
     return new ParquetMetricsRowGroupFilter(SCHEMA, equal(column, value))
         .shouldRead(parquetSchema, rowGroupMetadata);
   }
 
+  /** 辅助方法：parquetInputFile。 */
   private org.apache.parquet.io.InputFile parquetInputFile(InputFile inFile) {
     return new org.apache.parquet.io.InputFile() {
+      /** 辅助方法：getLength。 */
       @Override
       public long getLength() throws IOException {
         return inFile.getLength();
       }
 
+      /** 辅助方法：newStream。 */
       @Override
       public org.apache.parquet.io.SeekableInputStream newStream() throws IOException {
         SeekableInputStream stream = inFile.newStream();
         return new DelegatingSeekableInputStream(stream) {
+          /** 辅助方法：getPos。 */
           @Override
           public long getPos() throws IOException {
             return stream.getPos();
           }
 
+          /** 辅助方法：seek。 */
           @Override
           public void seek(long newPos) throws IOException {
             stream.seek(newPos);

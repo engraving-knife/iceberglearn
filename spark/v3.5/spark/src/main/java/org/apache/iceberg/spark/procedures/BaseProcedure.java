@@ -52,6 +52,27 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import scala.Option;
 
+/**
+ * 所有 Iceberg Spark 存储过程的抽象基类。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层，procedures 子包负责 将 Iceberg 的表管理操作封装为 Spark 存储过程，可通过
+ * CALL 语句调用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供存储过程的公共基础设施：SparkSession 获取、表加载、标识符解析、 Spark 缓存刷新、过滤表达式转换等。
+ *   <li>提供 modifyIcebergTable / withIcebergTable 模板方法，封装"加载表 -> 执行操作 -> 刷新缓存 -> 清理资源"的标准流程。
+ *   <li>提供按需创建的线程池管理（executorService），支持存储过程的并行操作。
+ * </ul>
+ *
+ * <p>设计意图：将所有存储过程共享的横切逻辑（表加载、缓存刷新、资源清理、标识符解析） 抽取到抽象基类，具体过程只需实现 call() 方法。使用 Builder 模式构建过程实例， 统一了
+ * TableCatalog 的注入方式。线程池在存储过程执行完毕后自动关闭。
+ *
+ * <p>上下游关系：被所有具体 Procedure（FastForwardBranchProcedure、RegisterTableProcedure、
+ * RewritePositionDeleteFilesProcedure 等）继承；通过 SparkProcedures 注册到 Spark catalog； 依赖
+ * Spark3Util、SparkActions、SparkTable 等 Spark 集成组件。
+ */
 abstract class BaseProcedure implements Procedure {
   protected static final DataType STRING_MAP =
       DataTypes.createMapType(DataTypes.StringType, DataTypes.StringType);
@@ -67,22 +88,33 @@ abstract class BaseProcedure implements Procedure {
     this.spark = SparkSession.active();
     this.tableCatalog = tableCatalog;
   }
-
+  /** 执行 spark 相关操作。 */
   protected SparkSession spark() {
     return this.spark;
   }
-
+  /** 执行 actions 相关操作。 */
   protected SparkActions actions() {
     if (actions == null) {
       this.actions = SparkActions.get(spark);
     }
     return actions;
   }
-
+  /** 执行 tableCatalog 相关操作。 */
   protected TableCatalog tableCatalog() {
     return this.tableCatalog;
   }
 
+  /**
+   * 加载 Iceberg 表并执行修改操作，执行后刷新 Spark 缓存。
+   *
+   * <p>逻辑：调用 execute 加载表并应用 func，refreshSparkCache=true 使修改后的表元数据 在 Spark 缓存中失效重建。finally
+   * 中关闭本过程创建的线程池。
+   *
+   * @param ident 表标识符
+   * @param func 对 Iceberg 表执行的修改函数
+   * @param <T> 返回类型
+   * @return 函数执行结果
+   */
   protected <T> T modifyIcebergTable(Identifier ident, Function<org.apache.iceberg.Table, T> func) {
     try {
       return execute(ident, true, func);
@@ -91,6 +123,14 @@ abstract class BaseProcedure implements Procedure {
     }
   }
 
+  /**
+   * 加载 Iceberg 表并执行只读操作（不刷新 Spark 缓存）。
+   *
+   * @param ident 表标识符
+   * @param func 对 Iceberg 表执行的只读函数
+   * @param <T> 返回类型
+   * @return 函数执行结果
+   */
   protected <T> T withIcebergTable(Identifier ident, Function<org.apache.iceberg.Table, T> func) {
     try {
       return execute(ident, false, func);
@@ -112,7 +152,7 @@ abstract class BaseProcedure implements Procedure {
 
     return result;
   }
-
+  /** 转换为 Identifier。 */
   protected Identifier toIdentifier(String identifierAsString, String argName) {
     CatalogAndIdentifier catalogAndIdentifier =
         toCatalogAndIdentifier(identifierAsString, argName, tableCatalog);
@@ -126,7 +166,7 @@ abstract class BaseProcedure implements Procedure {
 
     return catalogAndIdentifier.identifier();
   }
-
+  /** 转换为 CatalogAndIdentifier。 */
   protected CatalogAndIdentifier toCatalogAndIdentifier(
       String identifierAsString, String argName, CatalogPlugin catalog) {
     Preconditions.checkArgument(
@@ -138,6 +178,13 @@ abstract class BaseProcedure implements Procedure {
         "identifier for arg " + argName, spark, identifierAsString, catalog);
   }
 
+  /**
+   * 通过 catalog 加载 SparkTable，校验目标表确实是 Iceberg 表。
+   *
+   * @param ident 表标识符
+   * @return 加载的 SparkTable
+   * @throws RuntimeException 表不存在或非 Iceberg 表时抛出
+   */
   protected SparkTable loadSparkTable(Identifier ident) {
     try {
       Table table = tableCatalog.loadTable(ident);
@@ -150,12 +197,12 @@ abstract class BaseProcedure implements Procedure {
       throw new RuntimeException(errMsg, e);
     }
   }
-
+  /** 执行 loadRows 相关操作。 */
   protected Dataset<Row> loadRows(Identifier tableIdent, Map<String, String> options) {
     String tableName = Spark3Util.quotedFullIdentifier(tableCatalog().name(), tableIdent);
     return spark().read().options(options).table(tableName);
   }
-
+  /** 执行 refreshSparkCache 相关操作。 */
   protected void refreshSparkCache(Identifier ident, Table table) {
     CacheManager cacheManager = spark.sharedState().cacheManager();
     DataSourceV2Relation relation =
@@ -163,6 +210,17 @@ abstract class BaseProcedure implements Procedure {
     cacheManager.recacheByPlan(spark, relation);
   }
 
+  /**
+   * 将 SQL where 子句解析并转换为 Iceberg 过滤表达式。
+   *
+   * <p>逻辑：通过 SparkExpressionConverter 收集并解析 Spark 表达式， 再转换为 Iceberg 的 Expression。解析失败时抛出
+   * IllegalArgumentException。
+   *
+   * @param ident 表标识符（用于构造完整表名供 Spark 解析）
+   * @param where SQL where 子句字符串
+   * @return Iceberg 过滤表达式
+   * @throws IllegalArgumentException where 子句无法解析时抛出
+   */
   protected Expression filterExpression(Identifier ident, String where) {
     try {
       String name = Spark3Util.quotedFullIdentifier(tableCatalog.name(), ident);
@@ -173,25 +231,25 @@ abstract class BaseProcedure implements Procedure {
       throw new IllegalArgumentException("Cannot parse predicates in where option: " + where, e);
     }
   }
-
+  /** 创建 InternalRow 实例。 */
   protected InternalRow newInternalRow(Object... values) {
     return new GenericInternalRow(values);
   }
 
   protected abstract static class Builder<T extends BaseProcedure> implements ProcedureBuilder {
     private TableCatalog tableCatalog;
-
+    /** 返回带 TableCatalog 设置的副本。 */
     @Override
     public Builder<T> withTableCatalog(TableCatalog newTableCatalog) {
       this.tableCatalog = newTableCatalog;
       return this;
     }
-
+    /** 构建目标对象。 */
     @Override
     public T build() {
       return doBuild();
     }
-
+    /** 执行 doBuild 相关操作。 */
     protected abstract T doBuild();
 
     TableCatalog tableCatalog() {

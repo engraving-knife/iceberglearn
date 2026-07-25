@@ -54,6 +54,13 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportFactory;
 
+/**
+ * 文件级说明：测试 TestHiveMetastore 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveMetastore 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveMetastore {
 
   private static final String DEFAULT_DATABASE_NAME = "default";
@@ -174,6 +181,7 @@ public class TestHiveMetastore {
     }
   }
 
+  /** 辅助方法：stop。 */
   public void stop() throws Exception {
     reset();
     if (clientPool != null) {
@@ -191,15 +199,18 @@ public class TestHiveMetastore {
     METASTORE_THREADS_SHUTDOWN.invoke();
   }
 
+  /** 辅助方法：hiveConf。 */
   public HiveConf hiveConf() {
     return hiveConf;
   }
 
+  /** 辅助方法：getDatabasePath。 */
   public String getDatabasePath(String dbName) {
     File dbDir = new File(HIVE_LOCAL_DIR, dbName + ".db");
     return dbDir.getPath();
   }
 
+  /** 辅助方法：reset。 */
   public void reset() throws Exception {
     if (clientPool != null) {
       for (String dbName : clientPool.run(client -> client.getAllDatabases())) {
@@ -232,14 +243,17 @@ public class TestHiveMetastore {
     }
   }
 
+  /** 辅助方法：getTable。 */
   public Table getTable(String dbName, String tableName) throws TException, InterruptedException {
     return clientPool.run(client -> client.getTable(dbName, tableName));
   }
 
+  /** 辅助方法：getTable。 */
   public Table getTable(TableIdentifier identifier) throws TException, InterruptedException {
     return getTable(identifier.namespace().toString(), identifier.name());
   }
 
+  /** 辅助方法：newThriftServer。 */
   private TServer newThriftServer(TServerSocket socket, int poolSize, HiveConf conf)
       throws Exception {
     HiveConf serverConf = new HiveConf(conf);
@@ -260,6 +274,7 @@ public class TestHiveMetastore {
     return new TThreadPoolServer(args);
   }
 
+  /** 辅助方法：initConf。 */
   private void initConf(HiveConf conf, int port) {
     conf.set(HiveConf.ConfVars.METASTOREURIS.varname, "thrift://localhost:" + port);
     conf.set(
@@ -272,6 +287,7 @@ public class TestHiveMetastore {
         HiveConf.ConfVars.HIVE_IN_TEST.varname, HiveConf.ConfVars.HIVE_IN_TEST.getDefaultValue());
   }
 
+  /** 辅助方法：setupMetastoreDB。 */
   private static void setupMetastoreDB(String dbURL) throws SQLException, IOException {
     Connection connection = DriverManager.getConnection(dbURL);
     ScriptRunner scriptRunner = new ScriptRunner(connection, true, true);

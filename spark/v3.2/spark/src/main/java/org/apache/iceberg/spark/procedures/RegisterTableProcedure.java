@@ -35,6 +35,13 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 RegisterTableProcedure。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 class RegisterTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -50,29 +57,49 @@ class RegisterTableProcedure extends BaseProcedure {
             new StructField("total_data_files_count", DataTypes.LongType, true, Metadata.empty())
           });
 
+  /** 构造 RegisterTableProcedure 实例。 */
   private RegisterTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /** 构造并返回目标对象。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RegisterTableProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected RegisterTableProcedure doBuild() {
+        /** 注册到 Spark。 */
         return new RegisterTableProcedure(tableCatalog());
       }
     };
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     TableIdentifier tableName =
@@ -103,6 +130,11 @@ class RegisterTableProcedure extends BaseProcedure {
     return new InternalRow[] {newInternalRow(currentSnapshotId, totalRecords, totalDataFiles)};
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "RegisterTableProcedure";

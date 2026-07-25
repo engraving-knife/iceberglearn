@@ -28,6 +28,13 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.CloseableIterator;
 
 @Internal
+/**
+ * 按 DataTask 读取 RowData 的 FileScanTaskReader 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：读取内嵌数据文件并返回 RowData 迭代器。
+ *
+ * <p>设计意图：实现 FileScanTaskReader；被读取算子调用。
+ */
 public class DataTaskReader implements FileScanTaskReader<RowData> {
 
   private final Schema readSchema;

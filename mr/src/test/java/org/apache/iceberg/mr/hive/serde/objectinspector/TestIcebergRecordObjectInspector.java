@@ -30,8 +30,20 @@ import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestIcebergRecordObjectInspector 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestIcebergRecordObjectInspector 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIcebergRecordObjectInspector {
 
+  /**
+   * 测试场景：Iceberg Record Object Inspector。
+   *
+   * <p>验证该方法在 Iceberg Record Object Inspector 条件下的行为是否符合预期。
+   */
   @Test
   public void testIcebergRecordObjectInspector() {
     Schema schema =
@@ -65,6 +77,11 @@ public class TestIcebergRecordObjectInspector {
     Assert.assertEquals(innerRecord.get(0), innerSoi.getStructFieldData(innerData, stringField));
   }
 
+  /**
+   * 测试场景：Iceberg Record Object Inspector With Row Null。
+   *
+   * <p>验证该方法在 Iceberg Record Object Inspector With Row Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIcebergRecordObjectInspectorWithRowNull() {
     Schema schema =

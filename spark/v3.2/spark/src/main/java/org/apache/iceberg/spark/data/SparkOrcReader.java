@@ -33,17 +33,21 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.spark.sql.catalyst.InternalRow;
 
 /**
- * Converts the OrcIterator, which returns ORC's VectorizedRowBatch to a set of Spark's UnsafeRows.
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的读取器，负责从底层读取数据并转换为 Spark 内部格式。
  *
- * <p>It minimizes allocations by reusing most of the objects in the implementation.
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkOrcReader。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 public class SparkOrcReader implements OrcRowReader<InternalRow> {
   private final OrcValueReader<?> reader;
 
+  /** 构造 SparkOrcReader 实例。 */
   public SparkOrcReader(org.apache.iceberg.Schema expectedSchema, TypeDescription readSchema) {
     this(expectedSchema, readSchema, ImmutableMap.of());
   }
 
+  /** 构造 SparkOrcReader 实例。 */
   @SuppressWarnings("unchecked")
   public SparkOrcReader(
       org.apache.iceberg.Schema expectedSchema,
@@ -51,26 +55,54 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
       Map<Integer, ?> idToConstant) {
     this.reader =
         OrcSchemaWithTypeVisitor.visit(
+            /** 读取数据。 */
             expectedSchema, readOrcSchema, new ReadBuilder(idToConstant));
   }
 
+  /**
+   * 读取数据。
+   *
+   * @param batch 参数
+   * @param row 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow read(VectorizedRowBatch batch, int row) {
     return (InternalRow) reader.read(new StructColumnVector(batch.size, batch.cols), row);
   }
 
+  /** 设置batchcontext。 */
   @Override
   public void setBatchContext(long batchOffsetInFile) {
     reader.setBatchContext(batchOffsetInFile);
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ReadBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ReadBuilder extends OrcSchemaWithTypeVisitor<OrcValueReader<?>> {
     private final Map<Integer, ?> idToConstant;
 
+    /** 构造 ReadBuilder 实例。 */
     private ReadBuilder(Map<Integer, ?> idToConstant) {
       this.idToConstant = idToConstant;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param expected 参数
+     * @param record 参数
+     * @param names 参数
+     * @param fields 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueReader<?> record(
         Types.StructType expected,
@@ -80,12 +112,29 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
       return SparkOrcValueReaders.struct(fields, expected, idToConstant);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iList 参数
+     * @param array 参数
+     * @param elementReader 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueReader<?> list(
         Types.ListType iList, TypeDescription array, OrcValueReader<?> elementReader) {
       return SparkOrcValueReaders.array(elementReader);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iMap 参数
+     * @param map 参数
+     * @param keyReader 参数
+     * @param valueReader 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueReader<?> map(
         Types.MapType iMap,
@@ -95,6 +144,13 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
       return SparkOrcValueReaders.map(keyReader, valueReader);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iPrimitive 参数
+     * @param primitive 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueReader<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (primitive.getCategory()) {

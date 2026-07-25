@@ -18,11 +18,9 @@
  */
 package org.apache.iceberg.spark.procedures;
 
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.RewriteManifests;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.spark.actions.RewriteManifestsSparkAction;
-import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.procedures.SparkProcedures.ProcedureBuilder;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.catalog.Identifier;
@@ -34,12 +32,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that rewrites manifests in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>职责：重写清单文件的存储过程，重组表的 manifest 分组。
  *
- * @see SparkActions#rewriteManifests(Table) ()
+ * <p>设计意图：委托 RewriteManifestsSparkAction 执行，加速后续扫描规划。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class RewriteManifestsProcedure extends BaseProcedure {
 
@@ -57,9 +56,10 @@ class RewriteManifestsProcedure extends BaseProcedure {
                 "rewritten_manifests_count", DataTypes.IntegerType, false, Metadata.empty()),
             new StructField("added_manifests_count", DataTypes.IntegerType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RewriteManifestsProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RewriteManifestsProcedure doBuild() {
         return new RewriteManifestsProcedure(tableCatalog());
@@ -70,17 +70,17 @@ class RewriteManifestsProcedure extends BaseProcedure {
   private RewriteManifestsProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -100,14 +100,14 @@ class RewriteManifestsProcedure extends BaseProcedure {
           return toOutputRows(result);
         });
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(RewriteManifests.Result result) {
     int rewrittenManifestsCount = Iterables.size(result.rewrittenManifests());
     int addedManifestsCount = Iterables.size(result.addedManifests());
     InternalRow row = newInternalRow(rewrittenManifestsCount, addedManifestsCount);
     return new InternalRow[] {row};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RewriteManifestsProcedure";

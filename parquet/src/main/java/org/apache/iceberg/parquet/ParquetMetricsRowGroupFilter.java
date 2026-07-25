@@ -46,16 +46,57 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
+/**
+ * 文件级说明：基于 Parquet 列统计（min/max/null 计数）的 row group 过滤器。
+ *
+ * <p>所属模块：iceberg-parquet（读取侧 row group 裁剪，利用列级统计下推过滤）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>读取 row group 各列的 {@link Statistics}（min/max/numNulls/valueCount）。
+ *   <li>用 {@link BoundExpressionVisitor} 遍历已绑定表达式，对 eq/lt/gt/in/startsWith 等 谓词基于 min/max 区间判断该 row
+ *       group 是否可能包含匹配行。
+ *   <li>对 notEq/notIn 因 min/max 不保证是真实值，保守返回可能匹配。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>统计下推：列统计远小于数据本身，可在读取前快速排除不匹配的 row group。
+ *   <li>类型转换：通过 {@link ParquetConversions} 把 Parquet 统计值转为 Iceberg 类型比较。
+ *   <li>保守安全：当统计缺失、min/max 未定义或含 null 时，保守返回可能匹配，避免漏数据。
+ *   <li>IN 谓词限制：literalSet 超过 {@link #IN_PREDICATE_LIMIT} 时跳过评估。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ParquetReader} / 读取入口在读取 row group 前调用； 依赖 {@link Statistics} 与 {@link
+ * ParquetConversions}。
+ */
 public class ParquetMetricsRowGroupFilter {
   private static final int IN_PREDICATE_LIMIT = 200;
 
   private final Schema schema;
   private final Expression expr;
 
+  /**
+   * 构造统计过滤器，默认大小写敏感。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定表达式
+   */
   public ParquetMetricsRowGroupFilter(Schema schema, Expression unbound) {
     this(schema, unbound, true);
   }
 
+  /**
+   * 构造统计过滤器。
+   *
+   * <p>逻辑：把未绑定表达式通过 {@link Binder#bind} 绑定到 schema，并重写 not 操作。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定表达式
+   * @param caseSensitive 是否大小写敏感
+   */
   public ParquetMetricsRowGroupFilter(Schema schema, Expression unbound, boolean caseSensitive) {
     this.schema = schema;
     StructType struct = schema.asStruct();
@@ -63,11 +104,11 @@ public class ParquetMetricsRowGroupFilter {
   }
 
   /**
-   * Test whether the file may contain records that match the expression.
+   * 判断 row group 是否可能包含匹配表达式的记录。
    *
-   * @param fileSchema schema for the Parquet file
-   * @param rowGroup metadata for a row group
-   * @return false if the file cannot contain rows that match the expression, true otherwise.
+   * @param fileSchema Parquet 文件 schema
+   * @param rowGroup row group 元数据
+   * @return false 表示该 row group 不可能包含匹配行，可跳过；true 表示可能匹配
    */
   public boolean shouldRead(MessageType fileSchema, BlockMetaData rowGroup) {
     return new MetricsEvalVisitor().eval(fileSchema, rowGroup);
@@ -76,11 +117,26 @@ public class ParquetMetricsRowGroupFilter {
   private static final boolean ROWS_MIGHT_MATCH = true;
   private static final boolean ROWS_CANNOT_MATCH = false;
 
+  /**
+   * 统计评估访问者：基于列 min/max/null 统计对已绑定表达式求值。
+   *
+   * <p>设计意图：持有 stats/valueCounts/conversions 三个映射，每个谓词方法 先检查列是否存在与统计是否可用，再基于 min/max 区间判断是否可能匹配。
+   */
   private class MetricsEvalVisitor extends BoundExpressionVisitor<Boolean> {
     private Map<Integer, Statistics<?>> stats = null;
     private Map<Integer, Long> valueCounts = null;
     private Map<Integer, Function<Object, Object>> conversions = null;
 
+    /**
+     * 初始化评估上下文并求值表达式。
+     *
+     * <p>逻辑：rowCount<=0 直接排除；遍历 rowGroup 各列建立 fieldId->Statistics/ valueCount/conversion 映射；用
+     * ExpressionVisitors 求值表达式。
+     *
+     * @param fileSchema Parquet 文件 schema
+     * @param rowGroup row group 元数据
+     * @return true 表示可能匹配，false 表示不可能匹配
+     */
     private boolean eval(MessageType fileSchema, BlockMetaData rowGroup) {
       if (rowGroup.getRowCount() <= 0) {
         return ROWS_CANNOT_MATCH;
@@ -566,28 +622,37 @@ public class ParquetMetricsRowGroupFilter {
   }
 
   /**
-   * Older versions of Parquet statistics which may have a null count but undefined min and max
-   * statistics. This is similar to the current behavior when NaN values are present.
+   * 判断旧版 Parquet 统计的 min/max 是否未定义。
    *
-   * <p>This is specifically for 1.5.0-CDH Parquet builds and later which contain the different
-   * unusual hasNonNull behavior. OSS Parquet builds are not effected because PARQUET-251 prohibits
-   * the reading of these statistics from versions of Parquet earlier than 1.8.0.
+   * <p>旧版 Parquet（如 1.5.0-CDH）可能只有 null 计数但 min/max 未定义， 类似于含 NaN 时的行为。OSS Parquet 因 PARQUET-251
+   * 不受影响。
    *
-   * @param statistics Statistics to check
-   * @return true if min and max statistics are null
+   * @param statistics 待检查的统计
+   * @return true 表示 min/max 字节为 null
    */
   static boolean nullMinMax(Statistics statistics) {
     return statistics.getMaxBytes() == null || statistics.getMinBytes() == null;
   }
 
   /**
-   * The internal logic of Parquet-MR says that if numNulls is set but hasNonNull value is false,
-   * then the min/max of the column are undefined.
+   * 判断列的 min/max 是否未定义。
+   *
+   * <p>逻辑：当 numNulls 已设置但 hasNonNullValue 为 false，或 min/max 字节为 null 时， min/max 视为未定义（如含 NaN 场景）。
+   *
+   * @param statistics 待检查的统计
+   * @return true 表示 min/max 未定义
    */
   static boolean minMaxUndefined(Statistics statistics) {
     return (statistics.isNumNullsSet() && !statistics.hasNonNullValue()) || nullMinMax(statistics);
   }
 
+  /**
+   * 判断列是否全为 null。
+   *
+   * @param statistics 列统计
+   * @param valueCount 值总数
+   * @return true 表示全部为 null
+   */
   static boolean allNulls(Statistics statistics, long valueCount) {
     return statistics.isNumNullsSet() && valueCount == statistics.getNumNulls();
   }

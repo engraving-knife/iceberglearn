@@ -45,14 +45,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The operator that reads the {@link FlinkInputSplit splits} received from the preceding {@link
- * StreamingMonitorFunction}. Contrary to the {@link StreamingMonitorFunction} which has a
- * parallelism of 1, this operator can have multiple parallelism.
+ * 流式读取算子，按分片流式读取 Iceberg 数据。
  *
- * <p>As soon as a split descriptor is received, it is put in a queue, and use {@link
- * MailboxExecutor} read the actual data of the split. This architecture allows the separation of
- * the reading thread from the one split processing the checkpoint barriers, thus removing any
- * potential back-pressure.
+ * <p>所属模块：iceberg-flink v1.15。职责：接收分片并按行读取数据产出 RowData。
+ *
+ * <p>设计意图：Flink 算子（AbstractStreamOperator）；被旧版 FlinkSource 调用。
  */
 public class StreamingReaderOperator extends AbstractStreamOperator<RowData>
     implements OneInputStreamOperator<FlinkInputSplit, RowData> {

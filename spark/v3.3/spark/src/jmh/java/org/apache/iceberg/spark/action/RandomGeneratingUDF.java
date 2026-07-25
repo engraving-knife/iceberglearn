@@ -27,6 +27,13 @@ import org.apache.iceberg.util.RandomUtil;
 import org.apache.spark.sql.expressions.UserDefinedFunction;
 import org.apache.spark.sql.types.DataTypes;
 
+/**
+ * 文件级说明：RandomGeneratingUDF 基准测试辅助类。
+ *
+ * <p>所属模块：iceberg-spark（v3.3）。职责：为基准测试提供 randomgeneratingUDF 相关工具与辅助逻辑。
+ *
+ * <p>设计要点：作为 JMH 基准测试的基础设施，被各 Benchmark 子类复用，提供数据准备、配置管理与结果物化等通用能力。
+ */
 class RandomGeneratingUDF implements Serializable {
   private final long uniqueValues;
   private Random rand = new Random();
@@ -35,12 +42,14 @@ class RandomGeneratingUDF implements Serializable {
     this.uniqueValues = uniqueValues;
   }
 
+  /** 辅助方法：random长整型UDF。 */
   UserDefinedFunction randomLongUDF() {
     return udf(() -> rand.nextLong() % (uniqueValues / 2), DataTypes.LongType)
         .asNondeterministic()
         .asNonNullable();
   }
 
+  /** 辅助方法：random字符串。 */
   UserDefinedFunction randomString() {
     return udf(
             () -> (String) RandomUtil.generatePrimitive(Types.StringType.get(), rand),

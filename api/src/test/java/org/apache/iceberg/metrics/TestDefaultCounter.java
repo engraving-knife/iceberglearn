@@ -22,8 +22,20 @@ import org.apache.iceberg.metrics.MetricsContext.Unit;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDefaultCounter 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDefaultCounter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDefaultCounter {
 
+  /**
+   * 测试场景：null Check。
+   *
+   * <p>验证该方法在 null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void nullCheck() {
     Assertions.assertThatThrownBy(() -> new DefaultMetricsContext().counter("test", null))
@@ -31,6 +43,11 @@ public class TestDefaultCounter {
         .hasMessage("Invalid count unit: null");
   }
 
+  /**
+   * 测试场景：noop。
+   *
+   * <p>验证该方法在 noop 条件下的行为是否符合预期。
+   */
   @Test
   public void noop() {
     Assertions.assertThat(DefaultCounter.NOOP.unit()).isEqualTo(Unit.UNDEFINED);
@@ -40,6 +57,11 @@ public class TestDefaultCounter {
         .hasMessage("NOOP counter has no value");
   }
 
+  /**
+   * 测试场景：count。
+   *
+   * <p>验证该方法在 count 条件下的行为是否符合预期。
+   */
   @Test
   public void count() {
     Counter counter = new DefaultCounter(Unit.BYTES);

@@ -47,10 +47,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestRemoveSnapshots，用于验证 Remove Snapshots 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Remove Snapshots 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestRemoveSnapshots extends TableTestBase {
   private final boolean incrementalCleanup;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, incrementalCleanup = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -61,11 +70,13 @@ public class TestRemoveSnapshots extends TableTestBase {
     };
   }
 
+  /** 辅助方法：remove snapshots。 */
   public TestRemoveSnapshots(int formatVersion, boolean incrementalCleanup) {
     super(formatVersion);
     this.incrementalCleanup = incrementalCleanup;
   }
 
+  /** 辅助方法：wait until after。 */
   private long waitUntilAfter(long timestampMillis) {
     long current = System.currentTimeMillis();
     while (current <= timestampMillis) {
@@ -74,6 +85,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     return current;
   }
 
+  /**
+   * 测试场景：expire older than。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThan() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -104,6 +120,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：expire older than with delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThanWithDelete() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -161,6 +182,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：expire older than with delete in merged manifests。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThanWithDeleteInMergedManifests() {
     // merge every commit
@@ -223,6 +249,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：expire older than with rollback。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThanWithRollback() {
     // merge every commit
@@ -274,6 +305,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：expire older than with rollback and merged manifests。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThanWithRollbackAndMergedManifests() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -323,6 +359,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：retain last with expire older than。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainLastWithExpireOlderThan() {
     long t0 = System.currentTimeMillis();
@@ -365,6 +406,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "First snapshot should not present.", null, table.snapshot(firstSnapshotId));
   }
 
+  /**
+   * 测试场景：retain last with expire by id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainLastWithExpireById() {
     long t0 = System.currentTimeMillis();
@@ -407,6 +453,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "First snapshot should not present.", null, table.snapshot(firstSnapshotId));
   }
 
+  /**
+   * 测试场景：retain n available snapshots with transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainNAvailableSnapshotsWithTransaction() {
     long t0 = System.currentTimeMillis();
@@ -456,6 +507,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "Should be 2 manifest lists", 2, listManifestLists(table.location()).size());
   }
 
+  /**
+   * 测试场景：retain last with too few snapshots。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainLastWithTooFewSnapshots() {
     long t0 = System.currentTimeMillis();
@@ -492,6 +548,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         table.snapshot(firstSnapshotId).snapshotId());
   }
 
+  /**
+   * 测试场景：retain n larger than current snapshots。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainNLargerThanCurrentSnapshots() {
     // Append 3 files
@@ -534,6 +595,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "Should have three snapshots.", 3, Lists.newArrayList(table.snapshots()).size());
   }
 
+  /**
+   * 测试场景：retain last keeps expiring snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainLastKeepsExpiringSnapshot() {
     long t0 = System.currentTimeMillis();
@@ -586,6 +652,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "Second snapshot should present.", table.snapshot(secondSnapshot.snapshotId()));
   }
 
+  /**
+   * 测试场景：expire older than multiple calls。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireOlderThanMultipleCalls() {
     long t0 = System.currentTimeMillis();
@@ -632,6 +703,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "Second snapshot should not present.", table.snapshot(secondSnapshot.snapshotId()));
   }
 
+  /**
+   * 测试场景：retain last multiple calls。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainLastMultipleCalls() {
     long t0 = System.currentTimeMillis();
@@ -674,6 +750,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         "Second snapshot should not present.", table.snapshot(secondSnapshot.snapshotId()));
   }
 
+  /**
+   * 测试场景：retain zero snapshots。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainZeroSnapshots() {
     Assertions.assertThatThrownBy(() -> removeSnapshots(table).retainLast(0).commit())
@@ -681,6 +762,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         .hasMessage("Number of snapshots to retain must be at least 1, cannot be: 0");
   }
 
+  /**
+   * 测试场景：scan expired manifest in valid snapshot append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testScanExpiredManifestInValidSnapshotAppend() {
     table.newAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -701,6 +787,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertTrue("FILE_A should be deleted", deletedFiles.contains(FILE_A.path().toString()));
   }
 
+  /**
+   * 测试场景：scan expired manifest in valid snapshot fast append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testScanExpiredManifestInValidSnapshotFastAppend() {
     table
@@ -727,6 +818,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertTrue("FILE_A should be deleted", deletedFiles.contains(FILE_A.path().toString()));
   }
 
+  /**
+   * 测试场景：data files cleanup。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void dataFilesCleanup() throws IOException {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -765,6 +861,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertTrue("FILE_B should be deleted", deletedFiles.contains(FILE_B.path().toString()));
   }
 
+  /**
+   * 测试场景：data files cleanup with parallel tasks。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void dataFilesCleanupWithParallelTasks() throws IOException {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -841,6 +942,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：no data file cleanup。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void noDataFileCleanup() throws IOException {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -868,8 +974,9 @@ public class TestRemoveSnapshots extends TableTestBase {
   }
 
   /**
-   * Test on table below, and expiring the staged commit `B` using `expireOlderThan` API. Table: A -
-   * C ` B (staged)
+   * 测试场景：with expiring dangling stage commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   @Test
   public void testWithExpiringDanglingStageCommit() {
@@ -924,8 +1031,9 @@ public class TestRemoveSnapshots extends TableTestBase {
   }
 
   /**
-   * Expire cherry-pick the commit as shown below, when `B` is in table's current state Table: A - B
-   * - C <--current snapshot `- D (source=B)
+   * 测试场景：with cherry pick table snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   @Test
   public void testWithCherryPickTableSnapshot() {
@@ -975,8 +1083,9 @@ public class TestRemoveSnapshots extends TableTestBase {
   }
 
   /**
-   * Test on table below, and expiring `B` which is not in current table state. 1) Expire `B` 2) All
-   * commit Table: A - C - D (B) ` B (staged)
+   * 测试场景：with expiring staged then cherrypick。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   @Test
   public void testWithExpiringStagedThenCherrypick() {
@@ -1036,6 +1145,11 @@ public class TestRemoveSnapshots extends TableTestBase {
             });
   }
 
+  /**
+   * 测试场景：expire snapshots when garbage collection disabled。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireSnapshotsWhenGarbageCollectionDisabled() {
     table.updateProperties().set(TableProperties.GC_ENABLED, "false").commit();
@@ -1047,6 +1161,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         .hasMessageStartingWith("Cannot expire snapshots: GC is disabled");
   }
 
+  /**
+   * 测试场景：expire with default retain last。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireWithDefaultRetainLast() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1074,6 +1193,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertTrue("Should not delete data", deletedFiles.isEmpty());
   }
 
+  /**
+   * 测试场景：expire with default snapshot age。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireWithDefaultSnapshotAge() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1110,6 +1234,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：expire with delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireWithDeleteFiles() {
     Assume.assumeTrue("Delete files only supported in V2 spec", formatVersion == 2);
@@ -1170,6 +1299,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         deletedFiles);
   }
 
+  /**
+   * 测试场景：tag expiration。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTagExpiration() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1197,6 +1331,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertNotNull(table.ops().current().ref(SnapshotRef.MAIN_BRANCH));
   }
 
+  /**
+   * 测试场景：branch expiration。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBranchExpiration() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1224,6 +1363,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertNotNull(table.ops().current().ref(SnapshotRef.MAIN_BRANCH));
   }
 
+  /**
+   * 测试场景：multiple refs and clean expired files fails for incremental cleanup。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleRefsAndCleanExpiredFilesFailsForIncrementalCleanup() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1243,6 +1387,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         .hasMessage("Cannot incrementally clean files for tables with more than 1 ref");
   }
 
+  /**
+   * 测试场景：expire with statistics files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireWithStatisticsFiles() throws IOException {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1281,6 +1430,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assertions.assertThat(new File(statsFileLocation2).exists()).isTrue();
   }
 
+  /**
+   * 测试场景：expire with statistics files with reuse。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpireWithStatisticsFilesWithReuse() throws IOException {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1318,6 +1472,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assertions.assertThat(new File(statsFileLocation1).exists()).isTrue();
   }
 
+  /**
+   * 测试场景：fail removing snapshot when still referenced by branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailRemovingSnapshotWhenStillReferencedByBranch() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1336,6 +1495,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         .hasMessage("Cannot expire 2. Still referenced by refs: [branch]");
   }
 
+  /**
+   * 测试场景：fail removing snapshot when still referenced by tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailRemovingSnapshotWhenStillReferencedByTag() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1353,6 +1517,11 @@ public class TestRemoveSnapshots extends TableTestBase {
         .hasMessage("Cannot expire 1. Still referenced by refs: [tag]");
   }
 
+  /**
+   * 测试场景：retain unreferenced snapshots within expiration age。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainUnreferencedSnapshotsWithinExpirationAge() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1369,6 +1538,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertEquals(2, table.ops().current().snapshots().size());
   }
 
+  /**
+   * 测试场景：unreferenced snapshot parent of tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUnreferencedSnapshotParentOfTag() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1403,6 +1577,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertEquals(2, table.ops().current().snapshots().size());
   }
 
+  /**
+   * 测试场景：snapshot parent of branch not unreferenced。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotParentOfBranchNotUnreferenced() {
     // similar to testUnreferencedSnapshotParentOfTag, but checks that branch history is not
@@ -1439,6 +1618,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertEquals(3, table.ops().current().snapshots().size());
   }
 
+  /**
+   * 测试场景：min snapshots to keep multiple branches。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMinSnapshotsToKeepMultipleBranches() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1486,6 +1670,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertNull(table.ops().current().snapshot(initialSnapshotId));
   }
 
+  /**
+   * 测试场景：max snapshot age multiple branches。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMaxSnapshotAgeMultipleBranches() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1535,6 +1724,11 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertNull(table.ops().current().snapshot(initialSnapshotId));
   }
 
+  /**
+   * 测试场景：retain files on retained branches。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRetainFilesOnRetainedBranches() {
     // Append a file to main and test branch
@@ -1589,15 +1783,18 @@ public class TestRemoveSnapshots extends TableTestBase {
     Assert.assertEquals(expectedDeletes, deletedFiles);
   }
 
+  /** 辅助方法：manifest paths。 */
   private Set<String> manifestPaths(Snapshot snapshot, FileIO io) {
     return snapshot.allManifests(io).stream().map(ManifestFile::path).collect(Collectors.toSet());
   }
 
+  /** 辅助方法：remove snapshots。 */
   private RemoveSnapshots removeSnapshots(Table table) {
     RemoveSnapshots removeSnapshots = (RemoveSnapshots) table.expireSnapshots();
     return (RemoveSnapshots) removeSnapshots.withIncrementalCleanup(incrementalCleanup);
   }
 
+  /** 辅助方法：write stats file。 */
   private StatisticsFile writeStatsFile(
       long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
       throws IOException {
@@ -1622,6 +1819,7 @@ public class TestRemoveSnapshots extends TableTestBase {
     }
   }
 
+  /** 辅助方法：reuse stats file。 */
   private StatisticsFile reuseStatsFile(long snapshotId, StatisticsFile statisticsFile) {
     return new GenericStatisticsFile(
         snapshotId,
@@ -1631,10 +1829,12 @@ public class TestRemoveSnapshots extends TableTestBase {
         statisticsFile.blobMetadata());
   }
 
+  /** 辅助方法：commit stats。 */
   private void commitStats(Table table, StatisticsFile statisticsFile) {
     table.updateStatistics().setStatistics(statisticsFile.snapshotId(), statisticsFile).commit();
   }
 
+  /** 辅助方法：stats file location。 */
   private String statsFileLocation(String tableLocation) {
     String statsFileName = "stats-file-" + UUID.randomUUID();
     return tableLocation + "/metadata/" + statsFileName;

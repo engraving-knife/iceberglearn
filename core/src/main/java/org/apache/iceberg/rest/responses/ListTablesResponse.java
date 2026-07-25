@@ -26,7 +26,15 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.rest.RESTResponse;
 
-/** A list of table identifiers in a given namespace. */
+/**
+ * 文件级说明：列出表的 REST 响应模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：封装指定命名空间下的表标识符列表。
+ *
+ * <p>设计意图：使用 Builder 模式保证不可变性。
+ */
 public class ListTablesResponse implements RESTResponse {
 
   private List<TableIdentifier> identifiers;

@@ -29,6 +29,21 @@ import java.util.Locale;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 排序顺序（{@link SortOrder}）的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把表的排序规格在 metadata.json 与对象间互转。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>持久化 order-id、字段 source-id、transform、direction、null-order。
+ *   <li>解绑解析：先解析为 {@link UnboundSortOrder}，再由上层绑定 schema。
+ *   <li>常量键名：所有 JSON 键以常量定义。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link TableMetadataParser} 调用；依赖 {@link JsonUtil}。
+ */
 public class SortOrderParser {
   private static final String ORDER_ID = "order-id";
   private static final String FIELDS = "fields";
@@ -37,8 +52,15 @@ public class SortOrderParser {
   private static final String TRANSFORM = "transform";
   private static final String SOURCE_ID = "source-id";
 
+  /** 私有构造：工具类禁止实例化。 */
   private SortOrderParser() {}
 
+  /**
+   * 把对象写入 JSON 生成器。
+   *
+   * @param sortOrder 参数
+   * @param generator 参数
+   */
   public static void toJson(SortOrder sortOrder, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
     generator.writeNumberField(ORDER_ID, sortOrder.orderId());
@@ -47,22 +69,53 @@ public class SortOrderParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param sortOrder 参数
+   * @return 返回值
+   */
   public static String toJson(SortOrder sortOrder) {
     return toJson(sortOrder, false);
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param sortOrder 参数
+   * @param pretty 参数
+   * @return 返回值
+   */
   public static String toJson(SortOrder sortOrder, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(sortOrder, gen), pretty);
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param direction 参数
+   * @return 返回值
+   */
   private static String toJson(SortDirection direction) {
     return direction.toString().toLowerCase(Locale.ENGLISH);
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param nullOrder 参数
+   * @return 返回值
+   */
   private static String toJson(NullOrder nullOrder) {
     return nullOrder == NULLS_FIRST ? "nulls-first" : "nulls-last";
   }
 
+  /**
+   * 把字段列表写入 JSON 生成器。
+   *
+   * @param sortOrder 参数
+   * @param generator 参数
+   */
   private static void toJsonFields(SortOrder sortOrder, JsonGenerator generator)
       throws IOException {
     generator.writeStartArray();
@@ -77,6 +130,12 @@ public class SortOrderParser {
     generator.writeEndArray();
   }
 
+  /**
+   * 把对象写入 JSON 生成器。
+   *
+   * @param sortOrder 参数
+   * @param generator 参数
+   */
   public static void toJson(UnboundSortOrder sortOrder, JsonGenerator generator)
       throws IOException {
     generator.writeStartObject();
@@ -86,14 +145,33 @@ public class SortOrderParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param sortOrder 参数
+   * @return 返回值
+   */
   public static String toJson(UnboundSortOrder sortOrder) {
     return toJson(sortOrder, false);
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param sortOrder 参数
+   * @param pretty 参数
+   * @return 返回值
+   */
   public static String toJson(UnboundSortOrder sortOrder, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(sortOrder, gen), pretty);
   }
 
+  /**
+   * 把字段列表写入 JSON 生成器。
+   *
+   * @param sortOrder 参数
+   * @param generator 参数
+   */
   private static void toJsonFields(UnboundSortOrder sortOrder, JsonGenerator generator)
       throws IOException {
     generator.writeStartArray();
@@ -108,10 +186,25 @@ public class SortOrderParser {
     generator.writeEndArray();
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param schema 参数
+   * @param json 参数
+   * @return 返回值
+   */
   public static SortOrder fromJson(Schema schema, String json) {
     return fromJson(json).bind(schema);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param schema 参数
+   * @param json 参数
+   * @param defaultSortOrderId 参数
+   * @return 返回值
+   */
   public static SortOrder fromJson(Schema schema, JsonNode json, int defaultSortOrderId) {
     UnboundSortOrder unboundSortOrder = fromJson(json);
 
@@ -122,14 +215,33 @@ public class SortOrderParser {
     }
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param schema 参数
+   * @param json 参数
+   * @return 返回值
+   */
   public static SortOrder fromJson(Schema schema, JsonNode json) {
     return fromJson(json).bind(schema);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param json 参数
+   * @return 返回值
+   */
   public static UnboundSortOrder fromJson(String json) {
     return JsonUtil.parse(json, SortOrderParser::fromJson);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param json 参数
+   * @return 返回值
+   */
   public static UnboundSortOrder fromJson(JsonNode json) {
     Preconditions.checkArgument(
         json.isObject(), "Cannot parse sort order from non-object: %s", json);
@@ -139,6 +251,12 @@ public class SortOrderParser {
     return builder.build();
   }
 
+  /**
+   * 构造方法：初始化 buildFromJsonFields 实例。
+   *
+   * @param builder 参数
+   * @param json 参数
+   */
   private static void buildFromJsonFields(UnboundSortOrder.Builder builder, JsonNode json) {
     Preconditions.checkArgument(json != null, "Cannot parse null sort order fields");
     Preconditions.checkArgument(
@@ -163,6 +281,12 @@ public class SortOrderParser {
     }
   }
 
+  /**
+   * 将当前对象转换为NullOrder。
+   *
+   * @param nullOrderingAsString 参数
+   * @return 返回值
+   */
   private static NullOrder toNullOrder(String nullOrderingAsString) {
     switch (nullOrderingAsString.toLowerCase(Locale.ROOT)) {
       case "nulls-first":

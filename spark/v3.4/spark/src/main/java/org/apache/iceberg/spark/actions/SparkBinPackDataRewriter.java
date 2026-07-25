@@ -28,17 +28,26 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：数据文件 Bin-Pack 重写器，将小文件按目标大小合并为大文件，不改变排序。
+ *
+ * <p>设计意图：通过按文件大小分片合并，减少文件数量，是最经济的重写策略。
+ *
+ * <p>上下游关系：由 RewriteDataFilesSparkAction 选择；继承 SparkSizeBasedDataRewriter。
+ */
 class SparkBinPackDataRewriter extends SparkSizeBasedDataRewriter {
 
   SparkBinPackDataRewriter(SparkSession spark, Table table) {
     super(spark, table);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "BIN-PACK";
   }
-
+  /** 执行 doRewrite 相关操作。 */
   @Override
   protected void doRewrite(String groupId, List<FileScanTask> group) {
     // read the files packing them into splits of the required size

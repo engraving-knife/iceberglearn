@@ -80,15 +80,17 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
 /**
- * A Flink Catalog implementation that wraps an Iceberg {@link Catalog}.
+ * Flink Catalog 实现，包装 Iceberg {@link Catalog} 以适配 Flink Table API。
  *
- * <p>The mapping between Flink database and Iceberg namespace: Supplying a base namespace for a
- * given catalog, so if you have a catalog that supports a 2-level namespace, you would supply the
- * first level in the catalog configuration and the second level would be exposed as Flink
- * databases.
+ * <p>所属模块：iceberg-flink v1.15。职责：把 Iceberg 的 {@link Catalog} 适配为 Flink 的 {@link
+ * AbstractCatalog}，提供表与数据库的 CRUD、分区信息查询、表统计等能力。
  *
- * <p>The Iceberg table manages its partitions by itself. The partition of the Iceberg table is
- * independent of the partition of Flink.
+ * <p>设计意图：适配器模式——通过 baseNamespace 把 Iceberg 多级命名空间映射到 Flink 数据库； Iceberg 表的分区由自身管理，与 Flink 的分区独立。可选
+ * {@link CachingCatalog} 缓存以提升性能。 上下游：由 {@link FlinkCatalogFactory} 创建；被 Flink TableEnvironment 通过
+ * CatalogManager 调用。
+ *
+ * <p>Flink database 与 Iceberg namespace 的映射：可为 catalog 指定 base namespace， 例如 2 级命名空间时把第一级放在 catalog
+ * 配置里，第二级暴露为 Flink 数据库。
  */
 public class FlinkCatalog extends AbstractCatalog {
 
@@ -99,6 +101,7 @@ public class FlinkCatalog extends AbstractCatalog {
   private final Closeable closeable;
   private final boolean cacheEnabled;
 
+  /** 构造 FlinkCatalog，按需包装为 CachingCatalog，初始化 Flink 环境上下文。 */
   public FlinkCatalog(
       String catalogName,
       String defaultDatabase,
@@ -126,6 +129,7 @@ public class FlinkCatalog extends AbstractCatalog {
   @Override
   public void open() throws CatalogException {}
 
+  /** 关闭 catalog，若底层实现 Closeable 则调用其 close。 */
   @Override
   public void close() throws CatalogException {
     if (closeable != null) {
@@ -137,11 +141,12 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 返回底层 Iceberg Catalog 实例。 */
   public Catalog catalog() {
     return icebergCatalog;
   }
 
-  /** Append a new level to the base namespace */
+  /** 在 baseNamespace 上追加新的一级命名空间。 */
   private static Namespace appendLevel(Namespace baseNamespace, String newLevel) {
     String[] namespace = new String[baseNamespace.levels().length + 1];
     System.arraycopy(baseNamespace.levels(), 0, namespace, 0, baseNamespace.levels().length);
@@ -149,6 +154,7 @@ public class FlinkCatalog extends AbstractCatalog {
     return Namespace.of(namespace);
   }
 
+  /** 把 Flink ObjectPath 转换为 Iceberg TableIdentifier，支持 "table$metadataType" 形式。 */
   TableIdentifier toIdentifier(ObjectPath path) {
     String objectName = path.getObjectName();
     List<String> tableName = Splitter.on('$').splitToList(objectName);
@@ -165,6 +171,7 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 列出所有数据库，对应 Iceberg 中 baseNamespace 下的下一级命名空间。 */
   @Override
   public List<String> listDatabases() throws CatalogException {
     if (asNamespaceCatalog == null) {
@@ -176,6 +183,7 @@ public class FlinkCatalog extends AbstractCatalog {
         .collect(Collectors.toList());
   }
 
+  /** 获取数据库元数据，对应 Iceberg 命名空间的属性。 */
   @Override
   public CatalogDatabase getDatabase(String databaseName)
       throws DatabaseNotExistException, CatalogException {
@@ -198,6 +206,7 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 数据库是否存在。 */
   @Override
   public boolean databaseExists(String databaseName) throws CatalogException {
     try {
@@ -208,6 +217,7 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 创建数据库，把 comment 合并到属性后调用 Iceberg createNamespace。 */
   @Override
   public void createDatabase(String name, CatalogDatabase database, boolean ignoreIfExists)
       throws DatabaseAlreadyExistException, CatalogException {
@@ -215,6 +225,7 @@ public class FlinkCatalog extends AbstractCatalog {
         name, mergeComment(database.getProperties(), database.getComment()), ignoreIfExists);
   }
 
+  /** 实际创建命名空间的方法。 */
   private void createDatabase(
       String databaseName, Map<String, String> metadata, boolean ignoreIfExists)
       throws DatabaseAlreadyExistException, CatalogException {
@@ -232,6 +243,7 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 把 comment 合并到 metadata map 中，校验 metadata 不应包含 comment key。 */
   private Map<String, String> mergeComment(Map<String, String> metadata, String comment) {
     Map<String, String> ret = Maps.newHashMap(metadata);
     if (metadata.containsKey("comment")) {
@@ -244,6 +256,7 @@ public class FlinkCatalog extends AbstractCatalog {
     return ret;
   }
 
+  /** 删除数据库（命名空间），cascade 参数对 Iceberg 不生效。 */
   @Override
   public void dropDatabase(String name, boolean ignoreIfNotExists, boolean cascade)
       throws DatabaseNotExistException, DatabaseNotEmptyException, CatalogException {
@@ -267,6 +280,7 @@ public class FlinkCatalog extends AbstractCatalog {
     }
   }
 
+  /** 修改数据库属性，按差异计算 set/remove 操作。 */
   @Override
   public void alterDatabase(String name, CatalogDatabase newDatabase, boolean ignoreIfNotExists)
       throws DatabaseNotExistException, CatalogException {

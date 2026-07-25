@@ -39,12 +39,13 @@ import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Builder class for rewrites of position delete files from Spark. Responsible for creating {@link
- * SparkPositionDeletesRewrite}.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>This class is meant to be used for an action to rewrite delete files. Hence, it makes an
- * assumption that all incoming deletes belong to the same partition, and that incoming dataset is
- * from {@link ScanTaskSetManager}.
+ * <p>职责：位置删除重写构建器，构建重写 position-delete 文件的 Scan。
+ *
+ * <p>设计意图：实现 ScanBuilder，委托 SparkPositionDeletesRewrite。
+ *
+ * <p>上下游关系：由 SparkPositionDeltaWrite 在删除文件压缩时使用。
  */
 public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
 
@@ -64,7 +65,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     this.dsSchema = info.schema();
     this.writeSchema = SparkSchemaUtil.convert(table.schema(), dsSchema, writeConf.caseSensitive());
   }
-
+  /** 构建目标对象。 */
   @Override
   public Write build() {
     String fileSetId = writeConf.rewrittenFileSetId();
@@ -84,7 +85,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     return new SparkPositionDeletesRewrite(
         spark, table, writeConf, writeInfo, writeSchema, dsSchema, specId, partition);
   }
-
+  /** 执行 specId 相关操作。 */
   private int specId(String fileSetId, List<PositionDeletesScanTask> tasks) {
     Set<Integer> specIds = tasks.stream().map(t -> t.spec().specId()).collect(Collectors.toSet());
     Preconditions.checkArgument(
@@ -94,7 +95,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
         Joiner.on(",").join(specIds));
     return tasks.get(0).spec().specId();
   }
-
+  /** 执行 partition 相关操作。 */
   private StructLike partition(String fileSetId, List<PositionDeletesScanTask> tasks) {
     StructLikeSet partitions = StructLikeSet.create(tasks.get(0).spec().partitionType());
     tasks.stream().map(ContentScanTask::partition).forEach(partitions::add);

@@ -43,6 +43,15 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：数据文件 Z-Order 重写器，按多列 Z-Order 曲线排序重组数据文件以提升多维查询。
+ *
+ * <p>设计意图：将多列映射为 Z-Order 字节并通过 shuffle 排序，使多维点查更高效。
+ *
+ * <p>上下游关系：由 RewriteDataFilesSparkAction 选择；继承 SparkShufflingDataRewriter；使用 SparkZOrderUDF。
+ */
 class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkZOrderDataRewriter.class);
@@ -81,12 +90,12 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     super(spark, table);
     this.zOrderColNames = validZOrderColNames(spark, table, zOrderColNames);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "Z-ORDER";
   }
-
+  /** 执行 validOptions 相关操作。 */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -95,26 +104,26 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         .add(VAR_LENGTH_CONTRIBUTION)
         .build();
   }
-
+  /** 初始化。 */
   @Override
   public void init(Map<String, String> options) {
     super.init(options);
     this.maxOutputSize = maxOutputSize(options);
     this.varLengthContribution = varLengthContribution(options);
   }
-
+  /** 执行 sortOrder 相关操作。 */
   @Override
   protected SortOrder sortOrder() {
     return Z_SORT_ORDER;
   }
-
+  /** 执行 sortedDF 相关操作。 */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, Function<Dataset<Row>, Dataset<Row>> sortFunc) {
     Dataset<Row> zValueDF = df.withColumn(Z_COLUMN, zValue(df));
     Dataset<Row> sortedDF = sortFunc.apply(zValueDF);
     return sortedDF.drop(Z_COLUMN);
   }
-
+  /** 执行 zValue 相关操作。 */
   private Column zValue(Dataset<Row> df) {
     SparkZOrderUDF zOrderUDF =
         new SparkZOrderUDF(zOrderColNames.size(), varLengthContribution, maxOutputSize);
@@ -127,7 +136,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
 
     return zOrderUDF.interleaveBytes(array(zOrderCols));
   }
-
+  /** 执行 varLengthContribution 相关操作。 */
   private int varLengthContribution(Map<String, String> options) {
     int value =
         PropertyUtil.propertyAsInt(
@@ -139,7 +148,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         value);
     return value;
   }
-
+  /** 执行 maxOutputSize 相关操作。 */
   private int maxOutputSize(Map<String, String> options) {
     int value = PropertyUtil.propertyAsInt(options, MAX_OUTPUT_SIZE, MAX_OUTPUT_SIZE_DEFAULT);
     Preconditions.checkArgument(
@@ -149,7 +158,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         value);
     return value;
   }
-
+  /** 执行 validZOrderColNames 相关操作。 */
   private List<String> validZOrderColNames(
       SparkSession spark, Table table, List<String> inputZOrderColNames) {
 

@@ -23,10 +23,17 @@ import org.immutables.value.Value.Style.BuilderVisibility;
 import org.immutables.value.Value.Style.ImplementationVisibility;
 
 /**
- * View history entry.
+ * 文件级说明：视图历史记录条目的基础接口（Immutables 生成器基座）。
  *
- * <p>An entry contains a change to the view state. At the given timestamp, the current version was
- * set to the given version ID.
+ * <p>所属模块：iceberg-core（视图元数据实现模块，定义 View 在 core 层的可变/不可变模型）。
+ *
+ * <p>职责：描述一次视图状态变更——在指定时间戳，视图的当前版本被设置为某个 version-id。
+ *
+ * <p>设计意图：通过 Immutables 注解 {@code @Value.Immutable} 自动生成不可变实现 {@code
+ * ImmutableViewHistoryEntry}，接口仅声明契约；{@code Base} 前缀表明这是生成器基座， 实际使用的是生成的不可变类。
+ *
+ * <p>上下游关系：继承 {@link ViewHistoryEntry}（api 层契约），被 {@link ViewMetadata} 聚合为视图历史列表，由 {@link
+ * ViewHistoryEntryParser} 序列化/反序列化。
  */
 @Value.Immutable
 @SuppressWarnings("ImmutablesStyle")

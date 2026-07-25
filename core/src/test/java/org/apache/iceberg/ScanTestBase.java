@@ -38,22 +38,37 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：ScanTestBase，用于验证 Scan 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Scan 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public abstract class ScanTestBase<
         ScanT extends Scan<ScanT, T, G>, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends TableTestBase {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：scan test base。 */
   public ScanTestBase(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：new scan。 */
   protected abstract ScanT newScan();
 
+  /**
+   * 测试场景：table scan honors select。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableScanHonorsSelect() {
     ScanT scan = newScan().select(Arrays.asList("id"));
@@ -66,6 +81,11 @@ public abstract class ScanTestBase<
         scan.schema().asStruct());
   }
 
+  /**
+   * 测试场景：table both project and select。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableBothProjectAndSelect() {
     Assertions.assertThatThrownBy(
@@ -78,6 +98,11 @@ public abstract class ScanTestBase<
         .hasMessage("Cannot select columns when projection schema is set");
   }
 
+  /**
+   * 测试场景：table scan honors select without case sensitivity。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableScanHonorsSelectWithoutCaseSensitivity() {
     ScanT scan1 = newScan().caseSensitive(false).select(Arrays.asList("ID"));
@@ -97,6 +122,11 @@ public abstract class ScanTestBase<
         scan2.schema().asStruct());
   }
 
+  /**
+   * 测试场景：table scan honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableScanHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -126,6 +156,11 @@ public abstract class ScanTestBase<
     }
   }
 
+  /**
+   * 测试场景：table scan with plan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableScanWithPlanExecutor() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -148,6 +183,11 @@ public abstract class ScanTestBase<
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：re adding partition field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReAddingPartitionField() throws Exception {
     Assume.assumeTrue(formatVersion == 2);

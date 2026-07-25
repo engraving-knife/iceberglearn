@@ -28,36 +28,49 @@ import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * 文件级说明：测试 ManualSource 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 manual源 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class ManualSource implements TableProvider, DataSourceRegister {
   public static final String SHORT_NAME = "manual_source";
   public static final String TABLE_NAME = "TABLE_NAME";
   private static final Map<String, Table> tableMap = Maps.newHashMap();
 
+  /** 集合表。 */
   public static void setTable(String name, Table table) {
     Preconditions.checkArgument(
         !tableMap.containsKey(name), "Cannot set " + name + ". It is already set");
     tableMap.put(name, table);
   }
 
+  /** clear表。 */
   public static void clearTables() {
     tableMap.clear();
   }
 
+  /** 辅助方法：shortName。 */
   @Override
   public String shortName() {
     return SHORT_NAME;
   }
 
+  /** infer模式。 */
   @Override
   public StructType inferSchema(CaseInsensitiveStringMap options) {
     return getTable(null, null, options).schema();
   }
 
+  /** 辅助方法：inferPartitioning。 */
   @Override
   public Transform[] inferPartitioning(CaseInsensitiveStringMap options) {
     return getTable(null, null, options).partitioning();
   }
 
+  /** 获取表。 */
   @Override
   public org.apache.spark.sql.connector.catalog.Table getTable(
       StructType schema, Transform[] partitioning, Map<String, String> properties) {
@@ -68,6 +81,7 @@ public class ManualSource implements TableProvider, DataSourceRegister {
     return tableMap.get(tableName);
   }
 
+  /** supportsexternal元数据。 */
   @Override
   public boolean supportsExternalMetadata() {
     return false;

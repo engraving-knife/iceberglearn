@@ -37,7 +37,16 @@ import org.apache.spark.sql.connector.iceberg.catalog.ProcedureParameter;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
-/** A class that abstracts common logic for working with input to a procedure. */
+/**
+ * 存储过程输入参数的统一访问封装。
+ *
+ * <p>所属模块：iceberg-spark（procedures 子包）。封装 Spark {@link InternalRow} 形式的过程实参， 提供按 {@link
+ * ProcedureParameter} 安全读取 boolean/long/string/字符串数组/字符串 map/标识符等 类型的方法，并处理默认值与类型校验。
+ *
+ * <p>设计意图：把"从 InternalRow 按序号取值 + 类型校验 + 默认值"的通用逻辑抽离，让各过程 实现聚焦业务；通过参数名→序号的映射屏蔽实参顺序细节。
+ *
+ * <p>上下游关系：由各 {@link BaseProcedure} 子类在 call 中构造使用。
+ */
 class ProcedureInput {
 
   private static final DataType STRING_ARRAY = DataTypes.createArrayType(DataTypes.StringType);
@@ -49,6 +58,7 @@ class ProcedureInput {
   private final Map<String, Integer> paramOrdinals;
   private final InternalRow args;
 
+  /** 构造输入封装，计算参数名到序号的映射。 */
   ProcedureInput(
       SparkSession spark, TableCatalog catalog, ProcedureParameter[] params, InternalRow args) {
     this.spark = spark;
@@ -57,47 +67,55 @@ class ProcedureInput {
     this.args = args;
   }
 
+  /** 判断该参数是否已提供（非空）。 */
   public boolean isProvided(ProcedureParameter param) {
     int ordinal = ordinal(param);
     return !args.isNullAt(ordinal);
   }
 
+  /** 读取 boolean 参数，空则返回默认值。 */
   public Boolean asBoolean(ProcedureParameter param, Boolean defaultValue) {
     validateParamType(param, DataTypes.BooleanType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Boolean) args.getBoolean(ordinal);
   }
 
+  /** 读取 long 参数，未设置抛异常。 */
   public long asLong(ProcedureParameter param) {
     Long value = asLong(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /** 读取 long 参数，空则返回默认值。 */
   public Long asLong(ProcedureParameter param, Long defaultValue) {
     validateParamType(param, DataTypes.LongType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Long) args.getLong(ordinal);
   }
 
+  /** 读取 string 参数，未设置抛异常。 */
   public String asString(ProcedureParameter param) {
     String value = asString(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /** 读取 string 参数，空则返回默认值。 */
   public String asString(ProcedureParameter param, String defaultValue) {
     validateParamType(param, DataTypes.StringType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : args.getString(ordinal);
   }
 
+  /** 读取字符串数组参数，未设置抛异常。 */
   public String[] asStringArray(ProcedureParameter param) {
     String[] value = asStringArray(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /** 读取字符串数组参数，空则返回默认值。 */
   public String[] asStringArray(ProcedureParameter param, String[] defaultValue) {
     validateParamType(param, STRING_ARRAY);
     return array(
@@ -107,6 +125,7 @@ class ProcedureInput {
         defaultValue);
   }
 
+  /** 通用数组读取：按元素转换函数将 ArrayData 转为目标类型数组，空则返回默认值。 */
   @SuppressWarnings("unchecked")
   private <T> T[] array(
       ProcedureParameter param,
@@ -131,6 +150,7 @@ class ProcedureInput {
     return convertedArray;
   }
 
+  /** 读取字符串 map 参数，空则返回默认值。 */
   public Map<String, String> asStringMap(
       ProcedureParameter param, Map<String, String> defaultValue) {
     validateParamType(param, STRING_MAP);
@@ -141,6 +161,7 @@ class ProcedureInput {
         defaultValue);
   }
 
+  /** 通用 map 读取：按键/值转换函数将 MapData 转为 Map，空则返回默认值。 */
   private <K, V> Map<K, V> map(
       ProcedureParameter param,
       BiFunction<ArrayData, Integer, K> convertKey,
@@ -166,6 +187,7 @@ class ProcedureInput {
     return convertedMap;
   }
 
+  /** 将参数解析为标识符，并校验其所属 Catalog 与当前过程 Catalog 一致。 */
   public Identifier ident(ProcedureParameter param) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, catalog);
 
@@ -179,11 +201,13 @@ class ProcedureInput {
     return catalogAndIdent.identifier();
   }
 
+  /** 将参数解析为标识符，使用指定默认 Catalog。 */
   public Identifier ident(ProcedureParameter param, CatalogPlugin defaultCatalog) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, defaultCatalog);
     return catalogAndIdent.identifier();
   }
 
+  /** 将字符串参数解析为 CatalogAndIdentifier，空串抛异常。 */
   private CatalogAndIdentifier catalogAndIdent(
       ProcedureParameter param, CatalogPlugin defaultCatalog) {
 
@@ -198,10 +222,12 @@ class ProcedureInput {
     return Spark3Util.catalogAndIdentifier(desc, spark, identAsString, defaultCatalog);
   }
 
+  /** 返回参数对应的序号。 */
   private int ordinal(ProcedureParameter param) {
     return paramOrdinals.get(param.name());
   }
 
+  /** 构建参数名到序号的映射，检测重名。 */
   private Map<String, Integer> computeParamOrdinals(ProcedureParameter[] params) {
     Map<String, Integer> ordinals = Maps.newHashMap();
 
@@ -219,6 +245,7 @@ class ProcedureInput {
     return ordinals;
   }
 
+  /** 校验参数类型与期望类型一致。 */
   private void validateParamType(ProcedureParameter param, DataType expectedDataType) {
     Preconditions.checkArgument(
         expectedDataType.sameType(param.dataType()),

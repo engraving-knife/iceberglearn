@@ -26,7 +26,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestFileMetadataParser，用于验证 File Metadata Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 File Metadata Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestFileMetadataParser {
+  /**
+   * 测试场景：invalid json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidJson() {
     assertThatThrownBy(() -> FileMetadataParser.fromJson((String) null))
@@ -46,6 +59,11 @@ public class TestFileMetadataParser {
         .hasMessageContaining("Unexpected end-of-input: expected close marker for Object");
   }
 
+  /**
+   * 测试场景：minimal file metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMinimalFileMetadata() {
     testJsonSerialization(
@@ -53,6 +71,11 @@ public class TestFileMetadataParser {
         "{\n" + "  \"blobs\" : [ ]\n" + "}");
   }
 
+  /**
+   * 测试场景：file properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFileProperties() {
     testJsonSerialization(
@@ -77,6 +100,11 @@ public class TestFileMetadataParser {
             + "}");
   }
 
+  /**
+   * 测试场景：missing blobs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMissingBlobs() {
     assertThatThrownBy(() -> FileMetadataParser.fromJson("{\"properties\": {}}"))
@@ -84,6 +112,11 @@ public class TestFileMetadataParser {
         .hasMessage("Cannot parse missing field: blobs");
   }
 
+  /**
+   * 测试场景：bad blobs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBadBlobs() {
     assertThatThrownBy(() -> FileMetadataParser.fromJson("{\"blobs\": {}}"))
@@ -91,6 +124,11 @@ public class TestFileMetadataParser {
         .hasMessage("Cannot parse blobs from non-array: {}");
   }
 
+  /**
+   * 测试场景：blob metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBlobMetadata() {
     testJsonSerialization(
@@ -127,6 +165,11 @@ public class TestFileMetadataParser {
             + "}");
   }
 
+  /**
+   * 测试场景：blob properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBlobProperties() {
     testJsonSerialization(
@@ -157,6 +200,11 @@ public class TestFileMetadataParser {
             + "}");
   }
 
+  /**
+   * 测试场景：field number out of range。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFieldNumberOutOfRange() {
     assertThatThrownBy(
@@ -176,6 +224,11 @@ public class TestFileMetadataParser {
         .hasMessage("Cannot parse integer from non-int value in fields: 2147483648");
   }
 
+  /**
+   * 测试场景：json serialization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   private void testJsonSerialization(FileMetadata fileMetadata, String json) {
     assertThat(FileMetadataParser.toJson(fileMetadata, true)).isEqualTo(json);
 

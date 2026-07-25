@@ -22,6 +22,15 @@ import java.util.List;
 import java.util.function.Predicate;
 import org.apache.iceberg.Schema;
 
+/**
+ * 查找类型访问者：在 schema 中查找第一个满足谓词的类型。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#find} 使用）。
+ *
+ * <p>职责：后序遍历类型树，对每个类型测试谓词，返回第一个匹配的类型。
+ *
+ * <p>设计意图：后序遍历保证先检查子类型再检查父类型；struct/list/map 在测试自身后 传播子节点的匹配结果。
+ */
 class FindTypeVisitor extends TypeUtil.SchemaVisitor<Type> {
   private final Predicate<Type> predicate;
 

@@ -77,16 +77,19 @@ abstract class TestTables {
   protected final TemporaryFolder temp;
   protected final String catalog;
 
+  /** 辅助方法：TestTables。 */
   protected TestTables(Tables tables, TemporaryFolder temp, String catalogName) {
     this.tables = tables;
     this.temp = temp;
     this.catalog = catalogName;
   }
 
+  /** 辅助方法：TestTables。 */
   protected TestTables(Catalog catalog, TemporaryFolder temp, String catalogName) {
     this(new CatalogToTables(catalog), temp, catalogName);
   }
 
+  /** 辅助方法：properties。 */
   public Map<String, String> properties() {
     return Collections.emptyMap();
   }
@@ -96,10 +99,12 @@ abstract class TestTables {
     return tableIdentifier;
   }
 
+  /** 辅助方法：tables。 */
   public Tables tables() {
     return tables;
   }
 
+  /** 辅助方法：catalogName。 */
   public String catalogName() {
     return catalog;
   }
@@ -265,6 +270,7 @@ abstract class TestTables {
     return loadTable(identifier);
   }
 
+  /** 辅助方法：getInsertQuery。 */
   public String getInsertQuery(
       List<Record> records, TableIdentifier identifier, boolean isOverwrite) {
     StringBuilder query =
@@ -382,10 +388,12 @@ abstract class TestTables {
 
     private final Catalog catalog;
 
+    /** 辅助方法：CatalogToTables。 */
     private CatalogToTables(Catalog catalog) {
       this.catalog = catalog;
     }
 
+    /** 辅助方法：create。 */
     @Override
     public Table create(
         Schema schema,
@@ -402,11 +410,13 @@ abstract class TestTables {
           .create();
     }
 
+    /** 辅助方法：load。 */
     @Override
     public Table load(String tableIdentifier) {
       return catalog.loadTable(TableIdentifier.parse(tableIdentifier));
     }
 
+    /** 辅助方法：exists。 */
     @Override
     public boolean exists(String tableIdentifier) {
       return catalog.tableExists(TableIdentifier.parse(tableIdentifier));
@@ -433,6 +443,7 @@ abstract class TestTables {
       this.warehouseLocation = warehouseLocation;
     }
 
+    /** 辅助方法：properties。 */
     @Override
     public Map<String, String> properties() {
       return ImmutableMap.of(
@@ -442,6 +453,7 @@ abstract class TestTables {
           warehouseLocation);
     }
 
+    /** 辅助方法：locationForCreateTableSQL。 */
     @Override
     public String locationForCreateTableSQL(TableIdentifier identifier) {
       return "LOCATION '" + warehouseLocation + TestTables.tablePath(identifier) + "' ";
@@ -468,6 +480,7 @@ abstract class TestTables {
       this.warehouseLocation = warehouseLocation;
     }
 
+    /** 辅助方法：properties。 */
     @Override
     public Map<String, String> properties() {
       return ImmutableMap.of(
@@ -477,6 +490,7 @@ abstract class TestTables {
           warehouseLocation);
     }
 
+    /** 辅助方法：locationForCreateTableSQL。 */
     @Override
     public String locationForCreateTableSQL(TableIdentifier identifier) {
       return "LOCATION '" + warehouseLocation + TestTables.tablePath(identifier) + "' ";
@@ -488,6 +502,7 @@ abstract class TestTables {
       super(new HadoopTables(conf), temp, Catalogs.ICEBERG_HADOOP_TABLE_NAME);
     }
 
+    /** 辅助方法：identifier。 */
     @Override
     public String identifier(String tableIdentifier) {
       final File location;
@@ -504,11 +519,13 @@ abstract class TestTables {
       return location.toString();
     }
 
+    /** 辅助方法：locationForCreateTableSQL。 */
     @Override
     public String locationForCreateTableSQL(TableIdentifier identifier) {
       return "LOCATION '" + temp.getRoot().getPath() + tablePath(identifier) + "' ";
     }
 
+    /** 辅助方法：loadTable。 */
     @Override
     public Table loadTable(TableIdentifier identifier) {
       return tables().load(temp.getRoot().getPath() + TestTables.tablePath(identifier));
@@ -528,6 +545,7 @@ abstract class TestTables {
           catalogName);
     }
 
+    /** 辅助方法：properties。 */
     @Override
     public Map<String, String> properties() {
       return ImmutableMap.of(
@@ -535,21 +553,25 @@ abstract class TestTables {
           CatalogUtil.ICEBERG_CATALOG_TYPE_HIVE);
     }
 
+    /** 辅助方法：locationForCreateTableSQL。 */
     @Override
     public String locationForCreateTableSQL(TableIdentifier identifier) {
       return "";
     }
 
+    /** 辅助方法：createHiveTableSQL。 */
     @Override
     public String createHiveTableSQL(TableIdentifier identifier, Map<String, String> tblProps) {
       return null;
     }
   }
 
+  /** 辅助方法：tablePath。 */
   private static String tablePath(TableIdentifier identifier) {
     return "/" + Joiner.on("/").join(identifier.namespace().levels()) + "/" + identifier.name();
   }
 
+  /** 辅助方法：getStringValueForInsert。 */
   private String getStringValueForInsert(Object value, Type type) {
     String template = "\'%s\'";
     if (type.equals(Types.TimestampType.withoutZone())) {
@@ -568,6 +590,7 @@ abstract class TestTables {
 
   enum TestTableType {
     HADOOP_TABLE {
+      /** 辅助方法：instance。 */
       @Override
       public TestTables instance(
           Configuration conf, TemporaryFolder temporaryFolder, String catalogName) {
@@ -575,6 +598,7 @@ abstract class TestTables {
       }
     },
     HADOOP_CATALOG {
+      /** 辅助方法：instance。 */
       @Override
       public TestTables instance(
           Configuration conf, TemporaryFolder temporaryFolder, String catalogName)
@@ -583,6 +607,7 @@ abstract class TestTables {
       }
     },
     CUSTOM_CATALOG {
+      /** 辅助方法：instance。 */
       @Override
       public TestTables instance(
           Configuration conf, TemporaryFolder temporaryFolder, String catalogName)
@@ -591,6 +616,7 @@ abstract class TestTables {
       }
     },
     HIVE_CATALOG {
+      /** 辅助方法：instance。 */
       @Override
       public TestTables instance(
           Configuration conf, TemporaryFolder temporaryFolder, String catalogName) {
@@ -598,6 +624,7 @@ abstract class TestTables {
       }
     };
 
+    /** 辅助方法：instance。 */
     public abstract TestTables instance(
         Configuration conf, TemporaryFolder temporaryFolder, String catalogName) throws IOException;
   }

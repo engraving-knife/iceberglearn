@@ -27,15 +27,23 @@ import org.apache.flink.table.api.config.TableConfigOptions;
 import org.apache.flink.types.Row;
 import org.junit.Before;
 
-/** Test Flink SELECT SQLs. */
+/**
+ * 文件级说明：测试 TestFlinkScanSql 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkScanSql 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkScanSql extends TestFlinkSource {
 
   private volatile TableEnvironment tEnv;
 
+  /** 辅助方法：TestFlinkScanSql，Flink Scan Sql。 */
   public TestFlinkScanSql(String fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     SqlHelpers.sql(
@@ -49,6 +57,7 @@ public class TestFlinkScanSql extends TestFlinkSource {
         .set(TableConfigOptions.TABLE_DYNAMIC_TABLE_OPTIONS_ENABLED, true);
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   private TableEnvironment getTableEnv() {
     if (tEnv == null) {
       synchronized (this) {
@@ -61,6 +70,7 @@ public class TestFlinkScanSql extends TestFlinkSource {
     return tEnv;
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   protected List<Row> run(
       FlinkSource.Builder formatBuilder,

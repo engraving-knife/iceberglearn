@@ -27,7 +27,19 @@ import org.apache.iceberg.expressions.Expression.Operation;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExpressionSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestExpressionSerialization 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExpressionSerialization {
+  /**
+   * 测试场景：Expressions。
+   *
+   * <p>验证该方法在 Expressions 条件下的行为是否符合预期。
+   */
   @Test
   public void testExpressions() throws Exception {
     Schema schema =
@@ -106,6 +118,7 @@ public class TestExpressionSerialization {
     }
   }
 
+  /** 辅助方法：equals。 */
   private static boolean equals(Term left, Term right) {
     if (left instanceof Reference && right instanceof Reference) {
       return equals((Reference<?>) left, (Reference<?>) right);
@@ -125,6 +138,7 @@ public class TestExpressionSerialization {
     return false;
   }
 
+  /** 辅助方法：equals。 */
   @SuppressWarnings({"unchecked", "checkstyle:CyclomaticComplexity"})
   private static boolean equals(Predicate left, Predicate right) {
     if (left.op() != right.op()) {
@@ -179,6 +193,7 @@ public class TestExpressionSerialization {
     }
   }
 
+  /** 辅助方法：equals。 */
   private static boolean equals(Collection<Literal<?>> left, Collection<Literal<?>> right) {
     if (left.size() != right.size()) {
       return false;
@@ -186,6 +201,7 @@ public class TestExpressionSerialization {
     return left.containsAll(right);
   }
 
+  /** 辅助方法：equals。 */
   private static boolean equals(Reference<?> left, Reference<?> right) {
     if (left instanceof NamedReference) {
       if (!(right instanceof NamedReference)) {

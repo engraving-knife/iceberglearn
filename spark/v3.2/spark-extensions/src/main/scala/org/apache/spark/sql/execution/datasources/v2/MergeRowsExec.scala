@@ -34,6 +34,13 @@ import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.UnaryExecNode
 
+/**
+ * Spark 物理执行相关组件，实现 MERGE INTO 行级操作。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 MergeRowsExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class MergeRowsExec(
     isSourceRowPresent: Expression,
     isTargetRowPresent: Expression,
@@ -48,6 +55,10 @@ case class MergeRowsExec(
     output: Seq[Attribute],
     child: SparkPlan) extends UnaryExecNode {
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def requiredChildOrdering: Seq[Seq[SortOrder]] = {
     if (performCardinalityCheck) {
       // request a local sort by the row ID attrs to co-locate matches for the same target row
@@ -61,24 +72,44 @@ case class MergeRowsExec(
     AttributeSet(output.filterNot(attr => inputSet.contains(attr)))
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   @transient override lazy val references: AttributeSet = child.outputSet
 
   override def simpleString(maxFields: Int): String = {
     s"MergeRowsExec${truncatedString(output, "[", ", ", "]", maxFields)}"
   }
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: SparkPlan): SparkPlan = {
     copy(child = newChild)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   protected override def doExecute(): RDD[InternalRow] = {
     child.execute().mapPartitions(processPartition)
   }
 
+  /**
+   * 创建并返回新实例。
+   * @return 结果对象
+   */
   private def createProjection(exprs: Seq[Expression], attrs: Seq[Attribute]): UnsafeProjection = {
     UnsafeProjection.create(exprs, attrs)
   }
 
+  /**
+   * 创建并返回新实例。
+   * @return 结果对象
+   */
   private def createPredicate(expr: Expression, attrs: Seq[Attribute]): BasePredicate = {
     GeneratePredicate.generate(expr, attrs)
   }
@@ -106,6 +137,10 @@ case class MergeRowsExec(
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def processPartition(rowIterator: Iterator[InternalRow]): Iterator[InternalRow] = {
     val inputAttrs = child.output
 
@@ -138,6 +173,10 @@ case class MergeRowsExec(
     //    - Apply the not matched actions (i.e INSERT actions) if non match conditions are met.
     // 3. Found a source row for which there is a corresponding target row (join condition met)
     //    - Apply the matched actions (i.e DELETE or UPDATE actions) if match conditions are met.
+    /**
+     * 执行该方法的具体逻辑。
+     * @return 结果对象
+     */
     def processRow(inputRow: InternalRow): InternalRow = {
       if (emitNotMatchedTargetRows && !isSourceRowPresentPred.eval(inputRow)) {
         projectTargetCols.apply(inputRow)
@@ -150,6 +189,10 @@ case class MergeRowsExec(
 
     var lastMatchedRowId: InternalRow = null
 
+    /**
+     * 执行该方法的具体逻辑。
+     * @return 结果对象
+     */
     def processRowWithCardinalityCheck(inputRow: InternalRow): InternalRow = {
       val isSourceRowPresent = isSourceRowPresentPred.eval(inputRow)
       val isTargetRowPresent = isTargetRowPresentPred.eval(inputRow)

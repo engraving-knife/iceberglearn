@@ -41,8 +41,20 @@ import org.apache.iceberg.types.Types.TimestampType;
 import org.apache.iceberg.types.Types.UUIDType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestConversions 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestConversions 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestConversions {
 
+  /**
+   * 测试场景：Byte Buffer Conversions。
+   *
+   * <p>验证该方法在 Byte Buffer Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferConversions() {
     // booleans are stored as 0x00 for 'false' and a non-zero byte for 'true'
@@ -180,6 +192,7 @@ public class TestConversions {
         .isEqualTo(new byte[] {11});
   }
 
+  /** 辅助方法：assertConversion。 */
   private <T> void assertConversion(T value, Type type, byte[] expectedBinary) {
     ByteBuffer byteBuffer = Conversions.toByteBuffer(type, value);
     assertThat(byteBuffer.array()).isEqualTo(expectedBinary);

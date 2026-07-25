@@ -41,6 +41,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * 文件级说明：测试 TestHiveClientPool 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveClientPool 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveClientPool {
 
   private static final String HIVE_SITE_CONTENT =
@@ -55,18 +62,25 @@ public class TestHiveClientPool {
 
   HiveClientPool clients;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     HiveClientPool clientPool = new HiveClientPool(2, new Configuration());
     clients = Mockito.spy(clientPool);
   }
 
+  /** 辅助方法：after。 */
   @AfterEach
   public void after() {
     clients.close();
     clients = null;
   }
 
+  /**
+   * 测试场景：Conf。
+   *
+   * <p>验证该方法在 Conf 条件下的行为是否符合预期。
+   */
   @Test
   public void testConf() {
     HiveConf conf = createHiveConf();
@@ -85,6 +99,7 @@ public class TestHiveClientPool {
     assertThat(clientConf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL)).isTrue();
   }
 
+  /** 辅助方法：createHiveConf。 */
   private HiveConf createHiveConf() {
     HiveConf hiveConf = new HiveConf();
     try (InputStream inputStream =
@@ -96,6 +111,11 @@ public class TestHiveClientPool {
     return hiveConf;
   }
 
+  /**
+   * 测试场景：New Client Failure。
+   *
+   * <p>验证该方法在 New Client Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void testNewClientFailure() {
     Mockito.doThrow(new RuntimeException("Connection exception")).when(clients).newClient();
@@ -104,6 +124,11 @@ public class TestHiveClientPool {
         .hasMessage("Connection exception");
   }
 
+  /**
+   * 测试场景：Get Tables Fails For Non Reconnectable Exception。
+   *
+   * <p>验证该方法在 Get Tables Fails For Non Reconnectable Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetTablesFailsForNonReconnectableException() throws Exception {
     HiveMetaStoreClient hmsClient = Mockito.mock(HiveMetaStoreClient.class);
@@ -116,6 +141,11 @@ public class TestHiveClientPool {
         .hasMessage("Another meta exception");
   }
 
+  /**
+   * 测试场景：Connection Failure Restore For Meta Exception。
+   *
+   * <p>验证该方法在 Connection Failure Restore For Meta Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testConnectionFailureRestoreForMetaException() throws Exception {
     HiveMetaStoreClient hmsClient = newClient();
@@ -139,6 +169,11 @@ public class TestHiveClientPool {
     Mockito.verify(clients, Mockito.never()).reconnect(newClient);
   }
 
+  /**
+   * 测试场景：Connection Failure Restore For T Transport Exception。
+   *
+   * <p>验证该方法在 Connection Failure Restore For T Transport Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testConnectionFailureRestoreForTTransportException() throws Exception {
     HiveMetaStoreClient hmsClient = newClient();
@@ -166,12 +201,14 @@ public class TestHiveClientPool {
     Mockito.verify(clients, Mockito.never()).reconnect(newClient);
   }
 
+  /** 辅助方法：newClient。 */
   private HiveMetaStoreClient newClient() {
     HiveMetaStoreClient hmsClient = Mockito.mock(HiveMetaStoreClient.class);
     Mockito.doReturn(hmsClient).when(clients).newClient();
     return hmsClient;
   }
 
+  /** 辅助方法：reconnect。 */
   private HiveMetaStoreClient reconnect(HiveMetaStoreClient obsoleteClient) {
     HiveMetaStoreClient newClient = Mockito.mock(HiveMetaStoreClient.class);
     Mockito.doReturn(newClient).when(clients).reconnect(obsoleteClient);

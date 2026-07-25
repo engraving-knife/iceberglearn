@@ -23,16 +23,13 @@ import org.apache.spark.sql.connector.iceberg.write.RowLevelOperationBuilder;
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperationInfo;
 
 /**
- * A mix-in interface for row-level operations support. Data sources can implement this interface to
- * indicate they support rewriting data for DELETE, UPDATE, MERGE operations.
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 SupportsRowLevelOperations。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 public interface SupportsRowLevelOperations extends Table {
-  /**
-   * Returns a RowLevelOperationBuilder to build a RowLevelOperation. Spark will call this method
-   * while planning DELETE, UPDATE and MERGE operations.
-   *
-   * @param info the row-level operation info such command (e.g. DELETE) and options
-   * @return the row-level operation builder
-   */
+  /** 执行该方法的具体逻辑。 */
   RowLevelOperationBuilder newRowLevelOperationBuilder(RowLevelOperationInfo info);
 }

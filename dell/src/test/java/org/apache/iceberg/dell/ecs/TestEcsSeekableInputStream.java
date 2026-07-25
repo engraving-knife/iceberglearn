@@ -28,10 +28,22 @@ import org.apache.iceberg.metrics.MetricsContext;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestEcsSeekableInputStream 的功能。
+ *
+ * <p>所属模块：iceberg-dell。职责：验证 TestEcsSeekableInputStream 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEcsSeekableInputStream {
 
   @ClassRule public static EcsS3MockRule rule = EcsS3MockRule.create();
 
+  /**
+   * 测试场景：Seek Pos Read。
+   *
+   * <p>验证该方法在 Seek Pos Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeekPosRead() throws IOException {
     String objectName = rule.randomObjectName();
@@ -46,6 +58,11 @@ public class TestEcsSeekableInputStream {
     }
   }
 
+  /**
+   * 测试场景：Multiple Seek Pos Read。
+   *
+   * <p>验证该方法在 Multiple Seek Pos Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleSeekPosRead() throws IOException {
     String objectName = rule.randomObjectName();
@@ -61,6 +78,11 @@ public class TestEcsSeekableInputStream {
     }
   }
 
+  /**
+   * 测试场景：Read One Byte。
+   *
+   * <p>验证该方法在 Read One Byte 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadOneByte() throws IOException {
     String objectName = rule.randomObjectName();
@@ -74,6 +96,11 @@ public class TestEcsSeekableInputStream {
     }
   }
 
+  /**
+   * 测试场景：Read Bytes。
+   *
+   * <p>验证该方法在 Read Bytes 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadBytes() throws IOException {
     String objectName = rule.randomObjectName();

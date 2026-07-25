@@ -21,6 +21,12 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.AssignmentUtils
 import org.apache.spark.sql.catalyst.expressions.Expression
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：UPDATE Iceberg 表逻辑计划节点，封装待更新表与赋值集合。
+ * <p>设计意图：表示针对 Iceberg 表的 UPDATE 操作，待重写为可执行计划。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 RewriteUpdateTable 重写。
+ */
 
 case class UpdateIcebergTable(
     table: LogicalPlan,
@@ -29,16 +35,19 @@ case class UpdateIcebergTable(
     rewritePlan: Option[LogicalPlan] = None) extends RowLevelCommand {
 
   lazy val aligned: Boolean = AssignmentUtils.aligned(table, assignments)
+  /** 执行 children 相关操作。 */
 
   override def children: Seq[LogicalPlan] = if (rewritePlan.isDefined) {
     table :: rewritePlan.get :: Nil
   } else {
     table :: Nil
   }
+  /** 返回带 NewRewritePlan 设置的副本。 */
 
   override def withNewRewritePlan(newRewritePlan: LogicalPlan): RowLevelCommand = {
     copy(rewritePlan = Some(newRewritePlan))
   }
+  /** 返回带 NewChildrenInternal 设置的副本。 */
 
   override protected def withNewChildrenInternal(
       newChildren: IndexedSeq[LogicalPlan]): UpdateIcebergTable = {

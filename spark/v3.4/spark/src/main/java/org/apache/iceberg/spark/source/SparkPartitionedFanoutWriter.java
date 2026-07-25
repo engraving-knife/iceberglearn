@@ -29,6 +29,15 @@ import org.apache.iceberg.io.PartitionedFanoutWriter;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：带 fanout 的分区写入器，按分区 fanout 写出数据文件以避免 shuffle。
+ *
+ * <p>设计意图：在写入端按分区缓冲并 fanout 写出，适合分区数适中的场景。
+ *
+ * <p>上下游关系：由 SparkWrite 在 fanout 写入模式使用。
+ */
 public class SparkPartitionedFanoutWriter extends PartitionedFanoutWriter<InternalRow> {
   private final PartitionKey partitionKey;
   private final InternalRowWrapper internalRowWrapper;
@@ -46,7 +55,7 @@ public class SparkPartitionedFanoutWriter extends PartitionedFanoutWriter<Intern
     this.partitionKey = new PartitionKey(spec, schema);
     this.internalRowWrapper = new InternalRowWrapper(sparkSchema);
   }
-
+  /** 执行 partition 相关操作。 */
   @Override
   protected PartitionKey partition(InternalRow row) {
     partitionKey.partition(internalRowWrapper.wrap(row));

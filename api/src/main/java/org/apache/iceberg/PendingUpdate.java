@@ -23,41 +23,55 @@ import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.ValidationException;
 
 /**
- * API for table metadata changes.
+ * 文件级说明：表元数据变更的挂起更新接口。
  *
- * @param <T> Java class of changes from this update; returned by {@link #apply} for validation.
+ * <p>所属模块：iceberg-api（核心接口层，是所有表更新 API 的基接口）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义表元数据变更的两阶段操作：先 {@link #apply()} 计算待提交的变更（用于校验）， 再 {@link #commit()} 提交。
+ *   <li>提供 {@link #updateEvent()} 生成变更通知事件。
+ * </ul>
+ *
+ * <p>设计意图：将“计算变更”与“提交变更”分离，允许调用方在 apply 后、commit 前对变更进行 校验或预览。commit
+ * 时通过底层表的提交方法原子化应用，成功后刷新表元数据。这种两阶段设计 也支撑了乐观并发重试机制。
+ *
+ * <p>上下游关系：被 {@link AppendFiles}、{@link DeleteFiles}、{@link UpdateProperties}、 {@link
+ * ReplacePartitions}、{@link OverwriteFiles}、{@link ReplaceSortOrder} 等所有更新 API 继承。
+ *
+ * @param <T> apply() 返回的变更对象的 Java 类型，用于校验
  */
 public interface PendingUpdate<T> {
 
   /**
-   * Apply the pending changes and return the uncommitted changes for validation.
+   * 应用挂起的变更，返回尚未提交的变更结果供校验。
    *
-   * <p>This does not result in a permanent update.
+   * <p>本方法不会产生持久化更新。
    *
-   * @return the uncommitted changes that would be committed by calling {@link #commit()}
-   * @throws ValidationException If the pending changes cannot be applied to the current metadata
-   * @throws IllegalArgumentException If the pending changes are conflicting or invalid
+   * @return 调用 {@link #commit()} 时将提交的未提交变更
+   * @throws ValidationException 若挂起的变更无法应用到当前元数据
+   * @throws IllegalArgumentException 若挂起的变更存在冲突或非法
    */
   T apply();
 
   /**
-   * Apply the pending changes and commit.
+   * 应用挂起的变更并提交。
    *
-   * <p>Changes are committed by calling the underlying table's commit method.
+   * <p>变更通过调用底层表的 commit 方法提交。提交成功后，更新的表将被刷新。
    *
-   * <p>Once the commit is successful, the updated table will be refreshed.
-   *
-   * @throws ValidationException If the update cannot be applied to the current table metadata.
-   * @throws CommitFailedException If the update cannot be committed due to conflicts.
-   * @throws CommitStateUnknownException If the update success or failure is unknown, no cleanup
-   *     should be done in this case.
+   * @throws ValidationException 若更新无法应用到当前表元数据
+   * @throws CommitFailedException 若因冲突导致更新无法提交
+   * @throws CommitStateUnknownException 若更新成功与否未知，此时不应做任何清理
    */
   void commit();
 
   /**
-   * Generates update event to notify about metadata changes
+   * 生成更新事件，用于通知元数据变更。
    *
-   * @return the generated event
+   * <p>默认返回 null，由具体实现按需覆写。
+   *
+   * @return 生成的事件对象
    */
   default Object updateEvent() {
     return null;

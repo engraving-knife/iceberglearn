@@ -38,6 +38,13 @@ import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现，处理列式批量数据。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkChangelogBatch。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkChangelogBatch implements Batch {
 
   private final JavaSparkContext sparkContext;
@@ -64,6 +71,11 @@ class SparkChangelogBatch implements Batch {
     this.scanHashCode = scanHashCode;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public InputPartition[] planInputPartitions() {
     Table serializableTable = SerializableTableWithSize.copyOf(table);
@@ -88,11 +100,18 @@ class SparkChangelogBatch implements Batch {
     return partitions;
   }
 
+  /**
+   * 创建并返回新实例。
+   *
+   * @return 结果对象
+   */
   @Override
   public PartitionReaderFactory createReaderFactory() {
+    /** 读取数据。 */
     return new ReaderFactory();
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -107,12 +126,28 @@ class SparkChangelogBatch implements Batch {
     return table.name().equals(that.table.name()) && scanHashCode == that.scanHashCode;
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table.name(), scanHashCode);
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ReaderFactory。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class ReaderFactory implements PartitionReaderFactory {
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     @Override
     public PartitionReader<InternalRow> createReader(InputPartition partition) {
       Preconditions.checkArgument(
@@ -120,10 +155,18 @@ class SparkChangelogBatch implements Batch {
           "Unknown input partition type: %s",
           partition.getClass().getName());
 
+      /** 执行该方法的具体逻辑。 */
       return new RowReader((SparkInputPartition) partition);
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 RowReader。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class RowReader extends ChangelogRowReader
       implements PartitionReader<InternalRow> {
 

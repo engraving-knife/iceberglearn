@@ -39,15 +39,24 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestIcebergSpark 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 IcebergSpark 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestIcebergSpark {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestIcebergSpark.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestIcebergSpark.spark;
@@ -55,6 +64,7 @@ public class TestIcebergSpark {
     currentSpark.stop();
   }
 
+  /** 测试register整数桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterIntegerBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_int_16", DataTypes.IntegerType, 16);
@@ -64,6 +74,7 @@ public class TestIcebergSpark {
         (int) Transforms.bucket(Types.IntegerType.get(), 16).apply(1), results.get(0).getInt(0));
   }
 
+  /** 测试registershort桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterShortBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_short_16", DataTypes.ShortType, 16);
@@ -73,6 +84,7 @@ public class TestIcebergSpark {
         (int) Transforms.bucket(Types.IntegerType.get(), 16).apply(1), results.get(0).getInt(0));
   }
 
+  /** 测试registerbyte桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterByteBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_byte_16", DataTypes.ByteType, 16);
@@ -82,6 +94,7 @@ public class TestIcebergSpark {
         (int) Transforms.bucket(Types.IntegerType.get(), 16).apply(1), results.get(0).getInt(0));
   }
 
+  /** 测试register长整型桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterLongBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_long_16", DataTypes.LongType, 16);
@@ -91,6 +104,7 @@ public class TestIcebergSpark {
         (int) Transforms.bucket(Types.LongType.get(), 16).apply(1L), results.get(0).getInt(0));
   }
 
+  /** 测试register字符串桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterStringBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_string_16", DataTypes.StringType, 16);
@@ -101,6 +115,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试registerchar桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterCharBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_char_16", new CharType(5), 16);
@@ -111,6 +126,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试registervarchar桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterVarCharBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_varchar_16", new VarcharType(5), 16);
@@ -121,6 +137,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试register日期桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterDateBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_date_16", DataTypes.DateType, 16);
@@ -134,6 +151,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试register时间戳桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterTimestampBucketUDF() {
     IcebergSpark.registerBucketUDF(
@@ -151,6 +169,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试register二进制桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterBinaryBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_binary_16", DataTypes.BinaryType, 16);
@@ -163,6 +182,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试register十进制桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterDecimalBucketUDF() {
     IcebergSpark.registerBucketUDF(spark, "iceberg_bucket_decimal_16", new DecimalType(4, 2), 16);
@@ -173,6 +193,7 @@ public class TestIcebergSpark {
         results.get(0).getInt(0));
   }
 
+  /** 测试register布尔桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterBooleanBucketUDF() {
     Assertions.assertThatThrownBy(
@@ -183,6 +204,7 @@ public class TestIcebergSpark {
         .hasMessage("Cannot bucket by type: boolean");
   }
 
+  /** 测试register双精度桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterDoubleBucketUDF() {
     Assertions.assertThatThrownBy(
@@ -193,6 +215,7 @@ public class TestIcebergSpark {
         .hasMessage("Cannot bucket by type: double");
   }
 
+  /** 测试register单精度桶UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterFloatBucketUDF() {
     Assertions.assertThatThrownBy(
@@ -203,6 +226,7 @@ public class TestIcebergSpark {
         .hasMessage("Cannot bucket by type: float");
   }
 
+  /** 测试register整数截断UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterIntegerTruncateUDF() {
     IcebergSpark.registerTruncateUDF(spark, "iceberg_truncate_int_4", DataTypes.IntegerType, 4);
@@ -212,6 +236,7 @@ public class TestIcebergSpark {
         Transforms.truncate(Types.IntegerType.get(), 4).apply(1), results.get(0).getInt(0));
   }
 
+  /** 测试register长整型截断UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterLongTruncateUDF() {
     IcebergSpark.registerTruncateUDF(spark, "iceberg_truncate_long_4", DataTypes.LongType, 4);
@@ -221,6 +246,7 @@ public class TestIcebergSpark {
         Transforms.truncate(Types.LongType.get(), 4).apply(1L), results.get(0).getLong(0));
   }
 
+  /** 测试register十进制截断UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterDecimalTruncateUDF() {
     IcebergSpark.registerTruncateUDF(spark, "iceberg_truncate_decimal_4", new DecimalType(4, 2), 4);
@@ -231,6 +257,7 @@ public class TestIcebergSpark {
         results.get(0).getDecimal(0));
   }
 
+  /** 测试register字符串截断UDF场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRegisterStringTruncateUDF() {
     IcebergSpark.registerTruncateUDF(spark, "iceberg_truncate_string_4", DataTypes.StringType, 4);

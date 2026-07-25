@@ -25,6 +25,13 @@ import javax.annotation.Nullable;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 基于 List 的记录批次实现，用列表承载一批记录。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装记录列表与 split id，供 SourceReader 消费。
+ *
+ * <p>设计意图：实现 RecordsWithSplitIds；被 ListDataIteratorBatcher 产出。
+ */
 class ListBatchRecords<T> implements RecordsWithSplitIds<RecordAndPosition<T>> {
   private String splitId;
   private final List<T> records;

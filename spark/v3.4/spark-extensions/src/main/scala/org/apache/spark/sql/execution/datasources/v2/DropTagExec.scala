@@ -24,6 +24,12 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：删除标签的物理执行节点，调用 Iceberg 表移除标签引用。
+ * <p>设计意图：实现 DropTag 的物理执行。
+ * <p>上下游关系：由 ExtendedDataSourceV2Strategy 从 DropTag 创建。
+ */
 
 case class DropTagExec(
     catalog: TableCatalog,
@@ -34,6 +40,7 @@ case class DropTagExec(
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行任务。 */
 
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
@@ -49,6 +56,7 @@ case class DropTagExec(
 
     Nil
   }
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"DropTag tag: ${tag} for table: ${ident.quoted}"

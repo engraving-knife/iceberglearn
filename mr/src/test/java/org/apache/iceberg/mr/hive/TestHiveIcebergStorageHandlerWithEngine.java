@@ -64,6 +64,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestHiveIcebergStorageHandlerWithEngine 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergStorageHandlerWithEngine 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergStorageHandlerWithEngine {
 
   private static final String[] EXECUTION_ENGINES = new String[] {"tez", "mr"};
@@ -112,6 +119,7 @@ public class TestHiveIcebergStorageHandlerWithEngine {
           Types.FixedType.ofLength(5),
           Types.TimeType.get());
 
+  /** 辅助方法：parameters。 */
   @Parameters(name = "fileFormat={0}, engine={1}, catalog={2}, isVectorized={3}")
   public static Collection<Object[]> parameters() {
     Collection<Object[]> testParams = Lists.newArrayList();
@@ -166,16 +174,19 @@ public class TestHiveIcebergStorageHandlerWithEngine {
 
   @Rule public Timeout timeout = new Timeout(200_000, TimeUnit.MILLISECONDS);
 
+  /** 辅助方法：beforeClass。 */
   @BeforeClass
   public static void beforeClass() {
     shell = HiveIcebergStorageHandlerTestUtils.shell();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterClass
   public static void afterClass() throws Exception {
     shell.stop();
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     testTables = HiveIcebergStorageHandlerTestUtils.testTables(shell, testTableType, temp);
@@ -189,6 +200,7 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     }
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws Exception {
     HiveIcebergStorageHandlerTestUtils.close(shell);
@@ -203,6 +215,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     ExecMapper.setDone(false);
   }
 
+  /**
+   * 测试场景：Scan Table。
+   *
+   * <p>验证该方法在 Scan Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testScanTable() throws IOException {
     testTables.createTable(
@@ -223,6 +240,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertArrayEquals(new Object[] {"Alice", 0L}, descRows.get(2));
   }
 
+  /**
+   * 测试场景：CBO With Selected Columns Non Overlap Join。
+   *
+   * <p>验证该方法在 CBO With Selected Columns Non Overlap Join 条件下的行为是否符合预期。
+   */
   @Test
   public void testCBOWithSelectedColumnsNonOverlapJoin() throws IOException {
     shell.setHiveSessionValue("hive.cbo.enable", true);
@@ -241,6 +263,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertArrayEquals(new Object[] {102L, 1L, 33.33d, "watch"}, rows.get(2));
   }
 
+  /**
+   * 测试场景：Describe Table。
+   *
+   * <p>验证该方法在 Describe Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDescribeTable() throws IOException {
     testTables.createTable(
@@ -261,6 +288,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     }
   }
 
+  /**
+   * 测试场景：CBO With Selected Columns Overlap Join。
+   *
+   * <p>验证该方法在 CBO With Selected Columns Overlap Join 条件下的行为是否符合预期。
+   */
   @Test
   public void testCBOWithSelectedColumnsOverlapJoin() throws IOException {
     shell.setHiveSessionValue("hive.cbo.enable", true);
@@ -284,6 +316,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertArrayEquals(new Object[] {"Alice", 100L}, rows.get(2));
   }
 
+  /**
+   * 测试场景：CBO With Self Join。
+   *
+   * <p>验证该方法在 CBO With Self Join 条件下的行为是否符合预期。
+   */
   @Test
   public void testCBOWithSelfJoin() throws IOException {
     shell.setHiveSessionValue("hive.cbo.enable", true);
@@ -301,6 +338,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertArrayEquals(new Object[] {102L, 1L, 33.33d}, rows.get(2));
   }
 
+  /**
+   * 测试场景：Join Tables Supported Types。
+   *
+   * <p>验证该方法在 Join Tables Supported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testJoinTablesSupportedTypes() throws IOException {
     for (int i = 0; i < SUPPORTED_TYPES.size(); i++) {
@@ -340,6 +382,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     }
   }
 
+  /**
+   * 测试场景：Select Distinct From Table。
+   *
+   * <p>验证该方法在 Select Distinct From Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelectDistinctFromTable() throws IOException {
     for (int i = 0; i < SUPPORTED_TYPES.size(); i++) {
@@ -367,6 +414,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     }
   }
 
+  /**
+   * 测试场景：Insert。
+   *
+   * <p>验证该方法在 Insert 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsert() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -400,6 +452,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
         table, HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS, 0);
   }
 
+  /**
+   * 测试场景：Insert Supported Types。
+   *
+   * <p>验证该方法在 Insert Supported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertSupportedTypes() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -483,6 +540,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, records, 0);
   }
 
+  /**
+   * 测试场景：Insert From Select With Projection。
+   *
+   * <p>验证该方法在 Insert From Select With Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertFromSelectWithProjection() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -508,6 +570,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Insert Using Source Table With Shared Columns Names。
+   *
+   * <p>验证该方法在 Insert Using Source Table With Shared Columns Names 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertUsingSourceTableWithSharedColumnsNames() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -550,6 +617,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Insert From Joining Two Iceberg Tables。
+   *
+   * <p>验证该方法在 Insert From Joining Two Iceberg Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertFromJoiningTwoIcebergTables() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -589,6 +661,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
         table, HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS, 0);
   }
 
+  /**
+   * 测试场景：Write Array Of Primitives In Table。
+   *
+   * <p>验证该方法在 Write Array Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteArrayOfPrimitivesInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -600,6 +677,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Array Of Arrays In Table。
+   *
+   * <p>验证该方法在 Write Array Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteArrayOfArraysInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -615,6 +697,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Array Of Maps In Table。
+   *
+   * <p>验证该方法在 Write Array Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteArrayOfMapsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -632,6 +719,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Array Of Structs In Table。
+   *
+   * <p>验证该方法在 Write Array Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteArrayOfStructsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -651,6 +743,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Map Of Primitives In Table。
+   *
+   * <p>验证该方法在 Write Map Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteMapOfPrimitivesInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -665,6 +762,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Map Of Arrays In Table。
+   *
+   * <p>验证该方法在 Write Map Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteMapOfArraysInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -683,6 +785,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Map Of Maps In Table。
+   *
+   * <p>验证该方法在 Write Map Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteMapOfMapsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -702,6 +809,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Map Of Structs In Table。
+   *
+   * <p>验证该方法在 Write Map Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteMapOfStructsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -723,6 +835,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Struct Of Primitives In Table。
+   *
+   * <p>验证该方法在 Write Struct Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteStructOfPrimitivesInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -739,6 +856,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Struct Of Arrays In Table。
+   *
+   * <p>验证该方法在 Write Struct Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteStructOfArraysInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -756,6 +878,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Struct Of Maps In Table。
+   *
+   * <p>验证该方法在 Write Struct Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteStructOfMapsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -780,6 +907,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Write Struct Of Structs In Table。
+   *
+   * <p>验证该方法在 Write Struct Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteStructOfStructsInTable() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -800,6 +932,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     testComplexTypeWrite(schema, records);
   }
 
+  /**
+   * 测试场景：Partitioned Write。
+   *
+   * <p>验证该方法在 Partitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedWrite() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -824,6 +961,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, records, 0);
   }
 
+  /**
+   * 测试场景：Identity Partitioned Write。
+   *
+   * <p>验证该方法在 Identity Partitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityPartitionedWrite() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -848,6 +990,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, records, 0);
   }
 
+  /**
+   * 测试场景：Multilevel Identity Partitioned Write。
+   *
+   * <p>验证该方法在 Multilevel Identity Partitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultilevelIdentityPartitionedWrite() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -873,6 +1020,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, records, 0);
   }
 
+  /**
+   * 测试场景：Multi Table Insert。
+   *
+   * <p>验证该方法在 Multi Table Insert 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultiTableInsert() throws IOException {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -972,6 +1124,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertNull(results.get(0)[0]);
   }
 
+  /**
+   * 测试场景：Write With Default Write Format。
+   *
+   * <p>验证该方法在 Write With Default Write Format 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteWithDefaultWriteFormat() {
     Assume.assumeTrue(
@@ -999,6 +1156,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertEquals("Linda", results.get(0)[1]);
   }
 
+  /**
+   * 测试场景：Insert Empty Result Set。
+   *
+   * <p>验证该方法在 Insert Empty Result Set 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertEmptyResultSet() throws IOException {
     Table source =
@@ -1029,6 +1191,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(target, ImmutableList.of(), 0);
   }
 
+  /**
+   * 测试场景：Stats Population。
+   *
+   * <p>验证该方法在 Stats Population 条件下的行为是否符合预期。
+   */
   @Test
   public void testStatsPopulation() throws Exception {
     Assume.assumeTrue("Tez write is not implemented yet", executionEngine.equals("mr"));
@@ -1135,6 +1302,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     Assert.assertEquals(20000, result.size());
   }
 
+  /**
+   * 测试场景：Remove And Add Back Column From Iceberg Table。
+   *
+   * <p>验证该方法在 Remove And Add Back Column From Iceberg Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRemoveAndAddBackColumnFromIcebergTable() throws IOException {
     assumeTrue(isVectorized && FileFormat.PARQUET.equals(fileFormat));
@@ -1232,6 +1404,11 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     }
   }
 
+  /**
+   * 测试场景：Complex Type Write。
+   *
+   * <p>验证该方法在 Complex Type Write 条件下的行为是否符合预期。
+   */
   private void testComplexTypeWrite(Schema schema, List<Record> records) throws IOException {
     String tableName = "complex_table";
     Table table =
@@ -1247,6 +1424,7 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     HiveIcebergTestUtils.validateData(table, records, 0);
   }
 
+  /** 辅助方法：insertQueryForComplexType。 */
   private String insertQueryForComplexType(
       String tableName, String dummyTableName, Schema schema, Record record) {
     StringBuilder query =
@@ -1262,6 +1440,7 @@ public class TestHiveIcebergStorageHandlerWithEngine {
     return query.toString();
   }
 
+  /** 辅助方法：buildComplexTypeInnerQuery。 */
   private StringBuilder buildComplexTypeInnerQuery(Object field, Type type) {
     StringBuilder query = new StringBuilder();
     if (type instanceof Types.ListType) {

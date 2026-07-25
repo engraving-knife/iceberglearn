@@ -26,9 +26,30 @@ import org.apache.iceberg.flink.FlinkConfigOptions;
 import org.apache.iceberg.hadoop.Util;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 文件级说明：Flink Source 工具类，提供本地性检测和并行度推断等静态方法。
+ *
+ * <p>所属模块：iceberg-flink（source 子包），被 source/enumerator 使用。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>isLocalityEnabled：检测是否启用本地性感知（检查文件系统是否支持块位置信息）。
+ *   <li>inferParallelism：根据 split 数量推断 source 并行度。
+ * </ul>
+ *
+ * <p>设计意图：封装 source 配置相关的通用逻辑，支持从 Flink 配置和表属性推断最优并行度。
+ *
+ * <p>上下游关系：被 {@link FlinkSplitPlanner} 和 source enumerator 调用。
+ */
 class SourceUtil {
   private SourceUtil() {}
 
+  /**
+   * 检测是否启用 split 本地性感知。
+   *
+   * <p>逻辑：优先使用显式配置的 exposeLocality，其次使用 Flink 配置项， 最后检查文件系统是否支持块位置信息。
+   */
   static boolean isLocalityEnabled(
       Table table, ReadableConfig readableConfig, Boolean exposeLocality) {
     Boolean localityEnabled =
@@ -44,12 +65,14 @@ class SourceUtil {
   }
 
   /**
-   * Infer source parallelism.
+   * 推断 source 并行度。
    *
-   * @param readableConfig Flink config.
-   * @param splitCountProvider Split count supplier. As the computation may involve expensive split
-   *     discover, lazy evaluation is performed if inferring parallelism is enabled.
-   * @param limitCount limited output count.
+   * <p>逻辑：若启用并行度推断，则从 split 数量推断（受最大推断并行度限制）； 否则使用 Flink 默认并行度。split 数量计算可能较重，故采用懒求值。
+   *
+   * @param readableConfig Flink 配置
+   * @param limitCount 限制输出数量
+   * @param splitCountProvider split 数量提供者（懒求值）
+   * @return 推断的并行度
    */
   static int inferParallelism(
       ReadableConfig readableConfig, long limitCount, Supplier<Integer> splitCountProvider) {

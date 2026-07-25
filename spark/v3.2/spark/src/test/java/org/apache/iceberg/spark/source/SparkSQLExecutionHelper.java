@@ -25,10 +25,20 @@ import org.apache.spark.sql.execution.ui.SQLPlanMetric;
 import org.junit.Assert;
 import scala.Option;
 
+/**
+ * 文件级说明：测试 SparkSQLExecutionHelper 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 SparkSQLexecution辅助
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class SparkSQLExecutionHelper {
 
+  /** SparkSQLexecution辅助。 */
   private SparkSQLExecutionHelper() {}
 
+  /** 最后一个executedmetric值。 */
   /**
    * Finds the value of a specified metric for the last SQL query that was executed. Metric values
    * are stored in the `SQLAppStatusStore` as strings.

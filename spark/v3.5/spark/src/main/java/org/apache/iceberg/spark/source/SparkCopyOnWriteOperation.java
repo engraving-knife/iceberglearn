@@ -35,6 +35,15 @@ import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：COPY-ON-WRITE 行级操作实现，在写入前读取并计算受影响行的更新/删除结果。
+ *
+ * <p>设计意图：实现 Spark RowLevelOperation，在读取阶段即完成行变更，写出完整新文件。
+ *
+ * <p>上下游关系：由 SparkRowLevelOperationBuilder 在 CoW 模式下创建。
+ */
 class SparkCopyOnWriteOperation implements RowLevelOperation {
 
   private final SparkSession spark;
@@ -60,17 +69,18 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
     this.command = info.command();
     this.isolationLevel = isolationLevel;
   }
-
+  /** 执行 command 相关操作。 */
   @Override
   public Command command() {
     return command;
   }
-
+  /** 创建 ScanBuilder 实例。 */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (lazyScanBuilder == null) {
       lazyScanBuilder =
           new SparkScanBuilder(spark, table, branch, options) {
+            /** 构建目标对象。 */
             @Override
             public Scan build() {
               Scan scan = super.buildCopyOnWriteScan();
@@ -82,7 +92,7 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
 
     return lazyScanBuilder;
   }
-
+  /** 创建 WriteBuilder 实例。 */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     if (lazyWriteBuilder == null) {
@@ -92,7 +102,7 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
 
     return lazyWriteBuilder;
   }
-
+  /** 执行 requiredMetadataAttributes 相关操作。 */
   @Override
   public NamedReference[] requiredMetadataAttributes() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());

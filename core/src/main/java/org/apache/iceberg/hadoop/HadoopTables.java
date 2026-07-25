@@ -53,10 +53,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Implementation of Iceberg tables that uses the Hadoop FileSystem to store metadata and manifests.
+ * 文件级说明：基于 Hadoop {@link org.apache.hadoop.fs.FileSystem} 的路径式 Iceberg 表入口。
+ *
+ * <p>所属模块：iceberg-core 的 hadoop 包。实现 {@link Tables} 接口，与 {@link HadoopCatalog}
+ * 不同，本类直接以“文件路径”作为表标识，无需 catalog 层级命名空间。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>根据文件路径加载、创建、删除表，并支持事务化建表/替换表。
+ *   <li>支持通过 URI fragment（如 {@code #snapshots}）加载元数据表。
+ *   <li>从 Hadoop 配置中提取锁相关属性，惰性创建共享的 {@link LockManager}。
+ * </ul>
+ *
+ * <p>设计意图：提供轻量级的路径式访问，适合已知表路径的脚本/工具场景。 表存在性由 metadata 目录下是否存在版本化元数据文件判定。
+ *
+ * <p>上下游关系：底层使用 {@link HadoopTableOperations} 管理元数据、{@link HadoopFileIO} 读写文件； 被引擎集成层或用户代码直接调用。
  */
 public class HadoopTables implements Tables, Configurable {
 
+  /** 锁相关配置项前缀，Hadoop 配置中以该前缀开头的项将被剥离前缀后传给 LockManager。 */
   public static final String LOCK_PROPERTY_PREFIX = "iceberg.tables.hadoop.";
 
   private static final Logger LOG = LoggerFactory.getLogger(HadoopTables.class);
@@ -66,19 +82,34 @@ public class HadoopTables implements Tables, Configurable {
 
   private Configuration conf;
 
+  /** 默认构造方法，使用空的 Hadoop {@link Configuration}。 */
   public HadoopTables() {
     this(new Configuration());
   }
 
+  /**
+   * 以指定 Hadoop 配置构造。
+   *
+   * @param conf Hadoop 配置
+   */
   public HadoopTables(Configuration conf) {
     this.conf = conf;
   }
 
   /**
-   * Loads the table location from a FileSystem path location.
+   * 从文件路径加载表。
    *
-   * @param location a path URI (e.g. hdfs:///warehouse/my_table/)
-   * @return table implementation
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>先用 {@link #parseMetadataType(String)} 判断路径是否带元数据表 fragment（如 #snapshots）。
+   *   <li>若带则加载对应的元数据表；否则构造 {@link HadoopTableOperations}， 若 current() 非空返回 {@link BaseTable}，否则抛
+   *       {@link NoSuchTableException}。
+   * </ol>
+   *
+   * @param location 表路径 URI（如 hdfs:///warehouse/my_table/）
+   * @return 表实现
+   * @throws NoSuchTableException 表不存在时抛出
    */
   @Override
   public Table load(String location) {
@@ -102,17 +133,24 @@ public class HadoopTables implements Tables, Configurable {
     return result;
   }
 
+  /**
+   * 判断指定路径是否存在 Iceberg 表。
+   *
+   * @param location 表路径
+   * @return true 表示存在
+   */
   @Override
   public boolean exists(String location) {
     return newTableOps(location).current() != null;
   }
 
   /**
-   * Try to resolve a metadata table, which we encode as URI fragments e.g.
-   * hdfs:///warehouse/my_table#snapshots
+   * 尝试从路径中解析元数据表类型（编码在 URI fragment 中）。
    *
-   * @param location Path to parse
-   * @return A base table name and MetadataTableType if a type is found, null if not
+   * <p>逻辑：查找最后一个 {@code #}，将其后字符串解析为 {@link MetadataTableType}； 解析失败或无 fragment 返回 null。
+   *
+   * @param location 待解析的路径
+   * @return 基础表名与元数据表类型的 Pair；无则返回 null
    */
   private Pair<String, MetadataTableType> parseMetadataType(String location) {
     int hashIndex = location.lastIndexOf('#');
@@ -126,6 +164,15 @@ public class HadoopTables implements Tables, Configurable {
     }
   }
 
+  /**
+   * 加载元数据表（如 snapshots、history 等）。
+   *
+   * @param location 基础表路径
+   * @param metadataTableName 元数据表显示名
+   * @param type 元数据表类型
+   * @return 元数据表实例
+   * @throws NoSuchTableException 基础表不存在时抛出
+   */
   private Table loadMetadataTable(
       String location, String metadataTableName, MetadataTableType type) {
     TableOperations ops = newTableOps(location);
@@ -137,13 +184,14 @@ public class HadoopTables implements Tables, Configurable {
   }
 
   /**
-   * Create a table using the FileSystem implementation resolve from location.
+   * 在指定路径创建表。
    *
-   * @param schema iceberg schema used to create the table
-   * @param spec partitioning spec, if null the table will be unpartitioned
-   * @param properties a string map of table properties, initialized to empty if null
-   * @param location a path URI (e.g. hdfs:///warehouse/my_table)
-   * @return newly created table implementation
+   * @param schema 表 schema
+   * @param spec 分区 spec，为 null 则非分区
+   * @param order 排序规则
+   * @param properties 表属性，为 null 视为空
+   * @param location 表路径 URI（如 hdfs:///warehouse/my_table）
+   * @return 新创建的表
    */
   @Override
   public Table create(
@@ -160,23 +208,24 @@ public class HadoopTables implements Tables, Configurable {
   }
 
   /**
-   * Drop a table and delete all data and metadata files.
+   * 删除表并清理所有数据与元数据文件。
    *
-   * @param location a path URI (e.g. hdfs:///warehouse/my_table)
-   * @return true if the table was dropped, false if it did not exist
+   * @param location 表路径
+   * @return true 表示删除成功；表不存在返回 false
    */
   public boolean dropTable(String location) {
     return dropTable(location, true);
   }
 
   /**
-   * Drop a table; optionally delete data and metadata files.
+   * 删除表，可选清理数据与元数据文件。
    *
-   * <p>If purge is set to true the implementation should delete all data and metadata files.
+   * <p>逻辑：读取当前元数据；表不存在返回 false。purge 为 true 时先调用 {@link CatalogUtil#dropTableData} 删除元数据引用的数据文件，
+   * 再递归删除表目录。IO 异常包装为 {@link UncheckedIOException}。
    *
-   * @param location a path URI (e.g. hdfs:///warehouse/my_table)
-   * @param purge if true, delete all data and metadata files in the table
-   * @return true if the table was dropped, false if it did not exist
+   * @param location 表路径
+   * @param purge 是否清理数据与元数据文件
+   * @return true 表示删除成功；表不存在返回 false
    */
   public boolean dropTable(String location, boolean purge) {
     TableOperations ops = newTableOps(location);
@@ -203,6 +252,15 @@ public class HadoopTables implements Tables, Configurable {
     }
   }
 
+  /**
+   * 根据路径创建表操作对象。
+   *
+   * <p>逻辑：若路径包含 {@code metadata.json}（即指向具体元数据文件）， 则构造 {@link StaticTableOperations}
+   * 以只读方式加载；否则构造可读写的 {@link HadoopTableOperations}，并传入共享的 {@link LockManager}。
+   *
+   * @param location 表路径或元数据文件路径
+   * @return 表操作对象
+   */
   @VisibleForTesting
   TableOperations newTableOps(String location) {
     if (location.contains(METADATA_JSON)) {
@@ -213,6 +271,15 @@ public class HadoopTables implements Tables, Configurable {
     }
   }
 
+  /**
+   * 懒创建（或返回已有的）共享 {@link LockManager}。
+   *
+   * <p>逻辑：从 Hadoop 配置中提取以 {@link #LOCK_PROPERTY_PREFIX} 开头的项，剥离前缀后 作为锁属性，通过 {@link
+   * LockManagers#from(Map)} 构造。整个过程加类锁保证只创建一次。
+   *
+   * @param table 当前 HadoopTables 实例
+   * @return 共享的 {@link LockManager}
+   */
   private static synchronized LockManager createOrGetLockManager(HadoopTables table) {
     if (lockManager == null) {
       Map<String, String> properties = Maps.newHashMap();
@@ -231,6 +298,18 @@ public class HadoopTables implements Tables, Configurable {
     return lockManager;
   }
 
+  /**
+   * 构造新表的初始 {@link TableMetadata}。
+   *
+   * <p>逻辑：校验 schema 非空；spec/order 为 null 时退化为非分区/不排序； 委托 {@link TableMetadata#newTableMetadata} 构造。
+   *
+   * @param schema 表 schema
+   * @param spec 分区 spec
+   * @param order 排序规则
+   * @param properties 表属性
+   * @param location 表路径
+   * @return 初始表元数据
+   */
   private TableMetadata tableMetadata(
       Schema schema,
       PartitionSpec spec,
@@ -246,14 +325,14 @@ public class HadoopTables implements Tables, Configurable {
   }
 
   /**
-   * Start a transaction to create a table.
+   * 开启一个建表事务。
    *
-   * @param location a location for the table
-   * @param schema a schema
-   * @param spec a partition spec
-   * @param properties a string map of table properties
-   * @return a {@link Transaction} to create the table
-   * @throws AlreadyExistsException if the table already exists
+   * @param location 表路径
+   * @param schema 表 schema
+   * @param spec 分区 spec
+   * @param properties 表属性
+   * @return 建表事务
+   * @throws AlreadyExistsException 表已存在时抛出
    */
   public Transaction newCreateTableTransaction(
       String location, Schema schema, PartitionSpec spec, Map<String, String> properties) {
@@ -264,15 +343,15 @@ public class HadoopTables implements Tables, Configurable {
   }
 
   /**
-   * Start a transaction to replace a table.
+   * 开启一个替换表事务。
    *
-   * @param location a location for the table
-   * @param schema a schema
-   * @param spec a partition spec
-   * @param properties a string map of table properties
-   * @param orCreate whether to create the table if not exists
-   * @return a {@link Transaction} to replace the table
-   * @throws NoSuchTableException if the table doesn't exist and orCreate is false
+   * @param location 表路径
+   * @param schema 表 schema
+   * @param spec 分区 spec
+   * @param properties 表属性
+   * @param orCreate 表不存在时是否改为建表
+   * @return 替换表事务
+   * @throws NoSuchTableException 表不存在且 orCreate 为 false 时抛出
    */
   public Transaction newReplaceTableTransaction(
       String location,
@@ -286,10 +365,22 @@ public class HadoopTables implements Tables, Configurable {
     return orCreate ? builder.createOrReplaceTransaction() : builder.replaceTransaction();
   }
 
+  /**
+   * 构造表构建器。
+   *
+   * @param location 表路径
+   * @param schema 表 schema
+   * @return {@link HadoopTableBuilder} 实例
+   */
   public Catalog.TableBuilder buildTable(String location, Schema schema) {
     return new HadoopTableBuilder(location, schema);
   }
 
+  /**
+   * 内部类：HadoopTables 的表构建器实现。
+   *
+   * <p>设计要点：location 由构造时确定，{@link #withLocation(String)} 仅允许传入与之一致的值或 null； 默认非分区、不排序。
+   */
   private class HadoopTableBuilder implements Catalog.TableBuilder {
     private final String location;
     private final Schema schema;
@@ -314,6 +405,13 @@ public class HadoopTables implements Tables, Configurable {
       return this;
     }
 
+    /**
+     * 设置表 location，HadoopTables 路径式表 location 已由构造确定。
+     *
+     * @param newLocation 必须为 null 或与构造时一致
+     * @return 当前构建器
+     * @throws IllegalArgumentException 当 location 不一致时抛出
+     */
     @Override
     public Catalog.TableBuilder withLocation(String newLocation) {
       Preconditions.checkArgument(
@@ -338,6 +436,14 @@ public class HadoopTables implements Tables, Configurable {
       return this;
     }
 
+    /**
+     * 创建表。
+     *
+     * <p>逻辑：若表已存在抛 {@link AlreadyExistsException}；否则构造初始元数据并提交。
+     *
+     * @return 新创建的表
+     * @throws AlreadyExistsException 表已存在时抛出
+     */
     @Override
     public Table create() {
       TableOperations ops = newTableOps(location);
@@ -351,6 +457,12 @@ public class HadoopTables implements Tables, Configurable {
       return new BaseTable(ops, location);
     }
 
+    /**
+     * 开启建表事务。
+     *
+     * @return 建表事务
+     * @throws AlreadyExistsException 表已存在时抛出
+     */
     @Override
     public Transaction createTransaction() {
       TableOperations ops = newTableOps(location);
@@ -373,6 +485,15 @@ public class HadoopTables implements Tables, Configurable {
       return newReplaceTableTransaction(true);
     }
 
+    /**
+     * 开启替换（或建表）事务的内部实现。
+     *
+     * <p>逻辑：若表存在则基于现有元数据构造替换元数据，否则构造初始元数据； 根据 orCreate 选择对应的事务工厂。
+     *
+     * @param orCreate 表不存在时是否改为建表
+     * @return 替换或建表事务
+     * @throws NoSuchTableException 表不存在且 orCreate 为 false 时抛出
+     */
     private Transaction newReplaceTableTransaction(boolean orCreate) {
       TableOperations ops = newTableOps(location);
       if (!orCreate && ops.current() == null) {
@@ -395,11 +516,17 @@ public class HadoopTables implements Tables, Configurable {
     }
   }
 
+  /**
+   * 注入 Hadoop {@link Configuration}。
+   *
+   * @param conf Hadoop 配置
+   */
   @Override
   public void setConf(Configuration conf) {
     this.conf = conf;
   }
 
+  /** 获取当前持有的 Hadoop {@link Configuration}。 */
   @Override
   public Configuration getConf() {
     return conf;

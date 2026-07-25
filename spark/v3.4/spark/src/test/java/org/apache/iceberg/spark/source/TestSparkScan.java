@@ -65,30 +65,42 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkScan 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark扫描 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkScan extends SparkTestBaseWithCatalog {
 
   private final String format;
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}")
   public static Object[] parameters() {
     return new Object[] {"parquet", "avro", "orc"};
   }
 
+  /** 测试Spark扫描。 */
   public TestSparkScan(String format) {
     this.format = format;
   }
 
+  /** use目录。 */
   @Before
   public void useCatalog() {
     sql("USE %s", catalogName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试estimated行计数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEstimatedRowCount() throws NoSuchTableException {
     sql(
@@ -112,6 +124,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assert.assertEquals(10000L, stats.numRows().getAsLong());
   }
 
+  /** 测试非分区years场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedYears() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -140,6 +153,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区years场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedYears() throws Exception {
     createPartitionedTable(spark, tableName, "years(ts)");
@@ -168,6 +182,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(5);
   }
 
+  /** 测试非分区months场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedMonths() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -197,6 +212,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区months场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedMonths() throws Exception {
     createPartitionedTable(spark, tableName, "months(ts)");
@@ -226,6 +242,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(5);
   }
 
+  /** 测试非分区days场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedDays() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -254,6 +271,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区days场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedDays() throws Exception {
     createPartitionedTable(spark, tableName, "days(ts)");
@@ -282,6 +300,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(5);
   }
 
+  /** 测试非分区hours场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedHours() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -310,6 +329,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区hours场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedHours() throws Exception {
     createPartitionedTable(spark, tableName, "hours(ts)");
@@ -338,6 +358,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(2);
   }
 
+  /** 测试非分区桶长整型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedBucketLong() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -362,6 +383,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区桶长整型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedBucketLong() throws Exception {
     createPartitionedTable(spark, tableName, "bucket(5, id)");
@@ -386,6 +408,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(4);
   }
 
+  /** 测试非分区桶字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedBucketString() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -410,6 +433,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区桶字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedBucketString() throws Exception {
     createPartitionedTable(spark, tableName, "bucket(5, data)");
@@ -434,6 +458,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(4);
   }
 
+  /** 测试非分区截断字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTruncateString() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -458,6 +483,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区截断字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedTruncateString() throws Exception {
     createPartitionedTable(spark, tableName, "truncate(4, data)");
@@ -482,6 +508,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(5);
   }
 
+  /** 测试非分区是否空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedIsNull() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -506,6 +533,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区是否空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedIsNull() throws Exception {
     createPartitionedTable(spark, tableName, "truncate(4, data)");
@@ -530,6 +558,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试非分区是否非空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedIsNotNull() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -554,6 +583,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区是否非空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedIsNotNull() throws Exception {
     createPartitionedTable(spark, tableName, "truncate(4, data)");
@@ -578,6 +608,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(0);
   }
 
+  /** 测试非分区与场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedAnd() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -608,6 +639,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区与场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedAnd() throws Exception {
     createPartitionedTable(spark, tableName, "years(ts), bucket(5, id)");
@@ -638,6 +670,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(9);
   }
 
+  /** 测试非分区或场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedOr() throws Exception {
     createUnpartitionedTable(spark, tableName);
@@ -668,6 +701,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(10);
   }
 
+  /** 测试分区或场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedOr() throws Exception {
     createPartitionedTable(spark, tableName, "years(ts), bucket(5, id)");
@@ -698,6 +732,7 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     Assertions.assertThat(scan.planInputPartitions().length).isEqualTo(4);
   }
 
+  /** 扫描构建器。 */
   private SparkScanBuilder scanBuilder() throws Exception {
     Table table = Spark3Util.loadIcebergTable(spark, tableName);
     CaseInsensitiveStringMap options =
@@ -706,32 +741,39 @@ public class TestSparkScan extends SparkTestBaseWithCatalog {
     return new SparkScanBuilder(spark, table, options);
   }
 
+  /** 下推过滤器。 */
   private void pushFilters(ScanBuilder scan, Predicate... predicates) {
     Assertions.assertThat(scan).isInstanceOf(SupportsPushDownV2Filters.class);
     SupportsPushDownV2Filters filterable = (SupportsPushDownV2Filters) scan;
     filterable.pushPredicates(predicates);
   }
 
+  /** 表达式。 */
   private Expression[] expressions(Expression... expressions) {
     return expressions;
   }
 
+  /** 辅助方法：intLit。 */
   private static LiteralValue<Integer> intLit(int value) {
     return LiteralValue.apply(value, DataTypes.IntegerType);
   }
 
+  /** 日期lit。 */
   private static LiteralValue<Integer> dateLit(int value) {
     return LiteralValue.apply(value, DataTypes.DateType);
   }
 
+  /** 字符串lit。 */
   private static LiteralValue<String> stringLit(String value) {
     return LiteralValue.apply(value, DataTypes.StringType);
   }
 
+  /** 字段ref。 */
   private static NamedReference fieldRef(String col) {
     return FieldReference.apply(col);
   }
 
+  /** 到UDF。 */
   private static UserDefinedScalarFunc toUDF(BoundFunction function, Expression[] expressions) {
     return new UserDefinedScalarFunc(function.name(), function.canonicalName(), expressions);
   }

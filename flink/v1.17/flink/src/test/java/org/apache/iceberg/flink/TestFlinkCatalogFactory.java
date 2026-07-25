@@ -30,10 +30,18 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkCatalogFactory 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkCatalogFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkCatalogFactory {
 
   private Map<String, String> props;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     props = Maps.newHashMap();
@@ -41,6 +49,11 @@ public class TestFlinkCatalogFactory {
     props.put(CatalogProperties.WAREHOUSE_LOCATION, "/tmp/location");
   }
 
+  /**
+   * 测试场景：Create Catalog Hive。
+   *
+   * <p>验证该方法在 Create Catalog Hive 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogHive() {
     String catalogName = "hiveCatalog";
@@ -54,6 +67,11 @@ public class TestFlinkCatalogFactory {
     Assertions.assertThat(catalog).isNotNull().isInstanceOf(HiveCatalog.class);
   }
 
+  /**
+   * 测试场景：Create Catalog Hadoop。
+   *
+   * <p>验证该方法在 Create Catalog Hadoop 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogHadoop() {
     String catalogName = "hadoopCatalog";
@@ -67,6 +85,11 @@ public class TestFlinkCatalogFactory {
     Assertions.assertThat(catalog).isNotNull().isInstanceOf(HadoopCatalog.class);
   }
 
+  /**
+   * 测试场景：Create Catalog Custom。
+   *
+   * <p>验证该方法在 Create Catalog Custom 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogCustom() {
     String catalogName = "customCatalog";
@@ -79,6 +102,11 @@ public class TestFlinkCatalogFactory {
     Assertions.assertThat(catalog).isNotNull().isInstanceOf(CustomHadoopCatalog.class);
   }
 
+  /**
+   * 测试场景：Create Catalog Custom With Hive Catalog Type Set。
+   *
+   * <p>验证该方法在 Create Catalog Custom With Hive Catalog Type Set 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogCustomWithHiveCatalogTypeSet() {
     String catalogName = "customCatalog";
@@ -93,6 +121,11 @@ public class TestFlinkCatalogFactory {
             "Cannot create catalog customCatalog, both catalog-type and catalog-impl are set");
   }
 
+  /**
+   * 测试场景：Load Catalog Unknown。
+   *
+   * <p>验证该方法在 Load Catalog Unknown 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCatalogUnknown() {
     String catalogName = "unknownCatalog";
@@ -106,8 +139,10 @@ public class TestFlinkCatalogFactory {
 
   public static class CustomHadoopCatalog extends HadoopCatalog {
 
+    /** 辅助方法：CustomHadoopCatalog，Custom Hadoop Catalog。 */
     public CustomHadoopCatalog() {}
 
+    /** 辅助方法：CustomHadoopCatalog，Custom Hadoop Catalog。 */
     public CustomHadoopCatalog(Configuration conf, String warehouseLocation) {
       setConf(conf);
       initialize(

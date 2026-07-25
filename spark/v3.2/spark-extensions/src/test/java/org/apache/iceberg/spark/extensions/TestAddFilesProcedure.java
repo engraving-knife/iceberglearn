@@ -54,11 +54,19 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestAddFilesProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 添加文件存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAddFilesProcedure extends SparkExtensionsTestBase {
 
   private final String sourceTableName = "source_table";
   private File fileTableDir;
 
+  /** 测试添加文件存储过程。 */
   public TestAddFilesProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
@@ -66,6 +74,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 初始化tempdirs。 */
   @Before
   public void setupTempDirs() {
     try {
@@ -75,12 +84,14 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     }
   }
 
+  /** 删除表。 */
   @After
   public void dropTables() {
     sql("DROP TABLE IF EXISTS %s", sourceTableName);
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 添加数据非分区。 */
   @Test
   public void addDataUnpartitioned() {
     createUnpartitionedFileTable("parquet");
@@ -103,6 +114,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 删除与添加back非分区。 */
   @Test
   public void deleteAndAddBackUnpartitioned() {
     createUnpartitionedFileTable("parquet");
@@ -132,6 +144,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
   }
 
   @Ignore // TODO Classpath issues prevent us from actually writing to a Spark ORC table
+  /** 添加数据非分区ORC。 */
   public void addDataUnpartitionedOrc() {
     createUnpartitionedFileTable("orc");
 
@@ -153,6 +166,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加Avro文件。 */
   @Test
   public void addAvroFile() throws Exception {
     // Spark Session Catalog cannot load metadata tables
@@ -231,6 +245,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据非分区hive。 */
   @Test
   public void addDataUnpartitionedHive() {
     createUnpartitionedHiveTable();
@@ -251,6 +266,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据非分区extracol。 */
   @Test
   public void addDataUnpartitionedExtraCol() {
     createUnpartitionedFileTable("parquet");
@@ -273,6 +289,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据非分区missingcol。 */
   @Test
   public void addDataUnpartitionedMissingCol() {
     createUnpartitionedFileTable("parquet");
@@ -294,6 +311,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据分区missingcol。 */
   @Test
   public void addDataPartitionedMissingCol() {
     createPartitionedFileTable("parquet");
@@ -316,6 +334,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据分区。 */
   @Test
   public void addDataPartitioned() {
     createPartitionedFileTable("parquet");
@@ -339,6 +358,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
   }
 
   @Ignore // TODO Classpath issues prevent us from actually writing to a Spark ORC table
+  /** 添加数据分区ORC。 */
   public void addDataPartitionedOrc() {
     createPartitionedFileTable("orc");
 
@@ -383,6 +403,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据分区hive。 */
   @Test
   public void addDataPartitionedHive() {
     createPartitionedHiveTable();
@@ -403,6 +424,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加分区到分区。 */
   @Test
   public void addPartitionToPartitioned() {
     createPartitionedFileTable("parquet");
@@ -425,6 +447,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 删除与添加back分区。 */
   @Test
   public void deleteAndAddBackPartitioned() {
     createPartitionedFileTable("parquet");
@@ -453,6 +476,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加分区到分区快照idinheritanceenabled在tworuns。 */
   @Test
   public void addPartitionToPartitionedSnapshotIdInheritanceEnabledInTwoRuns() {
     createPartitionedFileTable("parquet");
@@ -485,6 +509,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertTrue("verify manifest path has uuid", matcher.find());
   }
 
+  /** 添加数据分区通过日期到分区。 */
   @Test
   public void addDataPartitionedByDateToPartitioned() {
     createDatePartitionedFileTable("parquet");
@@ -507,6 +532,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, date FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加数据分区验证分区类型inferredcorrectly。 */
   @Test
   public void addDataPartitionedVerifyPartitionTypeInferredCorrectly() {
     createTableWithTwoPartitions("parquet");
@@ -528,6 +554,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql(sqlFormat, tableName));
   }
 
+  /** 添加filtered分区到分区。 */
   @Test
   public void addFilteredPartitionsToPartitioned() {
     createCompositePartitionedTable("parquet");
@@ -551,6 +578,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加filtered分区到分区2。 */
   @Test
   public void addFilteredPartitionsToPartitioned2() {
     createCompositePartitionedTable("parquet");
@@ -576,6 +604,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加filtered分区到分区带空值值过滤上id。 */
   @Test
   public void addFilteredPartitionsToPartitionedWithNullValueFilteringOnId() {
     createCompositePartitionedTableWithNullValueInPartitionColumn("parquet");
@@ -599,6 +628,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加filtered分区到分区带空值值过滤上dept。 */
   @Test
   public void addFilteredPartitionsToPartitionedWithNullValueFilteringOnDept() {
     createCompositePartitionedTableWithNullValueInPartitionColumn("parquet");
@@ -624,6 +654,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加weird场景hive表。 */
   @Test
   public void addWeirdCaseHiveTable() {
     createWeirdCaseTable();
@@ -675,6 +706,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, `naMe`, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** 添加分区到分区hive。 */
   @Test
   public void addPartitionToPartitionedHive() {
     createPartitionedHiveTable();
@@ -697,6 +729,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s ORDER BY id", tableName));
   }
 
+  /** invalid数据import。 */
   @Test
   public void invalidDataImport() {
     createPartitionedFileTable("parquet");
@@ -725,6 +758,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
                 catalogName, tableName, fileTableDir.getAbsolutePath()));
   }
 
+  /** invalid数据import分区。 */
   @Test
   public void invalidDataImportPartitioned() {
     createUnpartitionedFileTable("parquet");
@@ -753,6 +787,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
                 catalogName, tableName, fileTableDir.getAbsolutePath()));
   }
 
+  /** 添加twice。 */
   @Test
   public void addTwice() {
     createPartitionedHiveTable();
@@ -790,6 +825,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s WHERE id = 2 ORDER BY id", tableName));
   }
 
+  /** duplicate数据分区。 */
   @Test
   public void duplicateDataPartitioned() {
     createPartitionedHiveTable();
@@ -820,6 +856,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
                 catalogName, tableName, sourceTableName));
   }
 
+  /** duplicate数据分区allowed。 */
   @Test
   public void duplicateDataPartitionedAllowed() {
     createPartitionedHiveTable();
@@ -859,6 +896,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT id, name, dept, subdept FROM %s", tableName, tableName));
   }
 
+  /** duplicate数据非分区。 */
   @Test
   public void duplicateDataUnpartitioned() {
     createUnpartitionedHiveTable();
@@ -880,6 +918,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
                 "CALL %s.system.add_files('%s', '%s')", catalogName, tableName, sourceTableName));
   }
 
+  /** duplicate数据非分区allowed。 */
   @Test
   public void duplicateDataUnpartitionedAllowed() {
     createUnpartitionedHiveTable();
@@ -910,6 +949,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试空importdoes非throw场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyImportDoesNotThrow() {
 
@@ -942,6 +982,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试分区import从空分区does非throw场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedImportFromEmptyPartitionDoesNotThrow() {
     createPartitionedHiveTable();
@@ -1021,6 +1062,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     new StructField("dept", DataTypes.StringType, true, Metadata.empty())
   };
 
+  /** 到日期。 */
   private static java.sql.Date toDate(String value) {
     return new java.sql.Date(DateTime.parse(value).getMillis());
   }
@@ -1036,6 +1078,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
               new StructType(dateStruct))
           .repartition(2);
 
+  /** 创建非分区文件表。 */
   private void createUnpartitionedFileTable(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, dept String, subdept String) USING %s LOCATION '%s'";
@@ -1045,6 +1088,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     unpartitionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建分区文件表。 */
   private void createPartitionedFileTable(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, dept String, subdept String) USING %s PARTITIONED BY (id) "
@@ -1056,6 +1100,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     partitionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建composite分区表。 */
   private void createCompositePartitionedTable(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, dept String, subdept String) USING %s "
@@ -1066,6 +1111,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     compositePartitionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建composite分区表带空值值在分区列。 */
   private void createCompositePartitionedTableWithNullValueInPartitionColumn(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, dept String, subdept String) USING %s "
@@ -1082,6 +1128,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     unionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建weird场景表。 */
   private void createWeirdCaseTable() {
     String createParquet =
         "CREATE TABLE %s (id Integer, subdept String, dept String) "
@@ -1093,6 +1140,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     weirdColumnNamesDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建非分区hive表。 */
   private void createUnpartitionedHiveTable() {
     String createHive =
         "CREATE TABLE %s (id Integer, name String, dept String, subdept String) STORED AS parquet";
@@ -1103,6 +1151,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     unpartitionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建分区hive表。 */
   private void createPartitionedHiveTable() {
     String createHive =
         "CREATE TABLE %s (name String, dept String, subdept String) "
@@ -1114,6 +1163,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     partitionedDF.write().insertInto(sourceTableName);
   }
 
+  /** 创建日期分区文件表。 */
   private void createDatePartitionedFileTable(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, date Date) USING %s "
@@ -1124,6 +1174,7 @@ public class TestAddFilesProcedure extends SparkExtensionsTestBase {
     dateDF.select("id", "name", "ts").write().insertInto(sourceTableName);
   }
 
+  /** 创建表带two分区。 */
   private void createTableWithTwoPartitions(String format) {
     String createParquet =
         "CREATE TABLE %s (id Integer, name String, date Date, dept String) USING %s "

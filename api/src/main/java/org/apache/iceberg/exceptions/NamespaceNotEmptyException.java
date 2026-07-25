@@ -20,13 +20,37 @@ package org.apache.iceberg.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
 
-/** Exception raised when attempting to drop a namespace that is not empty. */
+/**
+ * 命名空间非空异常：尝试删除一个仍包含表/子命名空间的命名空间时抛出。
+ *
+ * <p>所属模块：iceberg-api（定义核心公共 API 与异常契约的最底层模块）。
+ *
+ * <p>触发场景：Catalog 在执行 dropNamespace 时检测到该命名空间下仍有表或其他资源， 拒绝删除以保证数据安全。
+ *
+ * <p>设计意图：以 {@link RuntimeException} 为基类，构造器接受 {@code String.format} 风格模板， 配合 {@link FormatMethod}
+ * 做编译期格式化校验。未实现 {@link CleanableFailure}， 因为命名空间非空是环境状态而非提交产生的脏状态。
+ *
+ * <p>上下游关系：由各 Catalog 实现在 dropNamespace 路径上抛出；调用方据以先清空子资源再重试。
+ */
 public class NamespaceNotEmptyException extends RuntimeException {
+  /**
+   * 构造一个命名空间非空异常，消息按 {@link String#format(String, Object...)} 格式化。
+   *
+   * @param message 消息模板
+   * @param args 模板参数
+   */
   @FormatMethod
   public NamespaceNotEmptyException(String message, Object... args) {
     super(String.format(message, args));
   }
 
+  /**
+   * 构造一个带原因的命名空间非空异常，消息按 {@link String#format(String, Object...)} 格式化。
+   *
+   * @param cause 原始异常
+   * @param message 消息模板
+   * @param args 模板参数
+   */
   @FormatMethod
   public NamespaceNotEmptyException(Throwable cause, String message, Object... args) {
     super(String.format(message, args), cause);

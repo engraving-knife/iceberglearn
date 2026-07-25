@@ -84,6 +84,13 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPositionDeltaWrite。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrdering {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkPositionDeltaWrite.class);
@@ -130,31 +137,66 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     this.requiredOrdering = requiredOrdering;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Distribution requiredDistribution() {
     return requiredDistribution;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public SortOrder[] requiredOrdering() {
     return requiredOrdering;
   }
 
+  /**
+   * 转换为batch。
+   *
+   * @return 结果对象
+   */
   @Override
   public DeltaBatchWrite toBatch() {
+    /** 执行该方法的具体逻辑。 */
     return new PositionDeltaBatchWrite();
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 PositionDeltaBatchWrite。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private class PositionDeltaBatchWrite implements DeltaBatchWrite {
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param info 参数
+     * @return 结果对象
+     */
     @Override
     public DeltaWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       // broadcast the table metadata as the writer factory will be sent to executors
       Broadcast<Table> tableBroadcast =
           sparkContext.broadcast(SerializableTableWithSize.copyOf(table));
+      /** 执行该方法的具体逻辑。 */
       return new PositionDeltaWriteFactory(tableBroadcast, command, context);
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       RowDelta rowDelta = table.newRowDelta();
@@ -223,6 +265,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private Expression conflictDetectionFilter(SparkBatchQueryScan queryScan) {
       Expression filter = Expressions.alwaysTrue();
 
@@ -233,6 +276,11 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       return filter;
     }
 
+    /**
+     * 中止并回滚当前操作。
+     *
+     * @param messages 参数
+     */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       if (cleanupOnAbort) {
@@ -242,6 +290,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private List<ContentFile<?>> files(WriterCommitMessage[] messages) {
       List<ContentFile<?>> files = Lists.newArrayList();
 
@@ -256,6 +305,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       return files;
     }
 
+    /** 提交事务或写入结果。 */
     private void commitOperation(SnapshotUpdate<?> operation, String description) {
       LOG.info("Committing {} to table {}", description, table);
       if (applicationId != null) {
@@ -291,6 +341,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DeltaTaskCommit。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   public static class DeltaTaskCommit implements WriterCommitMessage {
     private final DataFile[] dataFiles;
     private final DeleteFile[] deleteFiles;
@@ -308,19 +365,31 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.referencedDataFiles = result.referencedDataFiles().toArray(new CharSequence[0]);
     }
 
+    /** 执行该方法的具体逻辑。 */
     DataFile[] dataFiles() {
       return dataFiles;
     }
 
+    /** 删除数据或文件。 */
     DeleteFile[] deleteFiles() {
       return deleteFiles;
     }
 
+    /** 执行该方法的具体逻辑。 */
     CharSequence[] referencedDataFiles() {
       return referencedDataFiles;
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 PositionDeltaWriteFactory。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class PositionDeltaWriteFactory implements DeltaWriterFactory {
     private final Broadcast<Table> tableBroadcast;
     private final Command command;
@@ -332,6 +401,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.context = context;
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partitionId 参数
+     * @param taskId 参数
+     * @return 结果对象
+     */
     @Override
     public DeltaWriter<InternalRow> createWriter(int partitionId, long taskId) {
       Table table = tableBroadcast.value();
@@ -358,26 +434,41 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
               .build();
 
       if (command == DELETE) {
+        /** 删除数据或文件。 */
         return new DeleteOnlyDeltaWriter(table, writerFactory, deleteFileFactory, context);
 
       } else if (table.spec().isUnpartitioned()) {
+        /** 执行该方法的具体逻辑。 */
         return new UnpartitionedDeltaWriter(
             table, writerFactory, dataFileFactory, deleteFileFactory, context);
 
       } else {
+        /** 执行该方法的具体逻辑。 */
         return new PartitionedDeltaWriter(
             table, writerFactory, dataFileFactory, deleteFileFactory, context);
       }
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BaseDeltaWriter。
+   *
+   * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private abstract static class BaseDeltaWriter implements DeltaWriter<InternalRow> {
 
+    /** 执行初始化。 */
     protected InternalRowWrapper initPartitionRowWrapper(Types.StructType partitionType) {
       StructType sparkPartitionType = (StructType) SparkSchemaUtil.convert(partitionType);
+      /** 执行该方法的具体逻辑。 */
       return new InternalRowWrapper(sparkPartitionType);
     }
 
+    /** 构造并返回目标对象。 */
     protected Map<Integer, StructProjection> buildPartitionProjections(
         Types.StructType partitionType, Map<Integer, PartitionSpec> specs) {
       Map<Integer, StructProjection> partitionProjections = Maps.newHashMap();
@@ -389,6 +480,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DeleteOnlyDeltaWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class DeleteOnlyDeltaWriter extends BaseDeltaWriter {
     private final ClusteredPositionDeleteWriter<InternalRow> delegate;
     private final PositionDelete<InternalRow> positionDelete;
@@ -428,6 +526,12 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
           context.deleteSparkType().fieldIndex(MetadataColumns.ROW_POSITION.name());
     }
 
+    /**
+     * 删除数据或文件。
+     *
+     * @param metadata 参数
+     * @param id 参数
+     */
     @Override
     public void delete(InternalRow metadata, InternalRow id) throws IOException {
       int specId = metadata.getInt(specIdOrdinal);
@@ -443,26 +547,45 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       delegate.write(positionDelete, spec, partitionProjection);
     }
 
+    /**
+     * 更新数据或状态。
+     *
+     * @param metadata 参数
+     * @param id 参数
+     * @param row 参数
+     */
     @Override
     public void update(InternalRow metadata, InternalRow id, InternalRow row) {
       throw new UnsupportedOperationException(
           this.getClass().getName() + " does not implement update");
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param row 参数
+     */
     @Override
     public void insert(InternalRow row) throws IOException {
       throw new UnsupportedOperationException(
           this.getClass().getName() + " does not implement insert");
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @return 结果对象
+     */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
 
       DeleteWriteResult result = delegate.result();
+      /** 执行该方法的具体逻辑。 */
       return new DeltaTaskCommit(result);
     }
 
+    /** 中止并回滚当前操作。 */
     @Override
     public void abort() throws IOException {
       close();
@@ -471,6 +594,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       SparkCleanupUtil.deleteTaskFiles(io, result.deleteFiles());
     }
 
+    /** 释放底层资源。 */
     @Override
     public void close() throws IOException {
       if (!closed) {
@@ -480,6 +604,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DeleteAndDataDeltaWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   @SuppressWarnings("checkstyle:VisibilityModifier")
   private abstract static class DeleteAndDataDeltaWriter extends BaseDeltaWriter {
     protected final PositionDeltaWriter<InternalRow> delegate;
@@ -520,6 +651,12 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
           context.deleteSparkType().fieldIndex(MetadataColumns.ROW_POSITION.name());
     }
 
+    /**
+     * 删除数据或文件。
+     *
+     * @param meta 参数
+     * @param id 参数
+     */
     @Override
     public void delete(InternalRow meta, InternalRow id) throws IOException {
       int specId = meta.getInt(specIdOrdinal);
@@ -534,14 +671,21 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       delegate.delete(file, position, spec, partitionProjection);
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @return 结果对象
+     */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
 
       WriteResult result = delegate.result();
+      /** 执行该方法的具体逻辑。 */
       return new DeltaTaskCommit(result);
     }
 
+    /** 中止并回滚当前操作。 */
     @Override
     public void abort() throws IOException {
       close();
@@ -550,6 +694,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       SparkCleanupUtil.deleteTaskFiles(io, files(result));
     }
 
+    /** 执行该方法的具体逻辑。 */
     private List<ContentFile<?>> files(WriteResult result) {
       List<ContentFile<?>> files = Lists.newArrayList();
       files.addAll(Arrays.asList(result.dataFiles()));
@@ -557,6 +702,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       return files;
     }
 
+    /** 释放底层资源。 */
     @Override
     public void close() throws IOException {
       if (!closed) {
@@ -565,6 +711,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private PartitioningWriter<InternalRow, DataWriteResult> newInsertWriter(
         Table table,
         SparkFileWriterFactory writerFactory,
@@ -579,6 +726,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private PartitioningWriter<InternalRow, DataWriteResult> newUpdateWriter(
         Table table,
         SparkFileWriterFactory writerFactory,
@@ -594,6 +742,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private ClusteredPositionDeleteWriter<InternalRow> newDeleteWriter(
         Table table,
         SparkFileWriterFactory writerFactory,
@@ -605,6 +754,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 UnpartitionedDeltaWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class UnpartitionedDeltaWriter extends DeleteAndDataDeltaWriter {
     private final PartitionSpec dataSpec;
 
@@ -618,18 +774,37 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.dataSpec = table.spec();
     }
 
+    /**
+     * 更新数据或状态。
+     *
+     * @param meta 参数
+     * @param id 参数
+     * @param row 参数
+     */
     @Override
     public void update(InternalRow meta, InternalRow id, InternalRow row) throws IOException {
       delete(meta, id);
       delegate.update(row, dataSpec, null);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param row 参数
+     */
     @Override
     public void insert(InternalRow row) throws IOException {
       delegate.insert(row, dataSpec, null);
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 PartitionedDeltaWriter。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class PartitionedDeltaWriter extends DeleteAndDataDeltaWriter {
     private final PartitionSpec dataSpec;
     private final PartitionKey dataPartitionKey;
@@ -648,6 +823,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.internalRowDataWrapper = new InternalRowWrapper(context.dataSparkType());
     }
 
+    /**
+     * 更新数据或状态。
+     *
+     * @param meta 参数
+     * @param id 参数
+     * @param row 参数
+     */
     @Override
     public void update(InternalRow meta, InternalRow id, InternalRow row) throws IOException {
       delete(meta, id);
@@ -655,6 +837,11 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       delegate.update(row, dataSpec, dataPartitionKey);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param row 参数
+     */
     @Override
     public void insert(InternalRow row) throws IOException {
       dataPartitionKey.partition(internalRowDataWrapper.wrap(row));
@@ -663,6 +850,13 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
   }
 
   // a serializable helper class for common parameters required to configure writers
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 Context。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class Context implements Serializable {
     private final Schema dataSchema;
     private final StructType dataSparkType;
@@ -688,42 +882,52 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.queryId = info.queryId();
     }
 
+    /** 执行该方法的具体逻辑。 */
     Schema dataSchema() {
       return dataSchema;
     }
 
+    /** 执行该方法的具体逻辑。 */
     StructType dataSparkType() {
       return dataSparkType;
     }
 
+    /** 执行该方法的具体逻辑。 */
     FileFormat dataFileFormat() {
       return dataFileFormat;
     }
 
+    /** 执行该方法的具体逻辑。 */
     long targetDataFileSize() {
       return targetDataFileSize;
     }
 
+    /** 删除数据或文件。 */
     StructType deleteSparkType() {
       return deleteSparkType;
     }
 
+    /** 执行该方法的具体逻辑。 */
     StructType metadataSparkType() {
       return metadataSparkType;
     }
 
+    /** 删除数据或文件。 */
     FileFormat deleteFileFormat() {
       return deleteFileFormat;
     }
 
+    /** 执行该方法的具体逻辑。 */
     long targetDeleteFileSize() {
       return targetDeleteFileSize;
     }
 
+    /** 执行该方法的具体逻辑。 */
     boolean fanoutWriterEnabled() {
       return fanoutWriterEnabled;
     }
 
+    /** 执行该方法的具体逻辑。 */
     String queryId() {
       return queryId;
     }

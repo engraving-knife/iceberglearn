@@ -21,15 +21,27 @@ package org.apache.iceberg.flink.source.split;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * Provides implementations of {@link org.apache.iceberg.flink.source.split.SerializableComparator}
- * which could be used for ordering splits. These are used by the {@link
- * org.apache.iceberg.flink.source.assigner.OrderedSplitAssignerFactory} and the {@link
- * org.apache.iceberg.flink.source.reader.IcebergSourceReader}
+ * 文件级说明：提供 {@link SerializableComparator} 的实现，用于对 split 排序。
+ *
+ * <p>所属模块：iceberg-flink（source/split 子包），被有序分配器和 reader 使用。
+ *
+ * <p>职责：提供按文件序列号排序的 split 比较器，确保 split 按写入顺序被读取。
+ *
+ * <p>设计意图：将 split 排序策略集中管理，支持按不同维度排序。 fileSequenceNumber 比较器要求数据文件格式为 V2（含 fileSequenceNumber）。
+ *
+ * <p>上下游关系：被 {@link OrderedSplitAssignerFactory} 和 {@link IcebergSourceReader} 使用。
  */
 public class SplitComparators {
   private SplitComparators() {}
 
-  /** Comparator which orders the splits based on the file sequence number of the data files */
+  /**
+   * 创建按数据文件序列号排序的比较器。
+   *
+   * <p>逻辑：取两个 split 各自唯一数据文件的 fileSequenceNumber 进行比较； 若序列号相同则按 splitId 比较。要求 split 只包含单个文件（不支持
+   * CombinedScanTask）。
+   *
+   * @return 文件序列号比较器
+   */
   public static SerializableComparator<IcebergSourceSplit> fileSequenceNumber() {
     return (IcebergSourceSplit o1, IcebergSourceSplit o2) -> {
       Preconditions.checkArgument(

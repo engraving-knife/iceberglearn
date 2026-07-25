@@ -36,6 +36,32 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Parquet 数据页（DataPage）迭代器基类（抽象）。
+ *
+ * <p>所属模块：iceberg-parquet（Parquet 列式读取底层基础设施，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>管理单个列在一个数据页内的三元组（value + definition level + repetition level）迭代状态。
+ *   <li>解析 DataPageV1/V2 的字节布局，初始化 RL 读取器、DL 读取器和值读取器。
+ *   <li>提供 IntIterator 抽象（ValuesReaderIntIterator / RLEIntIterator / NullIntIterator）
+ *       统一处理定义级别与重复级别的读取。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>模板方法：将 {@code initDataReader} 与 {@code initDefinitionLevelsReader} 下沉到子类 （{@link
+ *       PageIterator}），本类只管理公共状态与页面调度。
+ *   <li>统一 V1/V2：通过 Visitor 模式分派 DataPageV1/V2 到不同的 initFromPage 实现， 屏蔽两种页面格式的布局差异（V1 的
+ *       RL/DL/values 连续存储 vs V2 的 RL/DL 独立存储）。
+ *   <li>NullIntIterator 优化：当 maxLevel=0 时（非嵌套列），RL/DL 恒为 0，用空迭代器避免解码开销。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link PageIterator} 继承；间接被 ParquetValueReaders 的列读取器使用， 负责从 Parquet 数据页中逐值读取。
+ */
 @SuppressWarnings("checkstyle:VisibilityModifier")
 public abstract class BasePageIterator {
   private static final Logger LOG = LoggerFactory.getLogger(BasePageIterator.class);
@@ -63,6 +89,7 @@ public abstract class BasePageIterator {
     this.writerVersion = writerVersion;
   }
 
+  /** 重置迭代器状态，准备读取下一个数据页。 */
   protected void reset() {
     this.page = null;
     this.triplesCount = 0;
@@ -89,6 +116,14 @@ public abstract class BasePageIterator {
     return hasNext;
   }
 
+  /**
+   * 设置当前要迭代的数据页，并通过 Visitor 分派到 V1/V2 的初始化逻辑。
+   *
+   * <p>逻辑：校验 page 非空后，调用 page.accept(Visitor) 分派到 {@link #initFromPage(DataPageV1)} 或 {@link
+   * #initFromPage(DataPageV2)}， 完成页面内 RL/DL/值读取器的初始化。之后重置 triplesRead 并设置 hasNext。
+   *
+   * @param page 要读取的 Parquet 数据页，不可为 null
+   */
   public void setPage(DataPage page) {
     Preconditions.checkNotNull(page, "Cannot read from null page");
     this.page = page;
@@ -110,6 +145,14 @@ public abstract class BasePageIterator {
     this.hasNext = triplesRead < triplesCount;
   }
 
+  /**
+   * 初始化 DataPageV1：V1 页面中 RL/DL/值连续存储在同一字节流中。
+   *
+   * <p>逻辑：依次从字节流中初始化 RL 读取器、DL 读取器、值读取器，每次记录流的 position 用于调试。IOException 包装为
+   * ParquetDecodingException。
+   *
+   * @param initPage DataPageV1 数据页
+   */
   protected void initFromPage(DataPageV1 initPage) {
     this.triplesCount = initPage.getValueCount();
     ValuesReader rlReader =
@@ -130,6 +173,14 @@ public abstract class BasePageIterator {
     }
   }
 
+  /**
+   * 初始化 DataPageV2：V2 页面中 RL/DL 独立存储，值部分单独存放。
+   *
+   * <p>逻辑：RL 直接从 initPage.getRepetitionLevels() 通过 RLE 解码； DL 委托给 initDefinitionLevelsReader；值从
+   * getData() 流中初始化。
+   *
+   * @param initPage DataPageV2 数据页
+   */
   protected void initFromPage(DataPageV2 initPage) {
     this.triplesCount = initPage.getValueCount();
     this.repetitionLevels =
@@ -143,14 +194,17 @@ public abstract class BasePageIterator {
     }
   }
 
+  /** 设置字典（用于字典编码列的解码）。 */
   public void setDictionary(Dictionary dict) {
     this.dictionary = dict;
   }
 
+  /** 整数迭代器抽象：统一 RL/DL 的读取接口。 */
   protected abstract static class IntIterator {
     abstract int nextInt();
   }
 
+  /** 基于 Parquet {@link ValuesReader} 的整数迭代器实现（用于 V1 页面的 RL/DL 读取）。 */
   static class ValuesReaderIntIterator extends IntIterator {
     private final ValuesReader delegate;
 
@@ -164,6 +218,16 @@ public abstract class BasePageIterator {
     }
   }
 
+  /**
+   * 创建 RLE（Run-Length Encoding）整数迭代器，用于解码 V2 页面的 RL/DL。
+   *
+   * <p>逻辑：若 maxLevel==0（非嵌套列），返回 NullIntIterator（值恒为 0）以省去解码； 否则用 {@link
+   * RunLengthBitPackingHybridDecoder} 包装字节流。
+   *
+   * @param maxLevel 最大级别（决定位宽）
+   * @param bytes RL/DL 编码字节
+   * @return IntIterator 实例
+   */
   IntIterator newRLEIterator(int maxLevel, BytesInput bytes) {
     try {
       if (maxLevel == 0) {
@@ -177,6 +241,7 @@ public abstract class BasePageIterator {
     }
   }
 
+  /** 基于 RLE 混合解码器的整数迭代器实现（用于 V2 页面的 RL/DL 读取）。 */
   static class RLEIntIterator extends IntIterator {
     private final RunLengthBitPackingHybridDecoder delegate;
 
@@ -194,6 +259,7 @@ public abstract class BasePageIterator {
     }
   }
 
+  /** 空迭代器：maxLevel=0 时使用，nextInt() 恒返回 0。 */
   static final class NullIntIterator extends IntIterator {
     @Override
     int nextInt() {

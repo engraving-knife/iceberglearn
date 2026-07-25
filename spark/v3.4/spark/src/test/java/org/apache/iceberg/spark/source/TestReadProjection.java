@@ -39,6 +39,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestReadProjection 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 读投影 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestReadProjection {
   final String format;
 
@@ -51,6 +58,7 @@ public abstract class TestReadProjection {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试全投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFullProjection() throws Exception {
     Schema schema =
@@ -72,6 +80,7 @@ public abstract class TestReadProjection {
     Assert.assertEquals("Should contain the correct data value", 0, cmp);
   }
 
+  /** 测试reordered全投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReorderedFullProjection() throws Exception {
     //    Assume.assumeTrue(
@@ -98,6 +107,7 @@ public abstract class TestReadProjection {
     Assert.assertEquals("Should contain the correct 1 value", 34L, projected.get(1));
   }
 
+  /** 测试reordered投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReorderedProjection() throws Exception {
     //    Assume.assumeTrue(
@@ -126,6 +136,7 @@ public abstract class TestReadProjection {
     Assert.assertNull("Should contain the correct 2 value", projected.get(2));
   }
 
+  /** 测试空投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyProjection() throws Exception {
     Schema schema =
@@ -145,6 +156,7 @@ public abstract class TestReadProjection {
         .isInstanceOf(ArrayIndexOutOfBoundsException.class);
   }
 
+  /** 测试basic投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBasicProjection() throws Exception {
     Schema writeSchema =
@@ -173,6 +185,7 @@ public abstract class TestReadProjection {
     Assert.assertEquals("Should contain the correct data value", 0, cmp);
   }
 
+  /** 测试重命名场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRename() throws Exception {
     Schema writeSchema =
@@ -198,6 +211,7 @@ public abstract class TestReadProjection {
     Assert.assertEquals("Should contain the correct data/renamed value", 0, cmp);
   }
 
+  /** 测试嵌套结构体投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedStructProjection() throws Exception {
     Schema writeSchema =
@@ -278,6 +292,7 @@ public abstract class TestReadProjection {
         0.000001f);
   }
 
+  /** 测试映射投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMapProjection() throws IOException {
     Schema writeSchema =
@@ -326,6 +341,7 @@ public abstract class TestReadProjection {
         toStringMap((Map) projected.getField("properties")));
   }
 
+  /** 到字符串映射。 */
   private Map<String, ?> toStringMap(Map<?, ?> map) {
     Map<String, Object> stringMap = Maps.newHashMap();
     for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -338,6 +354,7 @@ public abstract class TestReadProjection {
     return stringMap;
   }
 
+  /** 测试映射的结构体投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMapOfStructsProjection() throws IOException {
     Schema writeSchema =
@@ -451,6 +468,7 @@ public abstract class TestReadProjection {
     Assert.assertNull("L2 should not contain long", projectedL2.getField("long"));
   }
 
+  /** 测试列表投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testListProjection() throws IOException {
     Schema writeSchema =
@@ -483,6 +501,7 @@ public abstract class TestReadProjection {
     Assert.assertEquals("Should project entire list", values, projected.getField("values"));
   }
 
+  /** 测试列表的结构体投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   @SuppressWarnings("unchecked")
   public void testListOfStructsProjection() throws IOException {
@@ -595,6 +614,7 @@ public abstract class TestReadProjection {
     Assert.assertNull("Should contain null z", projectedP2.getField("z"));
   }
 
+  /** 从选项。 */
   private static org.apache.avro.Schema fromOption(org.apache.avro.Schema schema) {
     Preconditions.checkArgument(
         schema.getType() == UNION, "Expected union schema but was passed: %s", schema);

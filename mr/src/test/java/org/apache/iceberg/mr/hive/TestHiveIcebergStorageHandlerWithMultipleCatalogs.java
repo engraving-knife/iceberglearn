@@ -39,6 +39,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestHiveIcebergStorageHandlerWithMultipleCatalogs 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergStorageHandlerWithMultipleCatalogs 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergStorageHandlerWithMultipleCatalogs {
 
   private static final String[] EXECUTION_ENGINES = new String[] {"tez", "mr"};
@@ -75,6 +83,7 @@ public class TestHiveIcebergStorageHandlerWithMultipleCatalogs {
       name =
           "fileFormat1={0}, fileFormat2={1}, engine={2}, tableType1={3}, catalogName1={4}, "
               + "tableType2={5}, catalogName2={6}")
+  /** 辅助方法：parameters。 */
   public static Collection<Object[]> parameters() {
     Collection<Object[]> testParams = Lists.newArrayList();
     String javaVersion = System.getProperty("java.specification.version");
@@ -102,16 +111,19 @@ public class TestHiveIcebergStorageHandlerWithMultipleCatalogs {
     return testParams;
   }
 
+  /** 辅助方法：beforeClass。 */
   @BeforeClass
   public static void beforeClass() {
     shell = HiveIcebergStorageHandlerTestUtils.shell();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterClass
   public static void afterClass() throws Exception {
     shell.stop();
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     testTables1 =
@@ -132,11 +144,17 @@ public class TestHiveIcebergStorageHandlerWithMultipleCatalogs {
         .forEach(e -> shell.setHiveSessionValue(e.getKey(), e.getValue()));
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws Exception {
     HiveIcebergStorageHandlerTestUtils.close(shell);
   }
 
+  /**
+   * 测试场景：Join Tables From Different Catalogs。
+   *
+   * <p>验证该方法在 Join Tables From Different Catalogs 条件下的行为是否符合预期。
+   */
   @Test
   public void testJoinTablesFromDifferentCatalogs() throws IOException {
     createAndAddRecords(
@@ -162,6 +180,7 @@ public class TestHiveIcebergStorageHandlerWithMultipleCatalogs {
         0);
   }
 
+  /** 辅助方法：createAndAddRecords。 */
   private void createAndAddRecords(
       TestTables testTables,
       FileFormat fileFormat,

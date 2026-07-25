@@ -39,6 +39,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestManifestWriterVersions，用于验证 Manifest Writer Versions 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Manifest Writer Versions 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestManifestWriterVersions {
   private static final FileIO FILE_IO = new TestTables.LocalFileIO();
 
@@ -99,6 +107,11 @@ public class TestManifestWriterVersions {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：1 write。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV1Write() throws IOException {
     ManifestFile manifest = writeManifest(1);
@@ -110,6 +123,11 @@ public class TestManifestWriterVersions {
         FileContent.DATA);
   }
 
+  /**
+   * 测试场景：1 write delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV1WriteDelete() {
     Assertions.assertThatThrownBy(() -> writeDeleteManifest(1))
@@ -117,6 +135,11 @@ public class TestManifestWriterVersions {
         .hasMessage("Cannot write delete files in a v1 table");
   }
 
+  /**
+   * 测试场景：1 write with inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV1WriteWithInheritance() throws IOException {
     ManifestFile manifest = writeAndReadManifestList(writeManifest(1), 1);
@@ -126,6 +149,11 @@ public class TestManifestWriterVersions {
     checkEntry(readManifest(manifest), 0L, 0L, FileContent.DATA);
   }
 
+  /**
+   * 测试场景：2 write。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2Write() throws IOException {
     ManifestFile manifest = writeManifest(2);
@@ -138,6 +166,11 @@ public class TestManifestWriterVersions {
         FileContent.DATA);
   }
 
+  /**
+   * 测试场景：2 write with inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2WriteWithInheritance() throws IOException {
     ManifestFile manifest = writeAndReadManifestList(writeManifest(2), 2);
@@ -148,6 +181,11 @@ public class TestManifestWriterVersions {
     checkEntry(readManifest(manifest), SEQUENCE_NUMBER, SEQUENCE_NUMBER, FileContent.DATA);
   }
 
+  /**
+   * 测试场景：2 write delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2WriteDelete() throws IOException {
     ManifestFile manifest = writeDeleteManifest(2);
@@ -160,6 +198,11 @@ public class TestManifestWriterVersions {
         FileContent.EQUALITY_DELETES);
   }
 
+  /**
+   * 测试场景：2 write delete with inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2WriteDeleteWithInheritance() throws IOException {
     ManifestFile manifest = writeAndReadManifestList(writeDeleteManifest(2), 2);
@@ -174,6 +217,11 @@ public class TestManifestWriterVersions {
         FileContent.EQUALITY_DELETES);
   }
 
+  /**
+   * 测试场景：2 manifest list rewrite with inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2ManifestListRewriteWithInheritance() throws IOException {
     // write with v1
@@ -189,6 +237,11 @@ public class TestManifestWriterVersions {
     checkEntry(readManifest(manifest2), 0L, 0L, FileContent.DATA);
   }
 
+  /**
+   * 测试场景：2 manifest rewrite with inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2ManifestRewriteWithInheritance() throws IOException {
     // write with v1
@@ -279,6 +332,7 @@ public class TestManifestWriterVersions {
     Assert.assertEquals("Deleted rows count", (Long) 0L, manifest.deletedRowsCount());
   }
 
+  /** 辅助方法：write manifest list。 */
   private InputFile writeManifestList(ManifestFile manifest, int formatVersion) throws IOException {
     OutputFile manifestList = new InMemoryOutputFile();
     try (FileAppender<ManifestFile> writer =
@@ -293,6 +347,7 @@ public class TestManifestWriterVersions {
     return manifestList.toInputFile();
   }
 
+  /** 辅助方法：write and read manifest list。 */
   private ManifestFile writeAndReadManifestList(ManifestFile manifest, int formatVersion)
       throws IOException {
     List<ManifestFile> manifests = ManifestLists.read(writeManifestList(manifest, formatVersion));
@@ -300,6 +355,7 @@ public class TestManifestWriterVersions {
     return manifests.get(0);
   }
 
+  /** 辅助方法：rewrite manifest。 */
   private ManifestFile rewriteManifest(ManifestFile manifest, int formatVersion)
       throws IOException {
     OutputFile manifestFile =
@@ -314,10 +370,12 @@ public class TestManifestWriterVersions {
     return writer.toManifestFile();
   }
 
+  /** 辅助方法：write manifest。 */
   private ManifestFile writeManifest(int formatVersion) throws IOException {
     return writeManifest(DATA_FILE, formatVersion);
   }
 
+  /** 辅助方法：write manifest。 */
   private ManifestFile writeManifest(DataFile file, int formatVersion) throws IOException {
     OutputFile manifestFile =
         Files.localOutput(FileFormat.AVRO.addExtension(temp.newFile().toString()));
@@ -331,6 +389,7 @@ public class TestManifestWriterVersions {
     return writer.toManifestFile();
   }
 
+  /** 辅助方法：read manifest。 */
   private ManifestEntry<DataFile> readManifest(ManifestFile manifest) throws IOException {
     try (CloseableIterable<ManifestEntry<DataFile>> reader =
         ManifestFiles.read(manifest, FILE_IO).entries()) {
@@ -340,6 +399,7 @@ public class TestManifestWriterVersions {
     }
   }
 
+  /** 辅助方法：write delete manifest。 */
   private ManifestFile writeDeleteManifest(int formatVersion) throws IOException {
     OutputFile manifestFile =
         Files.localOutput(FileFormat.AVRO.addExtension(temp.newFile().toString()));
@@ -353,6 +413,7 @@ public class TestManifestWriterVersions {
     return writer.toManifestFile();
   }
 
+  /** 辅助方法：read delete manifest。 */
   private ManifestEntry<DeleteFile> readDeleteManifest(ManifestFile manifest) throws IOException {
     try (CloseableIterable<ManifestEntry<DeleteFile>> reader =
         ManifestFiles.readDeleteManifest(manifest, FILE_IO, null).entries()) {

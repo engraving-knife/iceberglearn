@@ -29,7 +29,16 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFileSequenceNumberBasedSplitAssigner 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFileSequenceNumberBasedSplitAssigner
+ * 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFileSequenceNumberBasedSplitAssigner extends SplitAssignerTestBase {
+  /** 辅助方法：splitAssigner，split Assigner。 */
   @Override
   protected SplitAssigner splitAssigner() {
     return new OrderedSplitAssignerFactory(SplitComparators.fileSequenceNumber()).createAssigner();
@@ -68,6 +77,11 @@ public class TestFileSequenceNumberBasedSplitAssigner extends SplitAssignerTestB
     assertGetNext(assigner, GetSplitResult.Status.UNAVAILABLE);
   }
 
+  /**
+   * 测试场景：Serializable。
+   *
+   * <p>验证该方法在 Serializable 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializable() {
     byte[] bytes = SerializationUtil.serializeToBytes(SplitComparators.fileSequenceNumber());
@@ -76,6 +90,7 @@ public class TestFileSequenceNumberBasedSplitAssigner extends SplitAssignerTestB
     Assert.assertNotNull(comparator);
   }
 
+  /** 辅助方法：assertGetNext，assert Get Next。 */
   protected void assertGetNext(SplitAssigner assigner, Long expectedSequenceNumber) {
     GetSplitResult result = assigner.getNext(null);
     ContentFile file = result.split().task().files().iterator().next().file();

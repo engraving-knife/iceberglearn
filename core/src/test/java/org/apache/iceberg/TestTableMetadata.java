@@ -65,6 +65,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestTableMetadata，用于验证 Table Metadata 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Table Metadata 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestTableMetadata {
   private static final String TEST_LOCATION = "s3://bucket/test/location";
 
@@ -91,6 +99,11 @@ public class TestTableMetadata {
 
   public TableOperations ops = new LocalTableOperations(temp);
 
+  /**
+   * 测试场景：json conversion。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testJsonConversion() throws Exception {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -238,6 +251,11 @@ public class TestTableMetadata {
     Assert.assertEquals("Refs map should match", refs, metadata.refs());
   }
 
+  /**
+   * 测试场景：backward compat。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBackwardCompat() throws Exception {
     PartitionSpec spec = PartitionSpec.builderFor(TEST_SCHEMA).identity("x").withSpecId(6).build();
@@ -366,6 +384,11 @@ public class TestTableMetadata {
         metadata.snapshot(previousSnapshotId).schemaId());
   }
 
+  /**
+   * 测试场景：invalid main branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidMainBranch() throws IOException {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -437,6 +460,11 @@ public class TestTableMetadata {
         .hasMessageStartingWith("Current snapshot ID does not match main branch");
   }
 
+  /**
+   * 测试场景：main without current。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMainWithoutCurrent() throws IOException {
     long snapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -481,6 +509,11 @@ public class TestTableMetadata {
         .hasMessageStartingWith("Current snapshot is not set, but main branch exists");
   }
 
+  /**
+   * 测试场景：branch snapshot missing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBranchSnapshotMissing() {
     long snapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -520,6 +553,7 @@ public class TestTableMetadata {
         .hasMessageEndingWith("does not exist in the existing snapshots list");
   }
 
+  /** 辅助方法：to json without spec and schema list。 */
   private static String toJsonWithoutSpecAndSchemaList(TableMetadata metadata) {
     StringWriter writer = new StringWriter();
     try {
@@ -562,6 +596,11 @@ public class TestTableMetadata {
     return writer.toString();
   }
 
+  /**
+   * 测试场景：json with previous metadata log。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testJsonWithPreviousMetadataLog() throws Exception {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -627,6 +666,11 @@ public class TestTableMetadata {
         "Metadata logs should match", previousMetadataLog, metadataFromJson.previousFiles());
   }
 
+  /**
+   * 测试场景：add previous metadata remove none。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPreviousMetadataRemoveNone() throws IOException {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -712,6 +756,11 @@ public class TestTableMetadata {
     Assert.assertEquals("Removed Metadata logs should be empty", 0, removedPreviousMetadata.size());
   }
 
+  /**
+   * 测试场景：add previous metadata remove one。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPreviousMetadataRemoveOne() throws IOException {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -815,6 +864,11 @@ public class TestTableMetadata {
         ImmutableList.copyOf(removedPreviousMetadata));
   }
 
+  /**
+   * 测试场景：add previous metadata remove multiple。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPreviousMetadataRemoveMultiple() throws IOException {
     long previousSnapshotId = System.currentTimeMillis() - new Random(1234).nextInt(3600);
@@ -918,6 +972,11 @@ public class TestTableMetadata {
         ImmutableList.copyOf(removedPreviousMetadata));
   }
 
+  /**
+   * 测试场景：2 uuid validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testV2UUIDValidation() {
     Assertions.assertThatThrownBy(
@@ -950,6 +1009,11 @@ public class TestTableMetadata {
         .hasMessage("UUID is required in format v2");
   }
 
+  /**
+   * 测试场景：version validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testVersionValidation() {
     int unsupportedVersion = TableMetadata.SUPPORTED_TABLE_FORMAT_VERSION + 1;
@@ -983,6 +1047,11 @@ public class TestTableMetadata {
         .hasMessage("Unsupported format version: v" + unsupportedVersion);
   }
 
+  /**
+   * 测试场景：parser version validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserVersionValidation() throws Exception {
     String supportedVersion1 = readTableMetadataInputFile("TableMetadataV1Valid.json");
@@ -999,6 +1068,11 @@ public class TestTableMetadata {
         .hasMessageStartingWith("Cannot read unsupported version");
   }
 
+  /**
+   * 测试场景：parser 2 partition specs validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserV2PartitionSpecsValidation() throws Exception {
     String unsupportedVersion =
@@ -1008,6 +1082,11 @@ public class TestTableMetadata {
         .hasMessage("partition-specs must exist in format v2");
   }
 
+  /**
+   * 测试场景：parser 2 last assigned field id validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserV2LastAssignedFieldIdValidation() throws Exception {
     String unsupportedVersion =
@@ -1017,6 +1096,11 @@ public class TestTableMetadata {
         .hasMessage("last-partition-id must exist in format v2");
   }
 
+  /**
+   * 测试场景：parser 2 sort order validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserV2SortOrderValidation() throws Exception {
     String unsupportedVersion = readTableMetadataInputFile("TableMetadataV2MissingSortOrder.json");
@@ -1025,6 +1109,11 @@ public class TestTableMetadata {
         .hasMessage("sort-orders must exist in format v2");
   }
 
+  /**
+   * 测试场景：parser 2 current schema id validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserV2CurrentSchemaIdValidation() throws Exception {
     String unsupported = readTableMetadataInputFile("TableMetadataV2CurrentSchemaNotFound.json");
@@ -1033,6 +1122,11 @@ public class TestTableMetadata {
         .hasMessage("Cannot find schema with current-schema-id=2 from schemas");
   }
 
+  /**
+   * 测试场景：parser 2 schemas validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParserV2SchemasValidation() throws Exception {
     String unsupported = readTableMetadataInputFile("TableMetadataV2MissingSchemas.json");
@@ -1041,11 +1135,17 @@ public class TestTableMetadata {
         .hasMessage("schemas must exist in format v2");
   }
 
+  /** 辅助方法：read table metadata input file。 */
   private String readTableMetadataInputFile(String fileName) throws Exception {
     Path path = Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
     return String.join("", java.nio.file.Files.readAllLines(path));
   }
 
+  /**
+   * 测试场景：new table metadata reassignment all ids。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNewTableMetadataReassignmentAllIds() throws Exception {
     Schema schema =
@@ -1075,6 +1175,11 @@ public class TestTableMetadata {
     Assert.assertEquals(expected, metadata.spec());
   }
 
+  /**
+   * 测试场景：invalid update partition spec for 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidUpdatePartitionSpecForV1Table() throws Exception {
     Schema schema = new Schema(Types.NestedField.required(1, "x", Types.LongType.get()));
@@ -1099,6 +1204,11 @@ public class TestTableMetadata {
         .hasMessageStartingWith("Spec does not use sequential IDs that are required in v1");
   }
 
+  /**
+   * 测试场景：build replacement for 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBuildReplacementForV1Table() {
     Schema schema =
@@ -1136,6 +1246,11 @@ public class TestTableMetadata {
         updated.spec());
   }
 
+  /**
+   * 测试场景：build replacement for 2 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBuildReplacementForV2Table() {
     Schema schema =
@@ -1171,6 +1286,11 @@ public class TestTableMetadata {
         updated.spec());
   }
 
+  /**
+   * 测试场景：sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSortOrder() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1185,6 +1305,11 @@ public class TestTableMetadata {
         meta.replaceSortOrder(SortOrder.unsorted()));
   }
 
+  /**
+   * 测试场景：update sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateSortOrder() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1239,6 +1364,11 @@ public class TestTableMetadata {
         sortedByX.sortOrder().fields().get(0).nullOrder());
   }
 
+  /**
+   * 测试场景：statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testStatistics() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1250,6 +1380,11 @@ public class TestTableMetadata {
         "Should default to no statistics files", ImmutableList.of(), meta.statisticsFiles());
   }
 
+  /**
+   * 测试场景：set statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetStatistics() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1289,6 +1424,11 @@ public class TestTableMetadata {
     Assert.assertEquals("Statistics file path", "/some/path/to/stats/file2", statisticsFile.path());
   }
 
+  /**
+   * 测试场景：remove statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveStatistics() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1322,6 +1462,11 @@ public class TestTableMetadata {
     Assert.assertEquals("Statistics file path", "/some/path/to/stats/file2", statisticsFile.path());
   }
 
+  /**
+   * 测试场景：parse schema identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParseSchemaIdentifierFields() throws Exception {
     String data = readTableMetadataInputFile("TableMetadataV2Valid.json");
@@ -1330,6 +1475,11 @@ public class TestTableMetadata {
     Assert.assertEquals(Sets.newHashSet(1, 2), parsed.schemasById().get(1).identifierFieldIds());
   }
 
+  /**
+   * 测试场景：parse minimal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParseMinimal() throws Exception {
     String data = readTableMetadataInputFile("TableMetadataV2ValidMinimal.json");
@@ -1340,6 +1490,11 @@ public class TestTableMetadata {
     Assertions.assertThat(parsed.previousFiles()).isEmpty();
   }
 
+  /**
+   * 测试场景：update schema identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateSchemaIdentifierFields() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1357,6 +1512,11 @@ public class TestTableMetadata {
     Assert.assertEquals(Sets.newHashSet(1), newMeta.schema().identifierFieldIds());
   }
 
+  /**
+   * 测试场景：update schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateSchema() {
     Schema schema =
@@ -1447,6 +1607,11 @@ public class TestTableMetadata {
         "Should return expected last column id", 6, threeSchemaTable.lastColumnId());
   }
 
+  /**
+   * 测试场景：create 2 metadata through table property。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateV2MetadataThroughTableProperty() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1464,6 +1629,11 @@ public class TestTableMetadata {
         .doesNotContainKey(TableProperties.FORMAT_VERSION);
   }
 
+  /**
+   * 测试场景：replace 1 metadata to 2 through table property。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceV1MetadataToV2ThroughTableProperty() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1490,6 +1660,11 @@ public class TestTableMetadata {
         .doesNotContainKey(TableProperties.FORMAT_VERSION);
   }
 
+  /**
+   * 测试场景：upgrade 1 metadata to 2 through table property。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpgradeV1MetadataToV2ThroughTableProperty() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1515,6 +1690,11 @@ public class TestTableMetadata {
         meta.properties());
   }
 
+  /**
+   * 测试场景：parse statistics files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParseStatisticsFiles() throws Exception {
     String data = readTableMetadataInputFile("TableMetadataStatisticsFiles.json");
@@ -1533,6 +1713,11 @@ public class TestTableMetadata {
         Iterables.getOnlyElement(parsed.statisticsFiles()));
   }
 
+  /**
+   * 测试场景：no reserved property for table metadata creation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoReservedPropertyForTableMetadataCreation() {
     Schema schema = new Schema(Types.NestedField.required(10, "x", Types.StringType.get()));
@@ -1563,6 +1748,11 @@ public class TestTableMetadata {
         .hasMessage("Table properties should not contain reserved properties, but got {uuid=uuid}");
   }
 
+  /**
+   * 测试场景：no trailing location slash。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoTrailingLocationSlash() {
     String locationWithSlash = "/with_trailing_slash/";
@@ -1576,6 +1766,7 @@ public class TestTableMetadata {
         meta.location());
   }
 
+  /** 辅助方法：create manifest list with manifest file。 */
   private String createManifestListWithManifestFile(
       long snapshotId, Long parentSnapshotId, String manifestFile) throws IOException {
     File manifestList = temp.newFile("manifests" + UUID.randomUUID());

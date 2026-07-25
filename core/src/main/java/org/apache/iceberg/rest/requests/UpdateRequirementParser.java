@@ -29,6 +29,14 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest.UpdateRequirement;
 import org.apache.iceberg.util.JsonUtil;
 
 /**
+ * 文件级说明：表更新前置条件（UpdateRequirement）的 JSON 序列化/反序列化工具类（已废弃）。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 序列化层，已废弃）。
+ *
+ * <p>职责：将 {@link org.apache.iceberg.UpdateRequirement} 的各子类型与 JSON 互转。
+ *
+ * <p>设计意图：已被 {@link org.apache.iceberg.UpdateRequirementParser} 取代，将在 1.5.0 移除。 保留用于向后兼容。
+ *
  * @deprecated will be removed in 1.5.0, use {@link org.apache.iceberg.UpdateRequirementParser}
  *     instead.
  */

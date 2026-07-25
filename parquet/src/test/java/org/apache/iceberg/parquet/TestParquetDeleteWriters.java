@@ -48,6 +48,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestParquetDeleteWriters 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquetDeleteWriters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetDeleteWriters {
   private static final Schema SCHEMA =
       new Schema(
@@ -58,6 +65,7 @@ public class TestParquetDeleteWriters {
 
   @TempDir private File temp;
 
+  /** 辅助方法：createDeleteRecords。 */
   @BeforeEach
   public void createDeleteRecords() {
     GenericRecord record = GenericRecord.create(SCHEMA);
@@ -72,6 +80,11 @@ public class TestParquetDeleteWriters {
     this.records = builder.build();
   }
 
+  /**
+   * 测试场景：Equality Delete Writer。
+   *
+   * <p>验证该方法在 Equality Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeleteWriter() throws IOException {
     OutputFile out = Files.localOutput(temp);
@@ -111,6 +124,11 @@ public class TestParquetDeleteWriters {
     assertThat(deletedRecords).as("Deleted records should match expected").isEqualTo(records);
   }
 
+  /**
+   * 测试场景：Position Delete Writer。
+   *
+   * <p>验证该方法在 Position Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteWriter() throws IOException {
     Schema deleteSchema =
@@ -171,6 +189,11 @@ public class TestParquetDeleteWriters {
         .isEqualTo(expectedDeleteRecords);
   }
 
+  /**
+   * 测试场景：Position Delete Writer With Empty Row。
+   *
+   * <p>验证该方法在 Position Delete Writer With Empty Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteWriterWithEmptyRow() throws IOException {
     Schema deleteSchema =

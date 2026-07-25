@@ -25,6 +25,13 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
 
+/**
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 DropTagExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class DropTagExec(
                         catalog: TableCatalog,
                         ident: Identifier,
@@ -35,6 +42,10 @@ case class DropTagExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -50,6 +61,10 @@ case class DropTagExec(
     Nil
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"DropTag tag: ${tag} for table: ${ident.quoted}"
   }

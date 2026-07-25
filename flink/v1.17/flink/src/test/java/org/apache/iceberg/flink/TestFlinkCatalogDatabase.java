@@ -34,12 +34,21 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkCatalogDatabase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkCatalogDatabase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
 
+  /** 辅助方法：TestFlinkCatalogDatabase，Flink Catalog Database。 */
   public TestFlinkCatalogDatabase(String catalogName, Namespace baseNamespace) {
     super(catalogName, baseNamespace);
   }
 
+  /** 辅助方法：clean，clean。 */
   @After
   @Override
   public void clean() {
@@ -48,6 +57,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Create Namespace。
+   *
+   * <p>验证该方法在 Create Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     Assert.assertFalse(
@@ -73,6 +87,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         "Database should be created", validationNamespaceCatalog.namespaceExists(icebergNamespace));
   }
 
+  /**
+   * 测试场景：Drop Empty Database。
+   *
+   * <p>验证该方法在 Drop Empty Database 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropEmptyDatabase() {
     Assert.assertFalse(
@@ -91,6 +110,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         validationNamespaceCatalog.namespaceExists(icebergNamespace));
   }
 
+  /**
+   * 测试场景：Drop Non Empty Namespace。
+   *
+   * <p>验证该方法在 Drop Non Empty Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNonEmptyNamespace() {
     Assume.assumeFalse(
@@ -121,6 +145,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
     sql("DROP TABLE %s.tl", flinkDatabase);
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() {
     Assert.assertFalse(
@@ -145,6 +174,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
     Assert.assertEquals("Table name should match", "tl", tables.get(0).getField(0));
   }
 
+  /**
+   * 测试场景：List Namespace。
+   *
+   * <p>验证该方法在 List Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespace() {
     Assert.assertFalse(
@@ -182,6 +216,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Create Namespace With Metadata。
+   *
+   * <p>验证该方法在 Create Namespace With Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespaceWithMetadata() {
     Assume.assumeFalse("HadoopCatalog does not support namespace metadata", isHadoopCatalog);
@@ -202,6 +241,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         "Namespace should have expected prop value", "value", nsMetadata.get("prop"));
   }
 
+  /**
+   * 测试场景：Create Namespace With Comment。
+   *
+   * <p>验证该方法在 Create Namespace With Comment 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespaceWithComment() {
     Assume.assumeFalse("HadoopCatalog does not support namespace metadata", isHadoopCatalog);
@@ -222,6 +266,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         "Namespace should have expected comment", "namespace doc", nsMetadata.get("comment"));
   }
 
+  /**
+   * 测试场景：Create Namespace With Location。
+   *
+   * <p>验证该方法在 Create Namespace With Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespaceWithLocation() throws Exception {
     Assume.assumeFalse("HadoopCatalog does not support namespace metadata", isHadoopCatalog);
@@ -247,6 +296,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         nsMetadata.get("location"));
   }
 
+  /**
+   * 测试场景：Set Properties。
+   *
+   * <p>验证该方法在 Set Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetProperties() {
     Assume.assumeFalse("HadoopCatalog does not support namespace metadata", isHadoopCatalog);
@@ -274,6 +328,11 @@ public class TestFlinkCatalogDatabase extends FlinkCatalogTestBase {
         "Namespace should have expected prop value", "value", nsMetadata.get("prop"));
   }
 
+  /**
+   * 测试场景：Hadoop Not Support Meta。
+   *
+   * <p>验证该方法在 Hadoop Not Support Meta 条件下的行为是否符合预期。
+   */
   @Test
   public void testHadoopNotSupportMeta() {
     Assume.assumeTrue("HadoopCatalog does not support namespace metadata", isHadoopCatalog);

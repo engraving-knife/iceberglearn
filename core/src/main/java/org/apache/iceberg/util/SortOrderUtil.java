@@ -33,31 +33,65 @@ import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.transforms.SortOrderVisitor;
 
+/**
+ * 排序顺序相关静态工具方法集合。
+ *
+ * <p>所属模块：iceberg-core（util 子包）。职责：根据分区规格与用户排序顺序构建满足分区聚簇要求的 最终排序顺序，并提供排序顺序的投影/比较等辅助方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>满足分区聚簇：分区字段必须作为排序前缀，本工具把分区字段与用户排序字段合并为最终顺序。
+ *   <li>去重与顺序保持：避免重复字段，并维持 partition-spec 的字段顺序优先。
+ *   <li>无状态工具类：构造函数私有。
+ * </ul>
+ *
+ * <p>上下游关系：被写入路径在决定数据文件内部排序时调用；依赖 {@link SortOrderVisitor}。
+ */
 public class SortOrderUtil {
 
+  /** 私有构造：工具类禁止实例化。 */
   private SortOrderUtil() {}
 
+  /**
+   * 根据表的 schema、分区规格与当前排序顺序构建最终排序顺序。
+   *
+   * @param table Iceberg 表
+   * @return 满足分区聚簇要求的最终排序顺序
+   */
   public static SortOrder buildSortOrder(Table table) {
     return buildSortOrder(table.schema(), table.spec(), table.sortOrder());
   }
 
   // builds a sort order using both the table partition spec and the user supplied sort order
+
+  /**
+   * 根据表的 schema、分区规格与指定排序顺序构建最终排序顺序。
+   *
+   * @param table Iceberg 表
+   * @param sortOrder 用户指定的排序顺序
+   * @return 满足分区聚簇要求的最终排序顺序
+   */
   public static SortOrder buildSortOrder(Table table, SortOrder sortOrder) {
     return buildSortOrder(table.schema(), table.spec(), sortOrder);
   }
 
   /**
-   * Build a final sort order that satisfies the clustering required by the partition spec.
+   * 构建满足分区聚簇要求的最终排序顺序。
    *
-   * <p>The incoming sort order may or may not satisfy the clustering needed by the partition spec.
-   * This modifies the sort order so that it clusters by partition and still produces the same order
-   * within each partition.
+   * <p>步骤：
    *
-   * @param schema a schema
-   * @param spec a partition spec
-   * @param sortOrder a sort order
-   * @return the sort order with additional sort fields to satisfy the clustering required by the
-   *     spec
+   * <ol>
+   *   <li>若排序与分区均为空，直接返回 unsorted；
+   *   <li>计算分区规格中需要聚簇的字段（排除 void 变换与被其他分区字段满足的字段）；
+   *   <li>遍历排序顺序前缀，移除已被排序字段满足的分区聚簇字段；
+   *   <li>把剩余分区聚簇字段作为排序前缀，再追加用户排序字段。
+   * </ol>
+   *
+   * @param schema 表 schema
+   * @param spec 分区规格
+   * @param sortOrder 用户排序顺序
+   * @return 包含分区聚簇前缀的最终排序顺序
    */
   public static SortOrder buildSortOrder(Schema schema, PartitionSpec spec, SortOrder sortOrder) {
     if (sortOrder.isUnsorted() && spec.isUnpartitioned()) {
@@ -131,6 +165,14 @@ public class SortOrderUtil {
     return requiredClusteringFields;
   }
 
+  /**
+   * 返回排序顺序中保持顺序的变换所对应的源列名集合。
+   *
+   * <p>过滤出 transform.preservesOrder() 为 true 的字段，映射为列名。
+   *
+   * @param sortOrder 排序顺序（可为 null）
+   * @return 保持顺序的排序列名集合，null 返回空集
+   */
   public static Set<String> orderPreservingSortedColumns(SortOrder sortOrder) {
     if (sortOrder == null) {
       return Collections.emptySet();

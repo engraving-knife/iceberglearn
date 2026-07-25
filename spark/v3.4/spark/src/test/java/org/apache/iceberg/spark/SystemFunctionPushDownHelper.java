@@ -22,6 +22,13 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 文件级说明：测试 SystemFunctionPushDownHelper 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 system函数下推辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class SystemFunctionPushDownHelper {
   public static final Types.StructType STRUCT =
       Types.StructType.of(
@@ -29,13 +36,16 @@ public class SystemFunctionPushDownHelper {
           Types.NestedField.optional(2, "ts", Types.TimestampType.withZone()),
           Types.NestedField.optional(3, "data", Types.StringType.get()));
 
+  /** system函数下推辅助。 */
   private SystemFunctionPushDownHelper() {}
 
+  /** 创建非分区表。 */
   public static void createUnpartitionedTable(SparkSession spark, String tableName) {
     sql(spark, "CREATE TABLE %s (id BIGINT, ts TIMESTAMP, data STRING) USING iceberg", tableName);
     insertRecords(spark, tableName);
   }
 
+  /** 创建分区表。 */
   public static void createPartitionedTable(
       SparkSession spark, String tableName, String partitionCol) {
     sql(
@@ -46,6 +56,7 @@ public class SystemFunctionPushDownHelper {
     insertRecords(spark, tableName);
   }
 
+  /** 插入记录。 */
   private static void insertRecords(SparkSession spark, String tableName) {
     sql(
         spark,
@@ -105,22 +116,27 @@ public class SystemFunctionPushDownHelper {
         "(9, CAST('2018-12-21T15:02:15.230570+00:00' AS TIMESTAMP), 'material-9')");
   }
 
+  /** 时间戳str到yearordinal。 */
   public static int timestampStrToYearOrdinal(String timestamp) {
     return DateTimeUtil.microsToYears(DateTimeUtil.isoTimestamptzToMicros(timestamp));
   }
 
+  /** 时间戳str到monthordinal。 */
   public static int timestampStrToMonthOrdinal(String timestamp) {
     return DateTimeUtil.microsToMonths(DateTimeUtil.isoTimestamptzToMicros(timestamp));
   }
 
+  /** 时间戳str到dayordinal。 */
   public static int timestampStrToDayOrdinal(String timestamp) {
     return DateTimeUtil.microsToDays(DateTimeUtil.isoTimestamptzToMicros(timestamp));
   }
 
+  /** 时间戳str到hourordinal。 */
   public static int timestampStrToHourOrdinal(String timestamp) {
     return DateTimeUtil.microsToHours(DateTimeUtil.isoTimestamptzToMicros(timestamp));
   }
 
+  /** SQL。 */
   private static void sql(SparkSession spark, String sqlFormat, Object... args) {
     spark.sql(String.format(sqlFormat, args));
   }

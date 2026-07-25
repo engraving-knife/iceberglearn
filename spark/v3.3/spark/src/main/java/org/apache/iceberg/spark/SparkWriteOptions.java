@@ -18,9 +18,14 @@
  */
 package org.apache.iceberg.spark;
 
-/** Spark DF write options */
+/**
+ * Iceberg Spark 集成相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkWriteOptions。
+ */
 public class SparkWriteOptions {
 
+  /** 构造 SparkWriteOptions 实例。 */
   private SparkWriteOptions() {}
 
   // Fileformat for write operations(default: Table write.format.default )

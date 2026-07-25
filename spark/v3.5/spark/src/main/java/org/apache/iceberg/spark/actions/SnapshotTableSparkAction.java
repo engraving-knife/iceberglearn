@@ -43,8 +43,19 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConverters;
 
 /**
- * Creates a new Iceberg table based on a source Spark table. The new Iceberg table will have a
- * different data and metadata directory allowing it to exist independently of the source table.
+ * 基于 Spark 的"快照表"创建 action。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），actions 子包。
+ *
+ * <p>职责：基于已存在的 Spark 源表（如 Hive 表）创建一个新的 Iceberg 表，新表使用独立的数据与 元数据目录，可与源表互不影响地共存。本质上是对源表做一次 Iceberg
+ * 元数据导入。
+ *
+ * <p>设计意图：通过 StagingTableCatalog 的两阶段提交（stage -> commitStagedChanges）保证原子性， 失败时调用
+ * abortStagedChanges 回滚；强制源表位于 spark_catalog，依赖 {@link SparkTableUtil#importSparkTable}
+ * 完成文件级元数据导入。新表标记 gc.enabled=false， 避免误删源表仍引用的文件。
+ *
+ * <p>上下游关系：继承 {@link BaseTableCreationSparkAction}，实现 {@link SnapshotTable}； 被 Spark 过程 {@code
+ * snapshot} 调用；依赖 Spark Catalog API 与 Iceberg core 的 StagedSparkTable。
  */
 public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<SnapshotTableSparkAction>
     implements SnapshotTable {
@@ -55,26 +66,29 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
   private Identifier destTableIdent;
   private String destTableLocation = null;
 
+  /** 构造快照表 action，需指定 SparkSession、源 catalog 与源表标识符。 */
   SnapshotTableSparkAction(
       SparkSession spark, CatalogPlugin sourceCatalog, Identifier sourceTableIdent) {
     super(spark, sourceCatalog, sourceTableIdent);
   }
 
+  /** CRTP 钩子，返回 this。 */
   @Override
   protected SnapshotTableSparkAction self() {
     return this;
   }
-
+  /** 执行 destCatalog 相关操作。 */
   @Override
   protected StagingTableCatalog destCatalog() {
     return destCatalog;
   }
-
+  /** 执行 destTableIdent 相关操作。 */
   @Override
   protected Identifier destTableIdent() {
     return destTableIdent;
   }
 
+  /** 指定目标表的标识符字符串（catalog.database.table），解析后设置目标 catalog 与标识符。 */
   @Override
   public SnapshotTableSparkAction as(String ident) {
     String ctx = "snapshot destination";
@@ -86,18 +100,21 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
     return this;
   }
 
+  /** 批量设置目标表属性。 */
   @Override
   public SnapshotTableSparkAction tableProperties(Map<String, String> properties) {
     setProperties(properties);
     return this;
   }
 
+  /** 设置单个目标表属性。 */
   @Override
   public SnapshotTableSparkAction tableProperty(String property, String value) {
     setProperty(property, value);
     return this;
   }
 
+  /** 在 SNAPSHOT-TABLE 作业组下执行快照建表。 */
   @Override
   public SnapshotTable.Result execute() {
     String desc = String.format("Snapshotting table %s as %s", sourceTableIdent(), destTableIdent);
@@ -105,6 +122,15 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
     return withJobGroupInfo(info, this::doExecute);
   }
 
+  /**
+   * 实际执行快照建表流程。
+   *
+   * <p>逻辑：校验目标 catalog/标识符非空；stage 目标 Iceberg 表；确保 name mapping 存在； 通过
+   * SparkTableUtil.importSparkTable 把源表文件导入为 Iceberg 元数据； commitStagedChanges 提交；任何异常都触发
+   * abortStagedChanges 回滚。 最后从快照摘要读取导入的数据文件数。
+   *
+   * @return 含导入数据文件数的结果
+   */
   private SnapshotTable.Result doExecute() {
     Preconditions.checkArgument(
         destCatalog() != null && destTableIdent() != null,
@@ -155,6 +181,12 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
         .build();
   }
 
+  /**
+   * 构造目标表属性。
+   *
+   * <p>逻辑：拷贝源表相关属性并移除被排除项与所有 location 类属性；设置 provider=iceberg、 用户自定义属性；标记 gc.enabled=false 与
+   * snapshot=true 防止误删；可选设置目标表 location。
+   */
   @Override
   protected Map<String, String> destTableProps() {
     Map<String, String> properties = Maps.newHashMap();
@@ -186,6 +218,7 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
     return properties;
   }
 
+  /** 校验源 catalog 必须是 spark_catalog 且为 TableCatalog，否则抛出非法参数异常。 */
   @Override
   protected TableCatalog checkSourceCatalog(CatalogPlugin catalog) {
     // currently the import code relies on being able to look up the table in the session catalog
@@ -204,6 +237,7 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
     return (TableCatalog) catalog;
   }
 
+  /** 指定目标表 location，校验不能与源表 location 相同，避免文件混放。 */
   @Override
   public SnapshotTableSparkAction tableLocation(String location) {
     Preconditions.checkArgument(

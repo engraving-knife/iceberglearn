@@ -28,26 +28,37 @@ import org.apache.iceberg.flink.SimpleDataUtil;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.BucketUtil;
 
+/**
+ * 文件级说明：测试 TestBucketPartitionerUtil 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestBucketPartitionerUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 final class TestBucketPartitionerUtil {
 
   enum TableSchemaType {
     ONE_BUCKET {
+      /** 辅助方法：bucketPartitionColumnPosition，bucket Partition Column Position。 */
       @Override
       public int bucketPartitionColumnPosition() {
         return 0;
       }
 
+      /** 辅助方法：getPartitionSpec，get Partition Spec。 */
       @Override
       public PartitionSpec getPartitionSpec(int numBuckets) {
         return PartitionSpec.builderFor(SimpleDataUtil.SCHEMA).bucket("data", numBuckets).build();
       }
     },
     IDENTITY_AND_BUCKET {
+      /** 辅助方法：bucketPartitionColumnPosition，bucket Partition Column Position。 */
       @Override
       public int bucketPartitionColumnPosition() {
         return 1;
       }
 
+      /** 辅助方法：getPartitionSpec，get Partition Spec。 */
       @Override
       public PartitionSpec getPartitionSpec(int numBuckets) {
         return PartitionSpec.builderFor(SimpleDataUtil.SCHEMA)
@@ -57,11 +68,13 @@ final class TestBucketPartitionerUtil {
       }
     },
     TWO_BUCKETS {
+      /** 辅助方法：bucketPartitionColumnPosition，bucket Partition Column Position。 */
       @Override
       public int bucketPartitionColumnPosition() {
         return 1;
       }
 
+      /** 辅助方法：getPartitionSpec，get Partition Spec。 */
       @Override
       public PartitionSpec getPartitionSpec(int numBuckets) {
         return PartitionSpec.builderFor(SimpleDataUtil.SCHEMA)
@@ -71,11 +84,14 @@ final class TestBucketPartitionerUtil {
       }
     };
 
+    /** 辅助方法：bucketPartitionColumnPosition，bucket Partition Column Position。 */
     public abstract int bucketPartitionColumnPosition();
 
+    /** 辅助方法：getPartitionSpec，get Partition Spec。 */
     public abstract PartitionSpec getPartitionSpec(int numBuckets);
   }
 
+  /** 辅助方法：TestBucketPartitionerUtil，Bucket Partitioner Util。 */
   private TestBucketPartitionerUtil() {}
 
   /**

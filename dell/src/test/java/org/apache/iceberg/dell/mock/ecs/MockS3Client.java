@@ -104,6 +104,7 @@ public class MockS3Client implements S3Client {
    */
   private final Map<ObjectId, ObjectData> objectData = Maps.newConcurrentMap();
 
+  /** 辅助方法：putObject。 */
   @Override
   public PutObjectResult putObject(PutObjectRequest request) {
     ObjectId objectId = new ObjectId(request.getBucketName(), request.getKey());
@@ -132,6 +133,7 @@ public class MockS3Client implements S3Client {
     return new PutObjectResult();
   }
 
+  /** 辅助方法：appendObject。 */
   @Override
   public long appendObject(String bucketName, String key, Object content) {
     ObjectId id = new ObjectId(bucketName, key);
@@ -148,6 +150,7 @@ public class MockS3Client implements S3Client {
     }
   }
 
+  /** 辅助方法：convertContent。 */
   private byte[] convertContent(Object entity) {
     if (entity instanceof InputStream) {
       try (InputStream inputStream = (InputStream) entity) {
@@ -163,6 +166,7 @@ public class MockS3Client implements S3Client {
         String.format("Invalid object entity type %s", entity.getClass()));
   }
 
+  /** 辅助方法：readObjectStream。 */
   @Override
   public InputStream readObjectStream(String bucketName, String key, Range range) {
     ObjectData data = objectData.get(new ObjectId(bucketName, key));
@@ -173,6 +177,7 @@ public class MockS3Client implements S3Client {
     return data.createInputStream(range);
   }
 
+  /** 辅助方法：getObjectMetadata。 */
   @Override
   public S3ObjectMetadata getObjectMetadata(String bucketName, String key) {
     ObjectData data = objectData.get(new ObjectId(bucketName, key));
@@ -183,11 +188,13 @@ public class MockS3Client implements S3Client {
     return data.createFullMetadata();
   }
 
+  /** 辅助方法：deleteObject。 */
   @Override
   public void deleteObject(String bucketName, String key) {
     objectData.remove(new ObjectId(bucketName, key));
   }
 
+  /** 辅助方法：getObject。 */
   @Override
   public GetObjectResult<InputStream> getObject(String bucketName, String key) {
     ObjectData data = objectData.get(new ObjectId(bucketName, key));
@@ -197,6 +204,7 @@ public class MockS3Client implements S3Client {
 
     GetObjectResult<InputStream> result =
         new GetObjectResult<InputStream>() {
+          /** 辅助方法：getObjectMetadata。 */
           @Override
           public S3ObjectMetadata getObjectMetadata() {
             return data.createFullMetadata();
@@ -206,6 +214,7 @@ public class MockS3Client implements S3Client {
     return result;
   }
 
+  /** 辅助方法：listObjects。 */
   @Override
   public ListObjectsResult listObjects(ListObjectsRequest request) {
     String bucket = request.getBucketName();
@@ -253,6 +262,7 @@ public class MockS3Client implements S3Client {
 
     ListObjectsResult result =
         new ListObjectsResult() {
+          /** 辅助方法：getCommonPrefixes。 */
           @Override
           public List<String> getCommonPrefixes() {
             return prefixResults.stream().sorted().collect(Collectors.toList());
@@ -263,9 +273,15 @@ public class MockS3Client implements S3Client {
     return result;
   }
 
+  /** 辅助方法：destroy。 */
   @Override
   public void destroy() {}
 
+  /**
+   * 辅助方法：shutdown。
+   *
+   * @deprecated 已由 {@link #destroy()} 替代。
+   */
   @Override
   @Deprecated
   public void shutdown() {
@@ -278,371 +294,444 @@ public class MockS3Client implements S3Client {
     return wontImplement();
   }
 
+  /** 辅助方法：pingNode。 */
   @Override
   public PingResponse pingNode(String host) {
     return wontImplement();
   }
 
+  /** 辅助方法：pingNode。 */
   @Override
   public PingResponse pingNode(Protocol protocol, String host, int port) {
     return wontImplement();
   }
 
+  /** 辅助方法：listBuckets。 */
   @Override
   public ListBucketsResult listBuckets() {
     return wontImplement();
   }
 
+  /** 辅助方法：listBuckets。 */
   @Override
   public ListBucketsResult listBuckets(ListBucketsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：bucketExists。 */
   @Override
   public boolean bucketExists(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：createBucket。 */
   @Override
   public void createBucket(String bucketName) {
     wontImplement();
   }
 
+  /** 辅助方法：createBucket。 */
   @Override
   public void createBucket(CreateBucketRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketInfo。 */
   @Override
   public BucketInfo getBucketInfo(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：deleteBucket。 */
   @Override
   public void deleteBucket(String bucketName) {
     wontImplement();
   }
 
+  /** 辅助方法：setBucketAcl。 */
   @Override
   public void setBucketAcl(String bucketName, AccessControlList acl) {
     wontImplement();
   }
 
+  /** 辅助方法：setBucketAcl。 */
   @Override
   public void setBucketAcl(String bucketName, CannedAcl cannedAcl) {
     wontImplement();
   }
 
+  /** 辅助方法：setBucketAcl。 */
   @Override
   public void setBucketAcl(SetBucketAclRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketAcl。 */
   @Override
   public AccessControlList getBucketAcl(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：setBucketCors。 */
   @Override
   public void setBucketCors(String bucketName, CorsConfiguration corsConfiguration) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketCors。 */
   @Override
   public CorsConfiguration getBucketCors(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：deleteBucketCors。 */
   @Override
   public void deleteBucketCors(String bucketName) {
     wontImplement();
   }
 
+  /** 辅助方法：setBucketLifecycle。 */
   @Override
   public void setBucketLifecycle(String bucketName, LifecycleConfiguration lifecycleConfiguration) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketLifecycle。 */
   @Override
   public LifecycleConfiguration getBucketLifecycle(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：deleteBucketLifecycle。 */
   @Override
   public void deleteBucketLifecycle(String bucketName) {
     wontImplement();
   }
 
+  /** 辅助方法：setBucketPolicy。 */
   @Override
   public void setBucketPolicy(String bucketName, BucketPolicy policy) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketPolicy。 */
   @Override
   public BucketPolicy getBucketPolicy(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：getBucketLocation。 */
   @Override
   public LocationConstraint getBucketLocation(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：setBucketVersioning。 */
   @Override
   public void setBucketVersioning(
       String bucketName, VersioningConfiguration versioningConfiguration) {
     wontImplement();
   }
 
+  /** 辅助方法：getBucketVersioning。 */
   @Override
   public VersioningConfiguration getBucketVersioning(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：setBucketStaleReadAllowed。 */
   @Override
   public void setBucketStaleReadAllowed(String bucketName, boolean staleReadsAllowed) {
     wontImplement();
   }
 
+  /** 辅助方法：listSystemMetadataSearchKeys。 */
   @Override
   public MetadataSearchList listSystemMetadataSearchKeys() {
     return wontImplement();
   }
 
+  /** 辅助方法：listBucketMetadataSearchKeys。 */
   @Override
   public MetadataSearchList listBucketMetadataSearchKeys(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：queryObjects。 */
   @Override
   public QueryObjectsResult queryObjects(QueryObjectsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：queryMoreObjects。 */
   @Override
   public QueryObjectsResult queryMoreObjects(QueryObjectsResult lastResult) {
     return wontImplement();
   }
 
+  /** 辅助方法：listObjects。 */
   @Override
   public ListObjectsResult listObjects(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：listObjects。 */
   @Override
   public ListObjectsResult listObjects(String bucketName, String prefix) {
     return wontImplement();
   }
 
+  /** 辅助方法：listMoreObjects。 */
   @Override
   public ListObjectsResult listMoreObjects(ListObjectsResult lastResult) {
     return wontImplement();
   }
 
+  /** 辅助方法：listVersions。 */
   @Override
   public ListVersionsResult listVersions(String bucketName, String prefix) {
     return wontImplement();
   }
 
+  /** 辅助方法：listVersions。 */
   @Override
   public ListVersionsResult listVersions(ListVersionsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：listMoreVersions。 */
   @Override
   public ListVersionsResult listMoreVersions(ListVersionsResult lastResult) {
     return wontImplement();
   }
 
+  /** 辅助方法：putObject。 */
   @Override
   public void putObject(String bucketName, String key, Object content, String contentType) {
     wontImplement();
   }
 
+  /** 辅助方法：putObject。 */
   @Override
   public void putObject(String bucketName, String key, Range range, Object content) {
     wontImplement();
   }
 
+  /** 辅助方法：copyObject。 */
   @Override
   public CopyObjectResult copyObject(
       String sourceBucketName, String sourceKey, String bucketName, String key) {
     return wontImplement();
   }
 
+  /** 辅助方法：copyObject。 */
   @Override
   public CopyObjectResult copyObject(CopyObjectRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：readObject。 */
   @Override
   public <T> T readObject(String bucketName, String key, Class<T> objectType) {
     return wontImplement();
   }
 
+  /** 辅助方法：readObject。 */
   @Override
   public <T> T readObject(String bucketName, String key, String versionId, Class<T> objectType) {
     return wontImplement();
   }
 
+  /** 辅助方法：getObject。 */
   @Override
   public <T> GetObjectResult<T> getObject(GetObjectRequest request, Class<T> objectType) {
     return wontImplement();
   }
 
+  /** 辅助方法：getPresignedUrl。 */
   @Override
   public URL getPresignedUrl(String bucketName, String key, Date expirationTime) {
     return wontImplement();
   }
 
+  /** 辅助方法：getPresignedUrl。 */
   @Override
   public URL getPresignedUrl(PresignedUrlRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：deleteObject。 */
   @Override
   public void deleteObject(DeleteObjectRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：deleteVersion。 */
   @Override
   public void deleteVersion(String bucketName, String key, String versionId) {
     wontImplement();
   }
 
+  /** 辅助方法：deleteObjects。 */
   @Override
   public DeleteObjectsResult deleteObjects(DeleteObjectsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：setObjectMetadata。 */
   @Override
   public void setObjectMetadata(String bucketName, String key, S3ObjectMetadata objectMetadata) {
     wontImplement();
   }
 
+  /** 辅助方法：getObjectMetadata。 */
   @Override
   public S3ObjectMetadata getObjectMetadata(GetObjectMetadataRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：setObjectAcl。 */
   @Override
   public void setObjectAcl(String bucketName, String key, AccessControlList acl) {
     wontImplement();
   }
 
+  /** 辅助方法：setObjectAcl。 */
   @Override
   public void setObjectAcl(String bucketName, String key, CannedAcl cannedAcl) {
     wontImplement();
   }
 
+  /** 辅助方法：setObjectAcl。 */
   @Override
   public void setObjectAcl(SetObjectAclRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：getObjectAcl。 */
   @Override
   public AccessControlList getObjectAcl(String bucketName, String key) {
     return wontImplement();
   }
 
+  /** 辅助方法：getObjectAcl。 */
   @Override
   public AccessControlList getObjectAcl(GetObjectAclRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：extendRetentionPeriod。 */
   @Override
   public void extendRetentionPeriod(String bucketName, String key, Long period) {
     wontImplement();
   }
 
+  /** 辅助方法：listMultipartUploads。 */
   @Override
   public ListMultipartUploadsResult listMultipartUploads(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：listMultipartUploads。 */
   @Override
   public ListMultipartUploadsResult listMultipartUploads(ListMultipartUploadsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：initiateMultipartUpload。 */
   @Override
   public String initiateMultipartUpload(String bucketName, String key) {
     return wontImplement();
   }
 
+  /** 辅助方法：initiateMultipartUpload。 */
   @Override
   public InitiateMultipartUploadResult initiateMultipartUpload(
       InitiateMultipartUploadRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：listParts。 */
   @Override
   public ListPartsResult listParts(String bucketName, String key, String uploadId) {
     return wontImplement();
   }
 
+  /** 辅助方法：listParts。 */
   @Override
   public ListPartsResult listParts(ListPartsRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：uploadPart。 */
   @Override
   public MultipartPartETag uploadPart(UploadPartRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：copyPart。 */
   @Override
   public CopyPartResult copyPart(CopyPartRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：completeMultipartUpload。 */
   @Override
   public CompleteMultipartUploadResult completeMultipartUpload(
       CompleteMultipartUploadRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：abortMultipartUpload。 */
   @Override
   public void abortMultipartUpload(AbortMultipartUploadRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：setObjectLockConfiguration。 */
   @Override
   public void setObjectLockConfiguration(
       String bucketName, ObjectLockConfiguration objectLockConfiguration) {
     wontImplement();
   }
 
+  /** 辅助方法：getObjectLockConfiguration。 */
   @Override
   public ObjectLockConfiguration getObjectLockConfiguration(String bucketName) {
     return wontImplement();
   }
 
+  /** 辅助方法：enableObjectLock。 */
   @Override
   public void enableObjectLock(String bucketName) {
     wontImplement();
   }
 
+  /** 辅助方法：setObjectLegalHold。 */
   @Override
   public void setObjectLegalHold(SetObjectLegalHoldRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：getObjectLegalHold。 */
   @Override
   public ObjectLockLegalHold getObjectLegalHold(GetObjectLegalHoldRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：setObjectRetention。 */
   @Override
   public void setObjectRetention(SetObjectRetentionRequest request) {
     wontImplement();
   }
 
+  /** 辅助方法：getObjectRetention。 */
   @Override
   public ObjectLockRetention getObjectRetention(GetObjectRetentionRequest request) {
     return wontImplement();
   }
 
+  /** 辅助方法：wontImplement。 */
   private <T> T wontImplement() {
     throw new UnsupportedOperationException();
   }

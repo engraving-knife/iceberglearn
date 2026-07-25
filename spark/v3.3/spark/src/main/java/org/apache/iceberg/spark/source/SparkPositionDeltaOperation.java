@@ -35,6 +35,13 @@ import org.apache.spark.sql.connector.write.RowLevelOperation;
 import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPositionDeltaOperation。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
 
   private final SparkSession spark;
@@ -61,16 +68,32 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
     this.isolationLevel = isolationLevel;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Command command() {
     return command;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (lazyScanBuilder == null) {
       this.lazyScanBuilder =
           new SparkScanBuilder(spark, table, branch, options) {
+            /**
+             * 构造并返回目标对象。
+             *
+             * @return 结果对象
+             */
             @Override
             public Scan build() {
               Scan scan = super.buildMergeOnReadScan();
@@ -83,6 +106,12 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
     return lazyScanBuilder;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param info 参数
+   * @return 结果对象
+   */
   @Override
   public DeltaWriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     if (lazyWriteBuilder == null) {
@@ -104,6 +133,11 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
     return lazyWriteBuilder;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public NamedReference[] requiredMetadataAttributes() {
     NamedReference specId = Expressions.column(MetadataColumns.SPEC_ID.name());
@@ -111,6 +145,11 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
     return new NamedReference[] {specId, partition};
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public NamedReference[] rowId() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());

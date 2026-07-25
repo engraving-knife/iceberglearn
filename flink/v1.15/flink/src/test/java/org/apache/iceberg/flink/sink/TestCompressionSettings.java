@@ -43,6 +43,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestCompressionSettings 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestCompressionSettings 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestCompressionSettings {
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -51,6 +58,7 @@ public class TestCompressionSettings {
 
   private final Map<String, String> initProperties;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "tableProperties = {0}")
   public static Object[] parameters() {
     return new Object[] {
@@ -71,16 +79,23 @@ public class TestCompressionSettings {
     };
   }
 
+  /** 辅助方法：TestCompressionSettings，Compression Settings。 */
   public TestCompressionSettings(Map<String, String> initProperties) {
     this.initProperties = initProperties;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     File folder = tempFolder.newFolder();
     table = SimpleDataUtil.createTable(folder.getAbsolutePath(), initProperties, false);
   }
 
+  /**
+   * 测试场景：Compression Avro。
+   *
+   * <p>验证该方法在 Compression Avro 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompressionAvro() throws Exception {
     // No override provided
@@ -123,6 +138,11 @@ public class TestCompressionSettings {
     Assert.assertEquals("6", resultProperties.get(TableProperties.AVRO_COMPRESSION_LEVEL));
   }
 
+  /**
+   * 测试场景：Compression Parquet。
+   *
+   * <p>验证该方法在 Compression Parquet 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompressionParquet() throws Exception {
     // No override provided
@@ -165,6 +185,11 @@ public class TestCompressionSettings {
     Assert.assertEquals("6", resultProperties.get(TableProperties.PARQUET_COMPRESSION_LEVEL));
   }
 
+  /**
+   * 测试场景：Compression Orc。
+   *
+   * <p>验证该方法在 Compression Orc 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompressionOrc() throws Exception {
     // No override provided
@@ -207,6 +232,7 @@ public class TestCompressionSettings {
     Assert.assertEquals("speed", resultProperties.get(TableProperties.ORC_COMPRESSION_STRATEGY));
   }
 
+  /** 辅助方法：createIcebergStreamWriter，create Iceberg Stream Writer。 */
   private static OneInputStreamOperatorTestHarness<RowData, WriteResult> createIcebergStreamWriter(
       Table icebergTable, TableSchema flinkSchema, Map<String, String> override) throws Exception {
     RowType flinkRowType = FlinkSink.toFlinkRowType(icebergTable.schema(), flinkSchema);
@@ -225,6 +251,7 @@ public class TestCompressionSettings {
     return harness;
   }
 
+  /** 辅助方法：appenderProperties，appender Properties。 */
   private static Map<String, String> appenderProperties(
       Table table, TableSchema schema, Map<String, String> override) throws Exception {
     try (OneInputStreamOperatorTestHarness<RowData, WriteResult> testHarness =

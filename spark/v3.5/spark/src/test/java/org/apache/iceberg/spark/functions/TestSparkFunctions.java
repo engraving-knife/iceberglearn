@@ -25,8 +25,16 @@ import org.apache.spark.sql.types.DecimalType;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkFunctions 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark函数 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkFunctions {
 
+  /** 测试构建years函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildYearsFunctionFromClass() {
     UnboundFunction expected = new YearsFunction();
@@ -43,6 +51,7 @@ public class TestSparkFunctions {
     checkBuildFunc(tsNtzToYearsFunc, expected);
   }
 
+  /** 测试构建months函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildMonthsFunctionFromClass() {
     UnboundFunction expected = new MonthsFunction();
@@ -60,6 +69,7 @@ public class TestSparkFunctions {
     checkBuildFunc(tsNtzToMonthsFunc, expected);
   }
 
+  /** 测试构建days函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildDaysFunctionFromClass() {
     UnboundFunction expected = new DaysFunction();
@@ -75,6 +85,7 @@ public class TestSparkFunctions {
     checkBuildFunc(tsNtzToDaysFunc, expected);
   }
 
+  /** 测试构建hours函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildHoursFunctionFromClass() {
     UnboundFunction expected = new HoursFunction();
@@ -88,6 +99,7 @@ public class TestSparkFunctions {
     checkBuildFunc(tsNtzToHoursFunc, expected);
   }
 
+  /** 测试构建桶函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildBucketFunctionFromClass() {
     UnboundFunction expected = new BucketFunction();
@@ -119,6 +131,7 @@ public class TestSparkFunctions {
     checkBuildFunc(bucketBinary, expected);
   }
 
+  /** 测试构建截断函数从类场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBuildTruncateFunctionFromClass() {
     UnboundFunction expected = new TruncateFunction();
@@ -147,6 +160,7 @@ public class TestSparkFunctions {
     checkBuildFunc(truncateBinaryFunc, expected);
   }
 
+  /** 检查构建func。 */
   private void checkBuildFunc(ScalarFunction<?> function, UnboundFunction expected) {
     UnboundFunction actual = SparkFunctions.loadFunctionByClass(function.getClass());
 

@@ -41,6 +41,27 @@ import org.apache.iceberg.transforms.UnknownTransform;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.util.Pair;
 
+/**
+ * 分区规格（PartitionSpec）更新事务的实现：支持增删改分区字段并提交。
+ *
+ * <p>所属模块：iceberg-core（表元数据更新事务层，实现 api 中的 {@link UpdatePartitionSpec}）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>在现有 {@link PartitionSpec} 上累积"新增/删除/重命名"分区字段的变更，并提供 {@link #apply()} 预览结果与 {@link
+ *       #commit()} 提交事务。
+ *   <li>处理跨版本兼容：V2 表会从历史 specs 中复用同源同 transform 的字段 id；V1 表删除字段 时改写为 alwaysNull transform 以保持字段 id
+ *       一致性。
+ *   <li>校验变更合法性：禁止重复添加、禁止同时重命名与删除、禁止对同一源字段添加冗余时间分区等。
+ * </ul>
+ *
+ * <p>设计意图：分区规格演进是高频但需谨慎的操作，本类把所有变更暂存为内部集合（adds/deletes/ renames），最终在 {@link #apply()} 时一次性合并到新
+ * spec，保证变更可预览、可回滚（commit 前 不影响表元数据）。
+ *
+ * <p>上下游关系：由表 API（{@code table.updatePartitionSpec()}）构造；底层通过 {@link TableOperations#commit} 把新
+ * spec 写入元数据。
+ */
 class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
   private final TableOperations ops;
   private final TableMetadata base;
@@ -61,6 +82,14 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
   private boolean caseSensitive;
   private int lastAssignedPartitionId;
 
+  /**
+   * 构造一个分区规格更新事务，基于当前表元数据初始化索引。
+   *
+   * <p>逻辑：拷贝当前 spec、schema、formatVersion；按字段名与（源id+transform）建立索引便于 后续查重；记录已分配的最大分区字段 id。若当前 spec 含
+   * {@link UnknownTransform} 则直接抛异常， 因为无法对未知 transform 进行演进。
+   *
+   * @param ops 表操作接口
+   */
   BaseUpdatePartitionSpec(TableOperations ops) {
     this.ops = ops;
     this.caseSensitive = true;
@@ -82,13 +111,13 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
             });
   }
 
-  /** For testing only. */
+  /** 仅供测试使用：基于 formatVersion 与 spec 构造，不绑定真实表。 */
   @VisibleForTesting
   BaseUpdatePartitionSpec(int formatVersion, PartitionSpec spec) {
     this(formatVersion, spec, spec.lastAssignedFieldId());
   }
 
-  /** For testing only. */
+  /** 仅供测试使用：基于 formatVersion、spec 与起始分区字段 id 构造。 */
   @VisibleForTesting
   BaseUpdatePartitionSpec(int formatVersion, PartitionSpec spec, int lastAssignedPartitionId) {
     this.ops = null;
@@ -102,19 +131,23 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     this.lastAssignedPartitionId = lastAssignedPartitionId;
   }
 
+  /** 分配并返回一个新的分区字段 id（自增）。 */
   private int assignFieldId() {
     this.lastAssignedPartitionId += 1;
     return lastAssignedPartitionId;
   }
 
   /**
-   * In V2 it searches for a similar partition field in historical partition specs. Tries to match
-   * on source field ID, transform type and target name (optional). If not found or in V1 cases it
-   * creates a new PartitionField.
+   * V2 表中复用历史 spec 中的同源同 transform 字段，否则新建分区字段。
    *
-   * @param sourceTransform pair of source ID and transform for this PartitionField addition
-   * @param name target partition field name, if specified
-   * @return the recycled or newly created partition field
+   * <p>逻辑：在 V2 表中遍历所有历史 spec 的字段，若找到 sourceId 与 transform 都相同的字段 （可选地校验名称一致），则复用其 fieldId；找不到或在 V1
+   * 表中则新建一个 PartitionField。
+   *
+   * <p>设计意图：V2 表的分区字段 id 全局唯一且应保持稳定，复用历史 id 可避免数据文件分区值 与字段 id 错配。
+   *
+   * @param sourceTransform 源字段 id 与 transform 的二元组
+   * @param name 目标分区字段名（可为 null 表示不指定）
+   * @return 复用或新建的分区字段
    */
   private PartitionField recycleOrCreatePartitionField(
       Pair<Integer, Transform<?, ?>> sourceTransform, String name) {
@@ -140,22 +173,50 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
         sourceTransform.first(), assignFieldId(), name, sourceTransform.second());
   }
 
+  /**
+   * 设置字段名解析是否大小写敏感。
+   *
+   * @param isCaseSensitive 是否大小写敏感
+   * @return 当前事务
+   */
   @Override
   public UpdatePartitionSpec caseSensitive(boolean isCaseSensitive) {
     this.caseSensitive = isCaseSensitive;
     return this;
   }
 
+  /**
+   * 按源列名添加一个 identity 分区字段。
+   *
+   * @param sourceName 源列名
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec addField(String sourceName) {
     return addField(Expressions.ref(sourceName));
   }
 
+  /**
+   * 按 Term 添加分区字段（不指定名称，由 transform 推导）。
+   *
+   * @param term 描述源列与 transform 的 Term
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec addField(Term term) {
     return addField(null, term);
   }
 
+  /**
+   * 把一个"已删除但本次又添加同源同 transform"的字段改写为恢复（撤销删除，必要时重命名）。
+   *
+   * <p>逻辑：从 deletes 中移除该字段；若指定了 name 且与现名不同则触发重命名，否则直接保留。
+   *
+   * @param existing 已存在（被标记删除）的字段
+   * @param name 新名称
+   * @param sourceTransform 源 id 与 transform 二元组
+   * @return 当前事务
+   */
   private BaseUpdatePartitionSpec rewriteDeleteAndAddField(
       PartitionField existing, String name, Pair<Integer, Transform<?, ?>> sourceTransform) {
     deletes.remove(existing.fieldId());
@@ -166,6 +227,24 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     }
   }
 
+  /**
+   * 添加一个分区字段（可指定名称）。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>校验同名字段尚未被本次添加过；
+   *   <li>解析 Term 得到 (sourceId, transform)，构造校验 key；
+   *   <li>若已存在同 key 字段且本次已删除，转走 {@link #rewriteDeleteAndAddField} 恢复；
+   *   <li>否则校验不与现有/已添加字段冲突；
+   *   <li>复用或新建 PartitionField，若未指定 name 则由 {@link PartitionNameGenerator} 生成；
+   *   <li>校验冗余时间分区；更新各索引；处理与现有 void transform 字段的名称冲突。
+   * </ol>
+   *
+   * @param name 分区字段名（可为 null）
+   * @param term 描述源列与 transform 的 Term
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec addField(String name, Term term) {
     PartitionField alreadyAdded = nameToAddedField.get(name);
@@ -232,6 +311,14 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return this;
   }
 
+  /**
+   * 按字段名删除分区字段。
+   *
+   * <p>逻辑：校验该字段不是本次新添加的、未被重命名；找到后将其 id 加入 deletes 集合。
+   *
+   * @param name 待删除字段名
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec removeField(String name) {
     PartitionField alreadyAdded = nameToAddedField.get(name);
@@ -249,6 +336,12 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return this;
   }
 
+  /**
+   * 按 Term 删除分区字段（按 sourceId+transform 定位）。
+   *
+   * @param term 描述源列与 transform 的 Term
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec removeField(Term term) {
     Pair<Integer, Transform<?, ?>> sourceTransform = resolve(term);
@@ -270,6 +363,16 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return this;
   }
 
+  /**
+   * 重命名一个分区字段。
+   *
+   * <p>逻辑：若新名与现有 void transform 字段冲突，先把旧字段改名让位；校验不能重命名本次新添加 的字段、不能重命名已删除字段；最后把 (oldName -> newName)
+   * 记入 renames。
+   *
+   * @param name 旧字段名
+   * @param newName 新字段名
+   * @return 当前事务
+   */
   @Override
   public BaseUpdatePartitionSpec renameField(String name, String newName) {
     PartitionField existingField = nameToField.get(newName);
@@ -292,6 +395,18 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return this;
   }
 
+  /**
+   * 把所有待应用变更合并为新的 {@link PartitionSpec}（不提交）。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>遍历原 spec 字段：未删除的保留（应用重命名）；已删除的在 V1 表中改写为 alwaysNull transform 以保持字段 id 一致；V2 表中直接丢弃；
+   *   <li>追加本次新增字段。
+   * </ul>
+   *
+   * @return 应用变更后的新分区规格
+   */
   @Override
   public PartitionSpec apply() {
     PartitionSpec.Builder builder = PartitionSpec.builderFor(schema);
@@ -326,12 +441,27 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return builder.build();
   }
 
+  /**
+   * 把变更应用到表元数据并提交。
+   *
+   * <p>逻辑：基于当前元数据调用 {@link TableMetadata#updatePartitionSpec} 生成新元数据， 再通过 {@link
+   * TableOperations#commit} 原子提交。
+   */
   @Override
   public void commit() {
     TableMetadata update = base.updatePartitionSpec(apply());
     ops.commit(base, update);
   }
 
+  /**
+   * 把 Term 解析为 (sourceId, transform) 二元组。
+   *
+   * <p>逻辑：要求 Term 是 UnboundTerm；按大小写敏感性绑定到 schema；从 BoundTerm 取出 sourceId 与
+   * transform；若源字段类型已知，用类型化的 {@link Transforms#fromString} 重建 transform。
+   *
+   * @param term 待解析的 Term
+   * @return (sourceId, transform) 二元组
+   */
   private Pair<Integer, Transform<?, ?>> resolve(Term term) {
     Preconditions.checkArgument(term instanceof UnboundTerm, "Term must be unbound");
 
@@ -348,6 +478,13 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return Pair.of(sourceId, transform);
   }
 
+  /**
+   * 把 BoundTerm 转换为 Transform：BoundReference 转 identity，BoundTransform 取其 transform。
+   *
+   * @param term 已绑定的 Term
+   * @return 对应的 Transform
+   * @throws ValidationException 若 Term 既非 BoundReference 也非 BoundTransform
+   */
   private Transform<?, ?> toTransform(BoundTerm<?> term) {
     if (term instanceof BoundReference) {
       return Transforms.identity();
@@ -359,6 +496,13 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     }
   }
 
+  /**
+   * 校验新增字段不与已添加的时间分区字段冗余。
+   *
+   * <p>逻辑：若新字段是时间类 transform（year/month/day/hour），则同一 sourceId 下不允许已有 另一个时间分区字段，避免冗余分区。
+   *
+   * @param field 待校验的新字段
+   */
   private void checkForRedundantAddedPartitions(PartitionField field) {
     if (isTimeTransform(field)) {
       PartitionField timeField = addedTimeFields.get(field.sourceId());
@@ -371,6 +515,7 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     }
   }
 
+  /** 按字段名建立索引。 */
   private static Map<String, PartitionField> indexSpecByName(PartitionSpec spec) {
     ImmutableMap.Builder<String, PartitionField> builder = ImmutableMap.builder();
     List<PartitionField> fields = spec.fields();
@@ -381,6 +526,7 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return builder.build();
   }
 
+  /** 按 (sourceId, transform 字符串) 建立索引。 */
   private static Map<Pair<Integer, String>, PartitionField> indexSpecByTransform(
       PartitionSpec spec) {
     Map<Pair<Integer, String>, PartitionField> indexSpecs = Maps.newHashMap();
@@ -392,10 +538,12 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     return indexSpecs;
   }
 
+  /** 判断字段是否为时间类 transform（year/month/day/hour）。 */
   private boolean isTimeTransform(PartitionField field) {
     return PartitionSpecVisitor.visit(schema, field, IsTimeTransform.INSTANCE);
   }
 
+  /** 访问器：判断分区字段是否为时间类 transform。 */
   private static class IsTimeTransform implements PartitionSpecVisitor<Boolean> {
     private static final IsTimeTransform INSTANCE = new IsTimeTransform();
 
@@ -447,10 +595,12 @@ class BaseUpdatePartitionSpec implements UpdatePartitionSpec {
     }
   }
 
+  /** 判断字段是否为 alwaysNull（void）transform。 */
   private boolean isVoidTransform(PartitionField field) {
     return PartitionSpecVisitor.visit(schema, field, IsVoidTransform.INSTANCE);
   }
 
+  /** 访问器：判断分区字段是否为 alwaysNull（void）transform。 */
   private static class IsVoidTransform implements PartitionSpecVisitor<Boolean> {
     private static final IsVoidTransform INSTANCE = new IsVoidTransform();
 

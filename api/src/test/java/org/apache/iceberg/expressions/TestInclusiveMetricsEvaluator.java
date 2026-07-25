@@ -55,6 +55,13 @@ import org.apache.iceberg.util.UnicodeUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestInclusiveMetricsEvaluator 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestInclusiveMetricsEvaluator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestInclusiveMetricsEvaluator {
   private static final Schema SCHEMA =
       new Schema(
@@ -171,6 +178,11 @@ public class TestInclusiveMetricsEvaluator {
           // upper bounds
           ImmutableMap.of(3, toByteBuffer(StringType.get(), "イロハニホヘト")));
 
+  /**
+   * 测试场景：All Nulls。
+   *
+   * <p>验证该方法在 All Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllNulls() {
     boolean shouldRead = new InclusiveMetricsEvaluator(SCHEMA, notNull("all_nulls")).eval(FILE);
@@ -208,6 +220,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: non-null column contains a non-null value").isTrue();
   }
 
+  /**
+   * 测试场景：No Nulls。
+   *
+   * <p>验证该方法在 No Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoNulls() {
     boolean shouldRead = new InclusiveMetricsEvaluator(SCHEMA, isNull("all_nulls")).eval(FILE);
@@ -220,6 +237,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should skip: non-null column contains no null values").isFalse();
   }
 
+  /**
+   * 测试场景：Is Na N。
+   *
+   * <p>验证该方法在 Is Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaN() {
     boolean shouldRead = new InclusiveMetricsEvaluator(SCHEMA, isNaN("all_nans")).eval(FILE);
@@ -248,6 +270,11 @@ public class TestInclusiveMetricsEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     boolean shouldRead = new InclusiveMetricsEvaluator(SCHEMA, notNaN("all_nans")).eval(FILE);
@@ -284,6 +311,11 @@ public class TestInclusiveMetricsEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Required Column。
+   *
+   * <p>验证该方法在 Required Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredColumn() {
     boolean shouldRead = new InclusiveMetricsEvaluator(SCHEMA, notNull("required")).eval(FILE);
@@ -293,6 +325,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should skip: required columns are always non-null").isFalse();
   }
 
+  /**
+   * 测试场景：Missing Column。
+   *
+   * <p>验证该方法在 Missing Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingColumn() {
     Assertions.assertThatThrownBy(
@@ -301,6 +338,11 @@ public class TestInclusiveMetricsEvaluator {
         .hasMessageContaining("Cannot find field 'missing'");
   }
 
+  /**
+   * 测试场景：Missing Stats。
+   *
+   * <p>验证该方法在 Missing Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingStats() {
     DataFile missingStats = new TestDataFile("file.parquet", Row.of(), 50);
@@ -325,6 +367,11 @@ public class TestInclusiveMetricsEvaluator {
     }
   }
 
+  /**
+   * 测试场景：Zero Record File。
+   *
+   * <p>验证该方法在 Zero Record File 条件下的行为是否符合预期。
+   */
   @Test
   public void testZeroRecordFile() {
     DataFile empty = new TestDataFile("file.parquet", Row.of(), 0);
@@ -349,6 +396,11 @@ public class TestInclusiveMetricsEvaluator {
     }
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -362,6 +414,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should skip: not(true)").isFalse();
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -391,6 +448,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: and(true, true)").isTrue();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -411,6 +473,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: or(false, true)").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt。
+   *
+   * <p>验证该方法在 Integer Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLt() {
     boolean shouldRead =
@@ -430,6 +497,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt Eq。
+   *
+   * <p>验证该方法在 Integer Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLtEq() {
     boolean shouldRead =
@@ -449,6 +521,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: many possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt。
+   *
+   * <p>验证该方法在 Integer Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGt() {
     boolean shouldRead =
@@ -469,6 +546,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt Eq。
+   *
+   * <p>验证该方法在 Integer Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGtEq() {
     boolean shouldRead =
@@ -491,6 +573,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Eq。
+   *
+   * <p>验证该方法在 Integer Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerEq() {
     boolean shouldRead =
@@ -516,6 +603,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should not read: id above upper bound").isFalse();
   }
 
+  /**
+   * 测试场景：Integer Not Eq。
+   *
+   * <p>验证该方法在 Integer Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEq() {
     boolean shouldRead =
@@ -545,6 +637,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEqRewritten() {
     boolean shouldRead =
@@ -574,6 +671,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Case Insensitive Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Case Insensitive Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveIntegerNotEqRewritten() {
     boolean shouldRead =
@@ -610,6 +712,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Case Sensitive Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Case Sensitive Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveIntegerNotEqRewritten() {
     Assertions.assertThatThrownBy(
@@ -618,6 +725,11 @@ public class TestInclusiveMetricsEvaluator {
         .hasMessageContaining("Cannot find field 'ID'");
   }
 
+  /**
+   * 测试场景：String Starts With。
+   *
+   * <p>验证该方法在 String Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringStartsWith() {
     boolean shouldRead =
@@ -678,6 +790,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should not read: range doesn't match").isFalse();
   }
 
+  /**
+   * 测试场景：String Not Starts With。
+   *
+   * <p>验证该方法在 String Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringNotStartsWith() {
     boolean shouldRead =
@@ -733,6 +850,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: range matches").isTrue();
   }
 
+  /**
+   * 测试场景：Integer In。
+   *
+   * <p>验证该方法在 Integer In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerIn() {
     boolean shouldRead =
@@ -790,6 +912,11 @@ public class TestInclusiveMetricsEvaluator {
     assertThat(shouldRead).as("Should read: large in expression").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not In。
+   *
+   * <p>验证该方法在 Integer Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotIn() {
     boolean shouldRead =

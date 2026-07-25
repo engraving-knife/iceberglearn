@@ -18,13 +18,23 @@
  */
 package org.apache.iceberg;
 
-/** API for setting a table's base location. */
+/**
+ * 表基址更新 API：设置表的 base location。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：把表的存储根路径更新为指定值，并提交该元数据变更。
+ *
+ * <p>设计意图：作为 {@link PendingUpdate} 的子类型，遵循"配置后提交"的统一更新模式。
+ *
+ * <p>上下游关系：由 {@link Table#updateLocation()} 创建；下游实现位于 core 模块。
+ */
 public interface UpdateLocation extends PendingUpdate<String> {
   /**
-   * Set the table's location.
+   * 设置表的存储位置。
    *
-   * @param location a String location
-   * @return this for method chaining
+   * @param location 表的新存储路径
+   * @return this，便于链式调用
    */
   UpdateLocation setLocation(String location);
 }

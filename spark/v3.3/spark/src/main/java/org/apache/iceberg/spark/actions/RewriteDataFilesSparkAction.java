@@ -68,6 +68,15 @@ import org.apache.spark.sql.internal.SQLConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 RewriteDataFilesSparkAction。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 public class RewriteDataFilesSparkAction
     extends BaseSnapshotUpdateSparkAction<RewriteDataFilesSparkAction> implements RewriteDataFiles {
 
@@ -102,11 +111,17 @@ public class RewriteDataFilesSparkAction
     this.table = table;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected RewriteDataFilesSparkAction self() {
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction binPack() {
     Preconditions.checkArgument(
@@ -115,6 +130,12 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sortOrder 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction sort(SortOrder sortOrder) {
     Preconditions.checkArgument(
@@ -123,6 +144,11 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction sort() {
     Preconditions.checkArgument(
@@ -131,6 +157,12 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param columnNames 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction zOrder(String... columnNames) {
     Preconditions.checkArgument(
@@ -139,12 +171,23 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @param expression 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction filter(Expression expression) {
     filter = Expressions.and(filter, expression);
     return this;
   }
 
+  /**
+   * 执行具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFiles.Result execute() {
     if (table.currentSnapshot() == null) {
@@ -178,6 +221,7 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   StructLikeMap<List<List<FileScanTask>>> planFileGroups(long startingSnapshotId) {
     CloseableIterable<FileScanTask> fileScanTasks =
         table
@@ -201,6 +245,7 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLikeMap<List<FileScanTask>> groupByPartition(
       StructType partitionType, Iterable<FileScanTask> tasks) {
     StructLikeMap<List<FileScanTask>> filesByPartition = StructLikeMap.create(partitionType);
@@ -224,15 +269,18 @@ public class RewriteDataFilesSparkAction
     return filesByPartition;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLikeMap<List<List<FileScanTask>>> fileGroupsByPartition(
       StructLikeMap<List<FileScanTask>> filesByPartition) {
     return filesByPartition.transformValues(this::planFileGroups);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<List<FileScanTask>> planFileGroups(List<FileScanTask> tasks) {
     return ImmutableList.copyOf(rewriter.planFileGroups(tasks));
   }
 
+  /** 重写计划或文件。 */
   @VisibleForTesting
   RewriteFileGroup rewriteFiles(RewriteExecutionContext ctx, RewriteFileGroup fileGroup) {
     String desc = jobDesc(fileGroup, ctx);
@@ -246,6 +294,7 @@ public class RewriteDataFilesSparkAction
     return fileGroup;
   }
 
+  /** 重写计划或文件。 */
   private ExecutorService rewriteService() {
     return MoreExecutors.getExitingExecutorService(
         (ThreadPoolExecutor)
@@ -254,11 +303,14 @@ public class RewriteDataFilesSparkAction
                 new ThreadFactoryBuilder().setNameFormat("Rewrite-Service-%d").build()));
   }
 
+  /** 提交事务或写入结果。 */
   @VisibleForTesting
   RewriteDataFilesCommitManager commitManager(long startingSnapshotId) {
+    /** 重写计划或文件。 */
     return new RewriteDataFilesCommitManager(table, startingSnapshotId, useStartingSequenceNumber);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Result doExecute(
       RewriteExecutionContext ctx,
       Stream<RewriteFileGroup> groupStream,
@@ -316,6 +368,7 @@ public class RewriteDataFilesSparkAction
                   + "another Iceberg operation will be ignored. This mode will create additional snapshots in the table "
                   + "history, one for each commit.",
               PARTIAL_PROGRESS_ENABLED, PARTIAL_PROGRESS_MAX_COMMITS);
+      /** 执行该方法的具体逻辑。 */
       throw new RuntimeException(errorMessage, e);
     }
 
@@ -324,6 +377,7 @@ public class RewriteDataFilesSparkAction
     return ImmutableRewriteDataFiles.Result.builder().rewriteResults(rewriteResults).build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Result doExecuteWithPartialProgress(
       RewriteExecutionContext ctx,
       Stream<RewriteFileGroup> groupStream,
@@ -364,6 +418,7 @@ public class RewriteDataFilesSparkAction
     return ImmutableRewriteDataFiles.Result.builder().rewriteResults(rewriteResults).build();
   }
 
+  /** 转换为groupstream。 */
   Stream<RewriteFileGroup> toGroupStream(
       RewriteExecutionContext ctx, Map<StructLike, List<List<FileScanTask>>> groupsByPartition) {
     return groupsByPartition.entrySet().stream()
@@ -377,6 +432,7 @@ public class RewriteDataFilesSparkAction
         .sorted(RewriteFileGroup.comparator(rewriteJobOrder));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private RewriteFileGroup newRewriteGroup(
       RewriteExecutionContext ctx, StructLike partition, List<FileScanTask> tasks) {
     int globalIndex = ctx.currentGlobalIndex();
@@ -387,9 +443,11 @@ public class RewriteDataFilesSparkAction
             .partitionIndex(partitionIndex)
             .partition(partition)
             .build();
+    /** 重写计划或文件。 */
     return new RewriteFileGroup(info, tasks);
   }
 
+  /** 校验前置条件或参数。 */
   void validateAndInitOptions() {
     Set<String> validOptions = Sets.newHashSet(rewriter.validOptions());
     validOptions.addAll(VALID_OPTIONS);
@@ -441,6 +499,7 @@ public class RewriteDataFilesSparkAction
         PARTIAL_PROGRESS_ENABLED);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private String jobDesc(RewriteFileGroup group, RewriteExecutionContext ctx) {
     StructLike partition = group.info().partition();
     if (partition.size() > 0) {
@@ -465,6 +524,15 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /**
+   * 基于 Spark 执行的 Iceberg 表维护动作的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 RewriteExecutionContext。
+   *
+   * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+   *
+   * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+   */
   @VisibleForTesting
   static class RewriteExecutionContext {
     private final StructLikeMap<Integer> numGroupsByPartition;
@@ -479,18 +547,40 @@ public class RewriteDataFilesSparkAction
       this.groupIndex = new AtomicInteger(1);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public int currentGlobalIndex() {
       return groupIndex.getAndIncrement();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     public int currentPartitionIndex(StructLike partition) {
       return partitionIndexMap.merge(partition, 1, Integer::sum);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     public int groupsInPartition(StructLike partition) {
       return numGroupsByPartition.get(partition);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public int totalGroupCount() {
       return totalGroupCount;
     }

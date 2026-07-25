@@ -43,9 +43,41 @@ import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.Type;
 
+/**
+ * 文件级说明：Parquet 值写入器集合，提供各类型的基础写入器实现。
+ *
+ * <p>所属模块：iceberg-parquet（写入器基础设施，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供原始类型写入器（UnboxedWriter/BytesWriter/StringWriter 等），封装 {@link ColumnWriter}。
+ *   <li>提供组合写入器（OptionWriter/StructWriter/CollectionWriter/MapWriter）处理嵌套结构与 null 语义。
+ *   <li>提供 Decimal 写入器（IntegerDecimalWriter/LongDecimalWriter/FixedDecimalWriter）。
+ *   <li>提供 metrics 收集（FloatWriter/DoubleWriter 收集 FieldMetrics）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>组合模式：StructWriter/CollectionWriter/MapWriter 通过组合子写入器实现嵌套结构的递归写入。
+ *   <li>Definition/Repetition Level 驱动：OptionWriter/RepeatedWriter 通过 D/R level 正确编码嵌套 null 和重复结构。
+ *   <li>工厂方法：booleans/ints/longs/floats/doubles/strings 等提供类型安全的写入器创建。
+ * </ul>
+ *
+ * <p>上下游关系：被 ParquetValueWriter 构建器（如 BaseParquetWriters）使用； 依赖
+ * ColumnWriter（底层列写入器）、ColumnWriteStore。
+ */
 public class ParquetValueWriters {
   private ParquetValueWriters() {}
 
+  /**
+   * 按 definition level 包装写入器：OPTIONAL 列用 OptionWriter 包装以处理 null 写入。
+   *
+   * @param definitionLevel 字段的最大定义级别
+   * @param writer 原始写入器
+   * @return 包装后的写入器
+   */
   public static <T> ParquetValueWriter<T> option(
       Type type, int definitionLevel, ParquetValueWriter<T> writer) {
     if (type.isRepetition(Type.Repetition.OPTIONAL)) {
@@ -55,6 +87,7 @@ public class ParquetValueWriters {
     return writer;
   }
 
+  /** 创建 boolean 列写入器。 */
   public static UnboxedWriter<Boolean> booleans(ColumnDescriptor desc) {
     return new UnboxedWriter<>(desc);
   }
@@ -67,54 +100,66 @@ public class ParquetValueWriters {
     return new ShortWriter(desc);
   }
 
+  /** 创建 int 列写入器。 */
   public static UnboxedWriter<Integer> ints(ColumnDescriptor desc) {
     return new UnboxedWriter<>(desc);
   }
 
+  /** 创建 long 列写入器。 */
   public static UnboxedWriter<Long> longs(ColumnDescriptor desc) {
     return new UnboxedWriter<>(desc);
   }
 
+  /** 创建 float 列写入器（含 FieldMetrics 收集）。 */
   public static UnboxedWriter<Float> floats(ColumnDescriptor desc) {
     return new FloatWriter(desc);
   }
 
+  /** 创建 double 列写入器（含 FieldMetrics 收集）。 */
   public static UnboxedWriter<Double> doubles(ColumnDescriptor desc) {
     return new DoubleWriter(desc);
   }
 
+  /** 创建 string 列写入器（CharSequence → Binary）。 */
   public static PrimitiveWriter<CharSequence> strings(ColumnDescriptor desc) {
     return new StringWriter(desc);
   }
 
+  /** 创建 INT32 存储 decimal 的写入器。 */
   public static PrimitiveWriter<BigDecimal> decimalAsInteger(
       ColumnDescriptor desc, int precision, int scale) {
     return new IntegerDecimalWriter(desc, precision, scale);
   }
 
+  /** 创建 INT64 存储 decimal 的写入器。 */
   public static PrimitiveWriter<BigDecimal> decimalAsLong(
       ColumnDescriptor desc, int precision, int scale) {
     return new LongDecimalWriter(desc, precision, scale);
   }
 
+  /** 创建 FIXED_LEN_BYTE_ARRAY 存储 decimal 的写入器。 */
   public static PrimitiveWriter<BigDecimal> decimalAsFixed(
       ColumnDescriptor desc, int precision, int scale) {
     return new FixedDecimalWriter(desc, precision, scale);
   }
 
+  /** 创建 ByteBuffer 列写入器。 */
   public static PrimitiveWriter<ByteBuffer> byteBuffers(ColumnDescriptor desc) {
     return new BytesWriter(desc);
   }
 
+  /** 创建集合（List）写入器。 */
   public static <E> CollectionWriter<E> collections(int dl, int rl, ParquetValueWriter<E> writer) {
     return new CollectionWriter<>(dl, rl, writer);
   }
 
+  /** 创建 Map 写入器。 */
   public static <K, V> MapWriter<K, V> maps(
       int dl, int rl, ParquetValueWriter<K> keyWriter, ParquetValueWriter<V> valueWriter) {
     return new MapWriter<>(dl, rl, keyWriter, valueWriter);
   }
 
+  /** 原始类型写入器基类（抽象）：封装 {@link ColumnWriter}，提供列写入器和列存储的设置。 子类通过 column.writeXxx() 写入具体类型的值。 */
   public abstract static class PrimitiveWriter<T> implements ParquetValueWriter<T> {
     @SuppressWarnings("checkstyle:VisibilityModifier")
     protected final ColumnWriter<T> column;
@@ -142,6 +187,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** 拆箱写入器：提供 writeBoolean/Integer/Long/Float/Double 等原始类型写入方法。 write() 默认抛异常，由具体子类覆写。 */
   private static class UnboxedWriter<T> extends PrimitiveWriter<T> {
     private UnboxedWriter(ColumnDescriptor desc) {
       super(desc);
@@ -168,6 +214,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Float 写入器：写入 float 值并收集 FieldMetrics（用于 NaN/上下界统计）。 */
   private static class FloatWriter extends UnboxedWriter<Float> {
     private final FloatFieldMetrics.Builder floatFieldMetricsBuilder;
 
@@ -189,6 +236,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Double 写入器：写入 double 值并收集 FieldMetrics（用于 NaN/上下界统计）。 */
   private static class DoubleWriter extends UnboxedWriter<Double> {
     private final DoubleFieldMetrics.Builder doubleFieldMetricsBuilder;
 
@@ -210,6 +258,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Byte 写入器：将 byte 值作为 int 写入（Iceberg INT_8 存储）。 */
   private static class ByteWriter extends UnboxedWriter<Byte> {
     private ByteWriter(ColumnDescriptor desc) {
       super(desc);
@@ -221,6 +270,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Short 写入器：将 short 值作为 int 写入（Iceberg INT_16 存储）。 */
   private static class ShortWriter extends UnboxedWriter<Short> {
     private ShortWriter(ColumnDescriptor desc) {
       super(desc);
@@ -232,6 +282,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** INT32 Decimal 写入器：将 BigDecimal 的 unscaled value 作为 int 写入。 */
   private static class IntegerDecimalWriter extends PrimitiveWriter<BigDecimal> {
     private final int precision;
     private final int scale;
@@ -261,6 +312,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** INT64 Decimal 写入器：将 BigDecimal 的 unscaled value 作为 long 写入。 */
   private static class LongDecimalWriter extends PrimitiveWriter<BigDecimal> {
     private final int precision;
     private final int scale;
@@ -290,6 +342,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** FIXED Decimal 写入器：将 BigDecimal 转为定长字节数组写入。 */
   private static class FixedDecimalWriter extends PrimitiveWriter<BigDecimal> {
     private final int precision;
     private final int scale;
@@ -310,6 +363,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Bytes 写入器：将 ByteBuffer 转为 Parquet Binary 写入。 */
   private static class BytesWriter extends PrimitiveWriter<ByteBuffer> {
     private BytesWriter(ColumnDescriptor desc) {
       super(desc);
@@ -321,6 +375,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** String 写入器：将 CharSequence 转为 Parquet Binary（UTF-8）写入。 */
   private static class StringWriter extends PrimitiveWriter<CharSequence> {
     private StringWriter(ColumnDescriptor desc) {
       super(desc);
@@ -338,6 +393,11 @@ public class ParquetValueWriters {
     }
   }
 
+  /**
+   * 可选字段写入器：通过 definition level 处理 null 写入。
+   *
+   * <p>逻辑：write 时若值为 null 则调用 writeNull（D < maxD），否则委托子写入器写入非 null 值。
+   */
   static class OptionWriter<T> implements ParquetValueWriter<T> {
     private final int definitionLevel;
     private final ParquetValueWriter<T> writer;
@@ -407,6 +467,11 @@ public class ParquetValueWriters {
     }
   }
 
+  /**
+   * 重复字段写入器基类（抽象）：处理 Parquet LIST 编码中的重复元素写入。
+   *
+   * <p>逻辑：write 时遍历集合元素，为每个元素写入一个三元组（含正确的 D/R level）， 空集合写入一个 null 标记三元组。子类实现 elements() 提供元素迭代器。
+   */
   public abstract static class RepeatedWriter<L, E> implements ParquetValueWriter<L> {
     private final int definitionLevel;
     private final int repetitionLevel;
@@ -466,6 +531,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Collection 写入器：将 Java Collection 的元素逐个写入 Parquet LIST。 */
   private static class CollectionWriter<E> extends RepeatedWriter<Collection<E>, E> {
     private CollectionWriter(
         int definitionLevel, int repetitionLevel, ParquetValueWriter<E> writer) {
@@ -478,6 +544,12 @@ public class ParquetValueWriters {
     }
   }
 
+  /**
+   * 重复键值对写入器基类（抽象）：处理 Parquet MAP 编码中的 key-value 对写入。
+   *
+   * <p>逻辑：write 时遍历 Map 的 entry，为每个 key-value 写入两个三元组（含正确的 D/R level）， 空 map 写入一个 null 标记三元组。子类实现
+   * pairs() 提供 entry 迭代器。
+   */
   public abstract static class RepeatedKeyValueWriter<M, K, V> implements ParquetValueWriter<M> {
     private final int definitionLevel;
     private final int repetitionLevel;
@@ -547,6 +619,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** Map 写入器：将 Java Map 的 key-value 对逐个写入 Parquet MAP。 */
   private static class MapWriter<K, V> extends RepeatedKeyValueWriter<Map<K, V>, K, V> {
     private MapWriter(
         int definitionLevel,
@@ -562,6 +635,11 @@ public class ParquetValueWriters {
     }
   }
 
+  /**
+   * Struct 写入器基类（抽象）：将记录的字段逐个通过子写入器写入。
+   *
+   * <p>设计要点：write 时通过 get() 取出各字段值并委托子写入器写入； 子类实现 get() 以适配具体记录类型。
+   */
   public abstract static class StructWriter<S> implements ParquetValueWriter<S> {
     private final ParquetValueWriter<Object>[] writers;
     private final List<TripleWriter<?>> children;
@@ -610,6 +688,7 @@ public class ParquetValueWriters {
     }
   }
 
+  /** PositionDelete Struct 写入器：专门写入位置删除（pos + row）记录。 */
   public static class PositionDeleteStructWriter<R> extends StructWriter<PositionDelete<R>> {
     private final Function<CharSequence, ?> pathTransformFunc;
 

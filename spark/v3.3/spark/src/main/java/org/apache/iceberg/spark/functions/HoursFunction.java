@@ -27,15 +27,19 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.TimestampType;
 
 /**
- * A Spark function implementation for the Iceberg hour transform.
+ * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
  *
- * <p>Example usage: {@code SELECT system.hours('source_col')}.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 HoursFunction。
+ *
+ * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
  */
 public class HoursFunction extends UnaryUnboundFunction {
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected BoundFunction doBind(DataType valueType) {
     if (valueType instanceof TimestampType) {
+      /** 执行该方法的具体逻辑。 */
       return new TimestampToHoursFunction();
     } else {
       throw new UnsupportedOperationException(
@@ -43,6 +47,11 @@ public class HoursFunction extends UnaryUnboundFunction {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return name()
@@ -50,37 +59,76 @@ public class HoursFunction extends UnaryUnboundFunction {
         + "  col :: source column (must be timestamp)";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "hours";
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TimestampToHoursFunction。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TimestampToHoursFunction implements ScalarFunction<Integer> {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(long micros) {
       return DateTimeUtil.microsToHours(micros);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public String name() {
       return "hours";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.hours(timestamp)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen

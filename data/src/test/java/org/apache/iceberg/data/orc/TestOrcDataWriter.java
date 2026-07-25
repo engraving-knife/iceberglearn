@@ -43,6 +43,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestOrcDataWriter 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestOrcDataWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOrcDataWriter {
   private static final Schema SCHEMA =
       new Schema(
@@ -53,6 +60,7 @@ public class TestOrcDataWriter {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：createRecords。 */
   @Before
   public void createRecords() {
     GenericRecord record = GenericRecord.create(SCHEMA);
@@ -67,6 +75,11 @@ public class TestOrcDataWriter {
     this.records = builder.build();
   }
 
+  /**
+   * 测试场景：Data Writer。
+   *
+   * <p>验证该方法在 Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataWriter() throws IOException {
     OutputFile file = Files.localOutput(temp.newFile());

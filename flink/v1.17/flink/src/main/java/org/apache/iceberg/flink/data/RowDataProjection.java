@@ -37,16 +37,32 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：基于 Flink {@link RowData} 的投影包装器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 data 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>在不复制数据的前提下，按投影 schema 从原始 RowData 中提取字段。
+ *   <li>对嵌套 struct 做递归投影；对 list/map 仅支持整体投影或同类型投影。
+ *   <li>实现 {@link RowData} 接口，对接 Flink 各类算子。
+ * </ul>
+ *
+ * <p>设计意图：通过预编译的 FieldGetter 数组，把每次投影访问的开销降到一次方法调用， 避免反射与重复 schema 查找。注意不支持对 list/map 内部嵌套类型的部分投影。
+ *
+ * <p>上下游关系：上游为 Iceberg 文件扫描结果投影逻辑，下游为 Flink 算子 直接消费 RowData。
+ */
 public class RowDataProjection implements RowData {
   /**
-   * Creates a projecting wrapper for {@link RowData} rows.
+   * 创建 RowData 投影包装器。
    *
-   * <p>This projection will not project the nested children types of repeated types like lists and
-   * maps.
+   * <p>说明：本投影不会对 list/map 等重复类型的内部嵌套类型做投影。
    *
-   * @param schema schema of rows wrapped by this projection
-   * @param projectedSchema result schema of the projected rows
-   * @return a wrapper to project rows
+   * @param schema 原始行的 schema
+   * @param projectedSchema 投影后的目标 schema
+   * @return 投影包装器
    */
   public static RowDataProjection create(Schema schema, Schema projectedSchema) {
     return RowDataProjection.create(
@@ -54,15 +70,14 @@ public class RowDataProjection implements RowData {
   }
 
   /**
-   * Creates a projecting wrapper for {@link RowData} rows.
+   * 创建 RowData 投影包装器，显式传入 Flink 行类型。
    *
-   * <p>This projection will not project the nested children types of repeated types like lists and
-   * maps.
+   * <p>说明：本投影不会对 list/map 等重复类型的内部嵌套类型做投影。
    *
-   * @param rowType flink row type of rows wrapped by this projection
-   * @param schema schema of rows wrapped by this projection
-   * @param projectedSchema result schema of the projected rows
-   * @return a wrapper to project rows
+   * @param rowType Flink 行类型
+   * @param schema 原始行的 Iceberg struct 类型
+   * @param projectedSchema 投影后的目标 struct 类型
+   * @return 投影包装器
    */
   public static RowDataProjection create(
       RowType rowType, Types.StructType schema, Types.StructType projectedSchema) {
@@ -72,6 +87,11 @@ public class RowDataProjection implements RowData {
   private final RowData.FieldGetter[] getters;
   private RowData rowData;
 
+  /**
+   * 私有构造，按投影 schema 预编译各字段的 FieldGetter。
+   *
+   * <p>逻辑：建立字段 ID 到原行下标的映射，对每个投影字段按类型递归构造 getter。
+   */
   private RowDataProjection(
       RowType rowType, Types.StructType rowStruct, Types.StructType projectType) {
     Map<Integer, Integer> fieldIdToPosition = Maps.newHashMap();
@@ -96,6 +116,11 @@ public class RowDataProjection implements RowData {
     }
   }
 
+  /**
+   * 按字段类型构造对应的 FieldGetter。
+   *
+   * <p>逻辑：对 struct 递归构造嵌套投影；对 list/map 校验是否整体投影或同类型投影， 不允许对内部嵌套类型做部分投影；其他类型直接复用 Flink 默认 getter。
+   */
   private static RowData.FieldGetter createFieldGetter(
       RowType rowType, int position, Types.NestedField rowField, Types.NestedField projectField) {
     Preconditions.checkArgument(

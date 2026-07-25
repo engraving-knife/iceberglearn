@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.arrow.vectorized.BaseBatchReader;
-import org.apache.iceberg.arrow.vectorized.VectorizedArrowReader;
 import org.apache.iceberg.arrow.vectorized.VectorizedArrowReader.DeletedVectorReader;
 import org.apache.iceberg.data.DeleteFilter;
 import org.apache.iceberg.deletes.PositionDeleteIndex;
@@ -37,9 +36,13 @@ import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
 /**
- * {@link VectorizedReader} that returns Spark's {@link ColumnarBatch} to support Spark's vectorized
- * read path. The {@link ColumnarBatch} returned is created by passing in the Arrow vectors
- * populated via delegated read calls to {@linkplain VectorizedArrowReader VectorReader(s)}.
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：列式批读取器，将多列向量组装为 Spark ColumnarBatch 输出。
+ *
+ * <p>设计意图：以批为单位向 Spark 输出列式数据，提升向量化读取效率。
+ *
+ * <p>上下游关系：由 VectorizedSparkParquetReaders / VectorizedSparkOrcReaders 使用。
  */
 public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
   private final boolean hasIsDeletedColumn;
@@ -51,18 +54,18 @@ public class ColumnarBatchReader extends BaseBatchReader<ColumnarBatch> {
     this.hasIsDeletedColumn =
         readers.stream().anyMatch(reader -> reader instanceof DeletedVectorReader);
   }
-
+  /** 设置 RowGroupInfo 属性。 */
   @Override
   public void setRowGroupInfo(
       PageReadStore pageStore, Map<ColumnPath, ColumnChunkMetaData> metaData, long rowPosition) {
     super.setRowGroupInfo(pageStore, metaData, rowPosition);
     this.rowStartPosInBatch = rowPosition;
   }
-
+  /** 设置 DeleteFilter 属性。 */
   public void setDeleteFilter(DeleteFilter<InternalRow> deleteFilter) {
     this.deletes = deleteFilter;
   }
-
+  /** 读取数据。 */
   @Override
   public final ColumnarBatch read(ColumnarBatch reuse, int numRowsToRead) {
     if (reuse == null) {

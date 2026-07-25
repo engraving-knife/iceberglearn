@@ -29,15 +29,35 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * Hive Schema 与 Iceberg Schema 之间的双向转换工具类。
+ *
+ * <p>所属模块：iceberg-hive-metastore（Schema 映射层，对外公共入口）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 Iceberg {@link Schema} 转换为 Hive {@link FieldSchema} 列表（用于注册 HMS 表）。
+ *   <li>将 Hive {@link FieldSchema} 列表或列名/类型列表转换为 Iceberg {@link Schema}。
+ *   <li>将 Hive 分区列转换为 Iceberg identity 分区规格 {@link PartitionSpec}。
+ *   <li>提供 Iceberg {@link Type} 与 Hive {@link TypeInfo} 之间的单类型转换。
+ * </ul>
+ *
+ * <p>设计意图：作为 Schema 转换的统一对外入口，内部委托 {@link HiveSchemaConverter} 完成实际转换。 工具类不可实例化（private 构造器 +
+ * final）。提供多个重载以适配不同输入形式（FieldSchema 列表、 原始名/类型列表等）和 autoConvert 开关。
+ *
+ * <p>上下游关系：被 {@link HiveTableOperations}、{@link HiveCatalog} 在读写 HMS 表结构时调用； 内部委托 {@link
+ * HiveSchemaConverter}。
+ */
 public final class HiveSchemaUtil {
 
   private HiveSchemaUtil() {}
 
   /**
-   * Converts the Iceberg schema to a Hive schema (list of FieldSchema objects).
+   * 将 Iceberg {@link Schema} 转换为 Hive 列定义列表（{@link FieldSchema}）。
    *
-   * @param schema The original Iceberg schema to convert
-   * @return The Hive column list generated from the Iceberg schema
+   * @param schema 原始 Iceberg Schema
+   * @return 转换后的 Hive 列列表
    */
   public static List<FieldSchema> convert(Schema schema) {
     return schema.columns().stream()
@@ -46,24 +66,24 @@ public final class HiveSchemaUtil {
   }
 
   /**
-   * Converts a Hive schema (list of FieldSchema objects) to an Iceberg schema. If some of the types
-   * are not convertible then exception is thrown.
+   * 将 Hive 列定义列表转换为 Iceberg {@link Schema}（不自动转换不兼容类型）。
    *
-   * @param fieldSchemas The list of the columns
-   * @return An equivalent Iceberg Schema
+   * <p>若遇到 TINYINT/SMALLINT/CHAR/VARCHAR 等无直接对应的类型则抛异常。
+   *
+   * @param fieldSchemas Hive 列列表
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convert(List<FieldSchema> fieldSchemas) {
     return convert(fieldSchemas, false);
   }
 
   /**
-   * Converts a Hive schema (list of FieldSchema objects) to an Iceberg schema.
+   * 将 Hive 列定义列表转换为 Iceberg {@link Schema}。
    *
-   * @param fieldSchemas The list of the columns
-   * @param autoConvert If <code>true</code> then TINYINT and SMALLINT is converted to INTEGER and
-   *     VARCHAR and CHAR is converted to STRING. Otherwise if these types are used in the Hive
-   *     schema then exception is thrown.
-   * @return An equivalent Iceberg Schema
+   * @param fieldSchemas Hive 列列表
+   * @param autoConvert 为 true 时将 TINYINT/SMALLINT 转为 INTEGER、CHAR/VARCHAR 转为 STRING； 为 false
+   *     时遇到这些类型抛异常
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convert(List<FieldSchema> fieldSchemas, boolean autoConvert) {
     List<String> names = Lists.newArrayListWithExpectedSize(fieldSchemas.size());
@@ -79,11 +99,13 @@ public final class HiveSchemaUtil {
   }
 
   /**
-   * Converts the Hive partition columns to Iceberg identity partition specification.
+   * 将 Hive 分区列转换为 Iceberg identity 分区规格。
    *
-   * @param schema The Iceberg schema
-   * @param fieldSchemas The partition column specification
-   * @return The Iceberg partition specification
+   * <p>逻辑：对每个分区列按列名创建 identity 分区字段。
+   *
+   * @param schema Iceberg Schema（用于解析分区字段引用）
+   * @param fieldSchemas Hive 分区列定义
+   * @return Iceberg identity 分区规格
    */
   public static PartitionSpec spec(Schema schema, List<FieldSchema> fieldSchemas) {
     PartitionSpec.Builder builder = PartitionSpec.builderFor(schema);
@@ -92,28 +114,25 @@ public final class HiveSchemaUtil {
   }
 
   /**
-   * Converts the Hive list of column names and column types to an Iceberg schema. If some of the
-   * types are not convertible then exception is thrown.
+   * 将 Hive 列名/类型/注释列表转换为 Iceberg {@link Schema}（不自动转换不兼容类型）。
    *
-   * @param names The list of the Hive column names
-   * @param types The list of the Hive column types
-   * @param comments The list of the Hive column comments
-   * @return The Iceberg schema
+   * @param names Hive 列名列表
+   * @param types Hive 列类型列表
+   * @param comments Hive 列注释列表
+   * @return 转换后的 Iceberg Schema
    */
   public static Schema convert(List<String> names, List<TypeInfo> types, List<String> comments) {
     return HiveSchemaConverter.convert(names, types, comments, false);
   }
 
   /**
-   * Converts the Hive list of column names and column types to an Iceberg schema.
+   * 将 Hive 列名/类型/注释列表转换为 Iceberg {@link Schema}。
    *
-   * @param names The list of the Hive column names
-   * @param types The list of the Hive column types
-   * @param comments The list of the Hive column comments, can be null
-   * @param autoConvert If <code>true</code> then TINYINT and SMALLINT is converted to INTEGER and
-   *     VARCHAR and CHAR is converted to STRING. Otherwise if these types are used in the Hive
-   *     schema then exception is thrown.
-   * @return The Iceberg schema
+   * @param names Hive 列名列表
+   * @param types Hive 列类型列表
+   * @param comments Hive 列注释列表（可为 null）
+   * @param autoConvert 为 true 时自动转换 TINYINT/SMALLINT→INTEGER、CHAR/VARCHAR→STRING
+   * @return 转换后的 Iceberg Schema
    */
   public static Schema convert(
       List<String> names, List<TypeInfo> types, List<String> comments, boolean autoConvert) {
@@ -121,25 +140,36 @@ public final class HiveSchemaUtil {
   }
 
   /**
-   * Converts an Iceberg type to a Hive TypeInfo object.
+   * 将 Iceberg {@link Type} 转换为 Hive {@link TypeInfo}。
    *
-   * @param type The Iceberg type
-   * @return The Hive type
+   * @param type Iceberg 类型
+   * @return Hive 类型信息
    */
   public static TypeInfo convert(Type type) {
     return TypeInfoUtils.getTypeInfoFromTypeString(convertToTypeString(type));
   }
 
   /**
-   * Converts a Hive typeInfo object to an Iceberg type.
+   * 将 Hive {@link TypeInfo} 转换为 Iceberg {@link Type}（不自动转换不兼容类型）。
    *
-   * @param typeInfo The Hive type
-   * @return The Iceberg type
+   * @param typeInfo Hive 类型信息
+   * @return Iceberg 类型
    */
   public static Type convert(TypeInfo typeInfo) {
     return HiveSchemaConverter.convert(typeInfo, false);
   }
 
+  /**
+   * 将 Iceberg {@link Type} 转换为 Hive 类型字符串。
+   *
+   * <p>逻辑：按 typeId 分发，映射到 Hive 类型字符串（如 int/bigint/decimal(p,s)/struct<...>/
+   * array<...>/map<...>等）；TIMESTAMP 带时区时在 Hive 3+ 映射为 "timestamp with local time
+   * zone"；TIME/STRING/UUID 均映射为 string；FIXED/BINARY 映射为 binary。
+   *
+   * @param type Iceberg 类型
+   * @return Hive 类型字符串
+   * @throws UnsupportedOperationException 遇到不支持的类型
+   */
   private static String convertToTypeString(Type type) {
     switch (type.typeId()) {
       case BOOLEAN:

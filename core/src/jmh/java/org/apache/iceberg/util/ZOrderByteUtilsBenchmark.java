@@ -33,6 +33,14 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Timeout;
 import org.openjdk.jmh.infra.Blackhole;
 
+/**
+ * 测试类：ZOrderByteUtilsBenchmark，用于验证 Z Order Byte Utils Benchmark 相关功能。
+ *
+ * <p>所属模块：iceberg-core（基准测试目录 src/jmh）。 职责：针对 Z Order Byte Utils Benchmark
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JMH 基准测试框架，通过构造典型数据集与读取场景， 测量清单读取/指标计数等操作的性能基线。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Measurement(iterations = 5)
@@ -46,6 +54,7 @@ public class ZOrderByteUtilsBenchmark {
   private byte[][][] threeColumnInput;
   private byte[][][] twoColumnInput;
 
+  /** 辅助方法：setup bench。 */
   @Setup
   public void setupBench() {
     Random rand = new Random(42);
@@ -69,6 +78,7 @@ public class ZOrderByteUtilsBenchmark {
     }
   }
 
+  /** 辅助方法：interleave values four columns。 */
   @Benchmark
   @Threads(1)
   public void interleaveValuesFourColumns(Blackhole blackhole) {
@@ -82,6 +92,7 @@ public class ZOrderByteUtilsBenchmark {
     }
   }
 
+  /** 辅助方法：interleave values three columns。 */
   @Benchmark
   @Threads(1)
   public void interleaveValuesThreeColumns(Blackhole blackhole) {
@@ -95,6 +106,7 @@ public class ZOrderByteUtilsBenchmark {
     }
   }
 
+  /** 辅助方法：interleave values two columns。 */
   @Benchmark
   @Threads(1)
   public void interleaveValuesTwoColumns(Blackhole blackhole) {
@@ -108,6 +120,7 @@ public class ZOrderByteUtilsBenchmark {
     }
   }
 
+  /** 辅助方法：interleave values four columns 8 byte output。 */
   @Benchmark
   @Threads(1)
   public void interleaveValuesFourColumns8ByteOutput(Blackhole blackhole) {

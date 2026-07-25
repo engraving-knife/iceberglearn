@@ -31,7 +31,15 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkTableUtil 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark表工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkTableUtil {
+  /** 测试Spark分区oKryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkPartitionOKryoSerialization() throws IOException {
     Map<String, String> values = ImmutableMap.of("id", "2");
@@ -43,6 +51,7 @@ public class TestSparkTableUtil {
     Assertions.assertThat(sparkPartition).isEqualTo(deserialized);
   }
 
+  /** 测试Spark分区Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkPartitionJavaSerialization() throws IOException, ClassNotFoundException {
     Map<String, String> values = ImmutableMap.of("id", "2");
@@ -54,6 +63,7 @@ public class TestSparkTableUtil {
     Assertions.assertThat(sparkPartition).isEqualTo(deserialized);
   }
 
+  /** 测试指标配置Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetricsConfigKryoSerialization() throws Exception {
     Map<String, String> metricsConfig =
@@ -77,6 +87,7 @@ public class TestSparkTableUtil {
         MetricsModes.Counts.get().toString(), deserialized.columnMode("col3").toString());
   }
 
+  /** 测试指标配置Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetricsConfigJavaSerialization() throws Exception {
     Map<String, String> metricsConfig =

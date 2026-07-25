@@ -23,26 +23,42 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.StructLike;
 
 /**
- * Interface for providing data file locations to write tasks.
+ * 文件级说明：数据文件路径定位接口，为写入任务提供数据文件的目标位置。
  *
- * <p>Implementations must be {@link Serializable} because instances will be serialized to tasks.
+ * <p>所属模块：iceberg-api（核心对外 API 模块）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>根据文件名生成全限定数据文件路径（非分区场景）。
+ *   <li>根据分区规格与分区值生成全限定数据文件路径（分区场景）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>实现必须可序列化（{@link Serializable}）：实例会被序列化后分发到写入任务中执行。
+ *   <li>把路径生成策略与表写逻辑解耦：不同表可自定义路径布局（如按哈希分桶、按时间分层等）， 只需提供不同的 LocationProvider 实现。
+ * </ul>
+ *
+ * <p>上下游关系：由表在创建时根据 catalog 属性构造，被写入任务（DataWriter 等）调用以确定 数据文件落盘位置。
  */
 public interface LocationProvider extends Serializable {
   /**
-   * Return a fully-qualified data file location for the given filename.
+   * 根据文件名返回全限定数据文件路径。
    *
-   * @param filename a file name
-   * @return a fully-qualified location URI for a data file
+   * @param filename 文件名
+   * @return 数据文件的全限定路径 URI
    */
   String newDataLocation(String filename);
 
   /**
-   * Return a fully-qualified data file location for the given partition and filename.
+   * 根据分区规格和分区值返回全限定数据文件路径。
    *
-   * @param spec a partition spec
-   * @param partitionData a tuple of partition data for data in the file, matching the given spec
-   * @param filename a file name
-   * @return a fully-qualified location URI for a data file
+   * @param spec 分区规格
+   * @param partitionData 与该文件数据匹配 {@code spec} 的分区值元组
+   * @param filename 文件名
+   * @return 数据文件的全限定路径 URI
    */
   String newDataLocation(PartitionSpec spec, StructLike partitionData, String filename);
 }

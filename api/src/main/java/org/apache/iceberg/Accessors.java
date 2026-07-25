@@ -26,24 +26,47 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
 /**
- * Position2Accessor and Position3Accessor here is an optimization. For a nested schema like:
+ * 嵌套字段访问器工厂与实现集合。
  *
- * <pre>
- * root
- *  |-- a: struct (nullable = false)
- *  |    |-- b: struct (nullable = false)
- *  |        | -- c: string (containsNull = false)
- * </pre>
+ * <p>所属模块：iceberg-api（最顶层的公共接口模块，定义表/扫描/元数据等核心抽象）。
  *
- * Then we will use Position3Accessor to access nested field 'c'. It can be accessed like this:
- * {@code row.get(p0, StructLike.class).get(p1, StructLike.class).get(p2, javaClass)}. Commonly,
- * Nested fields with depth=1 or 2 or 3 are the fields that will be accessed frequently, so this
- * optimization will help to access this kind of schema. For schema whose depth is deeper than 3,
- * then we will use the {@link WrappedPositionAccessor} to access recursively.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>为 {@link Schema} 中每个字段（含嵌套字段）构建按位置（position）访问的 {@link Accessor}，避免每次访问都按字段名查找。
+ *   <li>提供 {@link PositionAccessor}、{@code Position2Accessor}、{@code Position3Accessor}
+ *       三种针对常见深度（1/2/3）的特化实现，以及针对更深嵌套或可空层的 {@link WrappedPositionAccessor} 递归实现。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>特化优化：对于形如
+ *       <pre>
+ *       root
+ *        |-- a: struct (nullable = false)
+ *        |    |-- b: struct (nullable = false)
+ *        |        | -- c: string (containsNull = false)
+ *       </pre>
+ *       的嵌套结构，访问深度 1/2/3 的字段使用对应特化类，可一次性以 {@code row.get(p0, StructLike.class).get(p1,
+ *       StructLike.class).get(p2, javaClass)} 完成，避免方法调用与对象分配开销。深度大于 3 时退回到 {@link
+ *       WrappedPositionAccessor} 的递归访问。
+ *   <li>对可空（optional）嵌套层使用 WrappedPositionAccessor，以处理中间层为 null 的情形。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link TypeUtil#visit} 驱动的 {@link BuildPositionAccessors} 在 schema 遍历时构建访问器映射；被 core
+ * 模块的扫描/读取路径用于按字段 ID 取值。
  */
 public class Accessors {
   private Accessors() {}
 
+  /**
+   * 将单层位置访问器转换为其所记录的字段位置。
+   *
+   * @param accessor 待转换的访问器
+   * @return 该访问器对应的字段位置
+   * @throws IllegalArgumentException 若访问器是嵌套访问器（非单层 PositionAccessor）
+   */
   public static Integer toPosition(Accessor<StructLike> accessor) {
     if (accessor instanceof PositionAccessor) {
       return ((PositionAccessor) accessor).position();
@@ -51,10 +74,24 @@ public class Accessors {
     throw new IllegalArgumentException("Cannot convert nested accessor to position");
   }
 
+  /**
+   * 为给定 schema 构建字段 ID 到访问器的映射。
+   *
+   * <p>逻辑：通过 {@link TypeUtil#visit} 驱动 {@link BuildPositionAccessors} 遍历 schema，
+   * 对每个字段（含嵌套字段）生成对应深度的位置访问器并按字段 ID 收集到 Map 中。
+   *
+   * @param schema 表 schema
+   * @return 字段 ID 到 {@link Accessor} 的映射
+   */
   static Map<Integer, Accessor<StructLike>> forSchema(Schema schema) {
     return TypeUtil.visit(schema, new BuildPositionAccessors());
   }
 
+  /**
+   * 单层位置访问器：直接按位置从 {@link StructLike} 取值。
+   *
+   * <p>设计要点：缓存字段的 Java 类型对应的 javaClass，避免每次 get 时重复查询。
+   */
   private static class PositionAccessor implements Accessor<StructLike> {
     private final int position;
     private final Type type;
@@ -90,6 +127,11 @@ public class Accessors {
     }
   }
 
+  /**
+   * 两层位置访问器：从根 struct 取第一层，再取第二层目标字段。
+   *
+   * <p>设计要点：把外层位置和内层 PositionAccessor 的位置都展平为字段，使 get 操作 不再经过中间对象方法分派。
+   */
   private static class Position2Accessor implements Accessor<StructLike> {
     private final int p0;
     private final int p1;
@@ -123,6 +165,11 @@ public class Accessors {
     }
   }
 
+  /**
+   * 三层位置访问器：从根 struct 连续取三层后取目标字段。
+   *
+   * <p>设计要点：与 {@code Position2Accessor} 类似，进一步展平第三层位置，是嵌套访问的 性能甜点（绝大多数业务字段深度不超过 3）。
+   */
   private static class Position3Accessor implements Accessor<StructLike> {
     private final int p0;
     private final int p1;
@@ -154,6 +201,11 @@ public class Accessors {
     }
   }
 
+  /**
+   * 包装型位置访问器：在指定位置取内层 struct，再委托给被包装的访问器取值。
+   *
+   * <p>设计要点：当内层可能为 null（即字段 optional）或嵌套深度超过 3 时使用本类， 在 get 时先取出内层 struct 并判空，避免 NPE。
+   */
   private static class WrappedPositionAccessor implements Accessor<StructLike> {
     private final int position;
     private final Accessor<StructLike> accessor;
@@ -183,10 +235,28 @@ public class Accessors {
     }
   }
 
+  /** 创建单层位置访问器。 */
   private static Accessor<StructLike> newAccessor(int pos, Type type) {
     return new PositionAccessor(pos, type);
   }
 
+  /**
+   * 在已有访问器外层再包一层位置，按字段可空性与内层访问器类型选择最优实现。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>若该层字段 optional，使用 {@link WrappedPositionAccessor} 以处理中间层为 null；
+   *   <li>否则若内层是 {@link PositionAccessor}，升级为 {@code Position2Accessor}；
+   *   <li>若内层是 {@code Position2Accessor}，升级为 {@code Position3Accessor}；
+   *   <li>深度已超过 3，则退回到 {@link WrappedPositionAccessor} 递归访问。
+   * </ul>
+   *
+   * @param pos 当前层在父 struct 中的位置
+   * @param isOptional 当前层字段是否可空
+   * @param accessor 内层字段访问器
+   * @return 包装后的访问器
+   */
   private static Accessor<StructLike> newAccessor(
       int pos, boolean isOptional, Accessor<StructLike> accessor) {
     if (isOptional) {
@@ -201,6 +271,12 @@ public class Accessors {
     }
   }
 
+  /**
+   * Schema 访问器：遍历 schema 并为每个字段（含嵌套字段）构建位置访问器。
+   *
+   * <p>设计意图：利用 {@link TypeUtil.SchemaVisitor} 的自顶向下遍历，将子 struct 已构建的 访问器向外层传递并叠加当前位置，最终汇聚到根 schema
+   * 的字段 ID -> 访问器映射。
+   */
   private static class BuildPositionAccessors
       extends TypeUtil.SchemaVisitor<Map<Integer, Accessor<StructLike>>> {
 
@@ -210,6 +286,12 @@ public class Accessors {
       return structResult;
     }
 
+    /**
+     * 处理 struct 节点：合并各子字段的结果，并为每个嵌套字段叠加当前位置生成新访问器。
+     *
+     * <p>逻辑：遍历 struct 的每个字段，若该字段有来自下层的结果（说明是 struct 类型且 已生成嵌套访问器），则把这些嵌套访问器外层再包一层当前位置；同时为本字段自身
+     * 添加一个直接按位置取值的访问器。
+     */
     @Override
     public Map<Integer, Accessor<StructLike>> struct(
         Types.StructType struct, List<Map<Integer, Accessor<StructLike>>> fieldResults) {

@@ -46,6 +46,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestTimestampWithoutZone 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 时间戳无时区 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestTimestampWithoutZone extends SparkCatalogTestBase {
 
   private static final String newTableName = "created_table";
@@ -63,6 +70,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
           row(2L, toLocalDateTime("2021-01-01T00:00:00.0"), toTimestamp("2021-02-01T00:00:00.0")),
           row(3L, toLocalDateTime("2021-01-01T00:00:00.0"), toTimestamp("2021-02-01T00:00:00.0")));
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -78,23 +86,27 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
     };
   }
 
+  /** 测试时间戳无时区。 */
   public TestTimestampWithoutZone(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
     this.config = config;
   }
 
+  /** 创建表。 */
   @Before
   public void createTables() {
     validationCatalog.createTable(tableIdent, schema);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     validationCatalog.dropTable(tableIdent, true);
     sql("DROP TABLE IF EXISTS %s", newTableName);
   }
 
+  /** 测试deprecatedtimezone属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeprecatedTimezoneProperty() {
     withSQLConf(
@@ -114,6 +126,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
         });
   }
 
+  /** 测试读带deprecatedtimezone属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadWithDeprecatedTimezoneProperty() {
     withSQLConf(
@@ -129,6 +142,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
         });
   }
 
+  /** 测试读带deprecatedtimezone属性读选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadWithDeprecatedTimezonePropertyReadOption() {
     Assertions.assertThatThrownBy(
@@ -144,6 +158,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
             "Option handle-timestamp-without-timezone is not supported in Spark 3.4 due to the introduction of native support for timestamp without timezone.");
   }
 
+  /** 测试写带deprecatedtimezone属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteWithDeprecatedTimezoneProperty() {
     withSQLConf(
@@ -165,6 +180,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
         });
   }
 
+  /** 测试写带deprecatedtimezone属性读选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteWithDeprecatedTimezonePropertyReadOption() {
     Assertions.assertThatThrownBy(
@@ -186,6 +202,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
             "Option handle-timestamp-without-timezone is not supported in Spark 3.4 due to the introduction of native support for timestamp without timezone.");
   }
 
+  /** 测试追加时间戳无时区场景：验证该方法在对应输入下的行为与断言结果。 */
   /*
   Spark does not really care about the timezone, it will just convert it
 
@@ -226,6 +243,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
                     toLocalDateTime("2021-02-01T00:00:00.0")))));
   }
 
+  /** 测试追加时间戳带时区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAppendTimestampWithZone() {
     // Both TZ
@@ -240,6 +258,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
                     toTimestamp("2021-02-01T00:00:00.0")))));
   }
 
+  /** 测试创建作为select带时间戳无时区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateAsSelectWithTimestampWithoutZone() {
     sql("INSERT INTO %s VALUES %s", tableName, rowToSqlValues(values));
@@ -257,6 +276,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", newTableName));
   }
 
+  /** 测试创建新建表应have时间戳带时区Iceberg类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateNewTableShouldHaveTimestampWithZoneIcebergType() {
     sql("INSERT INTO %s VALUES %s", tableName, rowToSqlValues(values));
@@ -278,6 +298,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
     assertFieldsType(createdTable.schema(), Types.TimestampType.withZone(), "tsz");
   }
 
+  /** 测试创建新建表应have时间戳无时区Iceberg类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateNewTableShouldHaveTimestampWithoutZoneIcebergType() {
     spark
@@ -303,14 +324,17 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
     assertFieldsType(createdTable.schema(), Types.TimestampType.withZone(), "tsz");
   }
 
+  /** 到时间戳。 */
   private Timestamp toTimestamp(String value) {
     return new Timestamp(DateTime.parse(value).getMillis());
   }
 
+  /** 到local日期时间。 */
   private LocalDateTime toLocalDateTime(String value) {
     return LocalDateTime.parse(value);
   }
 
+  /** 行到SQL值。 */
   private String rowToSqlValues(List<Object[]> rows) {
     List<String> rowValues =
         rows.stream()
@@ -336,6 +360,7 @@ public class TestTimestampWithoutZone extends SparkCatalogTestBase {
     return Joiner.on(",").join(rowValues);
   }
 
+  /** 断言字段类型。 */
   private void assertFieldsType(Schema actual, Type.PrimitiveType expected, String... fields) {
     actual
         .select(fields)

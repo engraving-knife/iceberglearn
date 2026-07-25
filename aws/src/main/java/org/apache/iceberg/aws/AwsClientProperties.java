@@ -35,47 +35,43 @@ import software.amazon.awssdk.regions.Region;
 
 public class AwsClientProperties implements Serializable {
   /**
-   * Configure the AWS credentials provider used to create AWS clients. A fully qualified concrete
-   * class with package that implements the {@link AwsCredentialsProvider} interface is required.
+   * 配置 AWS 客户端使用的凭证提供者。值为实现 {@link AwsCredentialsProvider} 接口的 全限定类名。
    *
-   * <p>Additionally, the implementation class must also have a create() or create(Map) method
-   * implemented, which returns an instance of the class that provides aws credentials provider.
+   * <p>此外，该实现类还必须提供 create() 或 create(Map) 静态工厂方法，返回凭证提供者实例。
    *
-   * <p>Example:
+   * <p>示例：
    * client.credentials-provider=software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider
    *
-   * <p>When set, the default client factory {@link
-   * org.apache.iceberg.aws.AwsClientFactories#defaultFactory()} and other AWS client factory
-   * classes will use this provider to get AWS credentials provided instead of reading the default
-   * credential chain to get AWS access credentials.
+   * <p>设置后，默认客户端工厂 {@link org.apache.iceberg.aws.AwsClientFactories#defaultFactory()} 及其他 AWS 客户端工厂
+   * 将使用此提供者获取凭证，而非走 AWS 默认凭证链。
    */
   public static final String CLIENT_CREDENTIALS_PROVIDER = "client.credentials-provider";
 
   /**
-   * Used by the client.credentials-provider configured value that will be used by {@link
-   * org.apache.iceberg.aws.AwsClientFactories#defaultFactory()} and other AWS client factory
-   * classes to pass provider-specific properties. Each property consists of a key name and an
-   * associated value.
+   * 凭证提供者专属属性前缀。以 {@code client.credentials-provider.} 开头的属性会被提取出来， 在通过 create(Map)
+   * 创建凭证提供者时传入，用于向特定提供者传递自定义参数。
    */
   protected static final String CLIENT_CREDENTIAL_PROVIDER_PREFIX = "client.credentials-provider.";
 
-  /**
-   * Used by {@link org.apache.iceberg.aws.AwsClientFactories.DefaultAwsClientFactory} and also
-   * other client factory classes. If set, all AWS clients except STS client will use the given
-   * region instead of the default region chain.
-   */
+  /** AWS 客户端区域。设置后，除 STS 客户端外的所有 AWS 客户端将使用此区域， 而非走 AWS 默认区域解析链。 */
   public static final String CLIENT_REGION = "client.region";
 
   private String clientRegion;
   private String clientCredentialsProvider;
   private final Map<String, String> clientCredentialsProviderProperties;
 
+  /** 无参构造器：创建一个所有属性为 null 的实例，用于后续手动设置。 */
   public AwsClientProperties() {
     this.clientRegion = null;
     this.clientCredentialsProvider = null;
     this.clientCredentialsProviderProperties = null;
   }
 
+  /**
+   * 从配置 Map 构造实例，解析区域、凭证提供者类名及凭证提供者专属属性。
+   *
+   * @param properties Iceberg catalog 属性
+   */
   public AwsClientProperties(Map<String, String> properties) {
     this.clientRegion = properties.get(CLIENT_REGION);
     this.clientCredentialsProvider = properties.get(CLIENT_CREDENTIALS_PROVIDER);
@@ -83,22 +79,29 @@ public class AwsClientProperties implements Serializable {
         PropertyUtil.propertiesWithPrefix(properties, CLIENT_CREDENTIAL_PROVIDER_PREFIX);
   }
 
+  /** 返回配置的客户端区域，未设置时为 null。 */
   public String clientRegion() {
     return clientRegion;
   }
 
+  /** 设置客户端区域。 */
   public void setClientRegion(String clientRegion) {
     this.clientRegion = clientRegion;
   }
 
   /**
-   * Configure a client AWS region.
+   * 将区域配置应用到 AWS 客户端构建器上。
    *
-   * <p>Sample usage:
+   * <p>逻辑：仅当 clientRegion 非空时，调用 builder.region(Region.of(clientRegion))。
+   *
+   * <p>示例用法：
    *
    * <pre>
    *     S3Client.builder().applyMutation(awsClientProperties::applyClientRegionConfiguration)
    * </pre>
+   *
+   * @param builder AWS 客户端构建器
+   * @param <T> 构建器类型
    */
   public <T extends AwsClientBuilder> void applyClientRegionConfiguration(T builder) {
     if (clientRegion != null) {
@@ -107,13 +110,19 @@ public class AwsClientProperties implements Serializable {
   }
 
   /**
-   * Configure the credential provider for AWS clients.
+   * 将凭证提供者配置应用到 AWS 客户端构建器上。
    *
-   * <p>Sample usage:
+   * <p>逻辑：仅当 clientCredentialsProvider 非空时，通过反射加载该类并创建凭证提供者实例， 再调用 builder.credentialsProvider()
+   * 设置。
+   *
+   * <p>示例用法：
    *
    * <pre>
    *     DynamoDbClient.builder().applyMutation(awsClientProperties::applyClientCredentialConfigurations)
    * </pre>
+   *
+   * @param builder AWS 客户端构建器
+   * @param <T> 构建器类型
    */
   public <T extends AwsClientBuilder> void applyClientCredentialConfigurations(T builder) {
     if (!Strings.isNullOrEmpty(this.clientCredentialsProvider)) {
@@ -122,16 +131,21 @@ public class AwsClientProperties implements Serializable {
   }
 
   /**
-   * Returns a credentials provider instance. If params were set, we return a new credentials
-   * instance. If none of the params are set, we try to dynamically load the provided credentials
-   * provider class. Upon loading the class, we try to invoke {@code create(Map<String, String>)}
-   * static method. If that fails, we fall back to {@code create()}. If credential provider class
-   * wasn't set, we fall back to default credentials provider.
+   * 返回凭证提供者实例，按优先级降级选择。
    *
-   * @param accessKeyId the AWS access key ID
-   * @param secretAccessKey the AWS secret access key
-   * @param sessionToken the AWS session token
-   * @return a credentials provider instance
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>若 accessKeyId 与 secretAccessKey 均非空：有 sessionToken 则构建会话凭证， 否则构建基本凭证，均包装为
+   *       StaticCredentialsProvider。
+   *   <li>否则若 clientCredentialsProvider 非空：通过反射加载该类并调用其 create(Map) 或 create() 静态方法创建实例。
+   *   <li>以上均不满足：返回 DefaultCredentialsProvider，走 AWS 默认凭证链。
+   * </ol>
+   *
+   * @param accessKeyId AWS 访问密钥 ID
+   * @param secretAccessKey AWS 秘密访问密钥
+   * @param sessionToken AWS 会话令牌（临时凭证时使用）
+   * @return 凭证提供者实例
    */
   @SuppressWarnings("checkstyle:HiddenField")
   public AwsCredentialsProvider credentialsProvider(
@@ -154,6 +168,16 @@ public class AwsClientProperties implements Serializable {
     return DefaultCredentialsProvider.builder().build();
   }
 
+  /**
+   * 通过反射加载凭证提供者类并创建实例。
+   *
+   * <p>逻辑：使用 DynClasses 加载指定类，校验其实现了 AwsCredentialsProvider 接口， 然后委托 {@link
+   * #createCredentialsProvider(Class)} 创建实例。类找不到或无 create 方法 时抛 IllegalArgumentException。
+   *
+   * @param credentialsProviderClass 凭证提供者全限定类名
+   * @return 凭证提供者实例
+   * @throws IllegalArgumentException 类不存在、未实现接口或缺少 create 方法
+   */
   private AwsCredentialsProvider credentialsProvider(String credentialsProviderClass) {
     Class<?> providerClass;
     try {
@@ -182,6 +206,15 @@ public class AwsClientProperties implements Serializable {
     }
   }
 
+  /**
+   * 调用凭证提供者类的静态工厂方法创建实例。
+   *
+   * <p>逻辑：优先尝试调用 create(Map) 静态方法（传入凭证提供者专属属性）； 若不存在则降级调用无参 create() 静态方法。
+   *
+   * @param providerClass 凭证提供者类
+   * @return 凭证提供者实例
+   * @throws NoSuchMethodException 类既无 create(Map) 也无 create() 静态方法
+   */
   private AwsCredentialsProvider createCredentialsProvider(Class<?> providerClass)
       throws NoSuchMethodException {
     AwsCredentialsProvider provider;

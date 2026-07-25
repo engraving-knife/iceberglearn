@@ -25,6 +25,19 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 
+/**
+ * 文件级说明：OAuth2 令牌响应模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 认证响应模型层）。
+ *
+ * <p>职责：封装 OAuth2 令牌端点返回的响应，包括 access_token、token_type、 issued_token_type、expires_in、refresh_token
+ * 和 scope。
+ *
+ * <p>设计意图：使用 Builder 模式保证不可变性；validate() 校验 access_token 与 token_type 非空。 被序列化/反序列化由 {@link
+ * org.apache.iceberg.rest.auth.OAuth2Util} 处理。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.rest.auth.OAuth2Util} 的令牌流程消费。
+ */
 public class OAuthTokenResponse implements RESTResponse {
   private final String accessToken;
   private final String issuedTokenType;

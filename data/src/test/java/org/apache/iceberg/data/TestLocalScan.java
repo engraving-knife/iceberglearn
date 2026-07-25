@@ -69,6 +69,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestLocalScan 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestLocalScan 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestLocalScan {
   private static final Schema SCHEMA =
       new Schema(
@@ -79,6 +86,7 @@ public class TestLocalScan {
 
   @Rule public final TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "format = {0}")
   public static Object[] parameters() {
     return new Object[] {"parquet", "orc", "avro"};
@@ -86,6 +94,7 @@ public class TestLocalScan {
 
   private final FileFormat format;
 
+  /** 辅助方法：TestLocalScan。 */
   public TestLocalScan(String format) {
     this.format = FileFormat.fromString(format);
   }
@@ -143,6 +152,7 @@ public class TestLocalScan {
           genericRecord.copy(ImmutableMap.of("id", 27L, "data", "overview")),
           genericRecord.copy(ImmutableMap.of("id", 28L, "data", "tender")));
 
+  /** 辅助方法：overwriteExistingData。 */
   private void overwriteExistingData() throws IOException {
     DataFile file12 =
         writeFile(sharedTableLocation, format.addExtension("file-12"), file1SecondSnapshotRecords);
@@ -175,6 +185,7 @@ public class TestLocalScan {
         .commit();
   }
 
+  /** 辅助方法：appendData。 */
   private void appendData() throws IOException {
     DataFile file12 =
         writeFile(sharedTableLocation, format.addExtension("file-12"), file1SecondSnapshotRecords);
@@ -195,6 +206,7 @@ public class TestLocalScan {
     sharedTable.newFastAppend().appendFile(file13).appendFile(file23).appendFile(file33).commit();
   }
 
+  /** 辅助方法：createTables。 */
   @Before
   public void createTables() throws IOException {
     File location = temp.newFolder("shared");
@@ -225,6 +237,11 @@ public class TestLocalScan {
     sharedTable.newAppend().appendFile(file1).appendFile(file2).appendFile(file3).commit();
   }
 
+  /**
+   * 测试场景：Random Data。
+   *
+   * <p>验证该方法在 Random Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testRandomData() throws IOException {
     List<Record> expected = RandomGenericData.generate(SCHEMA, 1000, 435691832918L);
@@ -271,6 +288,11 @@ public class TestLocalScan {
     Assert.assertEquals("Random record set should match", Sets.newHashSet(expected), records);
   }
 
+  /**
+   * 测试场景：Full Scan。
+   *
+   * <p>验证该方法在 Full Scan 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullScan() {
     Iterable<Record> results = IcebergGenerics.read(sharedTable).build();
@@ -286,6 +308,11 @@ public class TestLocalScan {
     Assert.assertEquals("Random record set should match", Sets.newHashSet(expected), records);
   }
 
+  /**
+   * 测试场景：Filter。
+   *
+   * <p>验证该方法在 Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilter() {
     Iterable<Record> result = IcebergGenerics.read(sharedTable).where(lessThan("id", 3)).build();
@@ -310,12 +337,18 @@ public class TestLocalScan {
         Sets.newHashSet(result));
   }
 
+  /**
+   * 测试场景：Project。
+   *
+   * <p>验证该方法在 Project 条件下的行为是否符合预期。
+   */
   @Test
   public void testProject() {
     verifyProjectIdColumn(IcebergGenerics.read(sharedTable).select("id").build());
     verifyProjectIdColumn(IcebergGenerics.read(sharedTable).select("iD").caseInsensitive().build());
   }
 
+  /** 辅助方法：verifyProjectIdColumn。 */
   private void verifyProjectIdColumn(Iterable<Record> results) {
     Set<Long> expected = Sets.newHashSet();
     expected.addAll(
@@ -334,6 +367,11 @@ public class TestLocalScan {
         Sets.newHashSet(transform(results, record -> (Long) record.getField("id"))));
   }
 
+  /**
+   * 测试场景：Project With Schema。
+   *
+   * <p>验证该方法在 Project With Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectWithSchema() {
     // Test with table schema
@@ -382,6 +420,11 @@ public class TestLocalScan {
     Assert.assertFalse(iterator.hasNext());
   }
 
+  /**
+   * 测试场景：Project With Missing Filter Column。
+   *
+   * <p>验证该方法在 Project With Missing Filter Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectWithMissingFilterColumn() {
     Iterable<Record> results =
@@ -409,6 +452,11 @@ public class TestLocalScan {
         Sets.newHashSet(transform(results, record -> record.getField("data").toString())));
   }
 
+  /**
+   * 测试场景：Use Snapshot。
+   *
+   * <p>验证该方法在 Use Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testUseSnapshot() throws IOException {
     overwriteExistingData();
@@ -430,6 +478,11 @@ public class TestLocalScan {
     Assert.assertNotNull(Iterables.get(records, 0).getField("data"));
   }
 
+  /**
+   * 测试场景：As Of Time。
+   *
+   * <p>验证该方法在 As Of Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testAsOfTime() throws IOException {
     overwriteExistingData();
@@ -451,6 +504,11 @@ public class TestLocalScan {
     Assert.assertNotNull(Iterables.get(records, 0).getField("data"));
   }
 
+  /**
+   * 测试场景：Appends Between。
+   *
+   * <p>验证该方法在 Appends Between 条件下的行为是否符合预期。
+   */
   @Test
   public void testAppendsBetween() throws IOException {
     appendData();
@@ -474,6 +532,11 @@ public class TestLocalScan {
     Assert.assertNotNull(Iterables.get(records, 0).getField("data"));
   }
 
+  /**
+   * 测试场景：Appends After。
+   *
+   * <p>验证该方法在 Appends After 条件下的行为是否符合预期。
+   */
   @Test
   public void testAppendsAfter() throws IOException {
     appendData();
@@ -498,6 +561,11 @@ public class TestLocalScan {
     Assert.assertNotNull(Iterables.get(records, 0).getField("data"));
   }
 
+  /**
+   * 测试场景：Unknown Snapshot Id。
+   *
+   * <p>验证该方法在 Unknown Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnknownSnapshotId() {
     Long minSnapshotId =
@@ -511,6 +579,11 @@ public class TestLocalScan {
         .hasMessage("Cannot find snapshot with ID " + (minSnapshotId - 1));
   }
 
+  /**
+   * 测试场景：As Of Time Older Than First Snapshot。
+   *
+   * <p>验证该方法在 As Of Time Older Than First Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testAsOfTimeOlderThanFirstSnapshot() {
     IcebergGenerics.ScanBuilder scanBuilder = IcebergGenerics.read(sharedTable);
@@ -523,11 +596,13 @@ public class TestLocalScan {
             "Cannot find a snapshot older than " + DateTimeUtil.formatTimestampMillis(timestamp));
   }
 
+  /** 辅助方法：writeFile。 */
   private DataFile writeFile(String location, String filename, List<Record> records)
       throws IOException {
     return writeFile(location, filename, SCHEMA, records);
   }
 
+  /** 辅助方法：writeFile。 */
   private DataFile writeFile(String location, String filename, Schema schema, List<Record> records)
       throws IOException {
     Path path = new Path(location, filename);
@@ -546,6 +621,11 @@ public class TestLocalScan {
         .build();
   }
 
+  /**
+   * 测试场景：Filter With Date And Timestamp。
+   *
+   * <p>验证该方法在 Filter With Date And Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterWithDateAndTimestamp() throws IOException {
     // TODO: Add multiple timestamp tests - there's an issue with ORC caching TZ in ThreadLocal, so
@@ -590,6 +670,7 @@ public class TestLocalScan {
     }
   }
 
+  /** 辅助方法：longToBuffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

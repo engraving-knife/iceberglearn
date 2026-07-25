@@ -25,15 +25,32 @@ import software.amazon.awssdk.core.metrics.CoreMetric;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricCollector;
 
+/**
+ * 文件级说明：测试 TestRetryDetector 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestRetryDetector 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestRetryDetector {
   private static final String METRICS_NAME = "name";
 
+  /**
+   * 测试场景：No Metrics。
+   *
+   * <p>验证该方法在 No Metrics 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoMetrics() {
     RetryDetector detector = new RetryDetector();
     Assertions.assertThat(detector.retried()).as("Should default to false").isFalse();
   }
 
+  /**
+   * 测试场景：Retry Count Missing。
+   *
+   * <p>验证该方法在 Retry Count Missing 条件下的行为是否符合预期。
+   */
   @Test
   public void testRetryCountMissing() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -45,6 +62,11 @@ public class TestRetryDetector {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Retry Count Zero。
+   *
+   * <p>验证该方法在 Retry Count Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testRetryCountZero() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -57,6 +79,11 @@ public class TestRetryDetector {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Retry Count Non Zero。
+   *
+   * <p>验证该方法在 Retry Count Non Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testRetryCountNonZero() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -69,6 +96,11 @@ public class TestRetryDetector {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Multiple Retry Counts。
+   *
+   * <p>验证该方法在 Multiple Retry Counts 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleRetryCounts() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -82,6 +114,11 @@ public class TestRetryDetector {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Nested Retry Count Zero。
+   *
+   * <p>验证该方法在 Nested Retry Count Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedRetryCountZero() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -96,6 +133,11 @@ public class TestRetryDetector {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Nested Retry Count Non Zero。
+   *
+   * <p>验证该方法在 Nested Retry Count Non Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedRetryCountNonZero() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -110,6 +152,11 @@ public class TestRetryDetector {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Nested Retry Count Multiple Children。
+   *
+   * <p>验证该方法在 Nested Retry Count Multiple Children 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedRetryCountMultipleChildren() {
     MetricCollector metrics = MetricCollector.create(METRICS_NAME);
@@ -129,6 +176,11 @@ public class TestRetryDetector {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Multiple Collections Reported。
+   *
+   * <p>验证该方法在 Multiple Collections Reported 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleCollectionsReported() {
     MetricCollector metrics1 = MetricCollector.create(METRICS_NAME);
@@ -147,6 +199,11 @@ public class TestRetryDetector {
         .isTrue();
   }
 
+  /**
+   * 测试场景：No Op After Detection。
+   *
+   * <p>验证该方法在 No Op After Detection 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoOpAfterDetection() {
     MetricCollector metrics1 = MetricCollector.create(METRICS_NAME);

@@ -21,20 +21,34 @@ package org.apache.iceberg.encryption;
 import org.apache.iceberg.io.OutputFile;
 
 /**
- * Thin wrapper around a {@link OutputFile} that is encrypting bytes written to the underlying file
- * system, via an encryption key that is symbolized by the enclosed {@link EncryptionKeyMetadata}.
+ * 文件级说明：已加密输出文件的薄包装接口。
  *
- * <p>The {@link EncryptionManager} returns instances of these when passed output files that should
- * be encrypted as they are being written to the backing file system.
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>把一个向底层文件系统写入加密字节的 {@link OutputFile} 与其使用的 {@link EncryptionKeyMetadata}（加密密钥元数据）打包在一起。
+ *   <li>作为 {@link EncryptionManager#encrypt(OutputFile)} 的返回值，供写端在写流过程中 实时加密，并记录密钥元数据以便后续解密。
+ * </ul>
+ *
+ * <p>设计意图：与 {@link EncryptedInputFile} 对称。通过组合而非继承把加密能力叠加在 任意 OutputFile 之上，保持 IO 层与加密层解耦。
+ *
+ * <p>上下游关系：由 {@link EncryptionManager} 在加密写流程中产出；被 iceberg-core 的 数据写入路径消费。
  */
 public interface EncryptedOutputFile {
 
-  /** An OutputFile instance that encrypts the bytes that are written to its output streams. */
+  /**
+   * 返回一个 {@link OutputFile}，其输出流在写入时会自动加密字节。
+   *
+   * @return 加密写入的输出文件
+   */
   OutputFile encryptingOutputFile();
 
   /**
-   * Metadata about the encryption key that is being used to encrypt the associated {@link
-   * #encryptingOutputFile()}.
+   * 返回用于加密 {@link #encryptingOutputFile()} 的加密密钥元数据。
+   *
+   * @return 密钥元数据
    */
   EncryptionKeyMetadata keyMetadata();
 }

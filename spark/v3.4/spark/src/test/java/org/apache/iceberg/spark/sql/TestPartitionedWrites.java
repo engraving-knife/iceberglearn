@@ -20,8 +20,16 @@ package org.apache.iceberg.spark.sql;
 
 import java.util.Map;
 
+/**
+ * 文件级说明：测试 TestPartitionedWrites 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 分区写 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestPartitionedWrites extends PartitionedWritesTestBase {
 
+  /** 测试分区写。 */
   public TestPartitionedWrites(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);

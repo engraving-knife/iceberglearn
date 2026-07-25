@@ -41,39 +41,48 @@ import org.apache.spark.sql.catalyst.util.GenericArrayData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 值读取器工厂集合，提供各类型的通用读取器构建方法。
+ *
+ * <p>设计意图：以工厂方法集中创建读取器，复用公共逻辑。
+ *
+ * <p>上下游关系：由 SparkParquetReaders / SparkOrcReader / SparkAvroReader 使用。
+ */
 public class SparkValueReaders {
 
   private SparkValueReaders() {}
-
+  /** 执行 strings 相关操作。 */
   static ValueReader<UTF8String> strings() {
     return StringReader.INSTANCE;
   }
-
+  /** 执行 enums 相关操作。 */
   static ValueReader<UTF8String> enums(List<String> symbols) {
     return new EnumReader(symbols);
   }
-
+  /** 执行 uuids 相关操作。 */
   static ValueReader<UTF8String> uuids() {
     return UUIDReader.INSTANCE;
   }
-
+  /** 执行 decimal 相关操作。 */
   static ValueReader<Decimal> decimal(ValueReader<byte[]> unscaledReader, int scale) {
     return new DecimalReader(unscaledReader, scale);
   }
-
+  /** 执行 array 相关操作。 */
   static ValueReader<ArrayData> array(ValueReader<?> elementReader) {
     return new ArrayReader(elementReader);
   }
-
+  /** 执行 arrayMap 相关操作。 */
   static ValueReader<ArrayBasedMapData> arrayMap(
       ValueReader<?> keyReader, ValueReader<?> valueReader) {
     return new ArrayMapReader(keyReader, valueReader);
   }
-
+  /** 执行 map 相关操作。 */
   static ValueReader<ArrayBasedMapData> map(ValueReader<?> keyReader, ValueReader<?> valueReader) {
     return new MapReader(keyReader, valueReader);
   }
-
+  /** 执行 struct 相关操作。 */
   static ValueReader<InternalRow> struct(
       List<ValueReader<?>> readers, Types.StructType struct, Map<Integer, ?> idToConstant) {
     return new StructReader(readers, struct, idToConstant);
@@ -257,7 +266,7 @@ public class SparkValueReaders {
       super(readers, struct, idToConstant);
       this.numFields = readers.size();
     }
-
+    /** 执行 reuseOrCreate 相关操作。 */
     @Override
     protected InternalRow reuseOrCreate(Object reuse) {
       if (reuse instanceof GenericInternalRow
@@ -266,12 +275,12 @@ public class SparkValueReaders {
       }
       return new GenericInternalRow(numFields);
     }
-
+    /** 返回值。 */
     @Override
     protected Object get(InternalRow struct, int pos) {
       return null;
     }
-
+    /** 执行 set 相关操作。 */
     @Override
     protected void set(InternalRow struct, int pos, Object value) {
       if (value != null) {

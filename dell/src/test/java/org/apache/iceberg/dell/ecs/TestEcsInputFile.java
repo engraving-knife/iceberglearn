@@ -29,10 +29,22 @@ import org.apache.iceberg.relocated.com.google.common.io.ByteStreams;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestEcsInputFile 的功能。
+ *
+ * <p>所属模块：iceberg-dell。职责：验证 TestEcsInputFile 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEcsInputFile {
 
   @ClassRule public static EcsS3MockRule rule = EcsS3MockRule.create();
 
+  /**
+   * 测试场景：Absent File。
+   *
+   * <p>验证该方法在 Absent File 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbsentFile() {
     String objectName = rule.randomObjectName();
@@ -41,6 +53,11 @@ public class TestEcsInputFile {
     assertThat(inputFile.exists()).as("File is absent").isFalse();
   }
 
+  /**
+   * 测试场景：File Read。
+   *
+   * <p>验证该方法在 File Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testFileRead() throws IOException {
     String objectName = rule.randomObjectName();

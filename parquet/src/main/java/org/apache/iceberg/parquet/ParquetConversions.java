@@ -30,9 +30,42 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 
+/**
+ * 文件级说明：Parquet 值到 Iceberg Literal/Java 对象的转换工具。
+ *
+ * <p>所属模块：iceberg-parquet（类型转换工具，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：提供 Parquet 原始值（Binary/Integer/Long 等）到 Iceberg {@link Literal} 或 Java
+ * 对象（BigDecimal/UUID/CharSequence 等）的转换函数。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>函数式转换：返回 {@link Function}，延迟应用，可组合。
+ *   <li>双层转换：converterFromParquet(PrimitiveType) 处理 Parquet→Java 对象；
+ *       converterFromParquet(PrimitiveType, Type) 在此基础上叠加 Iceberg 类型期望的转换 （如
+ *       INT32→LONG、FLOAT→DOUBLE）。
+ * </ul>
+ *
+ * <p>上下游关系：被 ParquetFilters/ParquetBloomRowGroupFilter 等过滤器使用， 用于将 Parquet 统计值/Bloom Filter 值转为
+ * Iceberg Literal 进行比较。
+ */
 class ParquetConversions {
   private ParquetConversions() {}
 
+  /**
+   * 将 Parquet 原始值转为 Iceberg {@link Literal}。
+   *
+   * <p>逻辑：按 Iceberg 类型 ID 分派——BOOLEAN/INTEGER/LONG/FLOAT/DOUBLE 直接包装；
+   * STRING/UUID/FIXED/BINARY/DECIMAL 通过 converterFromParquet 转换后包装。
+   *
+   * @param type Iceberg 类型
+   * @param parquetType Parquet 原始类型
+   * @param value Parquet 原始值
+   * @param <T> Literal 值类型
+   * @return 对应的 Iceberg Literal
+   * @throws IllegalArgumentException 若类型不受支持
+   */
   @SuppressWarnings("unchecked")
   static <T> Literal<T> fromParquetPrimitive(Type type, PrimitiveType parquetType, Object value) {
     switch (type.typeId()) {
@@ -67,6 +100,13 @@ class ParquetConversions {
     }
   }
 
+  /**
+   * 获取带 Iceberg 类型期望的转换函数（叠加 INT32→LONG / FLOAT→DOUBLE 转换）。
+   *
+   * @param parquetType Parquet 原始类型
+   * @param icebergType Iceberg 期望类型
+   * @return 组合转换函数
+   */
   static Function<Object, Object> converterFromParquet(
       PrimitiveType parquetType, Type icebergType) {
     Function<Object, Object> fromParquet = converterFromParquet(parquetType);
@@ -83,6 +123,15 @@ class ParquetConversions {
     return fromParquet;
   }
 
+  /**
+   * 获取 Parquet 原始值到 Java 对象的转换函数。
+   *
+   * <p>逻辑：按 Parquet 逻辑类型/原始类型分派——UTF8 解码为 CharSequence（避免拷贝）， DECIMAL 按 INT32/INT64/BINARY 转为
+   * BigDecimal，BINARY 转为 ByteBuffer，其他原样返回。
+   *
+   * @param type Parquet 原始类型
+   * @return 转换函数
+   */
   static Function<Object, Object> converterFromParquet(PrimitiveType type) {
     if (type.getOriginalType() != null) {
       switch (type.getOriginalType()) {

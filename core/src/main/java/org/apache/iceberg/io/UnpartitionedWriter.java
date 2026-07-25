@@ -22,10 +22,32 @@ import java.io.IOException;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.PartitionSpec;
 
+/**
+ * 文件级说明：非分区表写入器（遗留 API）。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：继承 {@link BaseTaskWriter}，为非分区表写入数据。由于无分区，仅需维护一个 {@link
+ * BaseTaskWriter.RollingFileWriter}（分区键传 null），通过滚动机制控制文件大小。
+ *
+ * <p>设计意图：这是早期版本的非分区写入器。新代码推荐使用 {@link ClusteredDataWriter} 或 {@link FanoutDataWriter}。
+ *
+ * <p>上下游关系：由引擎集成层为非分区表创建。
+ */
 public class UnpartitionedWriter<T> extends BaseTaskWriter<T> {
 
   private final RollingFileWriter currentWriter;
 
+  /**
+   * 构造非分区写入器，分区键传 null。
+   *
+   * @param spec 分区规格（应为非分区规格）
+   * @param format 文件格式
+   * @param appenderFactory 追加器工厂
+   * @param fileFactory 输出文件工厂
+   * @param io FileIO 实例
+   * @param targetFileSize 目标文件大小
+   */
   public UnpartitionedWriter(
       PartitionSpec spec,
       FileFormat format,
@@ -37,11 +59,13 @@ public class UnpartitionedWriter<T> extends BaseTaskWriter<T> {
     currentWriter = new RollingFileWriter(null);
   }
 
+  /** 写入一行记录。 */
   @Override
   public void write(T record) throws IOException {
     currentWriter.write(record);
   }
 
+  /** 关闭写入器。 */
   @Override
   public void close() throws IOException {
     currentWriter.close();

@@ -34,9 +34,23 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * 以 Flink {@link LogicalType} 为 partner 的 Parquet schema 访问者基类。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：在 Parquet 与 Flink schema 互转时， 按结构访问 Parquet
+ * GroupType/MessageType，处理 LIST/MAP 等复杂结构。
+ *
+ * <p>设计意图：访问者模式，将 Parquet schema 结构遍历与具体构造逻辑解耦； 上下游：被 FlinkParquetReaders/FlinkParquetWriters 调用。
+ */
 public class ParquetWithFlinkSchemaVisitor<T> {
   private final Deque<String> fieldNames = Lists.newLinkedList();
 
+  /**
+   * 入口方法：按 Parquet type 类型递归访问。
+   *
+   * <p>逻辑：MessageType 走 message；primitive 走 primitive；group 带 LIST/MAP annotation 走对应处理；其余按 struct
+   * 处理。
+   */
   public static <T> T visit(
       LogicalType sType, Type type, ParquetWithFlinkSchemaVisitor<T> visitor) {
     Preconditions.checkArgument(sType != null, "Invalid DataType: null");
@@ -160,6 +174,7 @@ public class ParquetWithFlinkSchemaVisitor<T> {
     }
   }
 
+  /** 访问单个字段，压入字段名后递归。 */
   private static <T> T visitField(
       RowType.RowField sField, Type field, ParquetWithFlinkSchemaVisitor<T> visitor) {
     visitor.fieldNames.push(field.getName());
@@ -170,6 +185,7 @@ public class ParquetWithFlinkSchemaVisitor<T> {
     }
   }
 
+  /** 访问所有字段，要求字段名经 Avro 兼容转换后匹配。 */
   private static <T> List<T> visitFields(
       RowType struct, GroupType group, ParquetWithFlinkSchemaVisitor<T> visitor) {
     List<RowType.RowField> sFields = struct.getFields();
@@ -190,30 +206,37 @@ public class ParquetWithFlinkSchemaVisitor<T> {
     return results;
   }
 
+  /** 处理 MessageType 结果，默认返回 null，由子类覆盖。 */
   public T message(RowType sStruct, MessageType message, List<T> fields) {
     return null;
   }
 
+  /** 处理 struct 结果，默认返回 null，由子类覆盖。 */
   public T struct(RowType sStruct, GroupType struct, List<T> fields) {
     return null;
   }
 
+  /** 处理 list 结果，默认返回 null，由子类覆盖。 */
   public T list(ArrayType sArray, GroupType array, T element) {
     return null;
   }
 
+  /** 处理 map 结果，默认返回 null，由子类覆盖。 */
   public T map(MapType sMap, GroupType map, T key, T value) {
     return null;
   }
 
+  /** 处理 primitive 结果，默认返回 null，由子类覆盖。 */
   public T primitive(LogicalType sPrimitive, PrimitiveType primitive) {
     return null;
   }
 
+  /** 返回当前访问路径的字段名数组。 */
   protected String[] currentPath() {
     return Lists.newArrayList(fieldNames.descendingIterator()).toArray(new String[0]);
   }
 
+  /** 返回追加 name 后的访问路径。 */
   protected String[] path(String name) {
     List<String> list = Lists.newArrayList(fieldNames.descendingIterator());
     list.add(name);

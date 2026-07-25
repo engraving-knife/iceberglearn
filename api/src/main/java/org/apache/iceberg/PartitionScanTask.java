@@ -18,11 +18,22 @@
  */
 package org.apache.iceberg;
 
-/** A scan task for data within a particular partition */
+/**
+ * 分区扫描任务：表示对某个特定分区内的数据进行的扫描任务。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：在 {@link ScanTask} 基础上额外暴露分区规范 {@link #spec()} 与分区值 {@link
+ * #partition()}，使下游能够按分区对任务分组、统计或裁剪。
+ *
+ * <p>设计意图：把"分区信息"从具体文件扫描任务中抽离为独立接口，让所有针对分区的扫描任务 （无论是文件扫描还是其它任务）共用同一套分区访问契约。
+ *
+ * <p>上下游关系：被 {@link ContentScanTask} 等继承；被扫描规划器与引擎层用于按分区聚合任务。
+ */
 public interface PartitionScanTask extends ScanTask {
-  /** Returns the spec of the partition for this scan task */
+  /** 返回本任务所属分区的分区规范。 */
   PartitionSpec spec();
 
-  /** Returns the value of the partition for this scan task */
+  /** 返回本任务的分区值。 */
   StructLike partition();
 }

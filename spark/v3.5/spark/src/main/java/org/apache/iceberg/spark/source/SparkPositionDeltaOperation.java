@@ -33,6 +33,15 @@ import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 import org.apache.spark.sql.connector.write.SupportsDelta;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：POSITION_DELTA 行级操作实现，在写入前读取受影响行并输出 delete+insert 增量。
+ *
+ * <p>设计意图：实现 Spark RowLevelOperation，产出位置增量以支持 MERGE INTO。
+ *
+ * <p>上下游关系：由 SparkRowLevelOperationBuilder 在 delta 模式下创建。
+ */
 class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
 
   private final SparkSession spark;
@@ -58,17 +67,18 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
     this.command = info.command();
     this.isolationLevel = isolationLevel;
   }
-
+  /** 执行 command 相关操作。 */
   @Override
   public Command command() {
     return command;
   }
-
+  /** 创建 ScanBuilder 实例。 */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (lazyScanBuilder == null) {
       this.lazyScanBuilder =
           new SparkScanBuilder(spark, table, branch, options) {
+            /** 构建目标对象。 */
             @Override
             public Scan build() {
               Scan scan = super.buildMergeOnReadScan();
@@ -80,7 +90,7 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
 
     return lazyScanBuilder;
   }
-
+  /** 创建 WriteBuilder 实例。 */
   @Override
   public DeltaWriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     if (lazyWriteBuilder == null) {
@@ -93,21 +103,21 @@ class SparkPositionDeltaOperation implements RowLevelOperation, SupportsDelta {
 
     return lazyWriteBuilder;
   }
-
+  /** 执行 requiredMetadataAttributes 相关操作。 */
   @Override
   public NamedReference[] requiredMetadataAttributes() {
     NamedReference specId = Expressions.column(MetadataColumns.SPEC_ID.name());
     NamedReference partition = Expressions.column(MetadataColumns.PARTITION_COLUMN_NAME);
     return new NamedReference[] {specId, partition};
   }
-
+  /** 执行 rowId 相关操作。 */
   @Override
   public NamedReference[] rowId() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());
     NamedReference pos = Expressions.column(MetadataColumns.ROW_POSITION.name());
     return new NamedReference[] {file, pos};
   }
-
+  /** 执行 representUpdateAsDeleteAndInsert 相关操作。 */
   @Override
   public boolean representUpdateAsDeleteAndInsert() {
     return true;

@@ -18,5 +18,15 @@
  */
 package org.apache.iceberg;
 
-/** A {@link ScanTask} for position delete files */
+/**
+ * 位置删除文件的扫描任务接口。
+ *
+ * <p>所属模块：iceberg-core（核心实现层），扩展 {@link ContentScanTask} 以专门描述位置删除文件扫描任务。
+ *
+ * <p>职责：在扫描场景下承载一个位置删除文件（position delete file）的读取信息， 供引擎执行 MVCC 删除合并。
+ *
+ * <p>设计意图：作为标记接口，区分位置删除与等值删除的扫描任务类型，便于引擎按类型分发处理。
+ *
+ * <p>上下游关系：被 {@link PositionDeletesScan} 等扫描规划器产出；被引擎删除合并逻辑消费。
+ */
 public interface PositionDeletesScanTask extends ContentScanTask<DeleteFile> {}

@@ -29,12 +29,16 @@ import org.apache.spark.sql.types.TimestampNTZType;
 import org.apache.spark.sql.types.TimestampType;
 
 /**
- * A Spark function implementation for the Iceberg month transform.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>Example usage: {@code SELECT system.months('source_col')}.
+ * <p>职责：Iceberg months 转换的 Spark 标量函数，将日期/时间值转为自纪元以来的月数。
+ *
+ * <p>设计意图：实现 Iceberg months transform，用于按月分区。
+ *
+ * <p>上下游关系：由 SparkFunctions / SparkFunctionCatalog 注册。
  */
 public class MonthsFunction extends UnaryUnboundFunction {
-
+  /** 执行 doBind 相关操作。 */
   @Override
   protected BoundFunction doBind(DataType valueType) {
     if (valueType instanceof DateType) {
@@ -48,25 +52,26 @@ public class MonthsFunction extends UnaryUnboundFunction {
           "Expected value to be date or timestamp: " + valueType.catalogString());
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return name()
         + "(col) - Call Iceberg's month transform\n"
         + "  col :: source column (must be date or timestamp)";
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "months";
   }
 
   private abstract static class BaseToMonthsFunction implements ScalarFunction<Integer> {
+    /** 返回名称。 */
     @Override
     public String name() {
       return "months";
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
@@ -78,17 +83,17 @@ public class MonthsFunction extends UnaryUnboundFunction {
     public static int invoke(int days) {
       return DateTimeUtil.daysToMonths(days);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.DateType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.months(date)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -101,17 +106,17 @@ public class MonthsFunction extends UnaryUnboundFunction {
     public static int invoke(long micros) {
       return DateTimeUtil.microsToMonths(micros);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.months(timestamp)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -124,17 +129,17 @@ public class MonthsFunction extends UnaryUnboundFunction {
     public static int invoke(long micros) {
       return DateTimeUtil.microsToMonths(micros);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampNTZType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.months(timestamp_ntz)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen

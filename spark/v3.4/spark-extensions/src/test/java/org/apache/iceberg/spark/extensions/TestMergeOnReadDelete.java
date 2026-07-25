@@ -42,8 +42,16 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestMergeOnReadDelete 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 合并上读删除 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestMergeOnReadDelete extends TestDelete {
 
+  /** 测试合并上读删除。 */
   public TestMergeOnReadDelete(
       String catalogName,
       String implementation,
@@ -66,6 +74,7 @@ public class TestMergeOnReadDelete extends TestDelete {
         planningMode);
   }
 
+  /** extra表属性。 */
   @Override
   protected Map<String, String> extraTableProperties() {
     return ImmutableMap.of(
@@ -75,11 +84,13 @@ public class TestMergeOnReadDelete extends TestDelete {
         RowLevelOperationMode.MERGE_ON_READ.modeName());
   }
 
+  /** clear测试Spark目录cache。 */
   @Parameterized.AfterParam
   public static void clearTestSparkCatalogCache() {
     TestSparkCatalog.clearTables();
   }
 
+  /** 测试提交unknownexception场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCommitUnknownException() {
     createAndInitTable("id INT, dep STRING, category STRING");
@@ -138,6 +149,7 @@ public class TestMergeOnReadDelete extends TestDelete {
         sql("SELECT * FROM %s ORDER BY id", "dummy_catalog.default.table"));
   }
 
+  /** 测试聚合下推在合并上读删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownInMergeOnReadDelete() {
     createAndInitTable("id LONG, data INT");

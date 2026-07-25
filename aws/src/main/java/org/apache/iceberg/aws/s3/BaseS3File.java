@@ -61,9 +61,11 @@ abstract class BaseS3File {
   }
 
   /**
-   * Note: this may be stale if file was deleted since metadata is cached for size/existence checks.
+   * 检查 S3 对象是否存在。
    *
-   * @return flag
+   * <p>注意：由于元数据会被缓存，若文件在缓存后被删除，此方法可能返回过时的结果。
+   *
+   * @return true 表示对象存在
    */
   public boolean exists() {
     try {
@@ -77,6 +79,14 @@ abstract class BaseS3File {
     }
   }
 
+  /**
+   * 获取 S3 对象元数据（HeadObject），惰性缓存。
+   *
+   * <p>逻辑：首次调用时通过 HeadObject 请求获取元数据并缓存，后续直接返回缓存值。 请求时会通过 S3RequestUtil 配置服务端加密参数。
+   *
+   * @return S3 对象元数据
+   * @throws S3Exception S3 请求失败
+   */
   protected HeadObjectResponse getObjectMetadata() throws S3Exception {
     if (metadata == null) {
       HeadObjectRequest.Builder requestBuilder =

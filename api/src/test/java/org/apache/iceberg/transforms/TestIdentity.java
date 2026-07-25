@@ -26,7 +26,19 @@ import org.apache.iceberg.expressions.Literal;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestIdentity 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestIdentity 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIdentity {
+  /**
+   * 测试场景：Null Human String。
+   *
+   * <p>验证该方法在 Null Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHumanString() {
     Types.LongType longType = Types.LongType.get();
@@ -37,6 +49,11 @@ public class TestIdentity {
         .isEqualTo("null");
   }
 
+  /**
+   * 测试场景：Binary Human String。
+   *
+   * <p>验证该方法在 Binary Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testBinaryHumanString() {
     Types.BinaryType binary = Types.BinaryType.get();
@@ -47,6 +64,11 @@ public class TestIdentity {
         .isEqualTo("AQID");
   }
 
+  /**
+   * 测试场景：Fixed Human String。
+   *
+   * <p>验证该方法在 Fixed Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testFixedHumanString() {
     Types.FixedType fixed3 = Types.FixedType.ofLength(3);
@@ -57,6 +79,11 @@ public class TestIdentity {
         .isEqualTo("AQID");
   }
 
+  /**
+   * 测试场景：Date Human String。
+   *
+   * <p>验证该方法在 Date Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateHumanString() {
     Types.DateType date = Types.DateType.get();
@@ -70,6 +97,11 @@ public class TestIdentity {
         .isEqualTo(dateString);
   }
 
+  /**
+   * 测试场景：Date Human String Deprecated。
+   *
+   * <p>验证该方法在 Date Human String Deprecated 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateHumanStringDeprecated() {
     Types.DateType date = Types.DateType.get();
@@ -83,6 +115,11 @@ public class TestIdentity {
         .isEqualTo(dateString);
   }
 
+  /**
+   * 测试场景：Time Human String。
+   *
+   * <p>验证该方法在 Time Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimeHumanString() {
     Types.TimeType time = Types.TimeType.get();
@@ -96,6 +133,11 @@ public class TestIdentity {
         .isEqualTo(timeString);
   }
 
+  /**
+   * 测试场景：Timestamp With Zone Human String。
+   *
+   * <p>验证该方法在 Timestamp With Zone Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithZoneHumanString() {
     Types.TimestampType timestamptz = Types.TimestampType.withZone();
@@ -109,6 +151,11 @@ public class TestIdentity {
         .isEqualTo("2017-12-01T18:12:55.038194Z");
   }
 
+  /**
+   * 测试场景：Timestamp Without Zone Human String。
+   *
+   * <p>验证该方法在 Timestamp Without Zone Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithoutZoneHumanString() {
     Types.TimestampType timestamp = Types.TimestampType.withoutZone();
@@ -123,6 +170,11 @@ public class TestIdentity {
         .isEqualTo(tsString);
   }
 
+  /**
+   * 测试场景：Long To Human String。
+   *
+   * <p>验证该方法在 Long To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToHumanString() {
     Types.LongType longType = Types.LongType.get();
@@ -133,6 +185,11 @@ public class TestIdentity {
         .isEqualTo("-1234567890000");
   }
 
+  /**
+   * 测试场景：String To Human String。
+   *
+   * <p>验证该方法在 String To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToHumanString() {
     Types.StringType string = Types.StringType.get();
@@ -144,6 +201,11 @@ public class TestIdentity {
         .isEqualTo(withSlash);
   }
 
+  /**
+   * 测试场景：Big Decimal To Human String。
+   *
+   * <p>验证该方法在 Big Decimal To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testBigDecimalToHumanString() {
     Types.DecimalType decimal = Types.DecimalType.of(9, 2);

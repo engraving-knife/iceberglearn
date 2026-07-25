@@ -47,13 +47,22 @@ import org.apache.spark.sql.catalyst.util.GenericArrayData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 文件级说明：测试 RandomData 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 random数据 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class RandomData {
 
   // Default percentage of number of values that are null for optional fields
   public static final float DEFAULT_NULL_PERCENTAGE = 0.05f;
 
+  /** random数据。 */
   private RandomData() {}
 
+  /** 生成列表。 */
   public static List<Record> generateList(Schema schema, int numRecords, long seed) {
     RandomDataGenerator generator = new RandomDataGenerator(schema, seed, DEFAULT_NULL_PERCENTAGE);
     List<Record> records = Lists.newArrayListWithExpectedSize(numRecords);
@@ -64,6 +73,7 @@ public class RandomData {
     return records;
   }
 
+  /** 生成Spark。 */
   public static Iterable<InternalRow> generateSpark(Schema schema, int numRecords, long seed) {
     return () ->
         new Iterator<InternalRow>() {
@@ -86,29 +96,34 @@ public class RandomData {
         };
   }
 
+  /** 生成。 */
   public static Iterable<Record> generate(Schema schema, int numRecords, long seed) {
     return newIterable(
         () -> new RandomDataGenerator(schema, seed, DEFAULT_NULL_PERCENTAGE), schema, numRecords);
   }
 
+  /** 生成。 */
   public static Iterable<Record> generate(
       Schema schema, int numRecords, long seed, float nullPercentage) {
     return newIterable(
         () -> new RandomDataGenerator(schema, seed, nullPercentage), schema, numRecords);
   }
 
+  /** 生成fallback数据。 */
   public static Iterable<Record> generateFallbackData(
       Schema schema, int numRecords, long seed, long numDictRecords) {
     return newIterable(
         () -> new FallbackDataGenerator(schema, seed, numDictRecords), schema, numRecords);
   }
 
+  /** 生成dictionaryencodable数据。 */
   public static Iterable<GenericData.Record> generateDictionaryEncodableData(
       Schema schema, int numRecords, long seed, float nullPercentage) {
     return newIterable(
         () -> new DictionaryEncodedDataGenerator(schema, seed, nullPercentage), schema, numRecords);
   }
 
+  /** 新建可迭代。 */
   private static Iterable<Record> newIterable(
       Supplier<RandomDataGenerator> newGenerator, Schema schema, int numRecords) {
     return () ->

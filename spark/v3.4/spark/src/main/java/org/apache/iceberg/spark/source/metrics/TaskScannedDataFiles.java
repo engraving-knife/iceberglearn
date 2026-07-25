@@ -22,23 +22,32 @@ import org.apache.iceberg.metrics.CounterResult;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.spark.sql.connector.metric.CustomTaskMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：任务级已扫描数据文件数指标，在 Executor 端累计并上报。
+ *
+ * <p>设计意图：实现 Spark CustomTaskMetric，与 ScannedDataFiles 配对聚合。
+ *
+ * <p>上下游关系：由 BaseReader 在任务端上报。
+ */
 public class TaskScannedDataFiles implements CustomTaskMetric {
   private final long value;
 
   private TaskScannedDataFiles(long value) {
     this.value = value;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return ScannedDataFiles.NAME;
   }
-
+  /** 执行 value 相关操作。 */
   @Override
   public long value() {
     return value;
   }
-
+  /** 工厂构造方法。 */
   public static TaskScannedDataFiles from(ScanReport scanReport) {
     CounterResult counter = scanReport.scanMetrics().resultDataFiles();
     long value = counter != null ? counter.value() : 0L;

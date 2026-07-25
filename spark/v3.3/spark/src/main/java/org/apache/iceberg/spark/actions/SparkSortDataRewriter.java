@@ -27,6 +27,15 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkSortDataRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 class SparkSortDataRewriter extends SparkShufflingDataRewriter {
 
   private final SortOrder sortOrder;
@@ -48,11 +57,17 @@ class SparkSortDataRewriter extends SparkShufflingDataRewriter {
     this.sortOrder = sortOrder;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "SORT";
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, List<FileScanTask> group) {
     return sort(df, outputSortOrder(group, sortOrder));

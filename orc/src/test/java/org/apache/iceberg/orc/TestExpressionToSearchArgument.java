@@ -62,8 +62,20 @@ import org.apache.orc.storage.serde2.io.HiveDecimalWritable;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExpressionToSearchArgument 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestExpressionToSearchArgument 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExpressionToSearchArgument {
 
+  /**
+   * 测试场景：Primitive Types。
+   *
+   * <p>验证该方法在 Primitive Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimitiveTypes() {
     Schema schema =
@@ -138,6 +150,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Timezone Sensitive Types。
+   *
+   * <p>验证该方法在 Timezone Sensitive Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimezoneSensitiveTypes() {
     TimeZone currentTz = TimeZone.getDefault();
@@ -182,6 +199,11 @@ public class TestExpressionToSearchArgument {
     }
   }
 
+  /**
+   * 测试场景：Unsupported Types。
+   *
+   * <p>验证该方法在 Unsupported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnsupportedTypes() {
     Schema schema =
@@ -216,6 +238,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Nested Primitives。
+   *
+   * <p>验证该方法在 Nested Primitives 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedPrimitives() {
     Schema schema =
@@ -265,6 +292,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Special Characters。
+   *
+   * <p>验证该方法在 Special Characters 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecialCharacters() {
     Schema schema =
@@ -295,6 +327,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Evolved Schema。
+   *
+   * <p>验证该方法在 Evolved Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testEvolvedSchema() {
     Schema fileSchema =
@@ -330,6 +367,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Original Schema Name Mapping。
+   *
+   * <p>验证该方法在 Original Schema Name Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testOriginalSchemaNameMapping() {
     Schema originalSchema =
@@ -356,6 +398,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Modified Simple Schema Name Mapping。
+   *
+   * <p>验证该方法在 Modified Simple Schema Name Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testModifiedSimpleSchemaNameMapping() {
     Schema originalSchema =
@@ -394,6 +441,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Modified Complex Schema Name Mapping。
+   *
+   * <p>验证该方法在 Modified Complex Schema Name Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testModifiedComplexSchemaNameMapping() {
     Schema originalSchema =
@@ -478,6 +530,11 @@ public class TestExpressionToSearchArgument {
     Assertions.assertThat(actual.toString()).isEqualTo(expected.toString());
   }
 
+  /**
+   * 测试场景：Expression Contains Non Reference Term。
+   *
+   * <p>验证该方法在 Expression Contains Non Reference Term 条件下的行为是否符合预期。
+   */
   @Test
   public void testExpressionContainsNonReferenceTerm() {
     Schema schema = new Schema(required(1, "ts", Types.TimestampType.withoutZone()));

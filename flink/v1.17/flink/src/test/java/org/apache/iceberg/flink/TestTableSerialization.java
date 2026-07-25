@@ -45,6 +45,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestTableSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestTableSerialization 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestTableSerialization {
   private static final HadoopTables TABLES = new HadoopTables();
 
@@ -63,6 +70,7 @@ public class TestTableSerialization {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private Table table;
 
+  /** 辅助方法：initTable，init Table。 */
   @Before
   public void initTable() throws IOException {
     Map<String, String> props = ImmutableMap.of("k1", "v1", "k2", "v2");
@@ -73,6 +81,11 @@ public class TestTableSerialization {
     this.table = TABLES.create(SCHEMA, SPEC, SORT_ORDER, props, tableLocation.toString());
   }
 
+  /**
+   * 测试场景：Serializable Table Kryo Serialization。
+   *
+   * <p>验证该方法在 Serializable Table Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializableTableKryoSerialization() throws IOException {
     SerializableTable serializableTable = (SerializableTable) SerializableTable.copyOf(table);
@@ -80,6 +93,11 @@ public class TestTableSerialization {
         table, roundTripKryoSerialize(SerializableTable.class, serializableTable));
   }
 
+  /**
+   * 测试场景：Serializable Metadata Table Kryo Serialization。
+   *
+   * <p>验证该方法在 Serializable Metadata Table Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializableMetadataTableKryoSerialization() throws IOException {
     for (MetadataTableType type : MetadataTableType.values()) {
@@ -95,6 +113,11 @@ public class TestTableSerialization {
     }
   }
 
+  /**
+   * 测试场景：Serializable Transaction Table Kryo Serialization。
+   *
+   * <p>验证该方法在 Serializable Transaction Table Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializableTransactionTableKryoSerialization() throws IOException {
     Transaction txn = table.newTransaction();

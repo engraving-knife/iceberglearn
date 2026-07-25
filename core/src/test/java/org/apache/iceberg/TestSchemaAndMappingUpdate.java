@@ -38,17 +38,32 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestSchemaAndMappingUpdate，用于验证 Schema And Mapping Update 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Schema And Mapping Update
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestSchemaAndMappingUpdate extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：schema and mapping update。 */
   public TestSchemaAndMappingUpdate(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：add primitive column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPrimitiveColumn() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -72,6 +87,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     Assert.assertNull("Should not contain a nested mapping", updated.find("count").nestedMapping());
   }
 
+  /**
+   * 测试场景：add struct column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddStructColumn() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -118,6 +138,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
         "Should not contain a nested mapping", updated.find("location.long").nestedMapping());
   }
 
+  /**
+   * 测试场景：rename column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameColumn() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -144,6 +169,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
         updatedMapping);
   }
 
+  /**
+   * 测试场景：delete column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteColumn() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -160,6 +190,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     validateUnchanged(mapping, updated);
   }
 
+  /**
+   * 测试场景：modification with metrics metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testModificationWithMetricsMetrics() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -202,6 +237,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
         table.properties().get(TableProperties.METRICS_MODE_COLUMN_CONF_PREFIX + "bloop"));
   }
 
+  /**
+   * 测试场景：modification with parquet bloom config。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testModificationWithParquetBloomConfig() {
     table
@@ -223,6 +263,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
         table.properties().get(PARQUET_BLOOM_FILTER_COLUMN_ENABLED_PREFIX + "ID"));
   }
 
+  /**
+   * 测试场景：delete and add column reassign。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteAndAddColumnReassign() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -261,6 +306,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     Assert.assertNull("Should not contain a nested mapping", updatedMapping.nestedMapping());
   }
 
+  /**
+   * 测试场景：delete and rename column reassign。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteAndRenameColumnReassign() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -301,6 +351,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     Assert.assertNull("Should not contain a nested mapping", updatedMapping.nestedMapping());
   }
 
+  /**
+   * 测试场景：rename and add column reassign。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameAndAddColumnReassign() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -352,6 +407,11 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     Assert.assertNull("Should not contain a nested mapping", updatedMapping.nestedMapping());
   }
 
+  /**
+   * 测试场景：rename and rename column reassign。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameAndRenameColumnReassign() {
     NameMapping mapping = MappingUtil.create(table.schema());
@@ -401,7 +461,7 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     Assert.assertNull("Should not contain a nested mapping", updatedMapping.nestedMapping());
   }
 
-  /** Asserts that the fields in the original mapping are unchanged in the updated mapping. */
+  /** 辅助方法：validate unchanged。 */
   private void validateUnchanged(NameMapping original, NameMapping updated) {
     MappedFields updatedFields = updated.asMappedFields();
     for (MappedField field : original.asMappedFields().fields()) {
@@ -410,7 +470,7 @@ public class TestSchemaAndMappingUpdate extends TableTestBase {
     }
   }
 
-  /** Asserts that the fields in the original mapping are unchanged in the updated mapping. */
+  /** 辅助方法：validate unchanged。 */
   private void validateUnchanged(Iterable<MappedField> fields, NameMapping updated) {
     MappedFields updatedFields = updated.asMappedFields();
     for (MappedField field : fields) {

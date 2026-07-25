@@ -26,6 +26,15 @@ import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.spark.sql.AnalysisException;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 异常工具，将 Iceberg 异常转换为对应的 Spark 分析异常或运行时异常。
+ *
+ * <p>设计意图：集中处理异常映射，避免在各处重复 try-catch。
+ *
+ * <p>上下游关系：被 SparkCatalog、SparkTable、Procedures 等广泛调用。
+ */
 public class SparkExceptionUtil {
 
   private SparkExceptionUtil() {}

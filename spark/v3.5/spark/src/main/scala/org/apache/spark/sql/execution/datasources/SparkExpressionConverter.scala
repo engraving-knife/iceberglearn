@@ -29,8 +29,15 @@ import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.catalyst.plans.logical.LeafNode
 import org.apache.spark.sql.catalyst.plans.logical.LocalRelation
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Strategy
+/**
+ * 所属模块：iceberg-spark v3.5
+ * <p>职责：Spark 表达式转换器对象，将 Spark 表达式转换为 Iceberg Expression。
+ * <p>设计意图：抽取表达式转换公共逻辑，供扩展层与扫描下推复用。
+ * <p>上下游关系：由 RowLevelCommandScanRelationPushDown 等使用。
+ */
 
 object SparkExpressionConverter {
+  /** 执行 convertToIcebergExpression 相关操作。 */
 
   def convertToIcebergExpression(sparkExpression: Expression): org.apache.iceberg.expressions.Expression = {
     // Currently, it is a double conversion as we are converting Spark expression to Spark predicate
@@ -48,6 +55,7 @@ object SparkExpressionConverter {
         throw new IllegalArgumentException(s"Cannot translate Spark expression: $sparkExpression to data source filter")
     }
   }
+  /** 执行 collectResolvedSparkExpression 相关操作。 */
 
   @throws[AnalysisException]
   def collectResolvedSparkExpression(session: SparkSession, tableName: String, where: String): Expression = {

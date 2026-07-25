@@ -37,7 +37,13 @@ import org.apache.spark.sql.connector.iceberg.catalog.ProcedureParameter;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
-/** A class that abstracts common logic for working with input to a procedure. */
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ProcedureInput。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 class ProcedureInput {
 
   private static final DataType STRING_ARRAY = DataTypes.createArrayType(DataTypes.StringType);
@@ -57,47 +63,94 @@ class ProcedureInput {
     this.args = args;
   }
 
+  /** 判断是否provided。 */
   public boolean isProvided(ProcedureParameter param) {
     int ordinal = ordinal(param);
     return !args.isNullAt(ordinal);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultValue 参数
+   * @return 结果对象
+   */
   public Boolean asBoolean(ProcedureParameter param, Boolean defaultValue) {
     validateParamType(param, DataTypes.BooleanType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Boolean) args.getBoolean(ordinal);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @return 结果对象
+   */
   public long asLong(ProcedureParameter param) {
     Long value = asLong(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultValue 参数
+   * @return 结果对象
+   */
   public Long asLong(ProcedureParameter param, Long defaultValue) {
     validateParamType(param, DataTypes.LongType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Long) args.getLong(ordinal);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @return 结果对象
+   */
   public String asString(ProcedureParameter param) {
     String value = asString(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultValue 参数
+   * @return 结果对象
+   */
   public String asString(ProcedureParameter param, String defaultValue) {
     validateParamType(param, DataTypes.StringType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : args.getString(ordinal);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @return 结果对象
+   */
   public String[] asStringArray(ProcedureParameter param) {
     String[] value = asStringArray(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultValue 参数
+   * @return 结果对象
+   */
   public String[] asStringArray(ProcedureParameter param, String[] defaultValue) {
     validateParamType(param, STRING_ARRAY);
     return array(
@@ -107,6 +160,7 @@ class ProcedureInput {
         defaultValue);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   private <T> T[] array(
       ProcedureParameter param,
@@ -131,6 +185,13 @@ class ProcedureInput {
     return convertedArray;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultValue 参数
+   * @return 结果对象
+   */
   public Map<String, String> asStringMap(
       ProcedureParameter param, Map<String, String> defaultValue) {
     validateParamType(param, STRING_MAP);
@@ -141,6 +202,7 @@ class ProcedureInput {
         defaultValue);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private <K, V> Map<K, V> map(
       ProcedureParameter param,
       BiFunction<ArrayData, Integer, K> convertKey,
@@ -166,6 +228,12 @@ class ProcedureInput {
     return convertedMap;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @return 结果对象
+   */
   public Identifier ident(ProcedureParameter param) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, catalog);
 
@@ -179,11 +247,19 @@ class ProcedureInput {
     return catalogAndIdent.identifier();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param param 参数
+   * @param defaultCatalog 参数
+   * @return 结果对象
+   */
   public Identifier ident(ProcedureParameter param, CatalogPlugin defaultCatalog) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, defaultCatalog);
     return catalogAndIdent.identifier();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CatalogAndIdentifier catalogAndIdent(
       ProcedureParameter param, CatalogPlugin defaultCatalog) {
 
@@ -198,10 +274,12 @@ class ProcedureInput {
     return Spark3Util.catalogAndIdentifier(desc, spark, identAsString, defaultCatalog);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int ordinal(ProcedureParameter param) {
     return paramOrdinals.get(param.name());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Map<String, Integer> computeParamOrdinals(ProcedureParameter[] params) {
     Map<String, Integer> ordinals = Maps.newHashMap();
 
@@ -219,6 +297,7 @@ class ProcedureInput {
     return ordinals;
   }
 
+  /** 校验前置条件或参数。 */
   private void validateParamType(ProcedureParameter param, DataType expectedDataType) {
     Preconditions.checkArgument(
         expectedDataType.sameType(param.dataType()),

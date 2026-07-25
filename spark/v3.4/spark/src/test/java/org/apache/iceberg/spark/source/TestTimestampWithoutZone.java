@@ -58,6 +58,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestTimestampWithoutZone 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 时间戳无时区 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestTimestampWithoutZone extends SparkTestBase {
   private static final Configuration CONF = new Configuration();
@@ -71,11 +78,13 @@ public class TestTimestampWithoutZone extends SparkTestBase {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestTimestampWithoutZone.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestTimestampWithoutZone.spark;
@@ -88,6 +97,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
   private final String format;
   private final boolean vectorized;
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -97,6 +107,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
     };
   }
 
+  /** 测试时间戳无时区。 */
   public TestTimestampWithoutZone(String format, boolean vectorized) {
     this.format = format;
     this.vectorized = vectorized;
@@ -106,6 +117,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
   private File unpartitioned = null;
   private List<Record> records = null;
 
+  /** 写非分区表。 */
   @Before
   public void writeUnpartitionedTable() throws IOException {
     this.parent = temp.newFolder("TestTimestampWithoutZone");
@@ -138,11 +150,13 @@ public class TestTimestampWithoutZone extends SparkTestBase {
     table.newAppend().appendFile(file).commit();
   }
 
+  /** 测试非分区时间戳无时区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTimestampWithoutZone() {
     assertEqualsSafe(SCHEMA.asStruct(), records, read(unpartitioned.toString(), vectorized));
   }
 
+  /** 测试非分区时间戳无时区投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTimestampWithoutZoneProjection() {
     Schema projection = SCHEMA.select("id", "ts");
@@ -152,6 +166,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
         read(unpartitioned.toString(), vectorized, "id", "ts"));
   }
 
+  /** 测试非分区时间戳无时区追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTimestampWithoutZoneAppend() {
     spark
@@ -170,6 +185,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
         read(unpartitioned.toString(), vectorized));
   }
 
+  /** 辅助方法：projectFlat。 */
   private static Record projectFlat(Schema projection, Record record) {
     Record result = GenericRecord.create(projection);
     List<Types.NestedField> fields = projection.asStruct().fields();
@@ -180,6 +196,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
     return result;
   }
 
+  /** 断言equalssafe。 */
   public static void assertEqualsSafe(
       Types.StructType struct, List<Record> expected, List<Row> actual) {
     Assert.assertEquals("Number of results should match expected", expected.size(), actual.size());
@@ -188,6 +205,7 @@ public class TestTimestampWithoutZone extends SparkTestBase {
     }
   }
 
+  /** 测试记录场景：验证该方法在对应输入下的行为与断言结果。 */
   private List<Record> testRecords(Schema schema) {
     return Lists.newArrayList(
         record(schema, 0L, parseToLocal("2017-12-22T09:20:44.294658"), "junction"),
@@ -202,10 +220,12 @@ public class TestTimestampWithoutZone extends SparkTestBase {
         record(schema, 9L, parseToLocal("2017-12-21T15:02:15.230570"), "goldfish"));
   }
 
+  /** 读。 */
   private static List<Row> read(String table, boolean vectorized) {
     return read(table, vectorized, "*");
   }
 
+  /** 读。 */
   private static List<Row> read(
       String table, boolean vectorized, String select0, String... selectN) {
     Dataset<Row> dataset =
@@ -218,10 +238,12 @@ public class TestTimestampWithoutZone extends SparkTestBase {
     return dataset.collectAsList();
   }
 
+  /** parse到local。 */
   private static LocalDateTime parseToLocal(String timestamp) {
     return LocalDateTime.parse(timestamp);
   }
 
+  /** 记录。 */
   private static Record record(Schema schema, Object... values) {
     Record rec = GenericRecord.create(schema);
     for (int i = 0; i < values.length; i += 1) {

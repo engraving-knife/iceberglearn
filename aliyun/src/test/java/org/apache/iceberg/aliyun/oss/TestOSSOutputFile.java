@@ -36,12 +36,24 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestOSSOutputFile 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSOutputFile 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSOutputFile extends AliyunOSSTestBase {
 
   private final OSS ossClient = ossClient().get();
   private final Random random = ThreadLocalRandom.current();
   private final AliyunProperties aliyunProperties = new AliyunProperties();
 
+  /**
+   * 测试场景：Write File。
+   *
+   * <p>验证该方法在 Write File 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteFile() throws IOException {
     OSSURI uri = randomURI();
@@ -61,6 +73,11 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Object content should match", data, actual);
   }
 
+  /**
+   * 测试场景：From Location。
+   *
+   * <p>验证该方法在 From Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testFromLocation() {
     Assertions.assertThatThrownBy(
@@ -69,6 +86,11 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
         .hasMessageContaining("location cannot be null");
   }
 
+  /**
+   * 测试场景：Create。
+   *
+   * <p>验证该方法在 Create 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreate() {
     OSSURI uri = randomURI();
@@ -84,6 +106,11 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
         .hasMessageContaining("Location already exists");
   }
 
+  /**
+   * 测试场景：Create Or Overwrite。
+   *
+   * <p>验证该方法在 Create Or Overwrite 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateOrOverwrite() throws IOException {
     OSSURI uri = randomURI();
@@ -110,6 +137,11 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Should overwrite object content", expect, actual);
   }
 
+  /**
+   * 测试场景：Location。
+   *
+   * <p>验证该方法在 Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testLocation() {
     OSSURI uri = randomURI();
@@ -118,6 +150,11 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
     Assert.assertEquals("Location should match", uri.location(), out.location());
   }
 
+  /**
+   * 测试场景：To Input File。
+   *
+   * <p>验证该方法在 To Input File 条件下的行为是否符合预期。
+   */
   @Test
   public void testToInputFile() throws IOException {
     int dataSize = 1024 * 10;
@@ -143,24 +180,29 @@ public class TestOSSOutputFile extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Should have expected content", data, actual);
   }
 
+  /** 辅助方法：randomURI。 */
   private OSSURI randomURI() {
     return new OSSURI(location(String.format("%s.dat", UUID.randomUUID())));
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：writeOSSData。 */
   private void writeOSSData(OSSURI uri, byte[] data) {
     ossClient.putObject(uri.bucket(), uri.key(), new ByteArrayInputStream(data));
   }
 
+  /** 辅助方法：ossDataLength。 */
   private long ossDataLength(OSSURI uri) {
     return ossClient.getObject(uri.bucket(), uri.key()).getObjectMetadata().getContentLength();
   }
 
+  /** 辅助方法：ossDataContent。 */
   private byte[] ossDataContent(OSSURI uri, int dataSize) throws IOException {
     try (InputStream is = ossClient.getObject(uri.bucket(), uri.key()).getObjectContent()) {
       byte[] actual = new byte[dataSize];

@@ -60,8 +60,16 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkWriteConf 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark写配置 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
 
+  /** 前。 */
   @Before
   public void before() {
     sql(
@@ -71,11 +79,13 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         tableName);
   }
 
+  /** 后。 */
   @After
   public void after() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试advisory分区size场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAdvisoryPartitionSize() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -94,6 +104,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     assertThat(value3).isGreaterThan(10L * 1024 * 1024);
   }
 
+  /** 测试Spark写配置分布默认场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionDefault() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -103,6 +114,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     checkMode(DistributionMode.HASH, writeConf);
   }
 
+  /** 测试Spark写配置分布模式带写选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithWriteOption() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -114,6 +126,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     checkMode(DistributionMode.NONE, writeConf);
   }
 
+  /** 测试Spark写配置分布模式带会话配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithSessionConfig() {
     withSQLConf(
@@ -125,6 +138,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试Spark写配置分布模式带表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithTableProperties() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -141,6 +155,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     checkMode(DistributionMode.NONE, writeConf);
   }
 
+  /** 测试Spark写配置分布模式带tblprop与会话配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithTblPropAndSessionConfig() {
     withSQLConf(
@@ -162,6 +177,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试Spark写配置分布模式带写选项与会话配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithWriteOptionAndSessionConfig() {
     withSQLConf(
@@ -179,6 +195,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试Spark写配置分布模式带everything场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteConfDistributionModeWithEverything() {
     withSQLConf(
@@ -204,6 +221,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试Spark配置override场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkConfOverride() {
     List<List<Map<String, String>>> propertiesSuites =
@@ -277,6 +295,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试数据props默认作为删除props场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataPropsDefaultsAsDeleteProps() {
     List<List<Map<String, String>>> propertiesSuites =
@@ -346,6 +365,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试删除文件写配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFileWriteConf() {
     List<List<Map<String, String>>> propertiesSuites =
@@ -425,6 +445,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试写属性场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testWriteProperties(List<Map<String, String>> propertiesSuite) {
     withSQLConf(
         propertiesSuite.get(0),
@@ -456,6 +477,7 @@ public class TestSparkWriteConf extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 检查模式。 */
   private void checkMode(DistributionMode expectedMode, SparkWriteConf writeConf) {
     Assert.assertEquals(expectedMode, writeConf.distributionMode());
     Assert.assertEquals(expectedMode, writeConf.copyOnWriteDistributionMode(DELETE));

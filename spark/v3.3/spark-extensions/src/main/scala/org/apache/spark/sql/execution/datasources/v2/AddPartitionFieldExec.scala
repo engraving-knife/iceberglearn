@@ -27,6 +27,13 @@ import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 AddPartitionFieldExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class AddPartitionFieldExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -36,6 +43,10 @@ case class AddPartitionFieldExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -50,6 +61,10 @@ case class AddPartitionFieldExec(
     Nil
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"AddPartitionField ${catalog.name}.${ident.quoted} ${name.map(n => s"$n=").getOrElse("")}${transform.describe}"
   }

@@ -34,8 +34,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 DataTest 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 DataTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class DataTest {
 
+  /** 辅助方法：writeAndValidate。 */
   protected abstract void writeAndValidate(Schema schema) throws IOException;
 
   private static final StructType SUPPORTED_PRIMITIVES =
@@ -60,11 +68,21 @@ public abstract class DataTest {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：Simple Struct。
+   *
+   * <p>验证该方法在 Simple Struct 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleStruct() throws IOException {
     writeAndValidate(new Schema(SUPPORTED_PRIMITIVES.fields()));
   }
 
+  /**
+   * 测试场景：Array。
+   *
+   * <p>验证该方法在 Array 条件下的行为是否符合预期。
+   */
   @Test
   public void testArray() throws IOException {
     Schema schema =
@@ -75,6 +93,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Array Of Structs。
+   *
+   * <p>验证该方法在 Array Of Structs 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfStructs() throws IOException {
     Schema schema =
@@ -85,6 +108,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Map。
+   *
+   * <p>验证该方法在 Map 条件下的行为是否符合预期。
+   */
   @Test
   public void testMap() throws IOException {
     Schema schema =
@@ -98,6 +126,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Numeric Map Key。
+   *
+   * <p>验证该方法在 Numeric Map Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testNumericMapKey() throws IOException {
     Schema schema =
@@ -108,6 +141,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Complex Map Key。
+   *
+   * <p>验证该方法在 Complex Map Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testComplexMapKey() throws IOException {
     Schema schema =
@@ -127,6 +165,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Map Of Structs。
+   *
+   * <p>验证该方法在 Map Of Structs 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfStructs() throws IOException {
     Schema schema =
@@ -138,6 +181,11 @@ public abstract class DataTest {
     writeAndValidate(schema);
   }
 
+  /**
+   * 测试场景：Mixed Types。
+   *
+   * <p>验证该方法在 Mixed Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testMixedTypes() throws IOException {
     StructType structType =

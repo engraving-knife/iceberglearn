@@ -38,14 +38,52 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.TypeUtil;
 
+/**
+ * 文件级说明：Parquet 与 Avro 之间的类型映射与转换工具。
+ *
+ * <p>所属模块：iceberg-parquet（Avro ↔ Parquet 适配层，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义自定义 Avro 逻辑类型 {@link ParquetDecimal}，用于将 Iceberg decimal 映射到 Parquet 的
+ *       INT32/INT64/FIXED_LEN_BYTE_ARRAY 存储类型。
+ *   <li>提供 {@link ParquetDecimalSchemaConverter}，将标准 Avro decimal schema 转换为 Parquet 兼容的
+ *       schema（按精度选择 INT/LONG/FIXED）。
+ *   <li>提供 {@link #DEFAULT_MODEL}（GenericData），注册 decimal 和 UUID 的转换器， 使 Avro 读写器能正确处理 Parquet 格式的
+ *       decimal。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>精度驱动存储：decimal 精度 ≤9 用 INT32、≤18 用 INT64、更大用 FIXED_LEN_BYTE_ARRAY， 兼顾存储效率与精度覆盖。
+ *   <li>WeakHashMap 缓存：FixedDecimalConversion 中缓存 LogicalType，避免重复创建， 同时用 WeakHashMap 防止内存泄漏。
+ * </ul>
+ *
+ * <p>上下游关系：被 ParquetAvroValueReaders 和 ParquetAvroWriter 使用； 依赖 Avro 的 LogicalType/Conversion 机制和
+ * Iceberg 的 AvroSchemaVisitor。
+ */
 class ParquetAvro {
 
   private ParquetAvro() {}
 
+  /**
+   * 将标准 Avro schema 转换为 Parquet 兼容的 Avro schema（decimal 按精度选择底层类型）。
+   *
+   * @param avroSchema 标准 Avro schema
+   * @return Parquet 兼容的 Avro schema
+   */
   static Schema parquetAvroSchema(Schema avroSchema) {
     return AvroSchemaVisitor.visit(avroSchema, new ParquetDecimalSchemaConverter());
   }
 
+  /**
+   * 自定义 Avro 逻辑类型：表示 Parquet 存储的 decimal（精度+缩放）。
+   *
+   * <p>设计意图：Avro 标准 decimal 逻辑类型映射到 FIXED/BYTES，而 Parquet 可用 INT32/INT64 存储 decimal。本类作为中间逻辑类型，在
+   * schema 转换时标注底层存储类型与 decimal 属性。
+   */
   static class ParquetDecimal extends LogicalType {
     private static final String NAME = "parquet-decimal";
 
@@ -79,6 +117,12 @@ class ParquetAvro {
       return schema;
     }
 
+    /**
+     * 校验 schema 与 ParquetDecimal 的兼容性：INT 精度≤9，LONG 精度≤18，scale≥0 且≤precision。
+     *
+     * @param schema 待校验的 Avro schema
+     * @throws IllegalArgumentException 若类型或精度不合法
+     */
     @Override
     public void validate(Schema schema) {
       super.validate(schema);
@@ -112,6 +156,7 @@ class ParquetAvro {
         });
   }
 
+  /** INT32 存储 decimal 的转换器：BigDecimal ↔ Integer（unscaled value）。 */
   private static class IntDecimalConversion extends Conversion<BigDecimal> {
     @Override
     public Class<BigDecimal> getConvertedType() {
@@ -134,6 +179,7 @@ class ParquetAvro {
     }
   }
 
+  /** INT64 存储 decimal 的转换器：BigDecimal ↔ Long（unscaled value）。 */
   private static class LongDecimalConversion extends Conversion<BigDecimal> {
     @Override
     public Class<BigDecimal> getConvertedType() {
@@ -156,6 +202,12 @@ class ParquetAvro {
     }
   }
 
+  /**
+   * FIXED_LEN_BYTE_ARRAY 存储 decimal 的转换器：BigDecimal ↔ GenericFixed。
+   *
+   * <p>设计要点：用 WeakHashMap 缓存 (precision, scale) → LogicalType 映射， 避免在 toFixed 时重复创建标准 decimal
+   * LogicalType。
+   */
   private static class FixedDecimalConversion extends Conversions.DecimalConversion {
     private final WeakHashMap<Pair<Integer, Integer>, LogicalType> decimalsByScale;
 
@@ -186,6 +238,12 @@ class ParquetAvro {
     }
   }
 
+  /**
+   * 默认 Avro GenericData 模型：注册了 ParquetDecimal（int/long/fixed）和 UUID 的转换器。
+   *
+   * <p>设计要点：getConversionByClass/getConversionFor 按 decimal 精度分派到 IntDecimalConversion（≤9）/
+   * LongDecimalConversion（≤18）/ FixedDecimalConversion（>18）。
+   */
   static final GenericData DEFAULT_MODEL =
       new SpecificData() {
         private final Conversion<?> fixedDecimalConversion = new FixedDecimalConversion();
@@ -244,6 +302,12 @@ class ParquetAvro {
         }
       };
 
+  /**
+   * Avro schema 访问器：将标准 decimal 逻辑类型转换为 Parquet 兼容的底层类型。
+   *
+   * <p>设计意图：遍历 Avro schema，对 decimal 字段按精度选择 INT（≤9）/LONG（≤18）/FIXED（>18）， 并附加 ParquetDecimal
+   * 逻辑类型标注。非 decimal 字段保持不变，仅在子节点有变化时重建父节点。
+   */
   private static class ParquetDecimalSchemaConverter extends AvroSchemaVisitor<Schema> {
     @Override
     public Schema record(Schema record, List<String> names, List<Schema> types) {
@@ -298,6 +362,12 @@ class ParquetAvro {
       return map;
     }
 
+    /**
+     * 处理原始类型：将 Avro decimal 按精度转为 Parquet 兼容类型（INT/LONG/FIXED）+ ParquetDecimal 标注。
+     *
+     * @param primitive 原始 Avro schema
+     * @return 转换后的 schema，非 decimal 类型保持不变
+     */
     @Override
     public Schema primitive(Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();
@@ -368,6 +438,7 @@ class ParquetAvro {
     }
   }
 
+  /** 简单的二元组工具类（用于缓存 key）。 */
   private static class Pair<K, V> {
     private final K first;
     private final V second;

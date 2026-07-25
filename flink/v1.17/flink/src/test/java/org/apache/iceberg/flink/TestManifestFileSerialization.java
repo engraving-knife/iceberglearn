@@ -54,6 +54,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestManifestFileSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestManifestFileSerialization 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestManifestFileSerialization {
 
   private static final Schema SCHEMA =
@@ -106,6 +114,11 @@ public class TestManifestFileSerialization {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：Kryo Serialization。
+   *
+   * <p>验证该方法在 Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testKryoSerialization() throws IOException {
     KryoSerializer<ManifestFile> kryo =
@@ -129,6 +142,11 @@ public class TestManifestFileSerialization {
     TestHelpers.assertEquals(manifest, m3);
   }
 
+  /**
+   * 测试场景：Java Serialization。
+   *
+   * <p>验证该方法在 Java Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testJavaSerialization() throws Exception {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -151,6 +169,7 @@ public class TestManifestFileSerialization {
     }
   }
 
+  /** 辅助方法：writeManifest，write Manifest。 */
   private ManifestFile writeManifest(DataFile... files) throws IOException {
     File manifestFile = temp.newFile("input.m0.avro");
     Assert.assertTrue(manifestFile.delete());
@@ -168,6 +187,7 @@ public class TestManifestFileSerialization {
     return writer.toManifestFile();
   }
 
+  /** 辅助方法：longToBuffer，long To Buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

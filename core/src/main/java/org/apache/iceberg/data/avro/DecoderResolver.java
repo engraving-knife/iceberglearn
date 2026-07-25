@@ -31,8 +31,18 @@ import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTest
 import org.apache.iceberg.relocated.com.google.common.collect.MapMaker;
 
 /**
- * Resolver to resolve {@link Decoder} to a {@link ResolvingDecoder}. This class uses a {@link
- * ThreadLocal} for caching {@link ResolvingDecoder}.
+ * Avro 解析器：将 {@link Decoder} 解析为 {@link ResolvingDecoder}，以支持读写 schema 差异的兼容读取。
+ *
+ * <p>所属模块：iceberg-core，data/avro 包内的解码辅助工具。
+ *
+ * <p>职责：基于读取 schema（readSchema）与文件 schema（fileSchema）创建 ResolvingDecoder， 用于在读取时处理字段重命名、增删列等 schema
+ * 演进。
+ *
+ * <p>设计意图：创建 ResolvingDecoder 开销较大（需做 schema 解析与映射），故使用 {@link ThreadLocal} 缓存按 (readSchema,
+ * fileSchema) 维度的解码器实例。外层以 readSchema 为键、内层以 fileSchema 为键， 均使用弱引用 map，避免内存泄漏。ResolvingDecoder
+ * 可复用——通过 {@link ResolvingDecoder#configure} 绑定到底层 Decoder 即可，无需重新构建。
+ *
+ * <p>上下游关系：被 {@link DataReader#read} 调用，在每次读取记录时解析并复用解码器。
  */
 public class DecoderResolver {
 
@@ -42,6 +52,21 @@ public class DecoderResolver {
 
   private DecoderResolver() {}
 
+  /**
+   * 解析解码器并读取一条记录。
+   *
+   * <p>逻辑：通过 {@link #resolve} 获取（或复用）ResolvingDecoder，调用 reader 读取记录， 最后调用 drain
+   * 排尽解析器中未消费的残留数据，保证下一次读取从正确位置开始。
+   *
+   * @param decoder 底层 Avro 解码器
+   * @param readSchema 期望的读取 schema
+   * @param fileSchema 文件实际写入的 schema
+   * @param reader 值读取器
+   * @param reuse 可复用的对象
+   * @param <T> 读取结果的类型
+   * @return 读取到的记录
+   * @throws IOException 读取时发生 IO 异常
+   */
   public static <T> T resolveAndRead(
       Decoder decoder, Schema readSchema, Schema fileSchema, ValueReader<T> reader, T reuse)
       throws IOException {
@@ -51,6 +76,18 @@ public class DecoderResolver {
     return value;
   }
 
+  /**
+   * 获取或创建 ResolvingDecoder 并绑定到底层解码器。
+   *
+   * <p>逻辑：从 ThreadLocal 缓存中按 readSchema 取外层 map，再按 fileSchema 取内层缓存的解码器； 若不存在则通过 {@link
+   * #newResolver} 创建并缓存。最后用 configure 绑定到当前 decoder。
+   *
+   * @param decoder 底层 Avro 解码器
+   * @param readSchema 期望的读取 schema
+   * @param fileSchema 文件实际写入的 schema
+   * @return 已绑定到 decoder 的 ResolvingDecoder
+   * @throws IOException 创建解析器时发生 IO 异常
+   */
   @VisibleForTesting
   static ResolvingDecoder resolve(Decoder decoder, Schema readSchema, Schema fileSchema)
       throws IOException {
@@ -66,6 +103,16 @@ public class DecoderResolver {
     return resolver;
   }
 
+  /**
+   * 创建新的 ResolvingDecoder。
+   *
+   * <p>逻辑：通过 {@link DecoderFactory#resolvingDecoder} 以 fileSchema 为写入 schema、 readSchema 为读取 schema
+   * 创建解析器；IO 异常包装为 {@link RuntimeIOException}。
+   *
+   * @param readSchema 期望的读取 schema
+   * @param fileSchema 文件实际写入的 schema
+   * @return 新建的 ResolvingDecoder
+   */
   private static ResolvingDecoder newResolver(Schema readSchema, Schema fileSchema) {
     try {
       return DecoderFactory.get().resolvingDecoder(fileSchema, readSchema, null);

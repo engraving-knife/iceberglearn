@@ -33,10 +33,18 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCreateTableAsSelect 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 创建表作为select 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCreateTableAsSelect extends SparkCatalogTestBase {
 
   private final String sourceName;
 
+  /** 测试创建表作为select。 */
   public TestCreateTableAsSelect(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
@@ -49,11 +57,13 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
     sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b'), (3, 'c')", sourceName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试非分区ctas场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedCTAS() {
     sql("CREATE TABLE %s USING iceberg AS SELECT * FROM %s", tableName, sourceName);
@@ -76,6 +86,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试分区ctas场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedCTAS() {
     sql(
@@ -102,6 +113,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试 testRTAS 场景：验证 RTAS 相关操作的行为与结果。 */
   @Test
   public void testRTAS() {
     sql(
@@ -157,6 +169,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         "Should have new table property", "val3", rtasTable.properties().get("prop3"));
   }
 
+  /** 测试创建rtas场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateRTAS() {
     sql(
@@ -212,6 +225,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         "Table should have expected snapshots", 2, Iterables.size(rtasTable.snapshots()));
   }
 
+  /** 测试数据framev2创建场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2Create() throws Exception {
     spark.table(sourceName).writeTo(tableName).using("iceberg").create();
@@ -234,6 +248,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试数据framev2替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2Replace() throws Exception {
     spark.table(sourceName).writeTo(tableName).using("iceberg").create();
@@ -285,6 +300,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         "Table should have expected snapshots", 2, Iterables.size(rtasTable.snapshots()));
   }
 
+  /** 测试数据framev2创建或替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2CreateOrReplace() {
     spark
@@ -353,6 +369,7 @@ public class TestCreateTableAsSelect extends SparkCatalogTestBase {
         "Table should have expected snapshots", 2, Iterables.size(rtasTable.snapshots()));
   }
 
+  /** 测试创建rtas带分区分区规格changing场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateRTASWithPartitionSpecChanging() {
     sql(

@@ -35,8 +35,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestCloseableIterable 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestCloseableIterable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestCloseableIterable {
 
+  /**
+   * 测试场景：Filter Manually Closable。
+   *
+   * <p>验证该方法在 Filter Manually Closable 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterManuallyClosable() throws IOException {
     TestableCloseableIterable iterable = new TestableCloseableIterable();
@@ -56,6 +68,11 @@ public class TestCloseableIterable {
     assertThat(iterator.closed()).isTrue();
   }
 
+  /**
+   * 测试场景：Filter Automatically Closable。
+   *
+   * <p>验证该方法在 Filter Automatically Closable 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterAutomaticallyClosable() throws IOException {
     TestableCloseableIterable iterable = new TestableCloseableIterable();
@@ -66,6 +83,11 @@ public class TestCloseableIterable {
     assertThat(iterable.closed()).isTrue();
   }
 
+  /**
+   * 测试场景：Concat With Empty Iterables。
+   *
+   * <p>验证该方法在 Concat With Empty Iterables 条件下的行为是否符合预期。
+   */
   @Test
   public void testConcatWithEmptyIterables() {
     CloseableIterable<Integer> iter =
@@ -96,6 +118,11 @@ public class TestCloseableIterable {
         .isInstanceOf(NoSuchElementException.class);
   }
 
+  /**
+   * 测试场景：With Completion Runnable。
+   *
+   * <p>验证该方法在 With Completion Runnable 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithCompletionRunnable() throws IOException {
     AtomicInteger completionCounter = new AtomicInteger(0);
@@ -113,6 +140,11 @@ public class TestCloseableIterable {
     assertThat(completionCounter.get()).isOne();
   }
 
+  /**
+   * 测试场景：With Completion Runnable And Empty Iterable。
+   *
+   * <p>验证该方法在 With Completion Runnable And Empty Iterable 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithCompletionRunnableAndEmptyIterable() throws IOException {
     AtomicInteger completionCounter = new AtomicInteger(0);
@@ -125,6 +157,11 @@ public class TestCloseableIterable {
     Assertions.assertThat(completionCounter.get()).isOne();
   }
 
+  /**
+   * 测试场景：With Completion Runnable And Unclosed Iterable。
+   *
+   * <p>验证该方法在 With Completion Runnable And Unclosed Iterable 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithCompletionRunnableAndUnclosedIterable() {
     AtomicInteger completionCounter = new AtomicInteger(0);
@@ -137,6 +174,11 @@ public class TestCloseableIterable {
     assertThat(completionCounter.get()).isZero();
   }
 
+  /**
+   * 测试场景：With Completion Runnable When Iterable Throws。
+   *
+   * <p>验证该方法在 With Completion Runnable When Iterable Throws 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithCompletionRunnableWhenIterableThrows() {
     AtomicInteger completionCounter = new AtomicInteger(0);
@@ -161,6 +203,11 @@ public class TestCloseableIterable {
     Assertions.assertThat(completionCounter.get()).isOne();
   }
 
+  /**
+   * 测试场景：Concat With Empty。
+   *
+   * <p>验证该方法在 Concat With Empty 条件下的行为是否符合预期。
+   */
   @Test
   public void testConcatWithEmpty() {
     AtomicInteger counter = new AtomicInteger(0);
@@ -168,6 +215,11 @@ public class TestCloseableIterable {
     assertThat(counter.get()).isZero();
   }
 
+  /**
+   * 测试场景：concat Should Only Evaluate Items Once。
+   *
+   * <p>验证该方法在 concat Should Only Evaluate Items Once 条件下的行为是否符合预期。
+   */
   @Test
   public void concatShouldOnlyEvaluateItemsOnce() throws IOException {
     AtomicInteger counter = new AtomicInteger(0);
@@ -185,9 +237,11 @@ public class TestCloseableIterable {
             iterable,
             item ->
                 new CloseableIterable<Integer>() {
+                  /** 辅助方法：close。 */
                   @Override
                   public void close() {}
 
+                  /** 辅助方法：iterator。 */
                   @Override
                   public CloseableIterator<Integer> iterator() {
                     return CloseableIterator.withClose(Collections.singletonList(item).iterator());
@@ -201,6 +255,11 @@ public class TestCloseableIterable {
     assertThat(counter.get()).isEqualTo(items.size()).isEqualTo(consumedCounter.get());
   }
 
+  /**
+   * 测试场景：concat Iterables With Iterator。
+   *
+   * <p>验证该方法在 concat Iterables With Iterator 条件下的行为是否符合预期。
+   */
   @Test
   public void concatIterablesWithIterator() throws IOException {
     CloseableIterable<Object> closeableIterable = CloseableIterable.concat(Collections.emptyList());
@@ -209,6 +268,11 @@ public class TestCloseableIterable {
     closeableIterable.close();
   }
 
+  /**
+   * 测试场景：count。
+   *
+   * <p>验证该方法在 count 条件下的行为是否符合预期。
+   */
   @Test
   public void count() {
     Counter counter = new DefaultMetricsContext().counter("x");
@@ -220,6 +284,11 @@ public class TestCloseableIterable {
     Assertions.assertThat(counter.value()).isEqualTo(5);
   }
 
+  /**
+   * 测试场景：count Skipped。
+   *
+   * <p>验证该方法在 count Skipped 条件下的行为是否符合预期。
+   */
   @Test
   public void countSkipped() {
     Counter counter = new DefaultMetricsContext().counter("x");
@@ -233,6 +302,11 @@ public class TestCloseableIterable {
     Assertions.assertThat(counter.value()).isEqualTo(3);
   }
 
+  /**
+   * 测试场景：count Null Check。
+   *
+   * <p>验证该方法在 count Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void countNullCheck() {
     Assertions.assertThatThrownBy(() -> CloseableIterable.count(null, CloseableIterable.empty()))
@@ -245,6 +319,11 @@ public class TestCloseableIterable {
         .hasMessage("Invalid iterable: null");
   }
 
+  /**
+   * 测试场景：count Skipped Null Check。
+   *
+   * <p>验证该方法在 count Skipped Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void countSkippedNullCheck() {
     Assertions.assertThatThrownBy(
@@ -265,6 +344,11 @@ public class TestCloseableIterable {
         .hasMessage("Invalid predicate: null");
   }
 
+  /**
+   * 测试场景：transform Null Check。
+   *
+   * <p>验证该方法在 transform Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void transformNullCheck() {
     Assertions.assertThatThrownBy(

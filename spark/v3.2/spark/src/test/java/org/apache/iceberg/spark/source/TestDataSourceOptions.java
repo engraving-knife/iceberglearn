@@ -63,6 +63,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestDataSourceOptions 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 数据源选项 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
 
   private static final Configuration CONF = new Configuration();
@@ -73,11 +80,13 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestDataSourceOptions.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestDataSourceOptions.spark;
@@ -85,6 +94,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     currentSpark.stop();
   }
 
+  /** 测试写格式选项覆盖表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteFormatOptionOverridesTableProperties() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -115,6 +125,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试no写格式选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoWriteFormatOption() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -140,6 +151,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试Hadoop选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHadoopOptions() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -182,6 +194,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     }
   }
 
+  /** 测试split选项覆盖表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSplitOptionsOverridesTableProperties() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -223,6 +236,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     Assert.assertEquals("Spark partitions should match", 2, resultDf.javaRDD().getNumPartitions());
   }
 
+  /** 测试incremental扫描选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIncrementalScanOptions() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -317,6 +331,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     Assert.assertEquals("Records should match", expectedRecords.subList(2, 3), result1);
   }
 
+  /** 测试元数据splitsize选项override表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataSplitSizeOptionOverrideTableProperties() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -357,6 +372,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     Assert.assertEquals("Num partitions must match", 1, entriesDf.javaRDD().getNumPartitions());
   }
 
+  /** 测试默认元数据splitsize场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultMetadataSplitSize() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -391,6 +407,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     Assert.assertEquals("Spark partitions should match", expectedSplits, partitionNum);
   }
 
+  /** 测试extra快照元数据场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExtraSnapshotMetadata() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -415,6 +432,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
     Assert.assertTrue(table.currentSnapshot().summary().get("another-key").equals("anotherValue"));
   }
 
+  /** 测试extra快照元数据带SQL场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExtraSnapshotMetadataWithSQL() throws InterruptedException, IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -460,6 +478,7 @@ public class TestDataSourceOptions extends SparkTestBaseWithCatalog {
         .containsEntry("another-key", "anotherValue");
   }
 
+  /** 测试extra快照元数据带删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExtraSnapshotMetadataWithDelete()
       throws InterruptedException, NoSuchTableException {

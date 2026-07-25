@@ -31,6 +31,11 @@ import org.junit.jupiter.api.Test;
  */
 public class TestCDHParquetStatistics {
 
+  /**
+   * 测试场景：CDH Parquet Statistcs。
+   *
+   * <p>验证该方法在 CDH Parquet Statistcs 条件下的行为是否符合预期。
+   */
   @Test
   public void testCDHParquetStatistcs() {
     Statistics cdhBinaryColumnStats = mock(Statistics.class);

@@ -19,33 +19,43 @@
 package org.apache.iceberg;
 
 /**
- * Configuration properties that are controlled by Java system properties.
+ * 通过 Java 系统属性控制的配置项。
  *
- * @deprecated Use {@link SystemConfigs} instead; will be removed in 2.0.0
+ * <p>所属模块：iceberg-core（全局配置层）。
+ *
+ * <p>职责：定义跨表的全局配置项键名，如 worker 线程池大小、扫描线程池开关、manifest 缓存上限。
+ *
+ * <p>设计意图：这些配置需要在 JVM 级别生效（影响所有表），故通过 System.getProperty 读取。
+ *
+ * @deprecated 请改用 {@link SystemConfigs}，本类将在 2.0.0 移除
  */
 @Deprecated
 public class SystemProperties {
 
   private SystemProperties() {}
 
-  /**
-   * Sets the size of the worker pool. The worker pool limits the number of tasks concurrently
-   * processing manifests in the base table implementation across all concurrent planning or commit
-   * operations.
-   */
+  /** worker 线程池大小：限制所有并发计划/提交操作中处理 manifest 的最大并发任务数。 */
   public static final String WORKER_THREAD_POOL_SIZE_PROP = "iceberg.worker.num-threads";
 
-  /** Whether to use the shared worker pool when planning table scans. */
+  /** 是否在计划表扫描时使用共享 worker 线程池。 */
   public static final String SCAN_THREAD_POOL_ENABLED = "iceberg.scan.plan-in-worker-pool";
 
   /**
-   * Maximum number of distinct {@link org.apache.iceberg.io.FileIO} that is allowed to have
-   * associated {@link org.apache.iceberg.io.ContentCache} in memory at a time.
+   * 允许同时关联 {@link org.apache.iceberg.io.ContentCache} 的不同 {@link org.apache.iceberg.io.FileIO}
+   * 实例的最大数量。
    */
   public static final String IO_MANIFEST_CACHE_MAX_FILEIO = "iceberg.io.manifest.cache.fileio-max";
 
+  /** IO_MANIFEST_CACHE_MAX_FILEIO 的默认值。 */
   public static final int IO_MANIFEST_CACHE_MAX_FILEIO_DEFAULT = 8;
 
+  /**
+   * 从系统属性读取布尔值，缺失时返回默认值。
+   *
+   * @param systemProperty 系统属性名
+   * @param defaultValue 默认值
+   * @return 解析后的布尔值
+   */
   static boolean getBoolean(String systemProperty, boolean defaultValue) {
     String value = System.getProperty(systemProperty);
     if (value != null) {

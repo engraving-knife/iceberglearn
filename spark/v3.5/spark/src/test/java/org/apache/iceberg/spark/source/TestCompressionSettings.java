@@ -78,6 +78,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestCompressionSettings 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 CompressionSettings 在 Spark 引擎下的行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestCompressionSettings extends SparkCatalogTestBase {
 
@@ -91,6 +98,7 @@ public class TestCompressionSettings extends SparkCatalogTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, properties = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -102,16 +110,19 @@ public class TestCompressionSettings extends SparkCatalogTestBase {
     };
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestCompressionSettings.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** clear源cache。 */
   @Parameterized.AfterParam
   public static void clearSourceCache() {
     spark.sql(String.format("DROP TABLE IF EXISTS %s", tableName));
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestCompressionSettings.spark;
@@ -119,6 +130,7 @@ public class TestCompressionSettings extends SparkCatalogTestBase {
     currentSpark.stop();
   }
 
+  /** 测试compressionsettings。 */
   public TestCompressionSettings(String format, ImmutableMap properties) {
     super(
         SparkCatalogConfig.SPARK.catalogName(),
@@ -128,6 +140,7 @@ public class TestCompressionSettings extends SparkCatalogTestBase {
     this.properties = properties;
   }
 
+  /** 测试写数据带differentsetting场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteDataWithDifferentSetting() throws Exception {
     sql("CREATE TABLE %s (id int, data string) USING iceberg", tableName);
@@ -203,6 +216,7 @@ public class TestCompressionSettings extends SparkCatalogTestBase {
     }
   }
 
+  /** 获取compression类型。 */
   private String getCompressionType(InputFile inputFile) throws Exception {
     switch (format) {
       case ORC:

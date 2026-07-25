@@ -22,24 +22,36 @@ import java.util.Locale;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * An isolation level in a table.
+ * 表事务隔离级别枚举。
  *
- * <p>Two isolation levels are supported: serializable and snapshot isolation. Both of them provide
- * a read consistent view of the table to all operations and allow readers to see only already
- * committed data. While serializable is the strongest isolation level in databases, snapshot
- * isolation is beneficial for environments with many concurrent writers.
+ * <p>所属模块：iceberg-core。
  *
- * <p>The serializable isolation level guarantees that an ongoing UPDATE/DELETE/MERGE operation
- * fails if a concurrent transaction commits a new file that might contain rows matching the
- * condition used in UPDATE/DELETE/MERGE. For example, if there is an ongoing update on a subset of
- * rows and a concurrent transaction adds a new file with records that potentially match the update
- * condition, the update operation must fail under the serializable isolation but can still commit
- * under the snapshot isolation.
+ * <p>职责：定义 Iceberg 表操作支持的事务隔离级别。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>{@link #SERIALIZABLE}：最强隔离级别。若并发事务提交了可能匹配 UPDATE/DELETE/MERGE 条件的新文件，则当前操作必须失败。
+ *   <li>{@link #SNAPSHOT}：快照隔离。读一致视图，但允许在并发写入新文件时仍可提交， 适合高并发写入场景。
+ * </ul>
+ *
+ * 两者都提供读一致性视图，读者只能看到已提交数据。
+ *
+ * <p>上下游关系：被 {@link OverwriteFiles}、{@link RowDelta} 等操作的冲突校验逻辑使用。
  */
 public enum IsolationLevel {
   SERIALIZABLE,
   SNAPSHOT;
 
+  /**
+   * 按名称解析隔离级别（大小写不敏感）。
+   *
+   * <p>逻辑：将名称转大写后用 {@link Enum#valueOf} 匹配，失败则抛 IllegalArgumentException。
+   *
+   * @param levelName 隔离级别名称
+   * @return 对应的 {@link IsolationLevel}
+   * @throws IllegalArgumentException 若名称为 null 或无效
+   */
   public static IsolationLevel fromName(String levelName) {
     Preconditions.checkArgument(levelName != null, "Invalid isolation level: null");
     try {

@@ -43,8 +43,21 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestAvroNameMapping，用于验证 Avro Name Mapping 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Avro Name Mapping 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @SuppressWarnings("unchecked")
 public class TestAvroNameMapping extends TestAvroReadProjection {
+  /**
+   * 测试场景：map projections。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapProjections() throws IOException {
     Schema writeSchema =
@@ -113,6 +126,11 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
         .isNull();
   }
 
+  /**
+   * 测试场景：complex map keys。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testComplexMapKeys() throws IOException {
     Schema writeSchema =
@@ -191,6 +209,11 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
     Assertions.assertThat(projectedValue.get("long_r2")).isNull();
   }
 
+  /**
+   * 测试场景：missing required fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMissingRequiredFields() {
     Schema writeSchema =
@@ -215,6 +238,11 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
         .hasMessage("Missing required field: x");
   }
 
+  /**
+   * 测试场景：array projections。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testArrayProjections() throws Exception {
     Schema writeSchema =
@@ -277,6 +305,11 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
     Assertions.assertThat(projected.get("id")).isEqualTo(34L);
   }
 
+  /**
+   * 测试场景：aliases。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAliases() throws IOException {
     Schema writeSchema =
@@ -343,6 +376,11 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
         .isEqualTo(1);
   }
 
+  /**
+   * 测试场景：inferred mapping。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInferredMapping() throws IOException {
     Schema writeSchema =
@@ -360,12 +398,18 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
     Assertions.assertThat(projected).isEqualTo(record);
   }
 
+  /**
+   * 测试场景：avro array as logical map。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   @Override
   public void testAvroArrayAsLogicalMap() {
     // no-op
   }
 
+  /** 辅助方法：write and read。 */
   @Override
   protected Record writeAndRead(
       String desc, Schema writeSchema, Schema readSchema, Record inputRecord) throws IOException {
@@ -381,6 +425,7 @@ public class TestAvroNameMapping extends TestAvroReadProjection {
     return record;
   }
 
+  /** 辅助方法：write and read。 */
   private Record writeAndRead(
       Schema writeSchema, Schema readSchema, Record record, NameMapping nameMapping)
       throws IOException {

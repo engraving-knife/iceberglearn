@@ -30,6 +30,14 @@ import org.apache.iceberg.rest.RequestResponseTestBase;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestUpdateNamespacePropertiesRequest，用于验证 Update Namespace Properties Request 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Update Namespace Properties Request
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestUpdateNamespacePropertiesRequest
     extends RequestResponseTestBase<UpdateNamespacePropertiesRequest> {
 
@@ -39,6 +47,11 @@ public class TestUpdateNamespacePropertiesRequest
   private static final Map<String, String> EMPTY_UPDATES = ImmutableMap.of();
   private static final List<String> EMPTY_REMOVALS = ImmutableList.of();
 
+  /**
+   * 测试场景：round trip ser de。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRoundTripSerDe() throws JsonProcessingException {
     // Full request
@@ -112,6 +125,11 @@ public class TestUpdateNamespacePropertiesRequest
     assertEquals(deserialize(jsonAllMissing), allMissing);
   }
 
+  /**
+   * 测试场景：parse invalid json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testParseInvalidJson() {
     // Invalid top-level types
@@ -143,6 +161,11 @@ public class TestUpdateNamespacePropertiesRequest
         .hasMessage("argument \"content\" is null");
   }
 
+  /**
+   * 测试场景：builder does not create invalid objects。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBuilderDoesNotCreateInvalidObjects() {
     Assertions.assertThatThrownBy(
@@ -195,11 +218,13 @@ public class TestUpdateNamespacePropertiesRequest
         .hasMessage("Invalid value to update for properties [a]: null. Use remove instead");
   }
 
+  /** 辅助方法：all fields from spec。 */
   @Override
   public String[] allFieldsFromSpec() {
     return new String[] {"updates", "removals"};
   }
 
+  /** 辅助方法：create example instance。 */
   @Override
   public UpdateNamespacePropertiesRequest createExampleInstance() {
     return UpdateNamespacePropertiesRequest.builder()
@@ -208,6 +233,7 @@ public class TestUpdateNamespacePropertiesRequest
         .build();
   }
 
+  /** 辅助方法：assert equals。 */
   @Override
   public void assertEquals(
       UpdateNamespacePropertiesRequest actual, UpdateNamespacePropertiesRequest expected) {
@@ -219,6 +245,7 @@ public class TestUpdateNamespacePropertiesRequest
         .containsExactlyInAnyOrderElementsOf(Sets.newHashSet(expected.removals()));
   }
 
+  /** 辅助方法：deserialize。 */
   @Override
   public UpdateNamespacePropertiesRequest deserialize(String json) throws JsonProcessingException {
     UpdateNamespacePropertiesRequest request =

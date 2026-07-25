@@ -51,6 +51,15 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.internal.SQLConf;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：位置删除文件 Bin-Pack 重写器，将小删除文件按目标大小合并。
+ *
+ * <p>设计意图：针对删除文件特性调整分片与写出逻辑，减少删除文件数量。
+ *
+ * <p>上下游关系：由 RewritePositionDeleteFilesSparkAction 选择。
+ */
 class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewriter {
 
   private final SparkSession spark;
@@ -65,12 +74,12 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
     this.spark = spark.cloneSession();
     this.spark.conf().set(SQLConf.ADAPTIVE_EXECUTION_ENABLED().key(), false);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "BIN-PACK";
   }
-
+  /** 重写计划。 */
   @Override
   public Set<DeleteFile> rewrite(List<PositionDeletesScanTask> group) {
     String groupId = UUID.randomUUID().toString();
@@ -88,7 +97,7 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
       coordinator.clearRewrite(deletesTable, groupId);
     }
   }
-
+  /** 执行 doRewrite 相关操作。 */
   protected void doRewrite(String groupId, List<PositionDeletesScanTask> group) {
     // all position deletes are of the same partition, because they are in same file group
     Preconditions.checkArgument(group.size() > 0, "Empty group");

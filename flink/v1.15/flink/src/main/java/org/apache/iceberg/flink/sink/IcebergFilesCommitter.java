@@ -62,6 +62,13 @@ import org.apache.iceberg.util.ThreadPools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 文件提交算子，在 checkpoint 时把累积的 DeltaManifests 提交到 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：收集上游 writer 产出的清单，checkpoint 成功后执行 Iceberg commit。
+ *
+ * <p>设计意图：Flink 算子（AbstractStreamOperator）；上下游：上游 IcebergStreamWriter，下游无（终止算子）。
+ */
 class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     implements OneInputStreamOperator<WriteResult, Void>, BoundedOneInput {
 

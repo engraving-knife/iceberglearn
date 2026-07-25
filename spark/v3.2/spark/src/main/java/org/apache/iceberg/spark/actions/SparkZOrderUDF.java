@@ -44,6 +44,13 @@ import org.apache.spark.sql.types.TimestampType;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作，作为 Spark 用户自定义函数。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkZOrderUDF。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 class SparkZOrderUDF implements Serializable {
   private static final byte[] PRIMITIVE_EMPTY = new byte[ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE];
 
@@ -70,6 +77,7 @@ class SparkZOrderUDF implements Serializable {
     this.maxOutputSize = maxOutputSize;
   }
 
+  /** 读取数据。 */
   private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
     in.defaultReadObject();
     inputBuffers = ThreadLocal.withInitial(() -> new ByteBuffer[numCols]);
@@ -78,6 +86,7 @@ class SparkZOrderUDF implements Serializable {
     encoder = ThreadLocal.withInitial(() -> StandardCharsets.UTF_8.newEncoder());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private ByteBuffer inputBuffer(int position, int size) {
     ByteBuffer buffer = inputBuffers.get()[position];
     if (buffer == null) {
@@ -87,11 +96,13 @@ class SparkZOrderUDF implements Serializable {
     return buffer;
   }
 
+  /** 执行该方法的具体逻辑。 */
   byte[] interleaveBits(Seq<byte[]> scalaBinary) {
     byte[][] columnsBinary = JavaConverters.seqAsJavaList(scalaBinary).toArray(inputHolder.get());
     return ZOrderByteUtils.interleaveBits(columnsBinary, totalOutputBytes, outputBuffer.get());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction tinyToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -102,6 +113,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.tinyintToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -114,6 +126,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction shortToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -124,6 +137,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.shortToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -136,6 +150,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction intToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -146,6 +161,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.intToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -158,6 +174,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction longToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -168,6 +185,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.longToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -180,6 +198,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction floatToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -190,6 +209,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.floatToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -202,6 +222,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction doubleToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -212,6 +233,7 @@ class SparkZOrderUDF implements Serializable {
                     return PRIMITIVE_EMPTY;
                   }
                   return ZOrderByteUtils.doubleToOrderedBytes(
+                          /** 执行该方法的具体逻辑。 */
                           value, inputBuffer(position, ZOrderByteUtils.PRIMITIVE_BUFFER_SIZE))
                       .array();
                 },
@@ -224,6 +246,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction booleanToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -242,6 +265,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction stringToOrderedBytesUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -260,6 +284,7 @@ class SparkZOrderUDF implements Serializable {
     return udf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private UserDefinedFunction bytesTruncateUDF() {
     int position = inputCol;
     UserDefinedFunction udf =
@@ -283,10 +308,12 @@ class SparkZOrderUDF implements Serializable {
           .udf((Seq<byte[]> arrayBinary) -> interleaveBits(arrayBinary), DataTypes.BinaryType)
           .withName("INTERLEAVE_BYTES");
 
+  /** 执行该方法的具体逻辑。 */
   Column interleaveBytes(Column arrayBinary) {
     return interleaveUDF.apply(arrayBinary);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   Column sortedLexicographically(Column column, DataType type) {
     if (type instanceof ByteType) {
@@ -319,6 +346,7 @@ class SparkZOrderUDF implements Serializable {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void increaseOutputSize(int bytes) {
     totalOutputBytes = Math.min(totalOutputBytes + bytes, maxOutputSize);
   }

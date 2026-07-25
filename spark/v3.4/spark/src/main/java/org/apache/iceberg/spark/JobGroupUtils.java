@@ -23,6 +23,15 @@ import org.apache.spark.SparkContext;
 import org.apache.spark.SparkContext$;
 import org.apache.spark.api.java.JavaSparkContext;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 作业组工具类，提供在作业组上下文中执行 Callable 的能力，并捕获异常与中断状态。
+ *
+ * <p>设计意图：以 ThreadLocal + SparkContext.setJobGroup 包装执行，保证动作可追踪、可取消。
+ *
+ * <p>上下游关系：被 BaseSparkAction 及各 SparkAction 子类调用。
+ */
 public class JobGroupUtils {
 
   private static final String JOB_GROUP_ID = SparkContext$.MODULE$.SPARK_JOB_GROUP_ID();
@@ -31,26 +40,26 @@ public class JobGroupUtils {
       SparkContext$.MODULE$.SPARK_JOB_INTERRUPT_ON_CANCEL();
 
   private JobGroupUtils() {}
-
+  /** 返回 JobGroupInfo 属性。 */
   public static JobGroupInfo getJobGroupInfo(SparkContext sparkContext) {
     String groupId = sparkContext.getLocalProperty(JOB_GROUP_ID);
     String description = sparkContext.getLocalProperty(JOB_GROUP_DESC);
     String interruptOnCancel = sparkContext.getLocalProperty(JOB_INTERRUPT_ON_CANCEL);
     return new JobGroupInfo(groupId, description, Boolean.parseBoolean(interruptOnCancel));
   }
-
+  /** 设置 JobGroupInfo 属性。 */
   public static void setJobGroupInfo(SparkContext sparkContext, JobGroupInfo info) {
     sparkContext.setLocalProperty(JOB_GROUP_ID, info.groupId());
     sparkContext.setLocalProperty(JOB_GROUP_DESC, info.description());
     sparkContext.setLocalProperty(
         JOB_INTERRUPT_ON_CANCEL, String.valueOf(info.interruptOnCancel()));
   }
-
+  /** 返回带 JobGroupInfo 设置的副本。 */
   public static <T> T withJobGroupInfo(
       JavaSparkContext sparkContext, JobGroupInfo info, Supplier<T> supplier) {
     return withJobGroupInfo(sparkContext.sc(), info, supplier);
   }
-
+  /** 返回带 JobGroupInfo 设置的副本。 */
   public static <T> T withJobGroupInfo(
       SparkContext sparkContext, JobGroupInfo info, Supplier<T> supplier) {
     JobGroupInfo previousInfo = getJobGroupInfo(sparkContext);

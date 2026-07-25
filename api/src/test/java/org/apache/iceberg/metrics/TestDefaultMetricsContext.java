@@ -25,8 +25,20 @@ import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDefaultMetricsContext 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDefaultMetricsContext 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDefaultMetricsContext {
 
+  /**
+   * 测试场景：unsupported Counter。
+   *
+   * <p>验证该方法在 unsupported Counter 条件下的行为是否符合预期。
+   */
   @Test
   public void unsupportedCounter() {
     MetricsContext metricsContext = new DefaultMetricsContext();
@@ -36,6 +48,11 @@ public class TestDefaultMetricsContext {
         .hasMessage("Counter for type java.lang.Double is not supported");
   }
 
+  /**
+   * 测试场景：int Counter Null Check。
+   *
+   * <p>验证该方法在 int Counter Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void intCounterNullCheck() {
     Assertions.assertThatThrownBy(
@@ -44,6 +61,11 @@ public class TestDefaultMetricsContext {
         .hasMessage("Invalid count unit: null");
   }
 
+  /**
+   * 测试场景：int Counter。
+   *
+   * <p>验证该方法在 int Counter 条件下的行为是否符合预期。
+   */
   @Test
   public void intCounter() {
     MetricsContext metricsContext = new DefaultMetricsContext();
@@ -54,6 +76,11 @@ public class TestDefaultMetricsContext {
     Assertions.assertThat(counter.unit()).isEqualTo(MetricsContext.Unit.BYTES);
   }
 
+  /**
+   * 测试场景：int Counter Overflow。
+   *
+   * <p>验证该方法在 int Counter Overflow 条件下的行为是否符合预期。
+   */
   @Test
   public void intCounterOverflow() {
     MetricsContext metricsContext = new DefaultMetricsContext();
@@ -66,6 +93,11 @@ public class TestDefaultMetricsContext {
         .hasMessage("integer overflow");
   }
 
+  /**
+   * 测试场景：long Counter Null Check。
+   *
+   * <p>验证该方法在 long Counter Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void longCounterNullCheck() {
     Assertions.assertThatThrownBy(
@@ -74,6 +106,11 @@ public class TestDefaultMetricsContext {
         .hasMessage("Invalid count unit: null");
   }
 
+  /**
+   * 测试场景：long Counter。
+   *
+   * <p>验证该方法在 long Counter 条件下的行为是否符合预期。
+   */
   @Test
   public void longCounter() {
     MetricsContext metricsContext = new DefaultMetricsContext();
@@ -84,6 +121,11 @@ public class TestDefaultMetricsContext {
     Assertions.assertThat(counter.unit()).isEqualTo(MetricsContext.Unit.COUNT);
   }
 
+  /**
+   * 测试场景：timer。
+   *
+   * <p>验证该方法在 timer 条件下的行为是否符合预期。
+   */
   @Test
   public void timer() {
     MetricsContext metricsContext = new DefaultMetricsContext();
@@ -92,6 +134,11 @@ public class TestDefaultMetricsContext {
     Assertions.assertThat(timer.totalDuration()).isEqualTo(Duration.ofMinutes(10L));
   }
 
+  /**
+   * 测试场景：histogram。
+   *
+   * <p>验证该方法在 histogram 条件下的行为是否符合预期。
+   */
   @Test
   public void histogram() {
     MetricsContext metricsContext = new DefaultMetricsContext();

@@ -37,7 +37,11 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.StructField
 
 /**
- * Writes a delta of rows to an existing table.
+ * Spark Catalyst 逻辑计划节点的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 WriteDelta。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 case class WriteDelta(
     table: NamedRelation,
@@ -48,11 +52,19 @@ case class WriteDelta(
 
   override protected lazy val stringArgs: Iterator[Any] = Iterator(table, query, write)
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def operationResolved: Boolean = {
     val attr = query.output.head
     attr.name == OPERATION_COLUMN && attr.dataType == IntegerType && !attr.nullable
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def operation: SupportsDelta = {
     EliminateSubqueryAliases(table) match {
       case DataSourceV2Relation(RowLevelOperationTable(_, operation), _, _, _, _) =>
@@ -67,6 +79,10 @@ case class WriteDelta(
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def rowAttrsResolved: Boolean = {
     table.skipSchemaResolution || (projections.rowProjection match {
       case Some(projection) =>
@@ -79,6 +95,10 @@ case class WriteDelta(
     })
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def rowIdAttrsResolved: Boolean = {
     val rowIdAttrs = ExtendedV2ExpressionUtils.resolveRefs[AttributeReference](
       operation.rowId.toSeq,
@@ -89,6 +109,10 @@ case class WriteDelta(
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def metadataAttrsResolved: Boolean = {
     projections.metadataProjection match {
       case Some(projection) =>
@@ -104,6 +128,7 @@ case class WriteDelta(
     }
   }
 
+  /** 判断是否compatible。 */
   private def isCompatible(projectionField: StructField, outAttr: NamedExpression): Boolean = {
     val inType = CharVarcharUtils.getRawType(projectionField.metadata).getOrElse(outAttr.dataType)
     val outType = CharVarcharUtils.getRawType(outAttr.metadata).getOrElse(outAttr.dataType)
@@ -113,6 +138,10 @@ case class WriteDelta(
       (outAttr.nullable || !projectionField.nullable)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def outputResolved: Boolean = {
     assert(table.resolved && query.resolved,
       "`outputResolved` can only be called when `table` and `query` are both resolved.")
@@ -120,6 +149,10 @@ case class WriteDelta(
     operationResolved && rowAttrsResolved && rowIdAttrsResolved && metadataAttrsResolved
   }
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: LogicalPlan): WriteDelta = {
     copy(query = newChild)
   }

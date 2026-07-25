@@ -25,14 +25,40 @@ import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.relocated.com.google.common.base.Strings;
 import org.apache.iceberg.util.PropertyUtil;
 
+/**
+ * 文件级说明：S3FileIO AWS 客户端工厂加载器。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：根据配置加载 S3FileIO 专用的 {@link S3FileIOAwsClientFactory} 实例， 未配置时回退到通用 {@link
+ * AwsClientFactories#from(Map)}。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>双轨加载：S3FileIO 既支持专属工厂接口 {@link S3FileIOAwsClientFactory}（仅构造 S3）， 也兼容通用 {@link
+ *       AwsClientFactory}（同时构造 S3/Glue/KMS/DynamoDB）。本类按配置 优先选用专属工厂，未配置时回退到通用工厂，保证向后兼容。
+ *   <li>反射加载：通过 {@link DynConstructors} 调用工厂类的无参构造器， 再调用 initialize(properties) 注入配置，与 Iceberg
+ *       catalog 加载模式一致。
+ * </ul>
+ *
+ * <p>上下游关系：由 S3FileIO 初始化时调用；产出工厂实例提供 S3Client 给 S3InputFile/S3OutputFile。
+ */
 public class S3FileIOAwsClientFactories {
 
   private S3FileIOAwsClientFactories() {}
 
   /**
-   * Attempts to load an AWS client factory class for S3 file IO defined in the catalog property
-   * {@link S3FileIOProperties#CLIENT_FACTORY}. If the property wasn't set, fallback to {@link
-   * AwsClientFactories#from(Map) to intialize an AWS client factory class}
+   * 加载 S3FileIO 客户端工厂：若配置了 {@link S3FileIOProperties#CLIENT_FACTORY} 则反射加载该类，否则回退到 {@link
+   * AwsClientFactories#from(Map)} 初始化通用 AWS 客户端工厂。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>读取 s3.client-factory-impl 配置；
+   *   <li>非空：反射加载并调用 initialize；
+   *   <li>为空：委托 {@link AwsClientFactories#from(Map)}。
+   * </ol>
    *
    * @param properties catalog properties
    * @return an instance of a factory class
@@ -47,6 +73,14 @@ public class S3FileIOAwsClientFactories {
     return (T) loadClientFactory(factoryImpl, properties);
   }
 
+  /**
+   * 反射加载 S3FileIOAwsClientFactory 实现类：调用无参构造器实例化，再调用 initialize 注入 properties。
+   *
+   * @param impl 实现类全限定名
+   * @param properties catalog 配置
+   * @return 已初始化的工厂实例
+   * @throws IllegalArgumentException 当缺少无参构造器或类型不匹配时
+   */
   private static S3FileIOAwsClientFactory loadClientFactory(
       String impl, Map<String, String> properties) {
     DynConstructors.Ctor<S3FileIOAwsClientFactory> ctor;

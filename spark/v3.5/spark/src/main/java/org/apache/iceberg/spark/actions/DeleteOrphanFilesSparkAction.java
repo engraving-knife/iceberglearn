@@ -80,25 +80,33 @@ import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 /**
- * An action that removes orphan metadata, data and delete files by listing a given location and
- * comparing the actual files in that location with content and metadata files referenced by all
- * valid snapshots. The location must be accessible for listing via the Hadoop {@link FileSystem}.
+ * 基于 Spark 的孤儿文件清理动作：删除未被任何有效快照引用的元数据、数据与删除文件。
  *
- * <p>By default, this action cleans up the table location returned by {@link Table#location()} and
- * removes unreachable files that are older than 3 days using {@link Table#io()}. The behavior can
- * be modified by passing a custom location to {@link #location} and a custom timestamp to {@link
- * #olderThan(long)}. For example, someone might point this action to the data folder to clean up
- * only orphan data files.
+ * <p>所属模块：iceberg-spark（actions 子包，提供表维护动作的 Spark 实现）。
  *
- * <p>Configure an alternative delete method using {@link #deleteWith(Consumer)}.
+ * <p>职责：
  *
- * <p>For full control of the set of files being evaluated, use the {@link
- * #compareToFileList(Dataset)} argument. This skips the directory listing - any files in the
- * dataset provided which are not found in table metadata will be deleted, using the same {@link
- * Table#location()} and {@link #olderThan(long)} filtering as above.
+ * <ul>
+ *   <li>列出指定目录下实际存在的文件。
+ *   <li>收集所有有效快照引用的内容文件与元数据文件，作为「有效文件集」。
+ *   <li>对比实际文件与有效文件集，找出未被引用的孤儿文件并删除。
+ * </ul>
  *
- * <p><em>Note:</em> It is dangerous to call this action with a short retention interval as it might
- * corrupt the state of the table if another operation is writing at the same time.
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用「实际文件 vs 元数据引用」的差集思路定位孤儿文件，目录列举必须可通过 Hadoop {@link org.apache.hadoop.fs.FileSystem} 访问。
+ *   <li>默认清理 {@link Table#location()} 并删除早于 3 天的不可达文件，避免误删正在写入的文件； 可通过 {@link #location} 与 {@link
+ *       #olderThan(long)} 自定义。
+ *   <li>支持 {@link #deleteWith(Consumer)} 自定义删除方式；支持 {@link #compareToFileList(Dataset)}
+ *       直接传入待比对文件列表以跳过目录列举。
+ *   <li>为降低对对象存储的列举压力，驱动端先浅层列举，再将深层目录分发到 executor 并行列举。
+ * </ul>
+ *
+ * <p>上下游关系：实现 {@link org.apache.iceberg.actions.DeleteOrphanFiles} 接口， 继承 {@link
+ * BaseSparkAction}；由用户通过 Spark 过程或 API 触发，依赖表 IO 执行实际删除。
+ *
+ * <p><em>注意：</em>保留间隔过短会有风险，若与其他写入操作并发可能损坏表状态。
  */
 public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFilesSparkAction>
     implements DeleteOrphanFiles {
@@ -134,24 +142,24 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
         PropertyUtil.propertyAsBoolean(table.properties(), GC_ENABLED, GC_ENABLED_DEFAULT),
         "Cannot delete orphan files: GC is disabled (deleting files may corrupt other tables)");
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected DeleteOrphanFilesSparkAction self() {
     return this;
   }
-
+  /** 执行 executeDeleteWith 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction executeDeleteWith(ExecutorService executorService) {
     this.deleteExecutorService = executorService;
     return this;
   }
-
+  /** 执行 prefixMismatchMode 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction prefixMismatchMode(PrefixMismatchMode newPrefixMismatchMode) {
     this.prefixMismatchMode = newPrefixMismatchMode;
     return this;
   }
-
+  /** 执行 equalSchemes 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction equalSchemes(Map<String, String> newEqualSchemes) {
     this.equalSchemes = Maps.newHashMap();
@@ -159,32 +167,32 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     equalSchemes.putAll(flattenMap(newEqualSchemes));
     return this;
   }
-
+  /** 执行 equalAuthorities 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction equalAuthorities(Map<String, String> newEqualAuthorities) {
     this.equalAuthorities = Maps.newHashMap();
     equalAuthorities.putAll(flattenMap(newEqualAuthorities));
     return this;
   }
-
+  /** 返回路径。 */
   @Override
   public DeleteOrphanFilesSparkAction location(String newLocation) {
     this.location = newLocation;
     return this;
   }
-
+  /** 执行 olderThan 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction olderThan(long newOlderThanTimestamp) {
     this.olderThanTimestamp = newOlderThanTimestamp;
     return this;
   }
-
+  /** 执行 deleteWith 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction deleteWith(Consumer<String> newDeleteFunc) {
     this.deleteFunc = newDeleteFunc;
     return this;
   }
-
+  /** 执行 compareToFileList 相关操作。 */
   public DeleteOrphanFilesSparkAction compareToFileList(Dataset<Row> files) {
     StructType schema = files.schema();
 
@@ -205,7 +213,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     this.compareToFileList = files;
     return this;
   }
-
+  /** 执行 filteredCompareToFileList 相关操作。 */
   private Dataset<String> filteredCompareToFileList() {
     Dataset<Row> files = compareToFileList;
     if (location != null) {
@@ -217,12 +225,19 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
         .as(Encoders.STRING());
   }
 
+  /**
+   * 执行孤儿文件清理动作。
+   *
+   * <p>逻辑：在独立的 Spark 作业组中运行 {@link #doExecute}，便于在 Spark UI 中追踪与取消。
+   *
+   * @return 清理结果，包含被删除的孤儿文件路径列表
+   */
   @Override
   public DeleteOrphanFiles.Result execute() {
     JobGroupInfo info = newJobGroupInfo("DELETE-ORPHAN-FILES", jobDesc());
     return withJobGroupInfo(info, this::doExecute);
   }
-
+  /** 执行 jobDesc 相关操作。 */
   private String jobDesc() {
     List<String> options = Lists.newArrayList();
     options.add("older_than=" + olderThanTimestamp);
@@ -232,7 +247,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     String optionsAsString = COMMA_JOINER.join(options);
     return String.format("Deleting orphan files (%s) from %s", optionsAsString, table.name());
   }
-
+  /** 执行 deleteFiles 相关操作。 */
   private void deleteFiles(SupportsBulkOperations io, List<String> paths) {
     try {
       io.deleteFiles(paths);
@@ -243,6 +258,19 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     }
   }
 
+  /**
+   * 实际执行孤儿文件查找与删除的核心逻辑。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>构建「实际文件」标识数据集与「有效文件」标识数据集。
+   *   <li>通过 {@link #findOrphanFiles} 求差集得到孤儿文件列表。
+   *   <li>根据删除方式分支：支持批量删除则批量删除；否则用任务框架逐文件删除， 优先使用自定义删除函数，否则回退到表 IO 的单文件删除。
+   * </ol>
+   *
+   * @return 清理结果，包含被删除的孤儿文件路径列表
+   */
   private DeleteOrphanFiles.Result doExecute() {
     Dataset<FileURI> actualFileIdentDS = actualFileIdentDS();
     Dataset<FileURI> validFileIdentDS = validFileIdentDS();
@@ -275,6 +303,13 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     return ImmutableDeleteOrphanFiles.Result.builder().orphanFileLocations(orphanFiles).build();
   }
 
+  /**
+   * 构建有效文件标识数据集：将所有快照引用的内容文件、清单文件、清单列表文件与 其他元数据文件统一转换为 {@link FileURI} 后合并。
+   *
+   * <p>设计要点：在 union 前对每个数据集做转换，避免额外的序列化/反序列化开销。
+   *
+   * @return 有效文件标识数据集
+   */
   private Dataset<FileURI> validFileIdentDS() {
     // transform before union to avoid extra serialization/deserialization
     FileInfoToFileURI toFileURI = new FileInfoToFileURI(equalSchemes, equalAuthorities);
@@ -290,6 +325,11 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
         .union(otherMetadataFileIdentDS);
   }
 
+  /**
+   * 构建实际文件标识数据集：若提供了 {@link #compareToFileList} 则使用过滤后的比对列表， 否则使用目录列举得到的文件列表，统一转换为 {@link FileURI}。
+   *
+   * @return 实际文件标识数据集
+   */
   private Dataset<FileURI> actualFileIdentDS() {
     StringToFileURI toFileURI = new StringToFileURI(equalSchemes, equalAuthorities);
     if (compareToFileList == null) {
@@ -299,6 +339,21 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     }
   }
 
+  /**
+   * 列举表目录下符合时间条件的文件，构造文件路径数据集。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>在驱动端以受限深度与子目录数量阈值浅层列举，收集匹配文件与待深层列举的子目录。
+   *   <li>将剩余子目录分发到 executor 并行深层列举（{@link ListDirsRecursively}）。
+   *   <li>合并驱动端与 executor 端的匹配文件，生成字符串数据集返回。
+   * </ol>
+   *
+   * <p>设计要点：两阶段列举平衡驱动端压力与对象存储列举性能。
+   *
+   * @return 实际存在的文件路径数据集
+   */
   private Dataset<String> listedFileDS() {
     List<String> subDirs = Lists.newArrayList();
     List<String> matchingFiles = Lists.newArrayList();
@@ -334,7 +389,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     JavaRDD<String> completeMatchingFileRDD = matchingFileRDD.union(matchingLeafFileRDD);
     return spark().createDataset(completeMatchingFileRDD.rdd(), Encoders.STRING());
   }
-
+  /** 执行 listDirRecursively 相关操作。 */
   private static void listDirRecursively(
       String dir,
       Predicate<FileStatus> predicate,
@@ -386,7 +441,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
       throw new UncheckedIOException(e);
     }
   }
-
+  /** 执行 findOrphanFiles 相关操作。 */
   @VisibleForTesting
   static List<String> findOrphanFiles(
       SparkSession spark,
@@ -420,7 +475,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
 
     return orphanFiles;
   }
-
+  /** 执行 flattenMap 相关操作。 */
   private static Map<String, String> flattenMap(Map<String, String> map) {
     Map<String, String> flattenedMap = Maps.newHashMap();
     if (map != null) {
@@ -494,7 +549,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
       Iterator<String> orphanFiles = Iterators.transform(rows, this::toOrphanFile);
       return Iterators.filter(orphanFiles, Objects::nonNull);
     }
-
+    /** 转换为 OrphanFile。 */
     private String toOrphanFile(Tuple2<FileURI, FileURI> row) {
       FileURI actual = row._1;
       FileURI valid = row._2;
@@ -520,7 +575,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
         return null;
       }
     }
-
+    /** 执行 uriComponentMatch 相关操作。 */
     private boolean uriComponentMatch(String valid, String actual) {
       return Strings.isNullOrEmpty(valid) || valid.equalsIgnoreCase(actual);
     }
@@ -531,7 +586,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     StringToFileURI(Map<String, String> equalSchemes, Map<String, String> equalAuthorities) {
       super(equalSchemes, equalAuthorities);
     }
-
+    /** 执行 uriAsString 相关操作。 */
     @Override
     protected String uriAsString(String input) {
       return input;
@@ -543,7 +598,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     FileInfoToFileURI(Map<String, String> equalSchemes, Map<String, String> equalAuthorities) {
       super(equalSchemes, equalAuthorities);
     }
-
+    /** 执行 uriAsString 相关操作。 */
     @Override
     protected String uriAsString(FileInfo fileInfo) {
       return fileInfo.getPath();
@@ -559,7 +614,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
       this.equalSchemes = equalSchemes;
       this.equalAuthorities = equalAuthorities;
     }
-
+    /** 执行 uriAsString 相关操作。 */
     protected abstract String uriAsString(I input);
 
     Dataset<FileURI> apply(Dataset<I> ds) {
@@ -570,7 +625,7 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     public Iterator<FileURI> call(Iterator<I> rows) throws Exception {
       return Iterators.transform(rows, this::toFileURI);
     }
-
+    /** 转换为 FileURI。 */
     private FileURI toFileURI(I input) {
       String uriAsString = uriAsString(input);
       URI uri = new Path(uriAsString).toUri();
@@ -593,16 +648,16 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     PartitionAwareHiddenPathFilter(Set<String> hiddenPathPartitionNames) {
       this.hiddenPathPartitionNames = hiddenPathPartitionNames;
     }
-
+    /** 执行 accept 相关操作。 */
     @Override
     public boolean accept(Path path) {
       return isHiddenPartitionPath(path) || HiddenPathFilter.get().accept(path);
     }
-
+    /** 判断是否 HiddenPartitionPath。 */
     private boolean isHiddenPartitionPath(Path path) {
       return hiddenPathPartitionNames.stream().anyMatch(path.getName()::startsWith);
     }
-
+    /** 执行 forSpecs 相关操作。 */
     static PathFilter forSpecs(Map<Integer, PartitionSpec> specs) {
       if (specs == null) {
         return HiddenPathFilter.get();
@@ -640,35 +695,35 @@ public class DeleteOrphanFilesSparkAction extends BaseSparkAction<DeleteOrphanFi
     }
 
     public FileURI() {}
-
+    /** 设置 Scheme 属性。 */
     public void setScheme(String scheme) {
       this.scheme = scheme;
     }
-
+    /** 设置 Authority 属性。 */
     public void setAuthority(String authority) {
       this.authority = authority;
     }
-
+    /** 设置 Path 属性。 */
     public void setPath(String path) {
       this.path = path;
     }
-
+    /** 设置 UriAsString 属性。 */
     public void setUriAsString(String uriAsString) {
       this.uriAsString = uriAsString;
     }
-
+    /** 返回 Scheme 属性。 */
     public String getScheme() {
       return scheme;
     }
-
+    /** 返回 Authority 属性。 */
     public String getAuthority() {
       return authority;
     }
-
+    /** 返回 Path 属性。 */
     public String getPath() {
       return path;
     }
-
+    /** 返回 UriAsString 属性。 */
     public String getUriAsString() {
       return uriAsString;
     }

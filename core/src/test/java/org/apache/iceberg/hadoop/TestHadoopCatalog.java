@@ -56,9 +56,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 测试类：TestHadoopCatalog，用于验证 Hadoop Catalog 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Hadoop Catalog 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestHadoopCatalog extends HadoopTableTestBase {
   private static ImmutableMap<String, String> meta = ImmutableMap.of();
 
+  /**
+   * 测试场景：create table builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testCreateTableBuilder(int formatVersion) throws Exception {
@@ -80,6 +93,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .containsEntry("key2", "value2");
   }
 
+  /**
+   * 测试场景：create table txn builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testCreateTableTxnBuilder(int formatVersion) throws Exception {
@@ -98,6 +116,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(table.spec().isUnpartitioned()).isTrue();
   }
 
+  /**
+   * 测试场景：replace txn builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testReplaceTxnBuilder(int formatVersion) throws Exception {
@@ -146,6 +169,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .containsEntry("key2", "value2");
   }
 
+  /**
+   * 测试场景：table builder with location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableBuilderWithLocation() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -171,6 +199,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessageStartingWith("Cannot set a custom location for a path-based table");
   }
 
+  /**
+   * 测试场景：create table default sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableDefaultSortOrder() throws Exception {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -181,6 +214,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(sortOrder.isUnsorted()).as("Order must be unsorted").isTrue();
   }
 
+  /**
+   * 测试场景：create table custom sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableCustomSortOrder() throws Exception {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -207,6 +245,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .isEqualTo(transform);
   }
 
+  /**
+   * 测试场景：basic catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicCatalog() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -221,6 +264,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(fs.isDirectory(new Path(metaLocation))).isFalse();
   }
 
+  /**
+   * 测试场景：create and drop table without namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateAndDropTableWithoutNamespace() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -239,6 +287,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(fs.isDirectory(new Path(metaLocation))).isFalse();
   }
 
+  /**
+   * 测试场景：drop table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTable() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -253,6 +306,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(fs.isDirectory(new Path(metaLocation))).isFalse();
   }
 
+  /**
+   * 测试场景：drop non iceberg table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropNonIcebergTable() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -269,6 +327,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(fs.isDirectory(new Path(metaLocation))).isTrue();
   }
 
+  /**
+   * 测试场景：rename table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameTable() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -280,6 +343,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Cannot rename Hadoop tables");
   }
 
+  /**
+   * 测试场景：list tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListTables() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -305,6 +373,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Namespace does not exist: db.ns1.ns2");
   }
 
+  /**
+   * 测试场景：calling location provider when no current metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCallingLocationProviderWhenNoCurrentMetadata() throws IOException {
     HadoopCatalog catalog = hadoopCatalog();
@@ -320,6 +393,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     catalog.dropTable(tableIdent, true);
   }
 
+  /**
+   * 测试场景：create namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespace() throws Exception {
     String warehouseLocation = tableDir.getAbsolutePath();
@@ -346,6 +424,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Namespace already exists: " + tbl1.namespace());
   }
 
+  /**
+   * 测试场景：list namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListNamespace() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -384,6 +467,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Namespace does not exist: db.db2.ns2");
   }
 
+  /**
+   * 测试场景：load namespace meta。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadNamespaceMeta() throws IOException {
     HadoopCatalog catalog = hadoopCatalog();
@@ -403,6 +491,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Namespace does not exist: db.db2.ns2");
   }
 
+  /**
+   * 测试场景：namespace exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceExists() throws IOException {
     HadoopCatalog catalog = hadoopCatalog();
@@ -422,6 +515,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .isFalse();
   }
 
+  /**
+   * 测试场景：alter namespace meta。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAlterNamespaceMeta() throws IOException {
     HadoopCatalog catalog = hadoopCatalog();
@@ -433,6 +531,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessage("Cannot set namespace properties db.db2.ns2 : setProperties is not supported");
   }
 
+  /**
+   * 测试场景：drop namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropNamespace() throws IOException {
     String warehouseLocation = tableDir.getAbsolutePath();
@@ -464,6 +567,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(fs.isDirectory(new Path(metaLocation))).isFalse();
   }
 
+  /**
+   * 测试场景：version hint file error with file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testVersionHintFileErrorWithFile() throws Exception {
     addVersionsToTable(table);
@@ -514,6 +622,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .isEqualTo(secondSnapshotId);
   }
 
+  /**
+   * 测试场景：version hint file missing metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testVersionHintFileMissingMetadata() throws Exception {
     addVersionsToTable(table);
@@ -547,6 +660,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .hasMessageStartingWith("Table does not exist");
   }
 
+  /**
+   * 测试场景：table name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableName() throws Exception {
     HadoopCatalog catalog = hadoopCatalog();
@@ -562,6 +680,7 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(snapshotsTable.name()).isEqualTo("hadoop.db.ns1.ns2.tbl.snapshots");
   }
 
+  /** 辅助方法：add versions to table。 */
   private static void addVersionsToTable(Table table) {
     DataFile dataFile1 =
         DataFiles.builder(SPEC)
@@ -581,6 +700,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     table.newAppend().appendFile(dataFile2).commit();
   }
 
+  /**
+   * 测试场景：table props defined at catalog level。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTablePropsDefinedAtCatalogLevel() throws IOException {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -623,6 +747,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
         .isEqualTo("table-key5");
   }
 
+  /**
+   * 测试场景：register table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRegisterTable() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("a", "t1");
@@ -638,6 +767,11 @@ public class TestHadoopCatalog extends HadoopTableTestBase {
     Assertions.assertThat(catalog.dropTable(identifier2)).isTrue();
   }
 
+  /**
+   * 测试场景：register existing table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRegisterExistingTable() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("a", "t1");

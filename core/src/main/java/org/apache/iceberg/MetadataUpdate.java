@@ -26,18 +26,52 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewVersion;
 
-/** Represents a change to table or view metadata. */
+/**
+ * 表或视图元数据变更的抽象表示：每个内部类表示一种具体的元数据变更操作。
+ *
+ * <p>所属模块：iceberg-core（元数据变更模型层，被 api 与 core 共享）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>把对表/视图元数据的各种修改（加 schema、改分区、加快照、设属性等）抽象为可序列化的 更新对象；
+ *   <li>通过 {@link #applyTo} 方法把变更应用到 {@link TableMetadata.Builder} 或 {@link
+ *       ViewMetadata.Builder}，支持"收集变更 → 批量应用"的事务模式。
+ * </ul>
+ *
+ * <p>设计意图：采用命令模式（Command Pattern），每种元数据变更是独立的更新对象， 便于在事务中累积、审计、回放。默认 applyTo 抛出
+ * UnsupportedOperationException， 子类按需覆盖对应的目标方法。
+ *
+ * <p>上下游关系：被 {@link BaseTransaction} 等事务实现收集与应用；被 catalog 在创建/修改表时 构造。
+ */
 public interface MetadataUpdate extends Serializable {
+  /**
+   * 把本变更应用到表元数据构建器。
+   *
+   * <p>默认抛出 {@link UnsupportedOperationException}，子类按需覆盖。
+   *
+   * @param metadataBuilder 表元数据构建器
+   * @throws UnsupportedOperationException 若本变更不适用于表
+   */
   default void applyTo(TableMetadata.Builder metadataBuilder) {
     throw new UnsupportedOperationException(
         String.format("Cannot apply update %s to a table", this.getClass().getSimpleName()));
   }
 
+  /**
+   * 把本变更应用到视图元数据构建器。
+   *
+   * <p>默认抛出 {@link UnsupportedOperationException}，子类按需覆盖。
+   *
+   * @param viewMetadataBuilder 视图元数据构建器
+   * @throws UnsupportedOperationException 若本变更不适用于视图
+   */
   default void applyTo(ViewMetadata.Builder viewMetadataBuilder) {
     throw new UnsupportedOperationException(
         String.format("Cannot apply update %s to a view", this.getClass().getSimpleName()));
   }
 
+  /** 变更：分配/设置 UUID。 */
   class AssignUUID implements MetadataUpdate {
     private final String uuid;
 
@@ -55,11 +89,12 @@ public interface MetadataUpdate extends Serializable {
     }
 
     @Override
-    public void applyTo(ViewMetadata.Builder metadataBuilder) {
-      metadataBuilder.assignUUID(uuid);
+    public void applyTo(ViewMetadata.Builder viewMetadataBuilder) {
+      viewMetadataBuilder.assignUUID(uuid);
     }
   }
 
+  /** 变更：升级格式版本。 */
   class UpgradeFormatVersion implements MetadataUpdate {
     private final int formatVersion;
 
@@ -82,6 +117,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：添加 schema。 */
   class AddSchema implements MetadataUpdate {
     private final Schema schema;
     private final int lastColumnId;
@@ -110,6 +146,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置当前 schema。 */
   class SetCurrentSchema implements MetadataUpdate {
     private final int schemaId;
 
@@ -127,6 +164,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：添加分区规格。 */
   class AddPartitionSpec implements MetadataUpdate {
     private final UnboundPartitionSpec spec;
 
@@ -148,6 +186,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置默认分区规格。 */
   class SetDefaultPartitionSpec implements MetadataUpdate {
     private final int specId;
 
@@ -165,6 +204,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：添加排序顺序。 */
   class AddSortOrder implements MetadataUpdate {
     private final UnboundSortOrder sortOrder;
 
@@ -186,6 +226,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置默认排序顺序。 */
   class SetDefaultSortOrder implements MetadataUpdate {
     private final int sortOrderId;
 
@@ -203,6 +244,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置快照统计文件。 */
   class SetStatistics implements MetadataUpdate {
     private final long snapshotId;
     private final StatisticsFile statisticsFile;
@@ -226,6 +268,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：移除快照统计文件。 */
   class RemoveStatistics implements MetadataUpdate {
     private final long snapshotId;
 
@@ -243,6 +286,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：添加快照。 */
   class AddSnapshot implements MetadataUpdate {
     private final Snapshot snapshot;
 
@@ -260,6 +304,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：移除快照。 */
   class RemoveSnapshot implements MetadataUpdate {
     private final long snapshotId;
 
@@ -277,6 +322,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：移除快照引用。 */
   class RemoveSnapshotRef implements MetadataUpdate {
     private final String refName;
 
@@ -294,6 +340,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置快照引用（分支或标签）。 */
   class SetSnapshotRef implements MetadataUpdate {
     private final String refName;
     private final Long snapshotId;
@@ -353,6 +400,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置表/视图属性。 */
   class SetProperties implements MetadataUpdate {
     private final Map<String, String> updated;
 
@@ -375,6 +423,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：移除表/视图属性。 */
   class RemoveProperties implements MetadataUpdate {
     private final Set<String> removed;
 
@@ -397,6 +446,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置表/视图位置。 */
   class SetLocation implements MetadataUpdate {
     private final String location;
 
@@ -419,6 +469,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：添加视图版本。 */
   class AddViewVersion implements MetadataUpdate {
     private final ViewVersion viewVersion;
 
@@ -436,6 +487,7 @@ public interface MetadataUpdate extends Serializable {
     }
   }
 
+  /** 变更：设置当前视图版本。 */
   class SetCurrentViewVersion implements MetadataUpdate {
     private final int versionId;
 

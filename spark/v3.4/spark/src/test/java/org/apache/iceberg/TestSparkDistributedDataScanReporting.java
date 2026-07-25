@@ -30,10 +30,19 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkDistributedDataScanReporting 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkdistributed数据扫描reporting
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkDistributedDataScanReporting
     extends ScanPlanningAndReportingTestBase<BatchScan, ScanTask, ScanTaskGroup<ScanTask>> {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "dataMode = {0}, deleteMode = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -49,12 +58,14 @@ public class TestSparkDistributedDataScanReporting
   private final PlanningMode dataMode;
   private final PlanningMode deleteMode;
 
+  /** 测试Sparkdistributed数据扫描reporting。 */
   public TestSparkDistributedDataScanReporting(
       PlanningMode dataPlanningMode, PlanningMode deletePlanningMode) {
     this.dataMode = dataPlanningMode;
     this.deleteMode = deletePlanningMode;
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkDistributedDataScanReporting.spark =
@@ -65,6 +76,7 @@ public class TestSparkDistributedDataScanReporting
             .getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkDistributedDataScanReporting.spark;
@@ -72,6 +84,7 @@ public class TestSparkDistributedDataScanReporting
     currentSpark.stop();
   }
 
+  /** 新建扫描。 */
   @Override
   protected BatchScan newScan(Table table) {
     table

@@ -33,12 +33,21 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkBucketFunction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark桶函数 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
+  /** use目录。 */
   @Before
   public void useCatalog() {
     sql("USE %s", catalogName);
   }
 
+  /** 测试分区规格值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSpecValues() {
     Assert.assertEquals(
@@ -89,6 +98,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
         new BucketFunction.BucketBinary().hash(bytes));
   }
 
+  /** 测试桶整数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketIntegers() {
     Assert.assertEquals(
@@ -105,6 +115,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.bucket(1, CAST(null AS INT))"));
   }
 
+  /** 测试桶日期场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketDates() {
     Assert.assertEquals(3, scalarSql("SELECT system.bucket(10, date('1970-01-09'))"));
@@ -112,6 +123,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.bucket(1, CAST(null AS DATE))"));
   }
 
+  /** 测试桶长整型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketLong() {
     Assert.assertEquals(79, scalarSql("SELECT system.bucket(100, 34L)"));
@@ -121,6 +133,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.bucket(2, CAST(null AS LONG))"));
   }
 
+  /** 测试桶十进制场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketDecimal() {
     Assert.assertEquals(56, scalarSql("SELECT system.bucket(64, CAST('12.34' as DECIMAL(9, 2)))"));
@@ -135,6 +148,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.bucket(2, CAST(null AS decimal))"));
   }
 
+  /** 测试桶时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketTimestamp() {
     Assert.assertEquals(
@@ -146,6 +160,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
     Assert.assertNull(scalarSql("SELECT system.bucket(2, CAST(null AS timestamp))"));
   }
 
+  /** 测试桶字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketString() {
     Assert.assertEquals(4, scalarSql("SELECT system.bucket(5, 'abcdefg')"));
@@ -168,6 +183,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.bucket(16, CAST(null AS string))"));
   }
 
+  /** 测试桶二进制场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketBinary() {
     Assert.assertEquals(
@@ -182,6 +198,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.bucket(100, CAST(null AS binary))"));
   }
 
+  /** 测试num桶acceptsshort与byte场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNumBucketsAcceptsShortAndByte() {
     Assert.assertEquals(
@@ -195,6 +212,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.bucket(5Y, 1)"));
   }
 
+  /** 测试wrongnumber的参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWrongNumberOfArguments() {
     Assertions.assertThatThrownBy(() -> scalarSql("SELECT system.bucket()"))
@@ -213,6 +231,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
             "Function 'bucket' cannot process input: (int, bigint, int): Wrong number of inputs (expected numBuckets and value)");
   }
 
+  /** 测试invalid类型cannot被used用于number的桶场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidTypesCannotBeUsedForNumberOfBuckets() {
     Assertions.assertThatThrownBy(
@@ -245,6 +264,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
             "Function 'bucket' cannot process input: (interval day to second, int): Expected number of buckets to be tinyint, shortint or int");
   }
 
+  /** 测试invalid类型用于桶列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidTypesForBucketColumn() {
     Assertions.assertThatThrownBy(
@@ -285,6 +305,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
             "Function 'bucket' cannot process input: (int, interval day to second)");
   }
 
+  /** 测试thatmagic函数areinvoked场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testThatMagicFunctionsAreInvoked() {
     // TinyInt
@@ -351,6 +372,7 @@ public class TestSparkBucketFunction extends SparkTestBaseWithCatalog {
             "staticinvoke(class org.apache.iceberg.spark.functions.BucketFunction$BucketBinary");
   }
 
+  /** 作为bytes字面量。 */
   private String asBytesLiteral(String value) {
     byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
     return "X'" + BaseEncoding.base16().encode(bytes) + "'";

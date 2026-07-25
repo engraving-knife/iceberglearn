@@ -38,6 +38,15 @@ import org.apache.iceberg.spark.data.SparkParquetReaders;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：行式读取器基类，提供按行输出 InternalRow 的公共骨架。
+ *
+ * <p>设计意图：在 BaseReader 之上增加行式读取器的工厂与缓存管理。
+ *
+ * <p>上下游关系：被 RowDataReader / EqualityDeleteRowReader / PositionDeletesRowReader 继承。
+ */
 abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow, T> {
   BaseRowReader(
       Table table,
@@ -47,7 +56,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
       boolean caseSensitive) {
     super(table, taskGroup, tableSchema, expectedSchema, caseSensitive);
   }
-
+  /** 创建 Iterable 实例。 */
   protected CloseableIterable<InternalRow> newIterable(
       InputFile file,
       FileFormat format,
@@ -70,7 +79,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
         throw new UnsupportedOperationException("Cannot read unknown format: " + format);
     }
   }
-
+  /** 创建 AvroIterable 实例。 */
   private CloseableIterable<InternalRow> newAvroIterable(
       InputFile file, long start, long length, Schema projection, Map<Integer, ?> idToConstant) {
     return Avro.read(file)
@@ -81,7 +90,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
         .withNameMapping(nameMapping())
         .build();
   }
-
+  /** 创建 ParquetIterable 实例。 */
   private CloseableIterable<InternalRow> newParquetIterable(
       InputFile file,
       long start,
@@ -100,7 +109,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
         .withNameMapping(nameMapping())
         .build();
   }
-
+  /** 创建 OrcIterable 实例。 */
   private CloseableIterable<InternalRow> newOrcIterable(
       InputFile file,
       long start,

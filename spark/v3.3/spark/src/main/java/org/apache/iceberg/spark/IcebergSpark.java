@@ -25,9 +25,16 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 IcebergSpark。
+ */
 public class IcebergSpark {
+  /** 构造 IcebergSpark 实例。 */
   private IcebergSpark() {}
 
+  /** 注册到 Spark。 */
   public static void registerBucketUDF(
       SparkSession session, String funcName, DataType sourceType, int numBuckets) {
     SparkTypeToType typeConverter = new SparkTypeToType();
@@ -41,6 +48,7 @@ public class IcebergSpark {
             DataTypes.IntegerType);
   }
 
+  /** 注册到 Spark。 */
   public static void registerTruncateUDF(
       SparkSession session, String funcName, DataType sourceType, int width) {
     SparkTypeToType typeConverter = new SparkTypeToType();

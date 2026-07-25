@@ -22,8 +22,15 @@ package org.apache.spark.sql.catalyst.analysis
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.logical.UnresolvedMergeIntoIcebergTable
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：MERGE INTO 解析校验规则，检查 MERGE 目标表是否可解析为 Iceberg 表。
+ * <p>设计意图：作为分析后置检查，确认 MERGE 目标支持 Iceberg 行级操作。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
+ */
 
 object MergeIntoIcebergTableResolutionCheck extends (LogicalPlan => Unit) {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): Unit = {
     plan foreach {

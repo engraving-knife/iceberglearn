@@ -32,25 +32,47 @@ import org.apache.iceberg.avro.ValueWriter;
 import org.apache.iceberg.avro.ValueWriters;
 import org.apache.iceberg.data.Record;
 
+/**
+ * Avro 写入器工厂：为 Iceberg 逻辑类型提供基于 {@link Record} 的 {@link ValueWriter} 实现。
+ *
+ * <p>所属模块：iceberg-core，data/avro 包内的写入器构造工具。
+ *
+ * <p>职责：提供日期、时间、时间戳（带/不带时区）以及结构体（Record）的 ValueWriter 实例， 供 {@link DataWriter} 在按 Avro schema
+ * 遍历时按逻辑类型选用。
+ *
+ * <p>设计意图：各写入器采用单例（INSTANCE）以减少对象创建开销；时间类型统一通过 {@link ChronoUnit} 计算与纪元（EPOCH）的差值，转为 Avro 存储的微秒/天数。
+ *
+ * <p>上下游关系：被 {@link DataWriter.WriteBuilder} 调用以构建各字段的写入器。
+ */
 class GenericWriters {
   private GenericWriters() {}
 
+  /** 返回日期写入器单例（{@link LocalDate} -> Avro int 天数）。 */
   static ValueWriter<LocalDate> dates() {
     return DateWriter.INSTANCE;
   }
 
+  /** 返回时间写入器单例（{@link LocalTime} -> Avro long 微秒）。 */
   static ValueWriter<LocalTime> times() {
     return TimeWriter.INSTANCE;
   }
 
+  /** 返回不带时区时间戳写入器单例（{@link LocalDateTime} -> Avro long 微秒）。 */
   static ValueWriter<LocalDateTime> timestamps() {
     return TimestampWriter.INSTANCE;
   }
 
+  /** 返回带时区时间戳写入器单例（{@link OffsetDateTime} -> Avro long 微秒）。 */
   static ValueWriter<OffsetDateTime> timestamptz() {
     return TimestamptzWriter.INSTANCE;
   }
 
+  /**
+   * 构造结构体写入器，将 {@link Record} 写入 Avro 记录。
+   *
+   * @param writers 各字段的写入器列表
+   * @return 结构体写入器
+   */
   static ValueWriter<Record> struct(List<ValueWriter<?>> writers) {
     return new GenericRecordWriter(writers);
   }
@@ -58,6 +80,7 @@ class GenericWriters {
   private static final OffsetDateTime EPOCH = Instant.ofEpochSecond(0).atOffset(ZoneOffset.UTC);
   private static final LocalDate EPOCH_DAY = EPOCH.toLocalDate();
 
+  /** 日期写入器：将 {@link LocalDate} 转为自纪元的天数写入 Avro int。 */
   private static class DateWriter implements ValueWriter<LocalDate> {
     private static final DateWriter INSTANCE = new DateWriter();
 
@@ -69,6 +92,7 @@ class GenericWriters {
     }
   }
 
+  /** 时间写入器：将 {@link LocalTime} 转为微秒写入 Avro long。 */
   private static class TimeWriter implements ValueWriter<LocalTime> {
     private static final TimeWriter INSTANCE = new TimeWriter();
 
@@ -80,6 +104,7 @@ class GenericWriters {
     }
   }
 
+  /** 时间戳写入器：将 {@link LocalDateTime}（按 UTC 解释）转为微秒写入 Avro long。 */
   private static class TimestampWriter implements ValueWriter<LocalDateTime> {
     private static final TimestampWriter INSTANCE = new TimestampWriter();
 
@@ -91,6 +116,7 @@ class GenericWriters {
     }
   }
 
+  /** 带时区时间戳写入器：将 {@link OffsetDateTime} 转为微秒写入 Avro long。 */
   private static class TimestamptzWriter implements ValueWriter<OffsetDateTime> {
     private static final TimestamptzWriter INSTANCE = new TimestamptzWriter();
 
@@ -102,6 +128,11 @@ class GenericWriters {
     }
   }
 
+  /**
+   * 结构体写入器：将 {@link Record} 的字段值写入 Avro 记录。
+   *
+   * <p>设计意图：继承 {@link ValueWriters.StructWriter} 复用字段遍历逻辑， 仅覆盖 get 方法以从 Record 取字段值。
+   */
   private static class GenericRecordWriter extends ValueWriters.StructWriter<Record> {
     private GenericRecordWriter(List<ValueWriter<?>> writers) {
       super(writers);

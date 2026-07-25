@@ -73,6 +73,13 @@ import org.slf4j.LoggerFactory;
 @ExtendWith(PersistExtension.class)
 @NessieBackend(InmemoryBackendTestFactory.class)
 @NessieApiVersions // test all versions
+/**
+ * 文件级说明：测试 BaseTestIceberg 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 BaseTestIceberg 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class BaseTestIceberg {
 
   @NessiePersist static Persist persist;
@@ -92,10 +99,12 @@ public abstract class BaseTestIceberg {
   private String initialHashOfDefaultBranch;
   protected String uri;
 
+  /** 辅助方法：BaseTestIceberg。 */
   public BaseTestIceberg(String branch) {
     this.branch = branch;
   }
 
+  /** 辅助方法：resetData。 */
   private void resetData() throws NessieConflictException, NessieNotFoundException {
     Branch defaultBranch = api.getDefaultBranch();
     for (Reference r : api.getAllReferences().get().getReferences()) {
@@ -116,6 +125,7 @@ public abstract class BaseTestIceberg {
     }
   }
 
+  /** 辅助方法：beforeEach。 */
   @BeforeEach
   public void beforeEach(NessieClientFactory clientFactory, @NessieClientUri URI nessieUri)
       throws IOException {
@@ -159,6 +169,7 @@ public abstract class BaseTestIceberg {
     return newCatalog;
   }
 
+  /** 辅助方法：createTable。 */
   protected Table createTable(TableIdentifier tableIdentifier, int count) {
     try {
       createMissingNamespaces(tableIdentifier);
@@ -169,26 +180,31 @@ public abstract class BaseTestIceberg {
     }
   }
 
+  /** 辅助方法：createTable。 */
   protected void createTable(TableIdentifier tableIdentifier) {
     createMissingNamespaces(tableIdentifier);
     Schema schema = new Schema(StructType.of(required(1, "id", LongType.get())).fields());
     catalog.createTable(tableIdentifier, schema).location();
   }
 
+  /** 辅助方法：createTable。 */
   protected Table createTable(TableIdentifier tableIdentifier, Schema schema) {
     createMissingNamespaces(tableIdentifier);
     return catalog.createTable(tableIdentifier, schema);
   }
 
+  /** 辅助方法：createMissingNamespaces。 */
   protected void createMissingNamespaces(TableIdentifier tableIdentifier) {
     createMissingNamespaces(catalog, tableIdentifier);
   }
 
+  /** 辅助方法：createMissingNamespaces。 */
   protected static void createMissingNamespaces(
       NessieCatalog catalog, TableIdentifier tableIdentifier) {
     createMissingNamespaces(catalog, tableIdentifier.namespace());
   }
 
+  /** 辅助方法：createMissingNamespaces。 */
   protected static void createMissingNamespaces(NessieCatalog catalog, Namespace namespace) {
     List<String> elements = Lists.newArrayList();
     for (int i = 0; i < namespace.length(); i++) {
@@ -201,6 +217,7 @@ public abstract class BaseTestIceberg {
     }
   }
 
+  /** 辅助方法：schema。 */
   protected static Schema schema(int count) {
     List<Types.NestedField> fields = Lists.newArrayList();
     for (int i = 0; i < count; i++) {
@@ -223,6 +240,7 @@ public abstract class BaseTestIceberg {
     api.createReference().reference(Branch.of(name, hash)).sourceRefName(sourceRef).create();
   }
 
+  /** 辅助方法：afterEach。 */
   @AfterEach
   public void afterEach() throws Exception {
     resetData();

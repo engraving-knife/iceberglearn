@@ -25,8 +25,16 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.functions.UnboundFunction;
 
+/**
+ * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkFunctions。
+ *
+ * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+ */
 public class SparkFunctions {
 
+  /** 构造 SparkFunctions 实例。 */
   private SparkFunctions() {}
 
   private static final Map<String, UnboundFunction> FUNCTIONS =
@@ -46,10 +54,12 @@ public class SparkFunctions {
   // catalog name, e.g. my_hadoop_catalog.iceberg_version().
   // As namespace resolution is handled by those rules in BaseCatalog, a list of names
   // alone is returned.
+  /** 执行该方法的具体逻辑。 */
   public static List<String> list() {
     return FUNCTION_NAMES;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static UnboundFunction load(String name) {
     // function resolution is case-insensitive to match the existing Spark behavior for functions
     return FUNCTIONS.get(name.toLowerCase(Locale.ROOT));

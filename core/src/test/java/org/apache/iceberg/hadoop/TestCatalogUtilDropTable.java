@@ -35,8 +35,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+/**
+ * 测试类：TestCatalogUtilDropTable，用于验证 Catalog Util Drop Table 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Catalog Util Drop Table 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCatalogUtilDropTable extends HadoopTableTestBase {
 
+  /**
+   * 测试场景：drop table data deletes expected files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void dropTableDataDeletesExpectedFiles() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -87,6 +100,11 @@ public class TestCatalogUtilDropTable extends HadoopTableTestBase {
         .containsAll(metadataLocations);
   }
 
+  /**
+   * 测试场景：drop table data do not throw when deletes fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void dropTableDataDoNotThrowWhenDeletesFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -115,6 +133,11 @@ public class TestCatalogUtilDropTable extends HadoopTableTestBase {
         .deleteFile(ArgumentMatchers.anyString());
   }
 
+  /**
+   * 测试场景：should not drop data files if gc not enabled。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void shouldNotDropDataFilesIfGcNotEnabled() {
     table.updateProperties().set(TableProperties.GC_ENABLED, "false").commit();
@@ -155,10 +178,12 @@ public class TestCatalogUtilDropTable extends HadoopTableTestBase {
         .containsAll(metadataLocations);
   }
 
+  /** 辅助方法：manifest list locations。 */
   private Set<String> manifestListLocations(Set<Snapshot> snapshotSet) {
     return snapshotSet.stream().map(Snapshot::manifestListLocation).collect(Collectors.toSet());
   }
 
+  /** 辅助方法：manifest locations。 */
   private Set<String> manifestLocations(Set<Snapshot> snapshotSet, FileIO io) {
     return snapshotSet.stream()
         .flatMap(snapshot -> snapshot.allManifests(io).stream())
@@ -166,6 +191,7 @@ public class TestCatalogUtilDropTable extends HadoopTableTestBase {
         .collect(Collectors.toSet());
   }
 
+  /** 辅助方法：data locations。 */
   private Set<String> dataLocations(Set<Snapshot> snapshotSet, FileIO io) {
     return snapshotSet.stream()
         .flatMap(snapshot -> StreamSupport.stream(snapshot.addedDataFiles(io).spliterator(), false))
@@ -173,6 +199,7 @@ public class TestCatalogUtilDropTable extends HadoopTableTestBase {
         .collect(Collectors.toSet());
   }
 
+  /** 辅助方法：metadata locations。 */
   private Set<String> metadataLocations(TableMetadata tableMetadata) {
     Set<String> metadataLocations =
         tableMetadata.previousFiles().stream()

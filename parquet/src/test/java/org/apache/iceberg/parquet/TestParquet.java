@@ -61,10 +61,22 @@ import org.apache.parquet.schema.MessageType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestParquet 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquet 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquet {
 
   @TempDir private Path temp;
 
+  /**
+   * 测试场景：Row Group Size Configurable。
+   *
+   * <p>验证该方法在 Row Group Size Configurable 条件下的行为是否符合预期。
+   */
   @Test
   public void testRowGroupSizeConfigurable() throws IOException {
     // Without an explicit writer function doesn't support PARQUET_ROW_GROUP_CHECK_MIN_RECORD_COUNT
@@ -79,6 +91,11 @@ public class TestParquet {
     }
   }
 
+  /**
+   * 测试场景：Row Group Size Configurable With Writer。
+   *
+   * <p>验证该方法在 Row Group Size Configurable With Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testRowGroupSizeConfigurableWithWriter() throws IOException {
     // Explicit writer function supports PARQUET_ROW_GROUP_CHECK_MIN_RECORD_COUNT
@@ -94,6 +111,11 @@ public class TestParquet {
     }
   }
 
+  /**
+   * 测试场景：Metrics Missing Column Statistics In Row Groups。
+   *
+   * <p>验证该方法在 Metrics Missing Column Statistics In Row Groups 条件下的行为是否符合预期。
+   */
   @Test
   public void testMetricsMissingColumnStatisticsInRowGroups() throws IOException {
     Schema schema = new Schema(optional(1, "stringCol", Types.StringType.get()));
@@ -148,6 +170,11 @@ public class TestParquet {
     assertThat(metrics.upperBounds()).isEmpty();
   }
 
+  /**
+   * 测试场景：Number Of Bytes Written。
+   *
+   * <p>验证该方法在 Number Of Bytes Written 条件下的行为是否符合预期。
+   */
   @Test
   public void testNumberOfBytesWritten() throws IOException {
     Schema schema = new Schema(optional(1, "intCol", IntegerType.get()));
@@ -180,6 +207,11 @@ public class TestParquet {
     assertThat(actualSize).isEqualTo(expectedSize);
   }
 
+  /**
+   * 测试场景：Two Level List。
+   *
+   * <p>验证该方法在 Two Level List 条件下的行为是否符合预期。
+   */
   @Test
   public void testTwoLevelList() throws IOException {
     Schema schema =
@@ -219,6 +251,7 @@ public class TestParquet {
     assertThat(recordRead.get("topbytes")).isEqualTo(expectedBinary);
   }
 
+  /** 辅助方法：generateFile。 */
   private Pair<File, Long> generateFile(
       Function<MessageType, ParquetValueWriter<?>> createWriterFunc,
       int desiredRecordCount,

@@ -22,6 +22,15 @@ import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.metrics.TimerResult;
 import org.apache.spark.sql.connector.metric.CustomTaskMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：任务级规划耗时指标，在 Executor 端累计规划耗时并上报。
+ *
+ * <p>设计意图：实现 Spark CustomTaskMetric，与 TotalPlanningDuration 配对聚合。
+ *
+ * <p>上下游关系：由 BaseReader 在任务端上报。
+ */
 public class TaskTotalPlanningDuration implements CustomTaskMetric {
 
   private final long value;
@@ -29,17 +38,17 @@ public class TaskTotalPlanningDuration implements CustomTaskMetric {
   private TaskTotalPlanningDuration(long value) {
     this.value = value;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return TotalPlanningDuration.NAME;
   }
-
+  /** 执行 value 相关操作。 */
   @Override
   public long value() {
     return value;
   }
-
+  /** 工厂构造方法。 */
   public static TaskTotalPlanningDuration from(ScanReport scanReport) {
     TimerResult timerResult = scanReport.scanMetrics().totalPlanningDuration();
     long value = timerResult != null ? timerResult.totalDuration().toMillis() : -1;

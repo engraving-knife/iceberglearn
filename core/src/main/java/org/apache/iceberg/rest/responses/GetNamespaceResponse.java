@@ -27,7 +27,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTResponse;
 
-/** Represents a REST response to fetch a namespace and its metadata properties */
+/**
+ * 文件级说明：获取命名空间详情的 REST 响应模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：返回命名空间及其元数据属性。
+ *
+ * <p>设计意图：使用 Builder 模式保证不可变性。
+ */
 public class GetNamespaceResponse implements RESTResponse {
 
   private Namespace namespace;

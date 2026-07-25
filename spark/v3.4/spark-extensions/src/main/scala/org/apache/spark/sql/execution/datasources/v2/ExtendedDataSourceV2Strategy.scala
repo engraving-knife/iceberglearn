@@ -51,8 +51,15 @@ import org.apache.spark.sql.connector.catalog.TableCatalog
 import org.apache.spark.sql.execution.OrderAwareCoalesceExec
 import org.apache.spark.sql.execution.SparkPlan
 import scala.jdk.CollectionConverters._
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：扩展的数据源 V2 物理计划策略，将 Iceberg 逻辑命令节点转换为对应物理执行节点。
+ * <p>设计意图：继承 Spark DataSourceV2Strategy 并扩展 Iceberg 命令的物理映射。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册；产出各 Exec 节点。
+ */
 
 case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy with PredicateHelper {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
     case c @ Call(procedure, args) =>
@@ -119,6 +126,7 @@ case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy wi
 
     case _ => Nil
   }
+  /** 执行 buildInternalRow 相关操作。 */
 
   private def buildInternalRow(exprs: Seq[Expression]): InternalRow = {
     val values = new Array[Any](exprs.size)
@@ -127,12 +135,14 @@ case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy wi
     }
     new GenericInternalRow(values)
   }
+  /** 执行 refreshCache 相关操作。 */
 
   private def refreshCache(r: DataSourceV2Relation)(): Unit = {
     spark.sharedState.cacheManager.recacheByPlan(spark, r)
   }
 
   private object IcebergCatalogAndIdentifier {
+    /** 执行 unapply 相关操作。 */
     def unapply(identifier: Seq[String]): Option[(TableCatalog, Identifier)] = {
       val catalogAndIdentifier = Spark3Util.catalogAndIdentifier(spark, identifier.asJava)
       catalogAndIdentifier.catalog match {

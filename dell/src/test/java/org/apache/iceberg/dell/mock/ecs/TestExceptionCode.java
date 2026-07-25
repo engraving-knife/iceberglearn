@@ -31,6 +31,11 @@ public class TestExceptionCode {
 
   @Rule public EcsS3MockRule rule = EcsS3MockRule.create();
 
+  /**
+   * 测试场景：Exception Code。
+   *
+   * <p>验证该方法在 Exception Code 条件下的行为是否符合预期。
+   */
   @Test
   public void testExceptionCode() {
     String object = "test";
@@ -66,6 +71,7 @@ public class TestExceptionCode {
         });
   }
 
+  /** 辅助方法：assertS3Exception。 */
   public void assertS3Exception(String message, int httpCode, String errorCode, Runnable task) {
     Assertions.assertThatThrownBy(task::run)
         .isInstanceOf(S3Exception.class)

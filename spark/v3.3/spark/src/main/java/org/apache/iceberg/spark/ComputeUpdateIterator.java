@@ -29,23 +29,11 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * An iterator that finds delete/insert rows which represent an update, and converts them into
- * update records from changelog tables within a single Spark task. It assumes that rows are sorted
- * by identifier columns and change type.
+ * Iceberg Spark 集成相关组件的迭代器，按行或按批产出数据。
  *
- * <p>For example, these two rows
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ComputeUpdateIterator。
  *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='b', op='INSERT')
- * </ul>
- *
- * <p>will be marked as update-rows:
- *
- * <ul>
- *   <li>(id=1, data='a', op='UPDATE_BEFORE')
- *   <li>(id=1, data='b', op='UPDATE_AFTER')
- * </ul>
+ * <p>设计意图：迭代器模式，统一遍历接口。
  */
 public class ComputeUpdateIterator extends ChangelogIterator {
 
@@ -61,6 +49,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     this.identifierFields = identifierFields;
   }
 
+  /** 判断是否包含next。 */
   @Override
   public boolean hasNext() {
     if (cachedRow != null) {
@@ -69,6 +58,11 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     return rowIterator().hasNext();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 对应结果
+   */
   @Override
   public Row next() {
     // if there is an updated cached row, return it directly
@@ -100,6 +94,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     return currentRow;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Row modify(Row row, int valueIndex, Object value) {
     if (row instanceof GenericRow) {
       GenericRow genericRow = (GenericRow) row;
@@ -115,10 +110,12 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean cachedUpdateRecord() {
     return cachedRow != null && changeType(cachedRow).equals(UPDATE_AFTER);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Row currentRow() {
     if (cachedRow != null) {
       Row row = cachedRow;
@@ -129,6 +126,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean sameLogicalRow(Row currentRow, Row nextRow) {
     for (int idx : identifierFieldIdx) {
       if (isDifferentValue(currentRow, nextRow, idx)) {

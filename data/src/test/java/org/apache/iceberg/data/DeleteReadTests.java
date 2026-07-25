@@ -45,6 +45,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 DeleteReadTests 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 DeleteReadTests 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class DeleteReadTests {
   // Schema passed to create tables
   public static final Schema SCHEMA =
@@ -75,6 +82,7 @@ public abstract class DeleteReadTests {
   private List<Record> dateRecords = null;
   protected DataFile dataFile = null;
 
+  /** 辅助方法：writeTestDataFile。 */
   @Before
   public void writeTestDataFile() throws IOException {
     this.tableName = "test";
@@ -97,12 +105,14 @@ public abstract class DeleteReadTests {
     table.newAppend().appendFile(dataFile).commit();
   }
 
+  /** 辅助方法：cleanup。 */
   @After
   public void cleanup() throws IOException {
     dropTable("test");
     dropTable("test2");
   }
 
+  /** 辅助方法：initDateTable。 */
   private void initDateTable() throws IOException {
     dropTable("test2");
     this.dateTableName = "test2";
@@ -159,18 +169,23 @@ public abstract class DeleteReadTests {
         .commit();
   }
 
+  /** 辅助方法：createTable。 */
   protected abstract Table createTable(String name, Schema schema, PartitionSpec spec)
       throws IOException;
 
+  /** 辅助方法：dropTable。 */
   protected abstract void dropTable(String name) throws IOException;
 
+  /** 辅助方法：rowSet。 */
   protected abstract StructLikeSet rowSet(String name, Table testTable, String... columns)
       throws IOException;
 
+  /** 辅助方法：expectPruned。 */
   protected boolean expectPruned() {
     return true;
   }
 
+  /** 辅助方法：countDeletes。 */
   protected boolean countDeletes() {
     return false;
   }
@@ -183,6 +198,7 @@ public abstract class DeleteReadTests {
     return 0L;
   }
 
+  /** 辅助方法：checkDeleteCount。 */
   protected void checkDeleteCount(long expectedDeletes) {
     if (countDeletes()) {
       long actualDeletes = deleteCount();
@@ -191,6 +207,11 @@ public abstract class DeleteReadTests {
     }
   }
 
+  /**
+   * 测试场景：Equality Deletes。
+   *
+   * <p>验证该方法在 Equality Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletes() throws IOException {
     Schema deleteRowSchema = table.schema().select("data");
@@ -215,6 +236,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /**
+   * 测试场景：Equality Date Deletes。
+   *
+   * <p>验证该方法在 Equality Date Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDateDeletes() throws IOException {
     initDateTable();
@@ -264,6 +290,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /**
+   * 测试场景：Equality Deletes With Required Eq Column。
+   *
+   * <p>验证该方法在 Equality Deletes With Required Eq Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletesWithRequiredEqColumn() throws IOException {
     Schema deleteRowSchema = table.schema().select("data");
@@ -296,6 +327,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /**
+   * 测试场景：Equality Deletes Spanning Multiple Data Files。
+   *
+   * <p>验证该方法在 Equality Deletes Spanning Multiple Data Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletesSpanningMultipleDataFiles() throws IOException {
     // Add another DataFile with common values
@@ -332,6 +368,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(7L);
   }
 
+  /**
+   * 测试场景：Position Deletes。
+   *
+   * <p>验证该方法在 Position Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeletes() throws IOException {
     List<Pair<CharSequence, Long>> deletes =
@@ -357,6 +398,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /**
+   * 测试场景：Multiple Pos Delete Files。
+   *
+   * <p>验证该方法在 Multiple Pos Delete Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultiplePosDeleteFiles() throws IOException {
     List<Pair<CharSequence, Long>> deletes =
@@ -395,6 +441,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /**
+   * 测试场景：Mixed Position And Equality Deletes。
+   *
+   * <p>验证该方法在 Mixed Position And Equality Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testMixedPositionAndEqualityDeletes() throws IOException {
     Schema dataSchema = table.schema().select("data");
@@ -433,6 +484,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(4L);
   }
 
+  /**
+   * 测试场景：Multiple Equality Delete Schemas。
+   *
+   * <p>验证该方法在 Multiple Equality Delete Schemas 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleEqualityDeleteSchemas() throws IOException {
     Schema dataSchema = table.schema().select("data");
@@ -469,6 +525,11 @@ public abstract class DeleteReadTests {
     checkDeleteCount(4L);
   }
 
+  /**
+   * 测试场景：Equality Delete By Null。
+   *
+   * <p>验证该方法在 Equality Delete By Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeleteByNull() throws IOException {
     // data is required in the test table; make it optional for this test
@@ -506,6 +567,7 @@ public abstract class DeleteReadTests {
     checkDeleteCount(1L);
   }
 
+  /** 辅助方法：selectColumns。 */
   private StructLikeSet selectColumns(StructLikeSet rows, String... columns) {
     Schema projection = table.schema().select(columns);
     StructLikeSet set = StructLikeSet.create(projection.asStruct());
@@ -515,6 +577,7 @@ public abstract class DeleteReadTests {
     return set;
   }
 
+  /** 辅助方法：rowSetWithoutIds。 */
   protected static StructLikeSet rowSetWithoutIds(
       Table table, List<Record> recordList, int... idsToRemove) {
     Set<Integer> deletedIds = Sets.newHashSet(ArrayUtil.toIntList(idsToRemove));
@@ -526,6 +589,7 @@ public abstract class DeleteReadTests {
     return set;
   }
 
+  /** 辅助方法：rowSetWithIds。 */
   protected StructLikeSet rowSetWithIds(int... idsToRetain) {
     Set<Integer> deletedIds = Sets.newHashSet(ArrayUtil.toIntList(idsToRetain));
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());

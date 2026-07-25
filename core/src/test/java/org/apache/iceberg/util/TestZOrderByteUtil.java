@@ -29,6 +29,14 @@ import org.apache.iceberg.relocated.com.google.common.primitives.UnsignedBytes;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestZOrderByteUtil，用于验证 Z Order Byte Util 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Z Order Byte Util 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestZOrderByteUtil {
   private static final byte IIIIIIII = (byte) 255;
   private static final byte IOIOIOIO = (byte) 170;
@@ -42,6 +50,7 @@ public class TestZOrderByteUtil {
 
   private final Random random = new Random(42);
 
+  /** 辅助方法：bytes to string。 */
   private String bytesToString(byte[] bytes) {
     StringBuilder result = new StringBuilder();
     for (byte b : bytes) {
@@ -50,20 +59,20 @@ public class TestZOrderByteUtil {
     return result.toString();
   }
 
-  /** Returns a non-0 length byte array */
+  /** 辅助方法：generate random bytes。 */
   private byte[] generateRandomBytes() {
     int length = Math.abs(random.nextInt(100) + 1);
     return generateRandomBytes(length);
   }
 
-  /** Returns a byte array of a specified length */
+  /** 辅助方法：generate random bytes。 */
   private byte[] generateRandomBytes(int length) {
     byte[] result = new byte[length];
     random.nextBytes(result);
     return result;
   }
 
-  /** Test method to ensure correctness of byte interleaving code */
+  /** 辅助方法：interleave strings。 */
   private String interleaveStrings(String[] strings) {
     StringBuilder result = new StringBuilder();
     int totalLength = Arrays.stream(strings).mapToInt(String::length).sum();
@@ -82,9 +91,9 @@ public class TestZOrderByteUtil {
   }
 
   /**
-   * Compares the result of a string based interleaving algorithm implemented above versus the
-   * binary bit-shifting algorithm used in ZOrderByteUtils. Either both algorithms are identically
-   * wrong or are both identically correct.
+   * 测试场景：interleave random examples。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   @Test
   public void testInterleaveRandomExamples() {
@@ -109,6 +118,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：reuse interleave buffer。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReuseInterleaveBuffer() {
     int numByteArrays = 2;
@@ -134,6 +148,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：interleave empty bits。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInterleaveEmptyBits() {
     byte[][] test = new byte[4][10];
@@ -144,6 +163,11 @@ public class TestZOrderByteUtil {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：interleave full bits。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInterleaveFullBits() {
     byte[][] test = new byte[4][];
@@ -158,6 +182,11 @@ public class TestZOrderByteUtil {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：interleave mixed bits。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInterleaveMixedBits() {
     byte[][] test = new byte[4][];
@@ -174,6 +203,11 @@ public class TestZOrderByteUtil {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：int ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIntOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -201,6 +235,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：long ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLongOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -228,6 +267,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：short ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testShortOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -255,6 +299,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：tiny ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTinyOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -282,6 +331,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：float ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFloatOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -309,6 +363,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：double ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDoubleOrdering() {
     ByteBuffer aBuffer = ZOrderByteUtils.allocatePrimitiveBuffer();
@@ -336,6 +395,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：string ordering。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testStringOrdering() {
     CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
@@ -364,6 +428,11 @@ public class TestZOrderByteUtil {
     }
   }
 
+  /**
+   * 测试场景：byte truncate or fill。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testByteTruncateOrFill() {
     ByteBuffer aBuffer = ByteBuffer.allocate(128);

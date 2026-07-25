@@ -32,17 +32,26 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestName;
 
+/**
+ * 文件级说明：测试 ChangeLogTableTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 ChangeLogTableTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class ChangeLogTableTestBase extends FlinkTestBase {
   private volatile TableEnvironment tEnv = null;
 
   @Rule public TestName name = new TestName();
 
+  /** 辅助方法：clean，clean。 */
   @After
   public void clean() {
     sql("DROP TABLE IF EXISTS %s", name.getMethodName());
     BoundedTableFactory.clearDataSets();
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
@@ -65,22 +74,27 @@ public class ChangeLogTableTestBase extends FlinkTestBase {
     return tEnv;
   }
 
+  /** 辅助方法：insertRow，insert Row。 */
   protected static Row insertRow(Object... values) {
     return Row.ofKind(RowKind.INSERT, values);
   }
 
+  /** 辅助方法：deleteRow，delete Row。 */
   protected static Row deleteRow(Object... values) {
     return Row.ofKind(RowKind.DELETE, values);
   }
 
+  /** 辅助方法：updateBeforeRow，update Before Row。 */
   protected static Row updateBeforeRow(Object... values) {
     return Row.ofKind(RowKind.UPDATE_BEFORE, values);
   }
 
+  /** 辅助方法：updateAfterRow，update After Row。 */
   protected static Row updateAfterRow(Object... values) {
     return Row.ofKind(RowKind.UPDATE_AFTER, values);
   }
 
+  /** 辅助方法：listJoin，list Join。 */
   protected static <T> List<T> listJoin(List<List<T>> lists) {
     return lists.stream().flatMap(List::stream).collect(Collectors.toList());
   }

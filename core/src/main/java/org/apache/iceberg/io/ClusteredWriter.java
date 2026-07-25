@@ -32,12 +32,21 @@ import org.apache.iceberg.types.Types.StructType;
 import org.apache.iceberg.util.StructLikeSet;
 
 /**
- * A writer capable of writing to multiple specs and partitions that requires the incoming records
- * to be clustered by partition spec and by partition within each spec.
+ * 文件级说明：聚簇式多分区写入器抽象基类。
  *
- * <p>As opposed to {@link FanoutWriter}, this writer keeps at most one file open to reduce the
- * memory consumption. Prefer using this writer whenever the incoming records can be clustered by
- * spec/partition.
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：向多个 spec/partition 写入记录，要求输入按 spec 和 partition 聚簇（即同一分区的记录 连续到达），任何时刻最多打开一个文件，以降低内存和句柄开销。
+ *
+ * <p>设计意图：与 {@link FanoutWriter} 互补。当上游能保证分区聚簇（如已排序的批处理写入）时， ClusteredWriter 只需维护一个当前
+ * writer，内存开销远低于扇出模式。通过 completedSpecIds 和 completedPartitions 集合检测违反聚簇假设的记录并抛出异常，引导用户改用
+ * FanoutWriter。 分区键在存入集合前深拷贝，防止上游复用 key 对象导致误判。
+ *
+ * <p>上下游关系：由 {@link ClusteredDataWriter}、{@link ClusteredEqualityDeleteWriter}、 {@link
+ * ClusteredPositionDeleteWriter} 继承；实现 {@link PartitioningWriter} 接口。
+ *
+ * @param <T> 行记录类型
+ * @param <R> 结果类型
  */
 abstract class ClusteredWriter<T, R> implements PartitioningWriter<T, R> {
 
@@ -56,12 +65,32 @@ abstract class ClusteredWriter<T, R> implements PartitioningWriter<T, R> {
 
   private boolean closed = false;
 
+  /** 为指定 spec/partition 创建新的 FileWriter，由子类实现。 */
   protected abstract FileWriter<T, R> newWriter(PartitionSpec spec, StructLike partition);
 
+  /** 将单个 writer 的结果加入聚合，由子类实现。 */
   protected abstract void addResult(R result);
 
+  /** 返回所有 writer 的聚合结果，由子类实现。 */
   protected abstract R aggregatedResult();
 
+  /**
+   * 写入一行记录到指定 spec/partition。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>若 spec 变化：关闭当前 writer，记录已完成的 specId；若新 spec 已完成过则抛异常 （违反聚簇）；否则初始化新 spec
+   *       的比较器、已完成分区集合，深拷贝分区键并创建 writer。
+   *   <li>若 spec 不变但 partition 变化：关闭当前 writer，将旧分区加入已完成集合；若新分区 已完成过则抛异常；否则深拷贝新分区键并创建 writer。
+   *   <li>spec 和 partition 均不变：直接写入当前 writer。
+   * </ul>
+   *
+   * @param row 行记录
+   * @param spec 分区规格
+   * @param partition 分区值
+   * @throws IllegalStateException 若记录违反聚簇假设（已关闭的分区再次出现）
+   */
   @Override
   public void write(T row, PartitionSpec spec, StructLike partition) {
     if (!spec.equals(currentSpec)) {
@@ -104,6 +133,7 @@ abstract class ClusteredWriter<T, R> implements PartitioningWriter<T, R> {
     currentWriter.write(row);
   }
 
+  /** 关闭写入器，关闭当前 writer。 */
   @Override
   public void close() throws IOException {
     if (!closed) {
@@ -112,6 +142,7 @@ abstract class ClusteredWriter<T, R> implements PartitioningWriter<T, R> {
     }
   }
 
+  /** 关闭当前 writer 并收集结果。 */
   private void closeCurrentWriter() {
     if (currentWriter != null) {
       try {
@@ -126,13 +157,18 @@ abstract class ClusteredWriter<T, R> implements PartitioningWriter<T, R> {
     }
   }
 
+  /** 返回聚合结果，必须在 close 之后调用。 */
   @Override
   public final R result() {
     Preconditions.checkState(closed, "Cannot get result from unclosed writer");
     return aggregatedResult();
   }
 
-  /** @deprecated will be removed in 1.5.0 */
+  /**
+   * 创建输出文件的辅助方法。
+   *
+   * @deprecated 将在 1.5.0 移除，子类应直接使用 OutputFileFactory
+   */
   @Deprecated
   protected EncryptedOutputFile newOutputFile(
       OutputFileFactory fileFactory, PartitionSpec spec, StructLike partition) {

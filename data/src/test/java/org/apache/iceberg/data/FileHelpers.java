@@ -45,14 +45,24 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
 import org.apache.iceberg.util.Pair;
 
+/**
+ * 文件级说明：测试 FileHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 FileHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class FileHelpers {
+  /** 辅助方法：FileHelpers。 */
   private FileHelpers() {}
 
+  /** 辅助方法：writeDeleteFile。 */
   public static Pair<DeleteFile, CharSequenceSet> writeDeleteFile(
       Table table, OutputFile out, List<Pair<CharSequence, Long>> deletes) throws IOException {
     return writeDeleteFile(table, out, null, deletes);
   }
 
+  /** 辅助方法：writeDeleteFile。 */
   public static Pair<DeleteFile, CharSequenceSet> writeDeleteFile(
       Table table, OutputFile out, StructLike partition, List<Pair<CharSequence, Long>> deletes)
       throws IOException {
@@ -71,12 +81,14 @@ public class FileHelpers {
     return Pair.of(writer.toDeleteFile(), writer.referencedDataFiles());
   }
 
+  /** 辅助方法：writeDeleteFile。 */
   public static DeleteFile writeDeleteFile(
       Table table, OutputFile out, List<Record> deletes, Schema deleteRowSchema)
       throws IOException {
     return writeDeleteFile(table, out, null, deletes, deleteRowSchema);
   }
 
+  /** 辅助方法：writeDeleteFile。 */
   public static DeleteFile writeDeleteFile(
       Table table,
       OutputFile out,
@@ -100,6 +112,7 @@ public class FileHelpers {
     return writer.toDeleteFile();
   }
 
+  /** 辅助方法：writeDataFile。 */
   public static DataFile writeDataFile(Table table, OutputFile out, List<Record> rows)
       throws IOException {
     FileFormat format = defaultFormat(table.properties());
@@ -119,6 +132,7 @@ public class FileHelpers {
         .build();
   }
 
+  /** 辅助方法：writeDataFile。 */
   public static DataFile writeDataFile(
       Table table, OutputFile out, StructLike partition, List<Record> rows) throws IOException {
     FileFormat format = defaultFormat(table.properties());
@@ -139,6 +153,7 @@ public class FileHelpers {
         .build();
   }
 
+  /** 辅助方法：writePosDeleteFile。 */
   public static DeleteFile writePosDeleteFile(
       Table table, OutputFile out, StructLike partition, List<PositionDelete<?>> deletes)
       throws IOException {
@@ -161,10 +176,12 @@ public class FileHelpers {
     return writer.toDeleteFile();
   }
 
+  /** 辅助方法：encrypt。 */
   private static EncryptedOutputFile encrypt(OutputFile out) {
     return EncryptedFiles.encryptedOutput(out, EncryptionKeyMetadata.EMPTY);
   }
 
+  /** 辅助方法：defaultFormat。 */
   private static FileFormat defaultFormat(Map<String, String> properties) {
     String formatString = properties.getOrDefault(DEFAULT_FILE_FORMAT, DEFAULT_FILE_FORMAT_DEFAULT);
     return FileFormat.fromString(formatString);

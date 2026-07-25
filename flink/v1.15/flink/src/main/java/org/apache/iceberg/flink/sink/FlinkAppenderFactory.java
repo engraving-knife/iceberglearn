@@ -48,6 +48,13 @@ import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * Flink 专用的文件追加器工厂，创建 Iceberg DataWriter/EqualityDeleteWriter/PositionDeleteWriter。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按文件格式与 schema 构造对应写入器，处理 RowData。
+ *
+ * <p>设计意图：工厂模式，实现 Iceberg FileAppenderFactory；被 TaskWriter 调用。
+ */
 public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Serializable {
   private final Schema schema;
   private final RowType flinkSchema;

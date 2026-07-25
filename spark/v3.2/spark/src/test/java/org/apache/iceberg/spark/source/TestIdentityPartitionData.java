@@ -46,11 +46,19 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIdentityPartitionData 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 恒等分区数据 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIdentityPartitionData extends SparkTestBase {
   private static final Configuration CONF = new Configuration();
   private static final HadoopTables TABLES = new HadoopTables(CONF);
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -65,6 +73,7 @@ public class TestIdentityPartitionData extends SparkTestBase {
   private final String format;
   private final boolean vectorized;
 
+  /** 测试恒等分区数据。 */
   public TestIdentityPartitionData(String format, boolean vectorized) {
     this.format = format;
     this.vectorized = vectorized;
@@ -97,6 +106,7 @@ public class TestIdentityPartitionData extends SparkTestBase {
   private Table table = null;
   private Dataset<Row> logs = null;
 
+  /** 初始化Parquet。 */
   /**
    * Use the Hive Based table to make Identity Partition Columns with no duplication of the data in
    * the underlying parquet files. This makes sure that if the identity mapping fails, the test will
@@ -130,6 +140,7 @@ public class TestIdentityPartitionData extends SparkTestBase {
         spark, new TableIdentifier(hiveTable), table, location.toString());
   }
 
+  /** 初始化表。 */
   @Before
   public void setupTable() throws Exception {
     if (format.equals("parquet")) {
@@ -151,6 +162,7 @@ public class TestIdentityPartitionData extends SparkTestBase {
     }
   }
 
+  /** 测试全投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFullProjection() {
     List<Row> expected = logs.orderBy("id").collectAsList();
@@ -166,6 +178,7 @@ public class TestIdentityPartitionData extends SparkTestBase {
     Assert.assertEquals("Rows should match", expected, actual);
   }
 
+  /** 测试投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testProjections() {
     String[][] cases =

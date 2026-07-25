@@ -22,16 +22,16 @@ import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.spark.source.WritersBenchmark;
 
 /**
- * A benchmark that evaluates the performance of various Iceberg writers for Avro data.
+ * 文件级说明：AvroWritersBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.5: <code>
- *   ./gradlew -DsparkVersions=3.5 :iceberg-spark:iceberg-spark-3.5_2.12:jmh
- *       -PjmhIncludeRegex=AvroWritersBenchmark
- *       -PjmhOutputPath=benchmark/avro-writers-benchmark-result.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.5）。职责：对 Avro写入器 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 public class AvroWritersBenchmark extends WritersBenchmark {
 
+  /** 辅助方法：文件格式。 */
   @Override
   protected FileFormat fileFormat() {
     return FileFormat.AVRO;

@@ -29,9 +29,34 @@ import org.apache.iceberg.io.FileAppenderFactory;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFileFactory;
 
+/**
+ * 非分区表的 delta 任务写入器。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），继承 {@link BaseDeltaTaskWriter}。
+ *
+ * <p>职责：为非分区表写出数据与删除文件，所有行路由到同一个 {@link RowDataDeltaWriter}（分区为 null）。
+ *
+ * <p>设计意图：相比分区写入器，无需按分区键分发，单一 writer 即可；复用父类的文件滚动、upsert 等通用逻辑。
+ *
+ * <p>上下游关系：被 {@link FlinkSink} 写入算子在非分区场景下创建使用。
+ */
 class UnpartitionedDeltaWriter extends BaseDeltaTaskWriter {
   private final RowDataDeltaWriter writer;
 
+  /**
+   * 构造非分区 delta 写入器。
+   *
+   * @param spec 分区规格
+   * @param format 文件格式
+   * @param appenderFactory 文件 appender 工厂
+   * @param fileFactory 输出文件工厂
+   * @param io 文件 IO
+   * @param targetFileSize 目标文件大小
+   * @param schema 表 schema
+   * @param flinkSchema Flink RowType
+   * @param equalityFieldIds equality 字段 id
+   * @param upsert 是否 upsert 模式
+   */
   UnpartitionedDeltaWriter(
       PartitionSpec spec,
       FileFormat format,
@@ -57,11 +82,13 @@ class UnpartitionedDeltaWriter extends BaseDeltaTaskWriter {
     this.writer = new RowDataDeltaWriter(null);
   }
 
+  /** 非分区场景下所有行都路由到唯一的 writer。 */
   @Override
   RowDataDeltaWriter route(RowData row) {
     return writer;
   }
 
+  /** 关闭底层 writer。 */
   @Override
   public void close() throws IOException {
     writer.close();

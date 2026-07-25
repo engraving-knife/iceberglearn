@@ -35,6 +35,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDeltaLakeTypeToType 的功能。
+ *
+ * <p>所属模块：iceberg-delta-lake。职责：验证 TestDeltaLakeTypeToType 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDeltaLakeTypeToType {
   private static final String optionalBooleanType = "testNullableBoolType";
   private static final String requiredBinaryType = "testRequiredBinaryType";
@@ -48,6 +55,7 @@ public class TestDeltaLakeTypeToType {
   private StructType deltaShallowNullTypeSchema;
   private StructType deltaNullTypeSchema;
 
+  /** 辅助方法：constructDeltaLakeSchema。 */
   @BeforeEach
   public void constructDeltaLakeSchema() {
     deltaAtomicSchema =
@@ -68,6 +76,11 @@ public class TestDeltaLakeTypeToType {
     deltaShallowNullTypeSchema = new StructType().add(nullType, new NullType(), false);
   }
 
+  /**
+   * 测试场景：Atomic Type Conversion。
+   *
+   * <p>验证该方法在 Atomic Type Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testAtomicTypeConversion() {
     Type converted =
@@ -83,6 +96,11 @@ public class TestDeltaLakeTypeToType {
     Assertions.assertThat(convertedSchema.findField(requiredBinaryType).isRequired()).isTrue();
   }
 
+  /**
+   * 测试场景：Nested Type Conversion。
+   *
+   * <p>验证该方法在 Nested Type Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedTypeConversion() {
     Type converted =
@@ -168,6 +186,11 @@ public class TestDeltaLakeTypeToType {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Null Type Conversion。
+   *
+   * <p>验证该方法在 Null Type Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullTypeConversion() {
     Assertions.assertThatThrownBy(

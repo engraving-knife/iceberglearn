@@ -90,6 +90,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceTablesBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Iceberg源表基类 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
 
   private static final Schema SCHEMA =
@@ -120,10 +127,12 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
 
   public abstract String loadLocation(TableIdentifier ident);
 
+  /** 创建表。 */
   private Table createTable(TableIdentifier ident, Schema schema, PartitionSpec spec) {
     return createTable(ident, schema, spec, ImmutableMap.of());
   }
 
+  /** 测试表support场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testTablesSupport() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -148,6 +157,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Records should match", expectedRecords, actualRecords);
   }
 
+  /** 测试条目表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEntriesTable() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -196,6 +206,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         TestHelpers.nonDerivedSchema(entriesTableDs), expected.get(0), actual.get(0));
   }
 
+  /** 测试条目表分区prune场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEntriesTablePartitionedPrune() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -225,6 +236,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("That status should be Added (1)", 1, actual.get(0).getInt(0));
   }
 
+  /** 测试条目表数据文件prune场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEntriesTableDataFilePrune() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -258,6 +270,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         "Should prune a single element from a nested struct", singleExpected, singleActual);
   }
 
+  /** 测试条目表数据文件prunemulti场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEntriesTableDataFilePruneMulti() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -296,6 +309,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     assertEquals("Should prune a single element from a nested struct", multiExpected, multiActual);
   }
 
+  /** 测试文件select映射场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesSelectMap() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -330,6 +344,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     assertEquals("Should prune a single element from a row", multiExpected, multiActual);
   }
 
+  /** 测试所有条目表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllEntriesTable() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "entries_test");
@@ -401,6 +416,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试计数条目表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCountEntriesTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "count_entries_test");
@@ -431,6 +447,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         spark.read().format("iceberg").load(loadLocation(tableIdentifier, "all_entries")).count());
   }
 
+  /** 测试文件表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesTable() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "files_test");
@@ -483,6 +500,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         TestHelpers.nonDerivedSchema(filesTableDs), expected.get(0), actual.get(0));
   }
 
+  /** 测试文件表带快照idinheritance场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesTableWithSnapshotIdInheritance() throws Exception {
     spark.sql("DROP TABLE IF EXISTS parquet_table");
@@ -544,6 +562,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试v1条目表带快照idinheritance场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testV1EntriesTableWithSnapshotIdInheritance() throws Exception {
     spark.sql("DROP TABLE IF EXISTS parquet_table");
@@ -596,6 +615,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试文件非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesUnpartitionedTable() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "unpartitioned_files_test");
@@ -652,6 +672,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         TestHelpers.nonDerivedSchema(filesTableDs), expected.get(0), actual.get(0));
   }
 
+  /** 测试所有元数据表带暂存提交场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllMetadataTablesWithStagedCommits() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "stage_aggregate_table_test");
@@ -707,6 +728,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Actual results should have two rows", 2, actualAllEntries.size());
   }
 
+  /** 测试所有数据文件表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllDataFilesTable() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "files_test");
@@ -770,6 +792,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试历史表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHistoryTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "history_test");
@@ -861,6 +884,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(historyTable.schema().asStruct(), expected.get(3), actual.get(3));
   }
 
+  /** 测试快照表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "snapshots_test");
@@ -938,6 +962,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(snapTable.schema().asStruct(), expected.get(1), actual.get(1));
   }
 
+  /** 测试pruned快照表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPrunedSnapshotsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "snapshots_test");
@@ -1011,6 +1036,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(projectedSchema.asStruct(), expected.get(1), actual.get(1));
   }
 
+  /** 测试清单表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManifestsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "manifests_test");
@@ -1096,6 +1122,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(manifestTable.schema().asStruct(), expected.get(1), actual.get(1));
   }
 
+  /** 测试prune清单表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPruneManifestsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "manifests_test");
@@ -1177,6 +1204,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(projectedSchema.asStruct(), expected.get(0), actual.get(0));
   }
 
+  /** 测试所有清单表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllManifestsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "manifests_test");
@@ -1232,6 +1260,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试非分区分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedPartitionsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "unpartitioned_partitions_test");
@@ -1321,6 +1350,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     TestHelpers.assertEqualsSafe(expectedSchema, expectedRow, actual.get(0));
   }
 
+  /** 测试分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTable() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "partitions_test");
@@ -1445,6 +1475,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试分区表最后一个updated快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableLastUpdatedSnapshot() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "partitions_test");
@@ -1592,6 +1623,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试分区表删除stats场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableDeleteStats() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "partitions_test");
@@ -1713,6 +1745,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 测试快照读后添加列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testSnapshotReadAfterAddColumn() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -1778,6 +1811,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Schemas should match", originalSparkSchema, resultDf3.schema());
   }
 
+  /** 测试快照读后删除列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testSnapshotReadAfterDropColumn() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -1856,6 +1890,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Schemas should match", originalSparkSchema, resultDf4.schema());
   }
 
+  /** 测试快照读后添加与删除列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testSnapshotReadAfterAddAndDropColumn() {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -1935,6 +1970,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Schemas should match", originalSparkSchema, resultDf4.schema());
   }
 
+  /** 测试移除孤儿文件动作support场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesActionSupport() throws InterruptedException {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -1978,6 +2014,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试文件表分区id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesTablePartitionId() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "files_test");
@@ -2018,6 +2055,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     Assert.assertEquals("Should have two partition specs", ImmutableList.of(spec0, spec1), actual);
   }
 
+  /** 测试所有清单表快照过滤场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllManifestTableSnapshotFiltering() throws Exception {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "all_manifest_snapshot_filtering");
@@ -2098,6 +2136,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** 清单记录。 */
   private GenericData.Record manifestRecord(
       Table manifestTable, Long referenceSnapshotId, ManifestFile manifest) {
     GenericRecordBuilder builder =
@@ -2144,6 +2183,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
         .build();
   }
 
+  /** 新建位置删除写入器。 */
   private PositionDeleteWriter<InternalRow> newPositionDeleteWriter(
       Table table, PartitionSpec spec, StructLike partition) {
     OutputFileFactory fileFactory = OutputFileFactory.builderFor(table, 0, 0).build();
@@ -2153,6 +2193,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     return fileWriterFactory.newPositionDeleteWriter(outputFile, spec, partition);
   }
 
+  /** 写位置删除。 */
   private DeleteFile writePositionDeletes(
       Table table,
       PartitionSpec spec,
@@ -2172,6 +2213,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     return positionDeleteWriter.toDeleteFile();
   }
 
+  /** 写pos删除文件。 */
   private DeleteFile writePosDeleteFile(Table table) {
     DataFile dataFile =
         Iterables.getFirst(table.currentSnapshot().addedDataFiles(table.io()), null);
@@ -2184,6 +2226,7 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     return writePositionDeletes(table, dataFileSpec, dataFilePartition, ImmutableList.of(delete));
   }
 
+  /** 写eq删除文件。 */
   private DeleteFile writeEqDeleteFile(Table table) {
     List<Record> deletes = Lists.newArrayList();
     Schema deleteRowSchema = SCHEMA.select("id");
@@ -2201,10 +2244,12 @@ public abstract class TestIcebergSourceTablesBase extends SparkTestBase {
     }
   }
 
+  /** totalsize在bytes。 */
   private long totalSizeInBytes(Iterable<DataFile> dataFiles) {
     return Lists.newArrayList(dataFiles).stream().mapToLong(DataFile::fileSizeInBytes).sum();
   }
 
+  /** 断言数据文件分区。 */
   private void assertDataFilePartitions(
       List<DataFile> dataFiles, List<Integer> expectedPartitionIds) {
     Assert.assertEquals(

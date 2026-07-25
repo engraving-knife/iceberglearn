@@ -49,14 +49,13 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /**
- * Assigns a rewrite plan for v2 tables that support rewriting data to handle UPDATE statements.
- *
- * This rule assumes the commands have been fully resolved and all assignments have been aligned.
- * That's why it must be run after AlignRowLevelCommandAssignments.
- *
- * This rule also must be run in the same batch with DeduplicateRelations in Spark.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：UPDATE 重写规则，将 UPDATE 语句重写为基于 UpdateRows/ReplaceIcebergData 的计划。
+ * <p>设计意图：在分析阶段将声明式 UPDATE 转换为数据替换等价计划。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册；继承 RewriteRowLevelIcebergCommand。
  */
 object RewriteUpdateTable extends RewriteRowLevelIcebergCommand {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case u @ UpdateIcebergTable(aliasedTable, assignments, cond, None) if u.resolved && u.aligned =>
@@ -161,6 +160,7 @@ object RewriteUpdateTable extends RewriteRowLevelIcebergCommand {
     val projections = buildDeltaProjections(updatedRowsPlan, rowAttrs, rowIdAttrs, metadataAttrs)
     WriteIcebergDelta(writeRelation, updatedRowsPlan, relation, projections)
   }
+  /** 执行 updateRows 相关操作。 */
 
   private def updateRows(
       matchedRowsPlan: LogicalPlan,
@@ -177,6 +177,7 @@ object RewriteUpdateTable extends RewriteRowLevelIcebergCommand {
     val updateRowsOutput = buildMergingOutput(outputs, operationTypeAttr +: readAttrs)
     UpdateRows(delete, insert, updateRowsOutput, matchedRowsPlan)
   }
+  /** 执行 buildDeltaProjections 相关操作。 */
 
   private def buildDeltaProjections(
       updateRows: UpdateRows,

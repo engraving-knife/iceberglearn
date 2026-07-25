@@ -42,6 +42,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestDataFileIndexStatsFilters 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestDataFileIndexStatsFilters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDataFileIndexStatsFilters {
   private static final Schema SCHEMA =
       new Schema(
@@ -57,6 +64,7 @@ public class TestDataFileIndexStatsFilters {
   private DataFile dataFileWithoutNulls = null;
   private DataFile dataFileOnlyNulls = null;
 
+  /** 辅助方法：createTableAndData。 */
   @Before
   public void createTableAndData() throws IOException {
     File location = temp.newFolder();
@@ -91,11 +99,17 @@ public class TestDataFileIndexStatsFilters {
                 .collect(Collectors.toList()));
   }
 
+  /** 辅助方法：dropTable。 */
   @After
   public void dropTable() {
     TestTables.clearTables();
   }
 
+  /**
+   * 测试场景：Position Delete Planning Path。
+   *
+   * <p>验证该方法在 Position Delete Planning Path 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeletePlanningPath() throws IOException {
     table.newAppend().appendFile(dataFile).commit();
@@ -122,6 +136,11 @@ public class TestDataFileIndexStatsFilters {
     Assert.assertEquals("Should have one delete file, file_path matches", 1, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Position Delete Planning Path Filter。
+   *
+   * <p>验证该方法在 Position Delete Planning Path Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeletePlanningPathFilter() throws IOException {
     table.newAppend().appendFile(dataFile).commit();
@@ -149,6 +168,11 @@ public class TestDataFileIndexStatsFilters {
         "Should not have delete file, filtered by file_path stats", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStats() throws IOException {
     table.newAppend().appendFile(dataFile).commit();
@@ -175,6 +199,11 @@ public class TestDataFileIndexStatsFilters {
         "Should have one delete file, data contains a matching value", 1, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats Filter。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStatsFilter() throws IOException {
     table.newAppend().appendFile(dataFile).commit();
@@ -203,6 +232,11 @@ public class TestDataFileIndexStatsFilters {
         "Should not have delete file, filtered by data column stats", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats Null Value With All Null Deletes。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats Null Value With All Null Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStatsNullValueWithAllNullDeletes() throws IOException {
     table.newAppend().appendFile(dataFile).commit();
@@ -229,6 +263,11 @@ public class TestDataFileIndexStatsFilters {
         "Should have delete file, data contains a null value", 1, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats No Null Values With All Null Deletes。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats No Null Values With All Null Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStatsNoNullValuesWithAllNullDeletes() throws IOException {
     table
@@ -258,6 +297,11 @@ public class TestDataFileIndexStatsFilters {
         "Should have no delete files, data contains no null values", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats All Null Values With No Null Deletes。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats All Null Values With No Null Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStatsAllNullValuesWithNoNullDeletes() throws IOException {
     table
@@ -287,6 +331,11 @@ public class TestDataFileIndexStatsFilters {
         "Should have no delete files, data contains no null values", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：Equality Delete Planning Stats Some Null Values With Some Null Deletes。
+   *
+   * <p>验证该方法在 Equality Delete Planning Stats Some Null Values With Some Null Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeletePlanningStatsSomeNullValuesWithSomeNullDeletes()
       throws IOException {

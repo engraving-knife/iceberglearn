@@ -34,13 +34,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that applies changes in a snapshot created within a Write-Audit-Publish workflow with
- * a wap_id and creates a new snapshot which will be set as the current snapshot in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>职责：发布变更的存储过程，将暂存的写入变更发布到目标分支。
  *
- * @see org.apache.iceberg.ManageSnapshots#cherrypick(long)
+ * <p>设计意图：配合 publish-on-commit 工作流，将 staged 提交正式发布。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class PublishChangesProcedure extends BaseProcedure {
 
@@ -56,9 +56,10 @@ class PublishChangesProcedure extends BaseProcedure {
             new StructField("source_snapshot_id", DataTypes.LongType, false, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new Builder<PublishChangesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected PublishChangesProcedure doBuild() {
         return new PublishChangesProcedure(tableCatalog());
@@ -69,17 +70,17 @@ class PublishChangesProcedure extends BaseProcedure {
   private PublishChangesProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -107,7 +108,7 @@ class PublishChangesProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "ApplyWapChangesProcedure";

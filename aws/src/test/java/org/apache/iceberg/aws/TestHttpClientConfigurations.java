@@ -26,7 +26,19 @@ import org.mockito.Mockito;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 
+/**
+ * 文件级说明：测试 TestHttpClientConfigurations 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestHttpClientConfigurations 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHttpClientConfigurations {
+  /**
+   * 测试场景：Url Connection Override Configurations。
+   *
+   * <p>验证该方法在 Url Connection Override Configurations 条件下的行为是否符合预期。
+   */
   @Test
   public void testUrlConnectionOverrideConfigurations() {
     Map<String, String> properties = Maps.newHashMap();
@@ -49,6 +61,11 @@ public class TestHttpClientConfigurations {
     Mockito.verify(spyUrlConnectionHttpClientBuilder).connectionTimeout(Duration.ofMillis(80));
   }
 
+  /**
+   * 测试场景：Url Connection Default Configurations。
+   *
+   * <p>验证该方法在 Url Connection Default Configurations 条件下的行为是否符合预期。
+   */
   @Test
   public void testUrlConnectionDefaultConfigurations() {
     Map<String, String> properties = Maps.newHashMap();
@@ -69,6 +86,11 @@ public class TestHttpClientConfigurations {
         .socketTimeout(Mockito.any(Duration.class));
   }
 
+  /**
+   * 测试场景：Apache Override Configurations。
+   *
+   * <p>验证该方法在 Apache Override Configurations 条件下的行为是否符合预期。
+   */
   @Test
   public void testApacheOverrideConfigurations() {
     Map<String, String> properties = Maps.newHashMap();
@@ -102,6 +124,11 @@ public class TestHttpClientConfigurations {
     Mockito.verify(spyApacheHttpClientBuilder).useIdleConnectionReaper(false);
   }
 
+  /**
+   * 测试场景：Apache Default Configurations。
+   *
+   * <p>验证该方法在 Apache Default Configurations 条件下的行为是否符合预期。
+   */
   @Test
   public void testApacheDefaultConfigurations() {
     Map<String, String> properties = Maps.newHashMap();

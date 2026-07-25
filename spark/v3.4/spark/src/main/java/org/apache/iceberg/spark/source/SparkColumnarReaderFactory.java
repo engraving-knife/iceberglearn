@@ -26,6 +26,15 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 列式分区读取器工厂，为每个 InputPartition 创建列式批读取器。
+ *
+ * <p>设计意图：实现 Spark PartitionReaderFactory，构建 BatchDataReader。
+ *
+ * <p>上下游关系：由 SparkBatch 使用。
+ */
 class SparkColumnarReaderFactory implements PartitionReaderFactory {
   private final int batchSize;
 
@@ -33,12 +42,12 @@ class SparkColumnarReaderFactory implements PartitionReaderFactory {
     Preconditions.checkArgument(batchSize > 1, "Batch size must be > 1");
     this.batchSize = batchSize;
   }
-
+  /** 执行 createReader 相关操作。 */
   @Override
   public PartitionReader<InternalRow> createReader(InputPartition inputPartition) {
     throw new UnsupportedOperationException("Row-based reads are not supported");
   }
-
+  /** 执行 createColumnarReader 相关操作。 */
   @Override
   public PartitionReader<ColumnarBatch> createColumnarReader(InputPartition inputPartition) {
     Preconditions.checkArgument(
@@ -56,7 +65,7 @@ class SparkColumnarReaderFactory implements PartitionReaderFactory {
           "Unsupported task group for columnar reads: " + partition.taskGroup());
     }
   }
-
+  /** 执行 supportColumnarReads 相关操作。 */
   @Override
   public boolean supportColumnarReads(InputPartition inputPartition) {
     return true;

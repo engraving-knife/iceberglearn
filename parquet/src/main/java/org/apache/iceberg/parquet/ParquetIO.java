@@ -37,10 +37,47 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.SeekableInputStream;
 
-/** Methods in this class translate from the IO API to Parquet's IO API. */
+/**
+ * 文件级说明：Iceberg IO 抽象与 Parquet IO 抽象之间的适配器。
+ *
+ * <p>所属模块：iceberg-parquet（IO 桥接层，把 Iceberg 的 InputFile/OutputFile/Stream 适配为 parquet-mr 所需的
+ * InputFile/OutputFile/Stream）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>把 {@link org.apache.iceberg.io.InputFile} 转为 Parquet {@link InputFile}。
+ *   <li>把 {@link org.apache.iceberg.io.OutputFile} 转为 Parquet {@link OutputFile}。
+ *   <li>把 Iceberg 的 {@link org.apache.iceberg.io.SeekableInputStream} / {@link
+ *       org.apache.iceberg.io.PositionOutputStream} 适配为 Parquet 对应流类型。
+ *   <li>对 Hadoop 实现做特化处理，直接复用 parquet-mr 的 Hadoop 包装以获得更好性能。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Hadoop 快速路径：当 Iceberg 文件实为 HadoopInputFile/HadoopOutputFile 时， 直接调用 parquet-mr 的
+ *       HadoopInputFile/HadoopOutputFile 构造，避免额外包装层。
+ *   <li>委托流检测：对 DelegatingInputStream/OutputStream 检测内部是否包装了
+ *       FSDataInputStream/FSDataOutputStream，若是则用 HadoopStreams 包装以支持位置查询。
+ *   <li>通用回退：非 Hadoop 实现使用内部 Adapter 类桥接，保证 seek/getPos 语义一致。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link Parquet} 读写入口调用；依赖 iceberg-hadoop 与 parquet-mr。
+ */
 class ParquetIO {
   private ParquetIO() {}
 
+  /**
+   * 将 Iceberg {@link org.apache.iceberg.io.InputFile} 转为 Parquet {@link InputFile}。
+   *
+   * <p>逻辑：若实为 {@link HadoopInputFile}，直接用 parquet-mr 的 {@code HadoopInputFile.fromStatus} 构造；否则包装为
+   * {@link ParquetInputFile}。
+   *
+   * @param file Iceberg 输入文件
+   * @return Parquet 输入文件
+   * @throws RuntimeIOException 构造失败
+   */
   static InputFile file(org.apache.iceberg.io.InputFile file) {
     // TODO: use reflection to avoid depending on classes from iceberg-hadoop
     // TODO: use reflection to avoid depending on classes from hadoop
@@ -56,6 +93,14 @@ class ParquetIO {
     return new ParquetInputFile(file);
   }
 
+  /**
+   * 将 Iceberg {@link org.apache.iceberg.io.OutputFile} 转为 Parquet {@link OutputFile}， 使用文件自带的
+   * Hadoop Configuration。
+   *
+   * @param file Iceberg 输出文件
+   * @return Parquet 输出文件
+   * @throws RuntimeIOException 构造失败
+   */
   static OutputFile file(org.apache.iceberg.io.OutputFile file) {
     if (file instanceof HadoopOutputFile) {
       HadoopOutputFile hfile = (HadoopOutputFile) file;
@@ -69,6 +114,15 @@ class ParquetIO {
     return new ParquetOutputFile(file);
   }
 
+  /**
+   * 将 Iceberg {@link org.apache.iceberg.io.OutputFile} 转为 Parquet {@link OutputFile}， 使用外部传入的
+   * Hadoop Configuration。
+   *
+   * @param file Iceberg 输出文件
+   * @param conf Hadoop 配置
+   * @return Parquet 输出文件
+   * @throws RuntimeIOException 构造失败
+   */
   static OutputFile file(org.apache.iceberg.io.OutputFile file, Configuration conf) {
     if (file instanceof HadoopOutputFile) {
       HadoopOutputFile hfile = (HadoopOutputFile) file;
@@ -81,6 +135,16 @@ class ParquetIO {
     return new ParquetOutputFile(file);
   }
 
+  /**
+   * 将 Iceberg {@link org.apache.iceberg.io.SeekableInputStream} 适配为 Parquet {@link
+   * SeekableInputStream}。
+   *
+   * <p>逻辑：若流为 DelegatingInputStream 且内部包装 FSDataInputStream， 用 {@link HadoopStreams#wrap} 包装；否则用
+   * {@link ParquetInputStreamAdapter} 桥接。
+   *
+   * @param stream Iceberg 可定位输入流
+   * @return Parquet 可定位输入流
+   */
   static SeekableInputStream stream(org.apache.iceberg.io.SeekableInputStream stream) {
     if (stream instanceof DelegatingInputStream) {
       InputStream wrapped = ((DelegatingInputStream) stream).getDelegate();
@@ -91,6 +155,16 @@ class ParquetIO {
     return new ParquetInputStreamAdapter(stream);
   }
 
+  /**
+   * 将 Iceberg {@link org.apache.iceberg.io.PositionOutputStream} 适配为 Parquet {@link
+   * PositionOutputStream}。
+   *
+   * <p>逻辑：若流为 DelegatingOutputStream 且内部包装 FSDataOutputStream， 用 {@link HadoopStreams#wrap} 包装；否则用
+   * {@link ParquetOutputStreamAdapter} 桥接。
+   *
+   * @param stream Iceberg 位置输出流
+   * @return Parquet 位置输出流
+   */
   static PositionOutputStream stream(org.apache.iceberg.io.PositionOutputStream stream) {
     if (stream instanceof DelegatingOutputStream) {
       OutputStream wrapped = ((DelegatingOutputStream) stream).getDelegate();
@@ -101,6 +175,10 @@ class ParquetIO {
     return new ParquetOutputStreamAdapter(stream);
   }
 
+  /**
+   * Iceberg SeekableInputStream 到 Parquet DelegatingSeekableInputStream 的适配器， 委托 getPos/seek 给底层
+   * Iceberg 流。
+   */
   private static class ParquetInputStreamAdapter extends DelegatingSeekableInputStream {
     private final org.apache.iceberg.io.SeekableInputStream delegate;
 
@@ -120,6 +198,10 @@ class ParquetIO {
     }
   }
 
+  /**
+   * Iceberg PositionOutputStream 到 Parquet DelegatingPositionOutputStream 的适配器， 委托 getPos 给底层
+   * Iceberg 流。
+   */
   private static class ParquetOutputStreamAdapter extends DelegatingPositionOutputStream {
     private final org.apache.iceberg.io.PositionOutputStream delegate;
 
@@ -134,6 +216,7 @@ class ParquetIO {
     }
   }
 
+  /** 把 Iceberg OutputFile 适配为 Parquet OutputFile，不支持块大小。 */
   private static class ParquetOutputFile implements OutputFile {
     private final org.apache.iceberg.io.OutputFile file;
 
@@ -162,6 +245,7 @@ class ParquetIO {
     }
   }
 
+  /** 把 Iceberg InputFile 适配为 Parquet InputFile。 */
   private static class ParquetInputFile implements InputFile {
     private final org.apache.iceberg.io.InputFile file;
 

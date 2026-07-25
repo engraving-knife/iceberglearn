@@ -29,6 +29,13 @@ import org.apache.spark.sql.connector.expressions.FieldReference
 import org.apache.spark.sql.connector.expressions.IdentityTransform
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 ReplacePartitionFieldExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class ReplacePartitionFieldExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -39,6 +46,10 @@ case class ReplacePartitionFieldExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -65,6 +76,10 @@ case class ReplacePartitionFieldExec(
     Nil
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"ReplacePartitionField ${catalog.name}.${ident.quoted} ${transformFrom.describe} " +
         s"with ${name.map(n => s"$n=").getOrElse("")}${transformTo.describe}"

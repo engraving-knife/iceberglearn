@@ -116,6 +116,13 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
+/**
+ * 文件级说明：测试 TestRewriteDataFilesAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 重写数据文件动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewriteDataFilesAction extends SparkTestBase {
 
   private static final int SCALE = 400000;
@@ -133,24 +140,28 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
   private final ScanTaskSetManager manager = ScanTaskSetManager.get();
   private String tableLocation = null;
 
+  /** 初始化Spark。 */
   @BeforeClass
   public static void setupSpark() {
     // disable AQE as tests assume that writes generate a particular number of files
     spark.conf().set(SQLConf.ADAPTIVE_EXECUTION_ENABLED().key(), "false");
   }
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     File tableDir = temp.newFolder();
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** basic重写。 */
   private RewriteDataFilesSparkAction basicRewrite(Table table) {
     // Always compact regardless of input files
     table.refresh();
     return actions().rewriteDataFiles(table).option(SizeBasedFileRewriter.MIN_INPUT_FILES, "1");
   }
 
+  /** 测试空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyTable() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -164,6 +175,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertNull("Table must stay empty", table.currentSnapshot());
   }
 
+  /** 测试binpack非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackUnpartitionedTable() {
     Table table = createTable(4);
@@ -182,6 +194,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actual);
   }
 
+  /** 测试binpack分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackPartitionedTable() {
     Table table = createTablePartitioned(4, 2);
@@ -200,6 +213,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpack带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithFilter() {
     Table table = createTablePartitioned(4, 2);
@@ -223,6 +237,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpack带过滤器上桶表达式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithFilterOnBucketExpression() {
     Table table = createTablePartitioned(4, 2);
@@ -249,6 +264,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpack后分区change场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackAfterPartitionChange() {
     Table table = createTable();
@@ -285,6 +301,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveFiles(table, 20);
   }
 
+  /** 测试binpack带删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithDeletes() {
     Table table = createTablePartitioned(4, 2);
@@ -328,6 +345,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertEquals("7 rows are removed", total - 7, actualRecords.size());
   }
 
+  /** 测试binpack带删除所有数据场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithDeleteAllData() {
     Map<String, String> options = Maps.newHashMap();
@@ -372,6 +390,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         (long) table.currentSnapshot().deleteManifests(table.io()).get(0).addedRowsCount());
   }
 
+  /** 测试binpack带startingsequencenumber场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithStartingSequenceNumber() {
     Table table = createTablePartitioned(4, 2);
@@ -406,6 +425,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     }
   }
 
+  /** 测试binpack带startingsequencenumberv1compatibility场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackWithStartingSequenceNumberV1Compatibility() {
     Map<String, String> properties = ImmutableMap.of(TableProperties.FORMAT_VERSION, "1");
@@ -440,6 +460,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     }
   }
 
+  /** 测试重写large表是否residuals场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteLargeTableHasResiduals() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).build();
@@ -478,6 +499,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpacksplitlarge文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackSplitLargeFile() {
     Table table = createTable(1);
@@ -503,6 +525,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpackcombinemixed文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackCombineMixedFiles() {
     Table table = createTable(1); // 400000
@@ -537,6 +560,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试binpackcombinemedium文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackCombineMediumFiles() {
     Table table = createTable(4);
@@ -568,6 +592,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试 testPartialProgressEnabled 场景：验证 PartialProgressEnabled 相关操作的行为与结果。 */
   @Test
   public void testPartialProgressEnabled() {
     Table table = createTable(20);
@@ -599,6 +624,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     assertEquals("We shouldn't have changed the data", originalData, postRewriteData);
   }
 
+  /** 测试多个分组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMultipleGroups() {
     Table table = createTable(20);
@@ -627,6 +653,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试partialprogress最大提交场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartialProgressMaxCommits() {
     Table table = createTable(20);
@@ -656,6 +683,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试单个提交带重写failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSingleCommitWithRewriteFailure() {
     Table table = createTable(20);
@@ -690,6 +718,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试单个提交带提交failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSingleCommitWithCommitFailure() {
     Table table = createTable(20);
@@ -724,6 +753,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试并行单个提交带重写failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParallelSingleCommitWithRewriteFailure() {
     Table table = createTable(20);
@@ -759,6 +789,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试partialprogress带重写failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartialProgressWithRewriteFailure() {
     Table table = createTable(20);
@@ -801,6 +832,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试并行partialprogress带重写failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParallelPartialProgressWithRewriteFailure() {
     Table table = createTable(20);
@@ -844,6 +876,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试并行partialprogress带提交failure场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParallelPartialProgressWithCommitFailure() {
     Table table = createTable(20);
@@ -889,6 +922,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试invalid选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidOptions() {
     Table table = createTable(20);
@@ -933,6 +967,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         .hasMessageContaining("requires enabling Iceberg Spark session extensions");
   }
 
+  /** 测试排序多个分组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortMultipleGroups() {
     Table table = createTable(20);
@@ -965,6 +1000,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试simple排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSimpleSort() {
     Table table = createTable(20);
@@ -998,6 +1034,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveLastCommitSorted(table, "c2");
   }
 
+  /** 测试排序后分区change场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortAfterPartitionChange() {
     Table table = createTable(20);
@@ -1035,6 +1072,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveLastCommitSorted(table, "c2");
   }
 
+  /** 测试排序自定义排序顺序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortCustomSortOrder() {
     Table table = createTable(20);
@@ -1066,6 +1104,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveLastCommitSorted(table, "c2");
   }
 
+  /** 测试排序自定义排序顺序requiresrepartition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortCustomSortOrderRequiresRepartition() {
     int partitions = 4;
@@ -1106,6 +1145,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveLastCommitSorted(table, "c3");
   }
 
+  /** 测试auto排序shuffleoutput场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAutoSortShuffleOutput() {
     Table table = createTable(20);
@@ -1145,6 +1185,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveLastCommitSorted(table, "c2");
   }
 
+  /** 测试提交stateunknownexception场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCommitStateUnknownException() {
     Table table = createTable(20);
@@ -1177,6 +1218,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveSnapshots(table, 2); // Commit actually Succeeded
   }
 
+  /** 测试z顺序排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderSort() {
     int originalFiles = 20;
@@ -1236,6 +1278,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         filesScannedC2C3 < originalFilesC2C3);
   }
 
+  /** 测试z顺序所有类型排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderAllTypesSort() {
     Table table = createTypeTestTable();
@@ -1279,6 +1322,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     shouldHaveACleanCache(table);
   }
 
+  /** 测试 testInvalidAPIUsage 场景：验证 InvalidAPIUsage 相关操作的行为与结果。 */
   @Test
   public void testInvalidAPIUsage() {
     Table table = createTable(1);
@@ -1298,6 +1342,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         .hasMessage("Must use only one rewriter type (bin-pack, sort, zorder)");
   }
 
+  /** 测试重写job顺序bytesasc场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteJobOrderBytesAsc() {
     Table table = createTablePartitioned(4, 2);
@@ -1330,6 +1375,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertNotEquals("Size in bytes order should not be descending", actual, expected);
   }
 
+  /** 测试重写job顺序bytesdesc场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteJobOrderBytesDesc() {
     Table table = createTablePartitioned(4, 2);
@@ -1362,6 +1408,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertNotEquals("Size in bytes order should not be ascending", actual, expected);
   }
 
+  /** 测试重写job顺序文件asc场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteJobOrderFilesAsc() {
     Table table = createTablePartitioned(4, 2);
@@ -1394,6 +1441,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertNotEquals("Number of files order should not be descending", actual, expected);
   }
 
+  /** 测试重写job顺序文件desc场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteJobOrderFilesDesc() {
     Table table = createTablePartitioned(4, 2);
@@ -1426,6 +1474,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     Assert.assertNotEquals("Number of files order should not be ascending", actual, expected);
   }
 
+  /** 到分组流。 */
   private Stream<RewriteFileGroup> toGroupStream(Table table, RewriteDataFilesSparkAction rewrite) {
     rewrite.validateAndInitOptions();
     StructLikeMap<List<List<FileScanTask>>> fileGroupsByPartition =
@@ -1435,27 +1484,32 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         new RewriteExecutionContext(fileGroupsByPartition), fileGroupsByPartition);
   }
 
+  /** 当前数据。 */
   protected List<Object[]> currentData() {
     return rowsToJava(
         spark.read().format("iceberg").load(tableLocation).sort("c1", "c2", "c3").collectAsList());
   }
 
+  /** 测试数据size场景：验证该方法在对应输入下的行为与断言结果。 */
   protected long testDataSize(Table table) {
     return Streams.stream(table.newScan().planFiles()).mapToLong(FileScanTask::length).sum();
   }
 
+  /** 应have多个文件。 */
   protected void shouldHaveMultipleFiles(Table table) {
     table.refresh();
     int numFiles = Iterables.size(table.newScan().planFiles());
     Assert.assertTrue(String.format("Should have multiple files, had %d", numFiles), numFiles > 1);
   }
 
+  /** 应have文件。 */
   protected void shouldHaveFiles(Table table, int numExpected) {
     table.refresh();
     int numFiles = Iterables.size(table.newScan().planFiles());
     Assert.assertEquals("Did not have the expected number of files", numExpected, numFiles);
   }
 
+  /** 应have快照。 */
   protected void shouldHaveSnapshots(Table table, int expectedSnapshots) {
     table.refresh();
     int actualSnapshots = Iterables.size(table.snapshots());
@@ -1463,6 +1517,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         "Table did not have the expected number of snapshots", expectedSnapshots, actualSnapshots);
   }
 
+  /** 应haveno孤儿。 */
   protected void shouldHaveNoOrphans(Table table) {
     Assert.assertEquals(
         "Should not have found any orphan files",
@@ -1474,23 +1529,27 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
             .orphanFileLocations());
   }
 
+  /** 应have一个cleancache。 */
   protected void shouldHaveACleanCache(Table table) {
     Assert.assertEquals(
         "Should not have any entries in cache", ImmutableSet.of(), cacheContents(table));
   }
 
+  /** 应have最后一个提交sorted。 */
   protected <T> void shouldHaveLastCommitSorted(Table table, String column) {
     List<Pair<Pair<T, T>, Pair<T, T>>> overlappingFiles = checkForOverlappingFiles(table, column);
 
     Assert.assertEquals("Found overlapping files", Collections.emptyList(), overlappingFiles);
   }
 
+  /** 应have最后一个提交unsorted。 */
   protected <T> void shouldHaveLastCommitUnsorted(Table table, String column) {
     List<Pair<Pair<T, T>, Pair<T, T>>> overlappingFiles = checkForOverlappingFiles(table, column);
 
     Assert.assertNotEquals("Found no overlapping files", Collections.emptyList(), overlappingFiles);
   }
 
+  /** bounds的。 */
   private <T> Pair<T, T> boundsOf(DataFile file, NestedField field, Class<T> javaClass) {
     int columnId = field.fieldId();
     return Pair.of(
@@ -1498,6 +1557,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         javaClass.cast(Conversions.fromByteBuffer(field.type(), file.upperBounds().get(columnId))));
   }
 
+  /** 检查用于overlapping文件。 */
   private <T> List<Pair<Pair<T, T>, Pair<T, T>>> checkForOverlappingFiles(
       Table table, String column) {
     table.refresh();
@@ -1559,6 +1619,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return overlaps.collect(Collectors.toList());
   }
 
+  /** 创建表。 */
   protected Table createTable() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
     Map<String, String> options = Maps.newHashMap();
@@ -1571,6 +1632,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return table;
   }
 
+  /** 创建表。 */
   /**
    * Create a table with a certain number of files, returns the size of a file
    *
@@ -1583,6 +1645,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return table;
   }
 
+  /** 创建表分区。 */
   protected Table createTablePartitioned(
       int partitions, int files, int numRecords, Map<String, String> options) {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c1").truncate("c2", 2).build();
@@ -1593,10 +1656,12 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return table;
   }
 
+  /** 创建表分区。 */
   protected Table createTablePartitioned(int partitions, int files) {
     return createTablePartitioned(partitions, files, SCALE, Maps.newHashMap());
   }
 
+  /** 创建类型测试表。 */
   private Table createTypeTestTable() {
     Schema schema =
         new Schema(
@@ -1632,6 +1697,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return table;
   }
 
+  /** average文件size。 */
   protected int averageFileSize(Table table) {
     table.refresh();
     return (int)
@@ -1641,10 +1707,12 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
             .getAsDouble();
   }
 
+  /** 写记录。 */
   private void writeRecords(int files, int numRecords) {
     writeRecords(files, numRecords, 0);
   }
 
+  /** 写记录。 */
   private void writeRecords(int files, int numRecords, int partitions) {
     List<ThreeColumnRecord> records = Lists.newArrayList();
     int rowDimension = (int) Math.ceil(Math.sqrt(numRecords));
@@ -1669,6 +1737,7 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     writeDF(df);
   }
 
+  /** 写df。 */
   private void writeDF(Dataset<Row> df) {
     df.select("c1", "c2", "c3")
         .sortWithinPartitions("c1", "c2")
@@ -1679,12 +1748,14 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         .save(tableLocation);
   }
 
+  /** 写pos删除到文件。 */
   private List<DeleteFile> writePosDeletesToFile(
       Table table, DataFile dataFile, int outputDeleteFiles) {
     return writePosDeletes(
         table, dataFile.partition(), dataFile.path().toString(), outputDeleteFiles);
   }
 
+  /** 写pos删除。 */
   private List<DeleteFile> writePosDeletes(
       Table table, StructLike partition, String path, int outputDeleteFiles) {
     List<DeleteFile> results = Lists.newArrayList();
@@ -1720,10 +1791,12 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
     return results;
   }
 
+  /** 动作。 */
   private SparkActions actions() {
     return SparkActions.get();
   }
 
+  /** 辅助方法：cacheContents。 */
   private Set<String> cacheContents(Table table) {
     return ImmutableSet.<String>builder()
         .addAll(manager.fetchSetIds(table))
@@ -1731,10 +1804,12 @@ public class TestRewriteDataFilesAction extends SparkTestBase {
         .build();
   }
 
+  /** percent文件必需。 */
   private double percentFilesRequired(Table table, String col, String value) {
     return percentFilesRequired(table, new String[] {col}, new String[] {value});
   }
 
+  /** percent文件必需。 */
   private double percentFilesRequired(Table table, String[] cols, String[] values) {
     Preconditions.checkArgument(cols.length == values.length);
     Expression restriction = Expressions.alwaysTrue();

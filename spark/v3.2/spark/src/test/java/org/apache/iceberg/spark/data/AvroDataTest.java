@@ -40,6 +40,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 AvroDataTest 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Avro数据 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class AvroDataTest {
 
   protected abstract void writeAndValidate(Schema schema) throws IOException;
@@ -66,11 +73,13 @@ public abstract class AvroDataTest {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试simple结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSimpleStruct() throws IOException {
     writeAndValidate(TypeUtil.assignIncreasingFreshIds(new Schema(SUPPORTED_PRIMITIVES.fields())));
   }
 
+  /** 测试结构体带必需字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStructWithRequiredFields() throws IOException {
     writeAndValidate(
@@ -79,6 +88,7 @@ public abstract class AvroDataTest {
                 Lists.transform(SUPPORTED_PRIMITIVES.fields(), Types.NestedField::asRequired))));
   }
 
+  /** 测试结构体带可选字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStructWithOptionalFields() throws IOException {
     writeAndValidate(
@@ -87,12 +97,14 @@ public abstract class AvroDataTest {
                 Lists.transform(SUPPORTED_PRIMITIVES.fields(), Types.NestedField::asOptional))));
   }
 
+  /** 测试嵌套结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedStruct() throws IOException {
     writeAndValidate(
         TypeUtil.assignIncreasingFreshIds(new Schema(required(1, "struct", SUPPORTED_PRIMITIVES))));
   }
 
+  /** 测试数组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testArray() throws IOException {
     Schema schema =
@@ -103,6 +115,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试数组的结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testArrayOfStructs() throws IOException {
     Schema schema =
@@ -114,6 +127,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试映射场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMap() throws IOException {
     Schema schema =
@@ -127,6 +141,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试numeric映射key场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNumericMapKey() throws IOException {
     Schema schema =
@@ -138,6 +153,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试复合映射key场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testComplexMapKey() throws IOException {
     Schema schema =
@@ -157,6 +173,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试映射的结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMapOfStructs() throws IOException {
     Schema schema =
@@ -171,6 +188,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试mixed类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMixedTypes() throws IOException {
     StructType structType =
@@ -228,6 +246,7 @@ public abstract class AvroDataTest {
     writeAndValidate(schema);
   }
 
+  /** 测试时间戳无时区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampWithoutZone() throws IOException {
     withSQLConf(
@@ -243,6 +262,7 @@ public abstract class AvroDataTest {
         });
   }
 
+  /** 带SQL配置。 */
   protected void withSQLConf(Map<String, String> conf, Action action) throws IOException {
     SQLConf sqlConf = SQLConf.get();
 

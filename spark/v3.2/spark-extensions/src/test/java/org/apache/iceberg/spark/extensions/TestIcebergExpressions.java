@@ -29,13 +29,22 @@ import org.apache.spark.sql.catalyst.expressions.IcebergTruncateTransform;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestIcebergExpressions 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Iceberg表达式 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestIcebergExpressions extends SparkExtensionsTestBase {
 
+  /** 测试Iceberg表达式。 */
   public TestIcebergExpressions(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -43,6 +52,7 @@ public class TestIcebergExpressions extends SparkExtensionsTestBase {
     sql("DROP VIEW IF EXISTS v");
   }
 
+  /** 测试截断表达式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateExpressions() {
     sql(
@@ -73,6 +83,7 @@ public class TestIcebergExpressions extends SparkExtensionsTestBase {
         sql("SELECT int_c, long_c, dec_c, str_c, CAST(binary_c AS STRING) FROM v"));
   }
 
+  /** 测试桶表达式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketExpressions() {
     sql(

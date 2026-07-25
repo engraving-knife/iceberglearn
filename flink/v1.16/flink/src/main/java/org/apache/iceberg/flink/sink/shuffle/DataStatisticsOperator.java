@@ -35,10 +35,11 @@ import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTest
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * DataStatisticsOperator collects traffic distribution statistics. A custom partitioner shall be
- * attached to the DataStatisticsOperator output. The custom partitioner leverages the statistics to
- * shuffle record to improve data clustering while maintaining relative balanced traffic
- * distribution to downstream subtasks.
+ * 数据统计算子，在写入侧收集分布数据以支持 sink range shuffle。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：累积统计信息，checkpoint 时通过事件下发到下游。
+ *
+ * <p>设计意图：Flink 算子（AbstractStreamOperator）；上下游：上游 writer，下游为 partitioner。
  */
 class DataStatisticsOperator<D extends DataStatistics<D, S>, S>
     extends AbstractStreamOperator<DataStatisticsOrRecord<D, S>>

@@ -32,6 +32,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Internal
+/**
+ * 连续模式 Iceberg enumerator，周期性扫描新数据并分配分片。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定时调用 split planner，发现增量数据后经 assigner 分配。
+ *
+ * <p>设计意图：继承 AbstractIcebergEnumerator；被 Flink Source 框架调用。
+ */
 public class ContinuousIcebergEnumerator extends AbstractIcebergEnumerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContinuousIcebergEnumerator.class);

@@ -39,10 +39,33 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.Tasks;
 
+/**
+ * 文件级说明：Flink Source 的 split 规划工具类。
+ *
+ * <p>所属模块：iceberg-flink（source 子包），提供静态方法规划 Iceberg 表的 split。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>planInputSplits：为旧版 InputFormat 生成 {@link FlinkInputSplit} 数组。
+ *   <li>planIcebergSourceSplits：为 FLIP-27 新版 Source 生成 {@link IcebergSourceSplit} 列表。
+ *   <li>planTasks：底层方法，执行 Iceberg 表扫描并合并为 {@link CombinedScanTask}。
+ * </ul>
+ *
+ * <p>设计意图：统一封装 split 规划逻辑，支持本地性暴露（通过 blockLocations 获取主机名）。 使用线程池并行处理 split 的本地性信息获取。
+ *
+ * <p>上下游关系：被 {@link FlinkInputFormat} 和 FLIP-27 Source enumerator 调用； 内部委托 Iceberg core 的
+ * TableScan/IncrementalAppendScan 执行文件扫描。
+ */
 @Internal
 public class FlinkSplitPlanner {
   private FlinkSplitPlanner() {}
 
+  /**
+   * 为旧版 InputFormat 规划 input splits。
+   *
+   * <p>逻辑：扫描表获取 CombinedScanTask 列表 → 可选获取块位置信息 → 创建 FlinkInputSplit 数组。
+   */
   static FlinkInputSplit[] planInputSplits(
       Table table, ScanContext context, ExecutorService workerPool) {
     try (CloseableIterable<CombinedScanTask> tasksIterable =
@@ -69,7 +92,14 @@ public class FlinkSplitPlanner {
     }
   }
 
-  /** This returns splits for the FLIP-27 source */
+  /**
+   * 为 FLIP-27 新版 Source 规划 splits。
+   *
+   * @param table Iceberg 表
+   * @param context 扫描上下文
+   * @param workerPool 工作线程池
+   * @return IcebergSourceSplit 列表
+   */
   public static List<IcebergSourceSplit> planIcebergSourceSplits(
       Table table, ScanContext context, ExecutorService workerPool) {
     try (CloseableIterable<CombinedScanTask> tasksIterable =

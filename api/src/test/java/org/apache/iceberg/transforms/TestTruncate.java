@@ -28,7 +28,19 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTruncate 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTruncate 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTruncate {
+  /**
+   * 测试场景：Deprecated Truncate Integer。
+   *
+   * <p>验证该方法在 Deprecated Truncate Integer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeprecatedTruncateInteger() {
     Truncate<Object> trunc = Truncate.get(Types.IntegerType.get(), 10);
@@ -44,6 +56,11 @@ public class TestTruncate {
     assertThat((int) trunc.apply(-11)).isEqualTo(-20);
   }
 
+  /**
+   * 测试场景：Truncate Integer。
+   *
+   * <p>验证该方法在 Truncate Integer 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateInteger() {
     Function<Object, Object> trunc = Truncate.get(10).bind(Types.IntegerType.get());
@@ -59,6 +76,11 @@ public class TestTruncate {
     assertThat((int) trunc.apply(-11)).isEqualTo(-20);
   }
 
+  /**
+   * 测试场景：Truncate Long。
+   *
+   * <p>验证该方法在 Truncate Long 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateLong() {
     Function<Object, Object> trunc = Truncate.get(10).bind(Types.LongType.get());
@@ -74,6 +96,11 @@ public class TestTruncate {
     assertThat((long) trunc.apply(-11L)).isEqualTo(-20L);
   }
 
+  /**
+   * 测试场景：Truncate Decimal。
+   *
+   * <p>验证该方法在 Truncate Decimal 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateDecimal() {
     // decimal truncation works by applying the decimal scale to the width: 10 scale 2 = 0.10
@@ -85,6 +112,11 @@ public class TestTruncate {
     assertThat(trunc.apply(new BigDecimal("-0.05"))).isEqualTo(new BigDecimal("-0.10"));
   }
 
+  /**
+   * 测试场景：Truncate String。
+   *
+   * <p>验证该方法在 Truncate String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateString() {
     Function<Object, Object> trunc = Truncate.get(5).bind(Types.StringType.get());
@@ -99,6 +131,11 @@ public class TestTruncate {
         .isEqualTo("abcde");
   }
 
+  /**
+   * 测试场景：Truncate Byte Buffer。
+   *
+   * <p>验证该方法在 Truncate Byte Buffer 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateByteBuffer() {
     Function<Object, Object> trunc = Truncate.get(4).bind(Types.BinaryType.get());
@@ -110,6 +147,11 @@ public class TestTruncate {
         .isEqualTo(ByteBuffer.wrap("abc".getBytes(StandardCharsets.UTF_8)));
   }
 
+  /**
+   * 测试场景：Verified Illegal Width。
+   *
+   * <p>验证该方法在 Verified Illegal Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testVerifiedIllegalWidth() {
     Assertions.assertThatThrownBy(() -> Truncate.get(0))

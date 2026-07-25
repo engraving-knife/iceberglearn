@@ -29,23 +29,13 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * An iterator that finds delete/insert rows which represent an update, and converts them into
- * update records from changelog tables within a single Spark task. It assumes that rows are sorted
- * by identifier columns and change type.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>For example, these two rows
+ * <p>职责：更新计算迭代器，针对 COPY-ON-WRITE 更新操作，根据待更新行与删除行集合计算最终的更新后行。
  *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='b', op='INSERT')
- * </ul>
+ * <p>设计意图：以归并方式流式处理匹配行，避免全量物化中间结果。
  *
- * <p>will be marked as update-rows:
- *
- * <ul>
- *   <li>(id=1, data='a', op='UPDATE_BEFORE')
- *   <li>(id=1, data='b', op='UPDATE_AFTER')
- * </ul>
+ * <p>上下游关系：由 SparkCopyOnWriteScan 的更新读取链路使用。
  */
 public class ComputeUpdateIterator extends ChangelogIterator {
 
@@ -60,7 +50,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
         Arrays.stream(identifierFields).map(rowType::fieldIndex).collect(Collectors.toList());
     this.identifierFields = identifierFields;
   }
-
+  /** 判断是否有下一个元素。 */
   @Override
   public boolean hasNext() {
     if (cachedRow != null) {
@@ -68,7 +58,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     }
     return rowIterator().hasNext();
   }
-
+  /** 返回下一个元素。 */
   @Override
   public Row next() {
     // if there is an updated cached row, return it directly
@@ -99,7 +89,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
 
     return currentRow;
   }
-
+  /** 执行 modify 相关操作。 */
   private Row modify(Row row, int valueIndex, Object value) {
     if (row instanceof GenericRow) {
       GenericRow genericRow = (GenericRow) row;
@@ -114,11 +104,11 @@ public class ComputeUpdateIterator extends ChangelogIterator {
       return RowFactory.create(values);
     }
   }
-
+  /** 执行 cachedUpdateRecord 相关操作。 */
   private boolean cachedUpdateRecord() {
     return cachedRow != null && changeType(cachedRow).equals(UPDATE_AFTER);
   }
-
+  /** 执行 currentRow 相关操作。 */
   private Row currentRow() {
     if (cachedRow != null) {
       Row row = cachedRow;
@@ -128,7 +118,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
       return rowIterator().next();
     }
   }
-
+  /** 执行 sameLogicalRow 相关操作。 */
   private boolean sameLogicalRow(Row currentRow, Row nextRow) {
     for (int idx : identifierFieldIdx) {
       if (isDifferentValue(currentRow, nextRow, idx)) {

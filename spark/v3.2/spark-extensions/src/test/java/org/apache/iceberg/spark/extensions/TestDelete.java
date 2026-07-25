@@ -72,8 +72,16 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDelete 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 删除 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
 
+  /** 测试删除。 */
   public TestDelete(
       String catalogName,
       String implementation,
@@ -84,11 +92,13 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     super(catalogName, implementation, config, fileFormat, vectorized, distributionMode);
   }
 
+  /** 初始化Spark配置。 */
   @BeforeClass
   public static void setupSparkConf() {
     spark.conf().set("spark.sql.shuffle.partitions", "4");
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -96,6 +106,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     sql("DROP TABLE IF EXISTS deleted_dep");
   }
 
+  /** 测试删除无scanning表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithoutScanningTable() throws Exception {
     createAndInitPartitionedTable();
@@ -132,6 +143,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除文件then元数据删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFileThenMetadataDelete() throws Exception {
     Assume.assumeFalse("Avro does not support metadata delete", fileFormat.equals("avro"));
@@ -158,6 +170,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除带分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithPartitionedTable() throws Exception {
     createAndInitPartitionedTable();
@@ -190,6 +203,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         "partition aligned delete results in 1 partition", 1, actualPartitions.size());
   }
 
+  /** 测试删除带falsecondition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithFalseCondition() {
     createAndInitUnpartitionedTable();
@@ -207,6 +221,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除从空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFromEmptyTable() {
     createAndInitUnpartitionedTable();
@@ -223,6 +238,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试EXPLAIN场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExplain() {
     createAndInitUnpartitionedTable();
@@ -242,6 +258,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带别名场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithAlias() {
     createAndInitUnpartitionedTable();
@@ -256,6 +273,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除带动态文件过滤场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithDynamicFileFiltering() throws NoSuchTableException {
     createAndInitPartitionedTable();
@@ -281,6 +299,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试删除不存在的已存在的记录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteNonExistingRecords() {
     createAndInitPartitionedTable();
@@ -310,6 +329,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除无condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithoutCondition() {
     createAndInitPartitionedTable();
@@ -331,6 +351,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         "Should have expected rows", ImmutableList.of(), sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试删除使用元数据带复合condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteUsingMetadataWithComplexCondition() {
     createAndInitPartitionedTable();
@@ -354,6 +375,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试删除带arbitrary分区谓词场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithArbitraryPartitionPredicates() {
     createAndInitPartitionedTable();
@@ -382,6 +404,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带不存在的deterministiccondition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithNonDeterministicCondition() {
     createAndInitPartitionedTable();
@@ -395,6 +418,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         () -> sql("DELETE FROM %s WHERE id = 1 AND rand() > 0.5", tableName));
   }
 
+  /** 测试删除带foldableconditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithFoldableConditions() {
     createAndInitPartitionedTable();
@@ -433,6 +457,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     Assert.assertEquals("Should have 2 snapshots", 2, Iterables.size(table.snapshots()));
   }
 
+  /** 测试删除带空值conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithNullConditions() {
     createAndInitPartitionedTable();
@@ -470,6 +495,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     validateDelete(currentSnapshot, "1", "1");
   }
 
+  /** 测试删除带在与非在conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithInAndNotInConditions() {
     createAndInitUnpartitionedTable();
@@ -495,6 +521,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带多个行分组Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithMultipleRowGroupsParquet() throws NoSuchTableException {
     Assume.assumeTrue(fileFormat.equalsIgnoreCase("parquet"));
@@ -525,6 +552,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     Assert.assertEquals(199, spark.table(tableName).count());
   }
 
+  /** 测试删除带condition上嵌套列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithConditionOnNestedColumn() {
     createAndInitNestedColumnsTable();
@@ -541,6 +569,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         "Should have expected rows", ImmutableList.of(), sql("SELECT id FROM %s", tableName));
   }
 
+  /** 测试删除带在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithInSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -583,6 +612,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带multi列在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithMultiColumnInSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -600,6 +630,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带非在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithNotInSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -659,6 +690,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除上不存在的Iceberg表非supported场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteOnNonIcebergTableNotSupported() {
     createOrReplaceView("testtable", "{ \"c1\": -100, \"c2\": -200 }");
@@ -670,6 +702,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         () -> sql("DELETE FROM %s WHERE c1 = -100", "testtable"));
   }
 
+  /** 测试删除带存在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithExistSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -714,6 +747,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试删除带非存在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithNotExistsSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -749,6 +783,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试删除带scalarsubquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithScalarSubquery() throws NoSuchTableException {
     createAndInitUnpartitionedTable();
@@ -769,6 +804,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试删除thatrequiresgrouping前写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteThatRequiresGroupingBeforeWrite() throws NoSuchTableException {
     createAndInitPartitionedTable();
@@ -792,6 +828,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试删除带serializable隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testDeleteWithSerializableIsolation() throws InterruptedException {
     // cannot run tests with concurrency for Hadoop tables without atomic renames
@@ -875,6 +912,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试删除带快照隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testDeleteWithSnapshotIsolation()
       throws InterruptedException, ExecutionException {
@@ -953,6 +991,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试删除refreshesrelationcache场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteRefreshesRelationCache() throws NoSuchTableException {
     createAndInitPartitionedTable();
@@ -994,6 +1033,7 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     spark.sql("UNCACHE TABLE tmp");
   }
 
+  /** 测试删除带多个分区规格场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteWithMultipleSpecs() {
     createAndInitTable("id INT, dep STRING, category STRING");
@@ -1041,27 +1081,32 @@ public abstract class TestDelete extends SparkRowLevelOperationsTestBase {
     initTable();
   }
 
+  /** 创建与init非分区表。 */
   protected void createAndInitUnpartitionedTable() {
     sql("CREATE TABLE %s (id INT, dep STRING) USING iceberg", tableName);
     initTable();
   }
 
+  /** 创建与init嵌套列表。 */
   protected void createAndInitNestedColumnsTable() {
     sql("CREATE TABLE %s (id INT, complex STRUCT<c1:INT,c2:STRING>) USING iceberg", tableName);
     initTable();
   }
 
+  /** 追加。 */
   protected void append(Employee... employees) throws NoSuchTableException {
     List<Employee> input = Arrays.asList(employees);
     Dataset<Row> inputDF = spark.createDataFrame(input, Employee.class);
     inputDF.coalesce(1).writeTo(tableName).append();
   }
 
+  /** 模式。 */
   private RowLevelOperationMode mode(Table table) {
     String modeName = table.properties().getOrDefault(DELETE_MODE, DELETE_MODE_DEFAULT);
     return RowLevelOperationMode.fromName(modeName);
   }
 
+  /** parse计划。 */
   private LogicalPlan parsePlan(String query, Object... args) {
     try {
       return spark.sessionState().sqlParser().parsePlan(String.format(query, args));

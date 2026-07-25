@@ -45,8 +45,17 @@ import org.apache.iceberg.types.Types.UUIDType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestSchemaUnionByFieldName，用于验证 Schema Union By Field Name 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Schema Union By Field Name
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestSchemaUnionByFieldName {
 
+  /** 辅助方法：primitive types。 */
   private static List<? extends PrimitiveType> primitiveTypes() {
     return Lists.newArrayList(
         StringType.get(),
@@ -65,6 +74,7 @@ public class TestSchemaUnionByFieldName {
         FloatType.get());
   }
 
+  /** 辅助方法：primitive fields。 */
   private static NestedField[] primitiveFields(
       Integer initialValue, List<? extends PrimitiveType> primitiveTypes) {
     AtomicInteger atomicInteger = new AtomicInteger(initialValue);
@@ -78,6 +88,11 @@ public class TestSchemaUnionByFieldName {
         .toArray(NestedField[]::new);
   }
 
+  /**
+   * 测试场景：add top level primitives。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddTopLevelPrimitives() {
     Schema newSchema = new Schema(primitiveFields(0, primitiveTypes()));
@@ -85,6 +100,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add top level list of primitives。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddTopLevelListOfPrimitives() {
     for (PrimitiveType primitiveType : primitiveTypes()) {
@@ -95,6 +115,11 @@ public class TestSchemaUnionByFieldName {
     }
   }
 
+  /**
+   * 测试场景：add top level map of primitives。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddTopLevelMapOfPrimitives() {
     for (PrimitiveType primitiveType : primitiveTypes()) {
@@ -106,6 +131,11 @@ public class TestSchemaUnionByFieldName {
     }
   }
 
+  /**
+   * 测试场景：add top level struct of primitives。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddTopLevelStructOfPrimitives() {
     for (PrimitiveType primitiveType : primitiveTypes()) {
@@ -117,6 +147,11 @@ public class TestSchemaUnionByFieldName {
     }
   }
 
+  /**
+   * 测试场景：add nested primitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedPrimitive() {
     for (PrimitiveType primitiveType : primitiveTypes()) {
@@ -129,6 +164,11 @@ public class TestSchemaUnionByFieldName {
     }
   }
 
+  /**
+   * 测试场景：add nested primitives。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedPrimitives() {
     Schema currentSchema = new Schema(optional(1, "aStruct", Types.StructType.of()));
@@ -139,6 +179,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add nested lists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedLists() {
     Schema newSchema =
@@ -168,6 +213,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add nested struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedStruct() {
     Schema newSchema =
@@ -204,6 +254,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add nested maps。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedMaps() {
     Schema newSchema =
@@ -237,6 +292,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：detect invalid top level list。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDetectInvalidTopLevelList() {
     Schema currentSchema =
@@ -249,6 +309,11 @@ public class TestSchemaUnionByFieldName {
         .hasMessage("Cannot change column type: aList.element: string -> long");
   }
 
+  /**
+   * 测试场景：detect invalid top level map value。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDetectInvalidTopLevelMapValue() {
 
@@ -266,6 +331,11 @@ public class TestSchemaUnionByFieldName {
         .hasMessage("Cannot change column type: aMap.value: string -> long");
   }
 
+  /**
+   * 测试场景：detect invalid top level map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDetectInvalidTopLevelMapKey() {
     Schema currentSchema =
@@ -304,6 +374,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct().fields().get(0).type()).isEqualTo(DoubleType.get());
   }
 
+  /**
+   * 测试场景：invalid type promote double to float。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidTypePromoteDoubleToFloat() {
     Schema currentSchema = new Schema(required(1, "aCol", DoubleType.get()));
@@ -326,6 +401,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(newSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add primitive to nested struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPrimitiveToNestedStruct() {
     Schema schema =
@@ -387,6 +467,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：replace list with primitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceListWithPrimitive() {
     Schema currentSchema =
@@ -398,6 +483,11 @@ public class TestSchemaUnionByFieldName {
         .hasMessage("Cannot change column type: aColumn: list<string> -> string");
   }
 
+  /**
+   * 测试场景：mirrored schemas。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMirroredSchemas() {
     Schema aSchema =
@@ -426,6 +516,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(union.asStruct()).isEqualTo(aSchema.asStruct());
   }
 
+  /**
+   * 测试场景：add new top level struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void addNewTopLevelStruct() {
     Schema schema =
@@ -462,6 +557,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(union.asStruct()).isEqualTo(observed.asStruct());
   }
 
+  /**
+   * 测试场景：append nested struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendNestedStruct() {
     Schema schema =
@@ -513,6 +613,11 @@ public class TestSchemaUnionByFieldName {
     Assertions.assertThat(applied.asStruct()).isEqualTo(observed.asStruct());
   }
 
+  /**
+   * 测试场景：append nested lists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendNestedLists() {
     Schema schema =

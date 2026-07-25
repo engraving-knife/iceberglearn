@@ -56,12 +56,16 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * {@link Write} class for rewriting position delete files from Spark. Responsible for creating
- * {@link SparkPositionDeletesRewrite.PositionDeleteBatchWrite}
+ * 从 Spark 重写 position 删除文件的 {@link Write} 实现。
  *
- * <p>This class is meant to be used for an action to rewrite position delete files. Hence, it
- * assumes all position deletes to rewrite have come from {@link ScanTaskSetManager} and that all
- * have the same partition spec id and partition values.
+ * <p>所属模块：iceberg-spark（source 子包）。用于 position deletes 重写动作，负责创建 {@link
+ * PositionDeleteBatchWrite}。假定待重写的 position 删除均来自 {@link ScanTaskSetManager}， 且具有相同的分区规范 ID 与分区值。
+ *
+ * <p>设计意图：作为 Spark 写入接口与 Iceberg 重写协调器之间的适配层，将写出的新删除文件 通过 {@link PositionDeletesRewriteCoordinator}
+ * 暂存，供动作统一提交；失败时清理已写文件。
+ *
+ * <p>上下游关系：由 {@link RewritePositionDeleteFilesSparkAction} 触发；底层使用 {@link SparkFileWriterFactory}
+ * 写删除文件。
  */
 public class SparkPositionDeletesRewrite implements Write {
 
@@ -78,16 +82,16 @@ public class SparkPositionDeletesRewrite implements Write {
   private final Map<String, String> writeProperties;
 
   /**
-   * Constructs a {@link SparkPositionDeletesRewrite}.
+   * 构造重写写入。
    *
-   * @param spark Spark session
-   * @param table instance of {@link PositionDeletesTable}
-   * @param writeConf Spark write config
-   * @param writeInfo Spark write info
-   * @param writeSchema Iceberg output schema
-   * @param dsSchema schema of original incoming position deletes dataset
-   * @param specId spec id of position deletes
-   * @param partition partition value of position deletes
+   * @param spark Spark 会话
+   * @param table {@link PositionDeletesTable} 实例
+   * @param writeConf Spark 写配置
+   * @param writeInfo Spark 写信息
+   * @param writeSchema Iceberg 输出 schema
+   * @param dsSchema 输入 position 删除数据集 schema
+   * @param specId position 删除的分区规范 ID
+   * @param partition position 删除的分区值
    */
   SparkPositionDeletesRewrite(
       SparkSession spark,
@@ -111,14 +115,16 @@ public class SparkPositionDeletesRewrite implements Write {
     this.writeProperties = writeConf.writeProperties();
   }
 
+  /** 返回 position 删除批写入。 */
   @Override
   public BatchWrite toBatch() {
     return new PositionDeleteBatchWrite();
   }
 
-  /** {@link BatchWrite} class for rewriting position deletes files from Spark */
+  /** 从 Spark 重写 position 删除文件的 {@link BatchWrite}。 */
   class PositionDeleteBatchWrite implements BatchWrite {
 
+    /** 广播表元数据并构造 {@link PositionDeletesWriterFactory}。 */
     @Override
     public DataWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       // broadcast the table metadata as the writer factory will be sent to executors
@@ -136,17 +142,20 @@ public class SparkPositionDeletesRewrite implements Write {
           writeProperties);
     }
 
+    /** 提交：将任务写出的删除文件通过 {@link PositionDeletesRewriteCoordinator} 暂存。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       PositionDeletesRewriteCoordinator coordinator = PositionDeletesRewriteCoordinator.get();
       coordinator.stageRewrite(table, fileSetId, ImmutableSet.copyOf(files(messages)));
     }
 
+    /** 中止：删除任务已写出的文件。 */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       SparkCleanupUtil.deleteFiles("job abort", table.io(), files(messages));
     }
 
+    /** 汇总所有任务提交消息中的删除文件。 */
     private List<DeleteFile> files(WriterCommitMessage[] messages) {
       List<DeleteFile> files = Lists.newArrayList();
 
@@ -162,12 +171,9 @@ public class SparkPositionDeletesRewrite implements Write {
   }
 
   /**
-   * Writer factory for position deletes metadata table. Responsible for creating {@link
-   * DeleteWriter}.
+   * position 删除元数据表的写入器工厂，负责创建 {@link DeleteWriter}。
    *
-   * <p>This writer is meant to be used for an action to rewrite delete files. Hence, it makes an
-   * assumption that all incoming deletes belong to the same partition, and that incoming dataset is
-   * from {@link ScanTaskSetManager}.
+   * <p>假定所有输入删除属于同一分区，且来自 {@link ScanTaskSetManager}。
    */
   static class PositionDeletesWriterFactory implements DataWriterFactory {
     private final Broadcast<Table> tableBroadcast;
@@ -201,6 +207,7 @@ public class SparkPositionDeletesRewrite implements Write {
       this.writeProperties = writeProperties;
     }
 
+    /** 创建写入器：构造含行与不含行两种 {@link SparkFileWriterFactory}，按目标大小与分区构建 {@link DeleteWriter}。 */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
       Table table = tableBroadcast.value();
@@ -241,6 +248,7 @@ public class SparkPositionDeletesRewrite implements Write {
           partition);
     }
 
+    /** 由写 schema 中的 DELETE_FILE_ROW 字段拆出 position 删除行 schema。 */
     private Schema positionDeleteRowSchema() {
       return new Schema(
           writeSchema
@@ -250,6 +258,7 @@ public class SparkPositionDeletesRewrite implements Write {
               .fields());
     }
 
+    /** 返回含 path/pos/row 的删除 Spark 类型。 */
     private StructType deleteSparkType() {
       return new StructType(
           new StructField[] {
@@ -259,6 +268,7 @@ public class SparkPositionDeletesRewrite implements Write {
           });
     }
 
+    /** 返回仅含 path/pos 的删除 Spark 类型（不含行）。 */
     private StructType deleteSparkTypeWithoutRow() {
       return new StructType(
           new StructField[] {
@@ -269,15 +279,12 @@ public class SparkPositionDeletesRewrite implements Write {
   }
 
   /**
-   * Writer for position deletes metadata table.
+   * position 删除元数据表的写入器。
    *
-   * <p>Iceberg specifies delete files schema as having either 'row' as a required field, or omits
-   * 'row' altogether. This is to ensure accuracy of delete file statistics on 'row' column. Hence,
-   * this writer, if receiving source position deletes with null and non-null rows, redirects rows
-   * with null 'row' to one file writer, and non-null 'row' to another file writer.
+   * <p>Iceberg 删除文件 schema 要么要求 'row' 必填、要么完全省略 'row'，以保证 row 列统计准确。 因此本写入器在收到含 null 与非 null
+   * 行的源删除时，将 null 行与非 null 行分别导向不同文件写入器。
    *
-   * <p>This writer is meant to be used for an action to rewrite delete files. Hence, it makes an
-   * assumption that all incoming deletes belong to the same partition.
+   * <p>假定所有输入删除属于同一分区。
    */
   private static class DeleteWriter implements DataWriter<InternalRow> {
     private final SparkFileWriterFactory writerFactoryWithRow;
@@ -298,18 +305,16 @@ public class SparkPositionDeletesRewrite implements Write {
     private boolean closed = false;
 
     /**
-     * Constructs a {@link DeleteWriter}.
+     * 构造 {@link DeleteWriter}。
      *
-     * @param table position deletes metadata table
-     * @param writerFactoryWithRow writer factory for deletes with non-null 'row'
-     * @param writerFactoryWithoutRow writer factory for deletes with null 'row'
-     * @param deleteFileFactory delete file factory
-     * @param targetFileSize target file size
-     * @param dsSchema schema of incoming dataset of position deletes
-     * @param specId partition spec id of incoming position deletes. All incoming partition deletes
-     *     are required to have the same spec id.
-     * @param partition partition value of incoming position delete. All incoming partition deletes
-     *     are required to have the same partition.
+     * @param table position 删除元数据表
+     * @param writerFactoryWithRow 含非 null 行删除的写入器工厂
+     * @param writerFactoryWithoutRow 含 null 行删除的写入器工厂
+     * @param deleteFileFactory 删除文件工厂
+     * @param targetFileSize 目标文件大小
+     * @param dsSchema 输入 position 删除数据集 schema
+     * @param specId 输入删除的分区规范 ID（须一致）
+     * @param partition 输入删除的分区值（须一致）
      */
     DeleteWriter(
         Table table,
@@ -339,6 +344,7 @@ public class SparkPositionDeletesRewrite implements Write {
       this.rowSize = ((StructType) type).size();
     }
 
+    /** 写一条 position 删除记录：行非空走含行写入器，行为空走不含行写入器。 */
     @Override
     public void write(InternalRow record) throws IOException {
       String file = record.getString(fileOrdinal);
@@ -353,18 +359,21 @@ public class SparkPositionDeletesRewrite implements Write {
       }
     }
 
+    /** 关闭写入器并返回含全部删除文件的 {@link DeleteTaskCommit}。 */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
       return new DeleteTaskCommit(allDeleteFiles());
     }
 
+    /** 中止：关闭后删除已写文件。 */
     @Override
     public void abort() throws IOException {
       close();
       SparkCleanupUtil.deleteTaskFiles(io, allDeleteFiles());
     }
 
+    /** 关闭两个写入器（幂等）。 */
     @Override
     public void close() throws IOException {
       if (!closed) {
@@ -378,6 +387,7 @@ public class SparkPositionDeletesRewrite implements Write {
       }
     }
 
+    /** 懒初始化含行写入器。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithRow() {
       if (writerWithRow == null) {
         this.writerWithRow =
@@ -387,6 +397,7 @@ public class SparkPositionDeletesRewrite implements Write {
       return writerWithRow;
     }
 
+    /** 懒初始化不含行写入器。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithoutRow() {
       if (writerWithoutRow == null) {
         this.writerWithoutRow =
@@ -396,6 +407,7 @@ public class SparkPositionDeletesRewrite implements Write {
       return writerWithoutRow;
     }
 
+    /** 汇总两个写入器产出的全部删除文件。 */
     private List<DeleteFile> allDeleteFiles() {
       List<DeleteFile> allDeleteFiles = Lists.newArrayList();
       if (writerWithRow != null) {
@@ -408,13 +420,16 @@ public class SparkPositionDeletesRewrite implements Write {
     }
   }
 
+  /** 任务提交消息，携带该任务写出的删除文件数组。 */
   public static class DeleteTaskCommit implements WriterCommitMessage {
     private final DeleteFile[] taskFiles;
 
+    /** 以删除文件列表构造。 */
     DeleteTaskCommit(List<DeleteFile> deleteFiles) {
       this.taskFiles = deleteFiles.toArray(new DeleteFile[0]);
     }
 
+    /** 返回任务删除文件数组。 */
     DeleteFile[] files() {
       return taskFiles;
     }

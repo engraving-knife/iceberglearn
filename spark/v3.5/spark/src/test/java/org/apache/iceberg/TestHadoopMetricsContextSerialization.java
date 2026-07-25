@@ -25,8 +25,16 @@ import org.apache.iceberg.metrics.MetricsContext;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestHadoopMetricsContextSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Hadoop指标context序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestHadoopMetricsContextSerialization {
 
+  /** 测试Hadoop指标contextKryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHadoopMetricsContextKryoSerialization() throws IOException {
     MetricsContext metricsContext = new HadoopMetricsContext("s3");
@@ -40,6 +48,7 @@ public class TestHadoopMetricsContextSerialization {
         .increment();
   }
 
+  /** 测试Hadoop指标contextJava序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHadoopMetricsContextJavaSerialization()
       throws IOException, ClassNotFoundException {

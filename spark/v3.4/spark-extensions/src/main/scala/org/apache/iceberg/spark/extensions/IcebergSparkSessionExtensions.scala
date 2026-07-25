@@ -38,8 +38,15 @@ import org.apache.spark.sql.execution.datasources.v2.ExtendedV2Writes
 import org.apache.spark.sql.execution.datasources.v2.ReplaceRewrittenRowLevelCommand
 import org.apache.spark.sql.execution.datasources.v2.RowLevelCommandScanRelationPushDown
 import org.apache.spark.sql.execution.dynamicpruning.RowLevelCommandDynamicPruning
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：Iceberg Spark 会话扩展入口，向 Spark 注册 Iceberg 专属的解析器、分析规则、优化器与策略。
+ * <p>设计意图：实现 Spark extensions 接口，集中注入 Iceberg SQL 扩展能力（CALL/MERGE INTO/分支标签等）。
+ * <p>上下游关系：由 Spark 通过 spark.sql.extensions 配置加载；注册各扩展规则与策略。
+ */
 
 class IcebergSparkSessionExtensions extends (SparkSessionExtensions => Unit) {
+  /** 应用转换。 */
 
   override def apply(extensions: SparkSessionExtensions): Unit = {
     // parser extensions

@@ -53,14 +53,15 @@ import org.apache.spark.sql.execution.datasources.v2.ExtendedDataSourceV2Implici
 import scala.collection.compat.immutable.ArraySeq
 
 /**
- * A rule that adds a runtime filter for row-level commands.
- *
- * Note that only group-based rewrite plans (i.e. ReplaceData) are taken into account.
- * Row-based rewrite plans are subject to usual runtime filtering.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行级命令动态分区裁剪规则，在行级命令中应用动态分区裁剪以减少扫描。
+ * <p>设计意图：基于运行时过滤值动态裁剪行级命令的扫描分区。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[LogicalPlan] with PredicateHelper {
 
   import ExtendedDataSourceV2Implicits._
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     // apply special dynamic filtering only for plans that don't support deltas
@@ -91,11 +92,13 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
       // dynamic subqueries to facilitate broadcast reuse
       command.withNewRewritePlan(optimizeSubquery(newRewritePlan))
   }
+  /** 判断是否 Candidate。 */
 
   private def isCandidate(command: RowLevelCommand): Boolean = command.condition match {
     case Some(cond) if cond != Literal.TrueLiteral => true
     case _ => false
   }
+  /** 执行 buildMatchingRowsPlan 相关操作。 */
 
   private def buildMatchingRowsPlan(
       relation: DataSourceV2Relation,
@@ -127,6 +130,7 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
         r.copy(output = newOutput) -> oldOutput.zip(newOutput)
     }
   }
+  /** 执行 buildDynamicPruningCond 相关操作。 */
 
   private def buildDynamicPruningCond(
       matchingRowsPlan: LogicalPlan,
@@ -139,6 +143,7 @@ case class RowLevelCommandDynamicPruning(spark: SparkSession) extends Rule[Logic
     }
     dynamicPruningSubqueries.reduce(And)
   }
+  /** 执行 buildAttrMap 相关操作。 */
 
   private def buildAttrMap(
       tableAttrs: Seq[Attribute],

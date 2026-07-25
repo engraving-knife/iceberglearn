@@ -27,10 +27,31 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 属性工具类，提供从 {@link Map} 中按 key 读取并转换为 Boolean/Double/Int/Long/String 等类型的便捷方法， 以及按前缀/谓词过滤属性、应用
+ * schema 变更等操作。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：封装 Iceberg 各模块频繁需要的"从 String 属性 Map 中安全取值并类型转换"逻辑， 统一默认值处理与 null 语义。
+ *
+ * <p>设计意图：Iceberg 的表/catalog 属性全部以 String 存储，读取时需要类型转换和默认值兜底。 本类把这些重复模式集中为静态方法，Nullable 版本与带默认值版本区分
+ * null 语义。
+ *
+ * <p>上下游关系：被 core 内几乎所有读取属性的类使用（如 LockManagers、Catalog 初始化、 表属性解析等）；仅依赖 relocated guava。
+ */
 public class PropertyUtil {
 
   private PropertyUtil() {}
 
+  /**
+   * 读取 Boolean 属性，缺失时返回默认值。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @param defaultValue 缺失时的默认值
+   * @return 属性对应的布尔值
+   */
   public static boolean propertyAsBoolean(
       Map<String, String> properties, String property, boolean defaultValue) {
     String value = properties.get(property);
@@ -40,6 +61,13 @@ public class PropertyUtil {
     return defaultValue;
   }
 
+  /**
+   * 读取 Boolean 属性，缺失时返回 null（区别于默认值版本）。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @return 属性对应的布尔值，缺失返回 null
+   */
   public static Boolean propertyAsNullableBoolean(Map<String, String> properties, String property) {
     String value = properties.get(property);
     if (value != null) {
@@ -48,6 +76,14 @@ public class PropertyUtil {
     return null;
   }
 
+  /**
+   * 读取 double 属性，缺失时返回默认值。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @param defaultValue 缺失时的默认值
+   * @return 属性对应的 double 值
+   */
   public static double propertyAsDouble(
       Map<String, String> properties, String property, double defaultValue) {
     String value = properties.get(property);
@@ -57,6 +93,14 @@ public class PropertyUtil {
     return defaultValue;
   }
 
+  /**
+   * 读取 int 属性，缺失时返回默认值。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @param defaultValue 缺失时的默认值
+   * @return 属性对应的 int 值
+   */
   public static int propertyAsInt(
       Map<String, String> properties, String property, int defaultValue) {
     String value = properties.get(property);
@@ -66,6 +110,13 @@ public class PropertyUtil {
     return defaultValue;
   }
 
+  /**
+   * 读取 int 属性，缺失时返回 null。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @return 属性对应的 Integer 值，缺失返回 null
+   */
   public static Integer propertyAsNullableInt(Map<String, String> properties, String property) {
     String value = properties.get(property);
     if (value != null) {
@@ -74,6 +125,14 @@ public class PropertyUtil {
     return null;
   }
 
+  /**
+   * 读取 long 属性，缺失时返回默认值。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @param defaultValue 缺失时的默认值
+   * @return 属性对应的 long 值
+   */
   public static long propertyAsLong(
       Map<String, String> properties, String property, long defaultValue) {
     String value = properties.get(property);
@@ -83,6 +142,13 @@ public class PropertyUtil {
     return defaultValue;
   }
 
+  /**
+   * 读取 long 属性，缺失时返回 null。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @return 属性对应的 Long 值，缺失返回 null
+   */
   public static Long propertyAsNullableLong(Map<String, String> properties, String property) {
     String value = properties.get(property);
     if (value != null) {
@@ -91,6 +157,14 @@ public class PropertyUtil {
     return null;
   }
 
+  /**
+   * 读取 String 属性，缺失时返回默认值。
+   *
+   * @param properties 属性映射
+   * @param property 属性键
+   * @param defaultValue 缺失时的默认值
+   * @return 属性对应的字符串值
+   */
   public static String propertyAsString(
       Map<String, String> properties, String property, String defaultValue) {
     String value = properties.get(property);
@@ -101,12 +175,13 @@ public class PropertyUtil {
   }
 
   /**
-   * Returns subset of provided map with keys matching the provided prefix. Matching is
-   * case-sensitive and the matching prefix is removed from the keys in returned map.
+   * 返回键以指定前缀开头的子集映射，并从结果键中去除前缀。
    *
-   * @param properties input map
-   * @param prefix prefix to choose keys from input map
-   * @return subset of input map with keys starting with provided prefix and prefix trimmed out
+   * <p>匹配区分大小写。
+   *
+   * @param properties 输入映射
+   * @param prefix 前缀，不可为 null
+   * @return 键以 prefix 开头且已去除前缀的子集映射
    */
   public static Map<String, String> propertiesWithPrefix(
       Map<String, String> properties, String prefix) {
@@ -122,11 +197,11 @@ public class PropertyUtil {
   }
 
   /**
-   * Filter the properties map by the provided key predicate.
+   * 按键谓词过滤属性映射。
    *
-   * @param properties input map
-   * @param keyPredicate predicate to choose keys from input map
-   * @return subset of input map with keys satisfying the predicate
+   * @param properties 输入映射
+   * @param keyPredicate 键过滤谓词，不可为 null
+   * @return 键满足谓词的子集映射
    */
   public static Map<String, String> filterProperties(
       Map<String, String> properties, Predicate<String> keyPredicate) {
@@ -141,6 +216,17 @@ public class PropertyUtil {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
+  /**
+   * 在 schema 变更（列重命名/删除）后更新表属性中与列相关的键。
+   *
+   * <p>逻辑：遍历属性键，对以指定列属性前缀开头的键，提取列别名；若列已重命名则更新键中的列名， 若列已删除则丢弃该属性，否则原样保留。非列属性原样拷贝。
+   *
+   * @param properties 原始属性映射
+   * @param deletedColumns 已删除列名列表
+   * @param renamedColumns 列名映射（旧名 -> 新名）
+   * @param columnProperties 列属性前缀集合
+   * @return 更新后的属性映射
+   */
   public static Map<String, String> applySchemaChanges(
       Map<String, String> properties,
       List<String> deletedColumns,

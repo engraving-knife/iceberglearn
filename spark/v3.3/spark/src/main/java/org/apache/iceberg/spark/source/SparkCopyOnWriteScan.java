@@ -44,6 +44,13 @@ import org.apache.spark.sql.sources.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkCopyOnWriteScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
     implements SupportsRuntimeFiltering {
 
@@ -79,25 +86,42 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   Long snapshotId() {
     return snapshot != null ? snapshot.snapshotId() : null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Class<FileScanTask> taskJavaClass() {
     return FileScanTask.class;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     return estimateStatistics(snapshot);
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @return 结果对象
+   */
   public NamedReference[] filterAttributes() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());
     return new NamedReference[] {file};
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @param filters 参数
+   */
   @Override
   public void filter(Filter[] filters) {
     Preconditions.checkState(
@@ -144,6 +168,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
     }
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -162,6 +187,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
         && Objects.equals(filteredLocations, that.filteredLocations);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -172,6 +198,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
         filteredLocations);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -179,6 +206,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
         table(), expectedSchema().asStruct(), filterExpressions(), caseSensitive());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Long currentSnapshotId() {
     Snapshot currentSnapshot = SnapshotUtil.latestSnapshot(table(), branch());
     return currentSnapshot != null ? currentSnapshot.snapshotId() : null;

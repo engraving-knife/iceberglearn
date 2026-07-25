@@ -34,7 +34,19 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
-/** Read Iceberg rows as {@link GenericRecord}. */
+/**
+ * 文件级说明：把 Iceberg 行读取为 Avro {@link GenericRecord} 的 ReaderFunction。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/reader 子包）。
+ *
+ * <p>职责：基于 {@link RowDataFileScanTaskReader} 读取 RowData， 再通过 {@link
+ * RowDataToAvroGenericRecordConverter} 转为 Avro GenericRecord， 供需要 Avro 格式输出的下游使用。
+ *
+ * <p>设计意图：复用现有的 RowData 读取流程，仅在末端加一层 RowData→Avro 转换， 避免重复实现文件扫描逻辑；converter 为 transient
+ * 字段，懒加载以避免序列化问题。
+ *
+ * <p>上下游关系：上游为 {@link IcebergSourceSplit}（含文件扫描 task）， 下游为 {@link DataIterator}（产生 GenericRecord）。
+ */
 public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<GenericRecord> {
   private final String tableName;
   private final Schema readSchema;
@@ -45,7 +57,10 @@ public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<
   private transient RowDataToAvroGenericRecordConverter converter;
 
   /**
-   * Create a reader function without projection and name mapping. Column name is case-insensitive.
+   * 从表对象构造不投影、不名称映射、列名大小写不敏感的 reader function。
+   *
+   * @param table Iceberg 表
+   * @return reader function
    */
   public static AvroGenericRecordReaderFunction fromTable(Table table) {
     return new AvroGenericRecordReaderFunction(
@@ -60,6 +75,19 @@ public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<
         null);
   }
 
+  /**
+   * 构造 reader function。
+   *
+   * @param tableName 表名
+   * @param config Flink 配置
+   * @param tableSchema 表 schema
+   * @param projectedSchema 投影 schema，可为空
+   * @param nameMapping 名称映射，可为空
+   * @param caseSensitive 是否大小写敏感
+   * @param io 文件 IO
+   * @param encryption 加密管理器
+   * @param filters 过滤表达式列表
+   */
   public AvroGenericRecordReaderFunction(
       String tableName,
       ReadableConfig config,
@@ -79,6 +107,15 @@ public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<
         new RowDataFileScanTaskReader(tableSchema, readSchema, nameMapping, caseSensitive, filters);
   }
 
+  /**
+   * 创建 GenericRecord DataIterator。
+   *
+   * <p>逻辑：用 {@link AvroGenericRecordFileScanTaskReader} 包装 RowData 读取器与转换器， 构造 {@link
+   * DataIterator}。
+   *
+   * @param split Iceberg source split
+   * @return GenericRecord 的 DataIterator
+   */
   @Override
   protected DataIterator<GenericRecord> createDataIterator(IcebergSourceSplit split) {
     return new DataIterator<>(
@@ -88,6 +125,7 @@ public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<
         encryption);
   }
 
+  /** 懒加载 RowData→Avro 转换器，避免在序列化阶段创建。 */
   private RowDataToAvroGenericRecordConverter lazyConverter() {
     if (converter == null) {
       this.converter = RowDataToAvroGenericRecordConverter.fromIcebergSchema(tableName, readSchema);
@@ -95,6 +133,13 @@ public class AvroGenericRecordReaderFunction extends DataIteratorReaderFunction<
     return converter;
   }
 
+  /**
+   * 选择实际读取 schema，未提供投影时使用表 schema。
+   *
+   * @param tableSchema 表 schema
+   * @param projectedSchema 投影 schema，可为空
+   * @return 实际读取 schema
+   */
   private static Schema readSchema(Schema tableSchema, Schema projectedSchema) {
     Preconditions.checkNotNull(tableSchema, "Table schema can't be null");
     return projectedSchema == null ? tableSchema : projectedSchema;

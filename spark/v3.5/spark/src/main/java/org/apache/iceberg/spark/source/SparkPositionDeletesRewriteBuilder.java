@@ -39,12 +39,15 @@ import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Builder class for rewrites of position delete files from Spark. Responsible for creating {@link
- * SparkPositionDeletesRewrite}.
+ * 位置删除文件重写的写入构建器：基于 Spark 数据源创建 {@link SparkPositionDeletesRewrite}。
  *
- * <p>This class is meant to be used for an action to rewrite delete files. Hence, it makes an
- * assumption that all incoming deletes belong to the same partition, and that incoming dataset is
- * from {@link ScanTaskSetManager}.
+ * <p>所属模块：iceberg-spark（source 子包，Spark 数据源写入路径）。
+ *
+ * <p>职责：从 {@link ScanTaskSetManager} 取出待重写的位置删除任务，校验它们属于同一分区规格 与同一分区，并构造位置删除重写写入器。
+ *
+ * <p>设计意图：本类专用于位置删除文件重写动作，假定所有输入删除任务同属一个分区、 数据来源于 {@link ScanTaskSetManager} 暂存的任务集，从而简化写入逻辑。
+ *
+ * <p>上下游关系：实现 {@link WriteBuilder}，由位置删除重写动作触发写入， 产出 {@link SparkPositionDeletesRewrite} 执行实际重写。
  */
 public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
 
@@ -65,6 +68,15 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     this.writeSchema = SparkSchemaUtil.convert(table.schema(), dsSchema, writeConf.caseSensitive());
   }
 
+  /**
+   * 构建位置删除重写写入器。
+   *
+   * <p>逻辑：取重写文件集 ID，从 {@link ScanTaskSetManager} 获取任务并校验非空； 校验所有任务分区规格 ID 与分区值一致，最后构造 {@link
+   * SparkPositionDeletesRewrite}。
+   *
+   * @return 位置删除重写写入器
+   * @throws IllegalArgumentException 当未通过动作触发或任务不满足同分区约束时抛出
+   */
   @Override
   public Write build() {
     String fileSetId = writeConf.rewrittenFileSetId();
@@ -84,7 +96,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     return new SparkPositionDeletesRewrite(
         spark, table, writeConf, writeInfo, writeSchema, dsSchema, specId, partition);
   }
-
+  /** 执行 specId 相关操作。 */
   private int specId(String fileSetId, List<PositionDeletesScanTask> tasks) {
     Set<Integer> specIds = tasks.stream().map(t -> t.spec().specId()).collect(Collectors.toSet());
     Preconditions.checkArgument(
@@ -94,7 +106,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
         Joiner.on(",").join(specIds));
     return tasks.get(0).spec().specId();
   }
-
+  /** 执行 partition 相关操作。 */
   private StructLike partition(String fileSetId, List<PositionDeletesScanTask> tasks) {
     StructLikeSet partitions = StructLikeSet.create(tasks.get(0).spec().partitionType());
     tasks.stream().map(ContentScanTask::partition).forEach(partitions::add);

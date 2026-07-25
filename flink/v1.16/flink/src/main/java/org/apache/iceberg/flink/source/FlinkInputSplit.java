@@ -24,6 +24,13 @@ import org.apache.flink.core.io.LocatableInputSplit;
 import org.apache.iceberg.CombinedScanTask;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 
+/**
+ * Flink 输入分片，封装一组 FileScanTask 供 Flink Source 读取。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：承载分片任务列表与文件路径信息。
+ *
+ * <p>设计意图：值对象，实现 InputSplit；被 FlinkInputFormat 消费。
+ */
 public class FlinkInputSplit extends LocatableInputSplit {
 
   private final CombinedScanTask task;

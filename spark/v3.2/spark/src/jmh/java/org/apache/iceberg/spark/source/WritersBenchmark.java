@@ -59,6 +59,14 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
 
+/**
+ * 文件级说明：WritersBenchmark 性能基准测试。
+ *
+ * <p>所属模块：iceberg-spark（v3.2）。职责：对 写入器 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
+ */
 public abstract class WritersBenchmark extends IcebergSourceBenchmark {
 
   private static final int NUM_ROWS = 2500000;
@@ -82,6 +90,7 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
   @Override
   protected abstract FileFormat fileFormat();
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() {
     setupSpark();
@@ -99,17 +108,20 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     this.partitionedSpec = table().specs().get(1);
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() throws IOException {
     tearDownSpark();
     cleanupFiles();
   }
 
+  /** 辅助方法：initHadoop配置。 */
   @Override
   protected Configuration initHadoopConf() {
     return new Configuration();
   }
 
+  /** 辅助方法：init表。 */
   @Override
   protected final Table initTable() {
     HadoopTables tables = new HadoopTables(hadoopConf());
@@ -123,6 +135,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     return table;
   }
 
+  /**
+   * 基准测试场景：写入非分区clustered数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writeUnpartitionedClusteredDataWriter(Blackhole blackhole) throws IOException {
@@ -147,6 +164,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer);
   }
 
+  /**
+   * 基准测试场景：写入非分区legacy数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writeUnpartitionedLegacyDataWriter(Blackhole blackhole) throws IOException {
@@ -174,6 +196,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer.complete());
   }
 
+  /**
+   * 基准测试场景：写入分区clustered数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writePartitionedClusteredDataWriter(Blackhole blackhole) throws IOException {
@@ -203,6 +230,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer);
   }
 
+  /**
+   * 基准测试场景：写入分区legacy数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writePartitionedLegacyDataWriter(Blackhole blackhole) throws IOException {
@@ -237,6 +269,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer.complete());
   }
 
+  /**
+   * 基准测试场景：写入分区fanout数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writePartitionedFanoutDataWriter(Blackhole blackhole) throws IOException {
@@ -266,6 +303,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer);
   }
 
+  /**
+   * 基准测试场景：写入分区legacyfanout数据写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writePartitionedLegacyFanoutDataWriter(Blackhole blackhole) throws IOException {
@@ -300,6 +342,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer.complete());
   }
 
+  /**
+   * 基准测试场景：写入分区clustered等值删除写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writePartitionedClusteredEqualityDeleteWriter(Blackhole blackhole)
@@ -334,6 +381,11 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer);
   }
 
+  /**
+   * 基准测试场景：写入非分区clustered位置删除写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writeUnpartitionedClusteredPositionDeleteWriter(Blackhole blackhole)
@@ -361,6 +413,7 @@ public abstract class WritersBenchmark extends IcebergSourceBenchmark {
     blackhole.consume(writer);
   }
 
+  /** 辅助方法：新建文件工厂。 */
   private OutputFileFactory newFileFactory() {
     return OutputFileFactory.builderFor(table(), 1, 1).format(fileFormat()).build();
   }

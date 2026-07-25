@@ -43,10 +43,18 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDatesProjection 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDatesProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDatesProjection {
   private static final Types.DateType TYPE = Types.DateType.get();
   private static final Schema SCHEMA = new Schema(optional(1, "date", TYPE));
 
+  /** 辅助方法：assertProjectionStrict。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionStrict(
       PartitionSpec spec,
@@ -81,6 +89,7 @@ public class TestDatesProjection {
     }
   }
 
+  /** 辅助方法：assertProjectionStrictValue。 */
   public void assertProjectionStrictValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -88,6 +97,7 @@ public class TestDatesProjection {
     assertThat(projection.op()).isEqualTo(expectedOp);
   }
 
+  /** 辅助方法：assertProjectionInclusiveValue。 */
   public void assertProjectionInclusiveValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -95,6 +105,7 @@ public class TestDatesProjection {
     assertThat(projection.op()).isEqualTo(expectedOp);
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionInclusive(
       PartitionSpec spec,
@@ -128,6 +139,11 @@ public class TestDatesProjection {
     }
   }
 
+  /**
+   * 测试场景：Month Strict Epoch。
+   *
+   * <p>验证该方法在 Month Strict Epoch 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthStrictEpoch() {
     Integer date = (Integer) Literal.of("1970-01-01").to(TYPE).value();
@@ -147,6 +163,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Month Inclusive Epoch。
+   *
+   * <p>验证该方法在 Month Inclusive Epoch 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthInclusiveEpoch() {
     Integer date = (Integer) Literal.of("1970-01-01").to(TYPE).value();
@@ -169,6 +190,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Month Strict Lower Bound。
+   *
+   * <p>验证该方法在 Month Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthStrictLowerBound() {
     Integer date = (Integer) Literal.of("2017-01-01").to(TYPE).value();
@@ -188,6 +214,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Month Strict Lower Bound。
+   *
+   * <p>验证该方法在 Negative Month Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthStrictLowerBound() {
     Integer date = (Integer) Literal.of("1969-01-01").to(TYPE).value();
@@ -211,6 +242,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Month Strict Upper Bound。
+   *
+   * <p>验证该方法在 Month Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthStrictUpperBound() {
     Integer date = (Integer) Literal.of("2017-12-31").to(TYPE).value();
@@ -230,6 +266,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Month Strict Upper Bound。
+   *
+   * <p>验证该方法在 Negative Month Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthStrictUpperBound() {
     Integer date = (Integer) Literal.of("1969-12-31").to(TYPE).value();
@@ -253,6 +294,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Month Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Month Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthInclusiveLowerBound() {
     Integer date = (Integer) Literal.of("2017-12-01").to(TYPE).value();
@@ -275,6 +321,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Month Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Negative Month Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthInclusiveLowerBound() {
     Integer date = (Integer) Literal.of("1969-01-01").to(TYPE).value();
@@ -301,6 +352,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Month Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Month Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthInclusiveUpperBound() {
     Integer date = (Integer) Literal.of("2017-12-31").to(TYPE).value();
@@ -323,6 +379,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Month Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Negative Month Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthInclusiveUpperBound() {
     Integer date = (Integer) Literal.of("1969-12-31").to(TYPE).value();
@@ -349,6 +410,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Day Strict。
+   *
+   * <p>验证该方法在 Day Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayStrict() {
     Integer date = (Integer) Literal.of("2017-01-01").to(TYPE).value();
@@ -374,6 +440,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Day Strict。
+   *
+   * <p>验证该方法在 Negative Day Strict 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayStrict() {
     Integer date = (Integer) Literal.of("1969-12-30").to(TYPE).value();
@@ -399,6 +470,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Day Inclusive。
+   *
+   * <p>验证该方法在 Day Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayInclusive() {
     Integer date = (Integer) Literal.of("2017-01-01").to(TYPE).value();
@@ -422,6 +498,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Day Inclusive。
+   *
+   * <p>验证该方法在 Negative Day Inclusive 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayInclusive() {
     Integer date = (Integer) Literal.of("1969-12-30").to(TYPE).value();
@@ -445,6 +526,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Year Strict Lower Bound。
+   *
+   * <p>验证该方法在 Year Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearStrictLowerBound() {
     Integer date = (Integer) Literal.of("2017-01-01").to(TYPE).value();
@@ -463,6 +549,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Year Strict Lower Bound。
+   *
+   * <p>验证该方法在 Negative Year Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeYearStrictLowerBound() {
     Integer date = (Integer) Literal.of("1970-01-01").to(TYPE).value();
@@ -481,6 +572,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Year Strict Upper Bound。
+   *
+   * <p>验证该方法在 Year Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearStrictUpperBound() {
     Integer date = (Integer) Literal.of("2017-12-31").to(TYPE).value();
@@ -499,6 +595,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Year Strict Upper Bound。
+   *
+   * <p>验证该方法在 Negative Year Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeYearStrictUpperBound() {
     Integer date = (Integer) Literal.of("1969-12-31").to(TYPE).value();
@@ -518,6 +619,11 @@ public class TestDatesProjection {
     assertProjectionStrictValue(spec, in("date", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Year Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Year Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearInclusiveLowerBound() {
     Integer date = (Integer) Literal.of("2017-01-01").to(TYPE).value();
@@ -539,6 +645,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Year Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Negative Year Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeYearInclusiveLowerBound() {
     Integer date = (Integer) Literal.of("1970-01-01").to(TYPE).value();
@@ -560,6 +671,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Year Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Year Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearInclusiveUpperBound() {
     Integer date = (Integer) Literal.of("2017-12-31").to(TYPE).value();
@@ -581,6 +697,11 @@ public class TestDatesProjection {
         spec, notIn("date", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Year Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Negative Year Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeYearInclusiveUpperBound() {
     Integer date = (Integer) Literal.of("1969-12-31").to(TYPE).value();

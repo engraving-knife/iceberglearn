@@ -42,14 +42,25 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 把 Iceberg 的 {@link Type} 转换为 Flink 的 {@link LogicalType}。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：访问 Iceberg schema 并产出对应的 Flink 逻辑类型， 用于在 Flink 中表示 Iceberg 表
+ * schema。
+ *
+ * <p>设计意图：访问者模式——继承 {@link TypeUtil.SchemaVisitor}，对 Iceberg 每种类型给出 Flink 对应类型。 上下游：由 {@link
+ * FlinkSchemaUtil#convert(Schema)} 调用。
+ */
 class TypeToFlinkType extends TypeUtil.SchemaVisitor<LogicalType> {
   TypeToFlinkType() {}
 
+  /** Schema 入口，直接返回 struct 类型结果。 */
   @Override
   public LogicalType schema(Schema schema, LogicalType structType) {
     return structType;
   }
 
+  /** 转换 Iceberg StructType 为 Flink RowType，按字段可空性设置 copy。 */
   @Override
   public LogicalType struct(Types.StructType struct, List<LogicalType> fieldResults) {
     List<Types.NestedField> fields = struct.fields();
@@ -71,17 +82,25 @@ class TypeToFlinkType extends TypeUtil.SchemaVisitor<LogicalType> {
     return fieldResult;
   }
 
+  /** 转换 Iceberg ListType 为 Flink ArrayType。 */
   @Override
   public LogicalType list(Types.ListType list, LogicalType elementResult) {
     return new ArrayType(elementResult.copy(list.isElementOptional()));
   }
 
+  /** 转换 Iceberg MapType 为 Flink MapType，键不允许为 null。 */
   @Override
   public LogicalType map(Types.MapType map, LogicalType keyResult, LogicalType valueResult) {
     // keys in map are not allowed to be null.
     return new MapType(keyResult.copy(false), valueResult.copy(map.isValueOptional()));
   }
 
+  /**
+   * 转换 Iceberg 基本类型为 Flink 基本类型。
+   *
+   * <p>逻辑：按 typeId 分发到 BooleanType/IntType/BigIntType/FloatType/DoubleType/DateType/TimeType/
+   * TimestampType 等。TIMESTAMP 按 shouldAdjustToUTC 决定是带时区还是不带时区； UUID 与 FIXED 都映射为 BinaryType。
+   */
   @Override
   public LogicalType primitive(Type.PrimitiveType primitive) {
     switch (primitive.typeId()) {

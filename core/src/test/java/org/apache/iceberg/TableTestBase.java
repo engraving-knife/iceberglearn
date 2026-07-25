@@ -48,6 +48,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TableTestBase，用于验证 Table 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Table 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TableTestBase {
   // Schema passed to create tables
   public static final Schema SCHEMA =
@@ -179,12 +186,14 @@ public class TableTestBase {
   @SuppressWarnings("checkstyle:MemberName")
   protected final TableAssertions V2Assert;
 
+  /** 辅助方法：table test base。 */
   public TableTestBase(int formatVersion) {
     this.formatVersion = formatVersion;
     this.V1Assert = new TableAssertions(1, formatVersion);
     this.V2Assert = new TableAssertions(2, formatVersion);
   }
 
+  /** 辅助方法：setup table。 */
   @Before
   public void setupTable() throws Exception {
     this.tableDir = temp.newFolder();
@@ -194,6 +203,7 @@ public class TableTestBase {
     this.table = create(SCHEMA, SPEC);
   }
 
+  /** 辅助方法：cleanup tables。 */
   @After
   public void cleanupTables() {
     TestTables.clearTables();
@@ -221,12 +231,14 @@ public class TableTestBase {
                         && Files.getFileExtension(name).equalsIgnoreCase("avro")));
   }
 
+  /** 辅助方法：count all metadata files。 */
   public static long countAllMetadataFiles(File tableDir) {
     return Arrays.stream(new File(tableDir, "metadata").listFiles())
         .filter(f -> f.isFile())
         .count();
   }
 
+  /** 辅助方法：create。 */
   protected TestTables.TestTable create(Schema schema, PartitionSpec spec) {
     return TestTables.create(tableDir, "test", schema, spec, formatVersion);
   }
@@ -239,6 +251,7 @@ public class TableTestBase {
     return TestTables.metadataVersion("test");
   }
 
+  /** 辅助方法：read metadata。 */
   public TableMetadata readMetadata() {
     return TestTables.readMetadata("test");
   }
@@ -565,6 +578,7 @@ public class TableTestBase {
     Assert.assertFalse("Should find all files in the manifest", expectedFiles.hasNext());
   }
 
+  /** 辅助方法：validate manifest sequence numbers。 */
   private <T extends ContentFile<T>> void validateManifestSequenceNumbers(
       ManifestEntry<T> entry, Iterator<Long> dataSeqs, Iterator<Long> fileSeqs) {
     if (dataSeqs != null) {
@@ -604,6 +618,7 @@ public class TableTestBase {
     }
   }
 
+  /** 辅助方法：new data file。 */
   protected DataFile newDataFile(String partitionPath) {
     return DataFiles.builder(table.spec())
         .withPath("/path/to/data-" + UUID.randomUUID() + ".parquet")
@@ -613,6 +628,7 @@ public class TableTestBase {
         .build();
   }
 
+  /** 辅助方法：new delete file。 */
   protected DeleteFile newDeleteFile(int specId, String partitionPath) {
     PartitionSpec spec = table.specs().get(specId);
     return FileMetadata.deleteFileBuilder(spec)
@@ -624,6 +640,7 @@ public class TableTestBase {
         .build();
   }
 
+  /** 辅助方法：new equality delete file。 */
   protected DeleteFile newEqualityDeleteFile(int specId, String partitionPath, int... fieldIds) {
     PartitionSpec spec = table.specs().get(specId);
     return FileMetadata.deleteFileBuilder(spec)
@@ -635,11 +652,13 @@ public class TableTestBase {
         .build();
   }
 
+  /** 辅助方法：position delete。 */
   protected <T> PositionDelete<T> positionDelete(CharSequence path, long pos, T row) {
     PositionDelete<T> positionDelete = PositionDelete.create();
     return positionDelete.set(path, pos, row);
   }
 
+  /** 辅助方法：with unavailable locations。 */
   protected void withUnavailableLocations(Iterable<String> locations, Action action) {
     for (String location : locations) {
       move(location, location + "_temp");
@@ -654,6 +673,7 @@ public class TableTestBase {
     }
   }
 
+  /** 辅助方法：move。 */
   private void move(String location, String newLocation) {
     Path path = Paths.get(location);
     Path tempPath = Paths.get(newLocation);
@@ -715,6 +735,7 @@ public class TableTestBase {
   protected static class TableAssertions {
     private boolean enabled;
 
+    /** 辅助方法：table assertions。 */
     private TableAssertions(int validForVersion, int formatVersion) {
       this.enabled = validForVersion == formatVersion;
     }

@@ -37,7 +37,24 @@ import org.apache.iceberg.transforms.Transform;
 import org.apache.iceberg.transforms.Transforms;
 import org.apache.iceberg.types.Type;
 
-/** A sort order that defines how data and delete files should be ordered in a table. */
+/**
+ * 定义表中数据与删除文件排序方式的 sort order。
+ *
+ * <p>所属模块：iceberg-api（表元数据抽象层）。
+ *
+ * <p>职责：持有一组 {@link SortField}，描述写入数据时如何对记录排序；提供与其它 sort order 的兼容性判断（{@link
+ * #satisfies(SortOrder)}）、转换为未绑定形式等能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>orderId=0 保留给未排序场景，自定义排序 ID 从 1 起。
+ *   <li>fields 以数组形式持久化以保证顺序稳定；fieldList 为 transient + 双检锁懒加载的 不可变视图，兼顾序列化体积与线程安全。
+ *   <li>实现 {@link Serializable} 以支持在引擎中传递。
+ * </ul>
+ *
+ * <p>上下游关系：由表元数据持有；被引擎写入路径用于排序，被扫描规划用于判断文件是否已按 期望顺序排列。
+ */
 public class SortOrder implements Serializable {
   private static final SortOrder UNSORTED_ORDER =
       new SortOrder(new Schema(), 0, Collections.emptyList());
@@ -54,36 +71,44 @@ public class SortOrder implements Serializable {
     this.fields = fields.toArray(new SortField[0]);
   }
 
-  /** Returns the {@link Schema} for this sort order */
+  /** 返回本 sort order 关联的 {@link Schema}。 */
   public Schema schema() {
     return schema;
   }
 
-  /** Returns the ID of this sort order */
+  /** 返回本 sort order 的 ID。 */
   public int orderId() {
     return orderId;
   }
 
-  /** Returns the list of {@link SortField sort fields} for this sort order */
+  /** 返回本 sort order 的排序字段列表（不可变视图）。 */
   public List<SortField> fields() {
     return lazyFieldList();
   }
 
-  /** Returns true if the sort order is sorted */
+  /** 是否已排序（含至少一个排序字段）。 */
   public boolean isSorted() {
     return fields.length >= 1;
   }
 
-  /** Returns true if the sort order is unsorted */
+  /** 是否未排序。 */
   public boolean isUnsorted() {
     return fields.length < 1;
   }
 
   /**
-   * Checks whether this order satisfies another order.
+   * 判断本 sort order 是否满足另一个 sort order 的要求。
    *
-   * @param anotherSortOrder a different sort order
-   * @return true if this order satisfies the given order
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>任何排序都满足"未排序"要求；
+   *   <li>本排序字段数少于目标时不能满足；
+   *   <li>否则逐前缀字段比较，全部 satisfies 才返回 true。
+   * </ul>
+   *
+   * @param anotherSortOrder 另一个 sort order
+   * @return 本排序满足目标排序要求则返回 true
    */
   public boolean satisfies(SortOrder anotherSortOrder) {
     // any ordering satisfies an unsorted ordering
@@ -102,15 +127,16 @@ public class SortOrder implements Serializable {
   }
 
   /**
-   * Checks whether this order is equivalent to another order while ignoring the order id.
+   * 判断本 sort order 与另一个 sort order 在忽略 orderId 的情况下是否等价。
    *
-   * @param anotherSortOrder a different sort order
-   * @return true if this order is equivalent to the given order
+   * @param anotherSortOrder 另一个 sort order
+   * @return 字段数组完全相等则返回 true
    */
   public boolean sameOrder(SortOrder anotherSortOrder) {
     return Arrays.equals(fields, anotherSortOrder.fields);
   }
 
+  /** 双检锁懒构建字段列表的不可变视图。 */
   private List<SortField> lazyFieldList() {
     if (fieldList == null) {
       synchronized (this) {
@@ -122,6 +148,11 @@ public class SortOrder implements Serializable {
     return fieldList;
   }
 
+  /**
+   * 将本 sort order 转换为未绑定形式 {@link UnboundSortOrder}，便于序列化/跨 schema 传输。
+   *
+   * <p>逻辑：以 orderId 构造 builder，逐字段写入 transform 字符串、sourceId、方向、nullOrder。
+   */
   public UnboundSortOrder toUnbound() {
     UnboundSortOrder.Builder builder = UnboundSortOrder.builder().withOrderId(orderId);
 
@@ -148,6 +179,7 @@ public class SortOrder implements Serializable {
     return sb.toString();
   }
 
+  /** 相等性：orderId 相同且字段数组相同。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -166,28 +198,29 @@ public class SortOrder implements Serializable {
   }
 
   /**
-   * Returns a sort order for unsorted tables.
+   * 返回未排序表的 sort order 单例。
    *
-   * @return an unsorted order
+   * @return 未排序的 sort order
    */
   public static SortOrder unsorted() {
     return UNSORTED_ORDER;
   }
 
   /**
-   * Creates a new {@link Builder sort order builder} for the given {@link Schema}.
+   * 为给定 {@link Schema} 创建 sort order 构建器。
    *
-   * @param schema a schema
-   * @return a sort order builder for the given schema
+   * @param schema 表 schema
+   * @return sort order 构建器
    */
   public static Builder builderFor(Schema schema) {
     return new Builder(schema);
   }
 
   /**
-   * A builder used to create valid {@link SortOrder sort orders}.
+   * 用于构造合法 {@link SortOrder} 的构建器。
    *
-   * <p>Call {@link #builderFor(Schema)} to create a new builder.
+   * <p>设计意图：实现 {@link SortOrderBuilder}，提供 asc/desc 等便捷方法；通过 term 绑定到 schema 后构造 SortField。通过
+   * {@link #builderFor(Schema)} 创建实例。
    */
   public static class Builder implements SortOrderBuilder<Builder> {
     private final Schema schema;
@@ -200,11 +233,11 @@ public class SortOrder implements Serializable {
     }
 
     /**
-     * Add an expression term to the sort, ascending with the given null order.
+     * 添加一个升序排序字段，指定 null 排列方式。
      *
-     * @param term an expression term
-     * @param nullOrder a null order (first or last)
-     * @return this for method chaining
+     * @param term 表达式 term
+     * @param nullOrder null 排列方式（first 或 last）
+     * @return this，便于链式调用
      */
     @Override
     public Builder asc(Term term, NullOrder nullOrder) {
@@ -212,36 +245,51 @@ public class SortOrder implements Serializable {
     }
 
     /**
-     * Add an expression term to the sort, ascending with the given null order.
+     * 添加一个降序排序字段，指定 null 排列方式。
      *
-     * @param term an expression term
-     * @param nullOrder a null order (first or last)
-     * @return this for method chaining
+     * @param term 表达式 term
+     * @param nullOrder null 排列方式（first 或 last）
+     * @return this，便于链式调用
      */
     @Override
     public Builder desc(Term term, NullOrder nullOrder) {
       return addSortField(term, SortDirection.DESC, nullOrder);
     }
 
+    /** 按列名添加排序字段，指定方向与 null 排列方式。 */
     public Builder sortBy(String name, SortDirection direction, NullOrder nullOrder) {
       return addSortField(Expressions.ref(name), direction, nullOrder);
     }
 
+    /** 按 term 添加排序字段，指定方向与 null 排列方式。 */
     public Builder sortBy(Term term, SortDirection direction, NullOrder nullOrder) {
       return addSortField(term, direction, nullOrder);
     }
 
+    /** 设置 sort order ID。 */
     public Builder withOrderId(int newOrderId) {
       this.orderId = newOrderId;
       return this;
     }
 
+    /** 设置 term 绑定时是否大小写敏感。 */
     @Override
     public Builder caseSensitive(boolean sortCaseSensitive) {
       this.caseSensitive = sortCaseSensitive;
       return this;
     }
 
+    /**
+     * 添加一个排序字段。
+     *
+     * <p>逻辑：要求 term 是 {@link UnboundTerm}，按 caseSensitive 绑定到 schema； 由绑定结果取 sourceId 与 transform
+     * 构造 SortField 加入列表。
+     *
+     * @param term 表达式 term（必须未绑定）
+     * @param direction 排序方向
+     * @param nullOrder null 排列方式
+     * @return this，便于链式调用
+     */
     private Builder addSortField(Term term, SortDirection direction, NullOrder nullOrder) {
       Preconditions.checkArgument(term instanceof UnboundTerm, "Term must be unbound");
       // ValidationException is thrown by bind if binding fails so we assume that boundTerm is
@@ -253,6 +301,7 @@ public class SortOrder implements Serializable {
       return this;
     }
 
+    /** 直接以已构造的 transform 添加排序字段（内部使用）。 */
     Builder addSortField(
         Transform<?, ?> transform, int sourceId, SortDirection direction, NullOrder nullOrder) {
       SortField sortField = new SortField(transform, sourceId, direction, nullOrder);
@@ -260,12 +309,22 @@ public class SortOrder implements Serializable {
       return this;
     }
 
+    /**
+     * 构建并校验 sort order。
+     *
+     * <p>逻辑：先 {@link #buildUnchecked()} 构造，再 {@link #checkCompatibility} 校验各字段 transform 与源类型兼容。
+     */
     public SortOrder build() {
       SortOrder sortOrder = buildUnchecked();
       checkCompatibility(sortOrder, schema);
       return sortOrder;
     }
 
+    /**
+     * 不做兼容性校验直接构造 sort order。
+     *
+     * <p>逻辑：字段为空时返回 {@link #unsorted()}（orderId 必须为 0 或 null）；非空时 orderId 不能为 0（保留给未排序），未指定则默认 1。
+     */
     SortOrder buildUnchecked() {
       if (fields.isEmpty()) {
         if (orderId != null && orderId != 0) {
@@ -283,6 +342,12 @@ public class SortOrder implements Serializable {
       return new SortOrder(schema, actualOrderId, fields);
     }
 
+    /**
+     * 把绑定后的 term 转换为 transform。
+     *
+     * <p>逻辑：BoundReference 转为 identity transform；BoundTransform 取其内部 transform； 其他类型抛 {@link
+     * ValidationException}。
+     */
     private Transform<?, ?> toTransform(BoundTerm<?> term) {
       if (term instanceof BoundReference) {
         return Transforms.identity(term.type());
@@ -295,6 +360,14 @@ public class SortOrder implements Serializable {
     }
   }
 
+  /**
+   * 校验 sort order 中每个排序字段的 transform 与源类型兼容。
+   *
+   * <p>逻辑：对每个字段校验源类型存在、是基本类型、且 transform 可作用于该类型。
+   *
+   * @param sortOrder 待校验的 sort order
+   * @param schema 表 schema
+   */
   public static void checkCompatibility(SortOrder sortOrder, Schema schema) {
     for (SortField field : sortOrder.fields) {
       Type sourceType = schema.findType(field.sourceId());

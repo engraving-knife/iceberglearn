@@ -56,6 +56,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestWriteMetricsConfig 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 写指标配置 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestWriteMetricsConfig {
 
   private static final Configuration CONF = new Configuration();
@@ -78,12 +85,14 @@ public class TestWriteMetricsConfig {
   private static SparkSession spark = null;
   private static JavaSparkContext sc = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestWriteMetricsConfig.spark = SparkSession.builder().master("local[2]").getOrCreate();
     TestWriteMetricsConfig.sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestWriteMetricsConfig.spark;
@@ -92,6 +101,7 @@ public class TestWriteMetricsConfig {
     currentSpark.stop();
   }
 
+  /** 测试全指标collection用于Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFullMetricsCollectionForParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -123,6 +133,7 @@ public class TestWriteMetricsConfig {
     }
   }
 
+  /** 测试计数指标collection用于Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCountMetricsCollectionForParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -154,6 +165,7 @@ public class TestWriteMetricsConfig {
     }
   }
 
+  /** 测试no指标collection用于Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoMetricsCollectionForParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -185,6 +197,7 @@ public class TestWriteMetricsConfig {
     }
   }
 
+  /** 测试自定义metriccollection用于Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCustomMetricCollectionForParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -221,6 +234,7 @@ public class TestWriteMetricsConfig {
     }
   }
 
+  /** 测试bad自定义metriccollection用于Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBadCustomMetricCollectionForParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();
@@ -238,6 +252,7 @@ public class TestWriteMetricsConfig {
         () -> tables.create(SIMPLE_SCHEMA, spec, properties, tableLocation));
   }
 
+  /** 测试自定义metriccollection用于嵌套Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCustomMetricCollectionForNestedParquet() throws IOException {
     String tableLocation = temp.newFolder("iceberg-table").toString();

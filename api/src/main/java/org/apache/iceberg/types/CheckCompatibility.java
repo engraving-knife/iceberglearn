@@ -28,28 +28,46 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * schema 兼容性检查访问者：检查读 schema 与写 schema 的类型、可空性、字段顺序兼容性。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#validateWriteSchema}、{@link TypeUtil#validateSchema} 使用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>检查类型兼容性：原始类型需相同或可提升，嵌套类型需结构匹配。
+ *   <li>检查可空性：写入可选值到必填字段视为不兼容（可选配置）。
+ *   <li>检查字段顺序：读 schema 字段顺序与写 schema 不一致视为不兼容（可选配置）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>使用 CustomOrderSchemaVisitor 前序遍历，currentType 同步追踪写 schema 的当前位置。
+ *   <li>错误信息以冒号前缀标记层级，field 方法在传播时拼接字段名与点号形成路径。
+ *   <li>提供 writeCompatibilityErrors（含可空性检查）与 typeCompatibilityErrors（仅类型检查） 两套入口，分别用于写入校验与类型校验。
+ * </ul>
+ */
 public class CheckCompatibility extends TypeUtil.CustomOrderSchemaVisitor<List<String>> {
   /**
-   * Returns a list of compatibility errors for writing with the given write schema. This includes
-   * nullability: writing optional (nullable) values to a required field is an error.
+   * 返回写入兼容性错误列表（含可空性检查）。
    *
-   * @param readSchema a read schema
-   * @param writeSchema a write schema
-   * @return a list of error details, or an empty list if there are no compatibility problems
+   * @param readSchema 读 schema
+   * @param writeSchema 写 schema
+   * @return 错误详情列表；无错误返回空列表
    */
   public static List<String> writeCompatibilityErrors(Schema readSchema, Schema writeSchema) {
     return writeCompatibilityErrors(readSchema, writeSchema, true);
   }
 
   /**
-   * Returns a list of compatibility errors for writing with the given write schema. This includes
-   * nullability: writing optional (nullable) values to a required field is an error Optionally this
-   * method allows case where input schema has different ordering than table schema.
+   * 返回写入兼容性错误列表（含可空性检查，可选检查字段顺序）。
    *
-   * @param readSchema a read schema
-   * @param writeSchema a write schema
-   * @param checkOrdering If false, allow input schema to have different ordering than table schema
-   * @return a list of error details, or an empty list if there are no compatibility problems
+   * @param readSchema 读 schema
+   * @param writeSchema 写 schema
+   * @param checkOrdering 为 false 时允许输入 schema 字段顺序与表 schema 不同
+   * @return 错误详情列表；无错误返回空列表
    */
   public static List<String> writeCompatibilityErrors(
       Schema readSchema, Schema writeSchema, boolean checkOrdering) {
@@ -57,16 +75,12 @@ public class CheckCompatibility extends TypeUtil.CustomOrderSchemaVisitor<List<S
   }
 
   /**
-   * Returns a list of compatibility errors for writing with the given write schema. This checks
-   * type compatibility and not nullability: writing optional (nullable) values to a required field
-   * is not an error. To check nullability as well as types, Optionally this method allows case
-   * where input schema has different ordering than table schema. use {@link
-   * #writeCompatibilityErrors(Schema, Schema)}.
+   * 返回类型兼容性错误列表（不含可空性检查，可选检查字段顺序）。
    *
-   * @param readSchema a read schema
-   * @param writeSchema a write schema
-   * @param checkOrdering If false, allow input schema to have different ordering than table schema
-   * @return a list of error details, or an empty list if there are no compatibility problems
+   * @param readSchema 读 schema
+   * @param writeSchema 写 schema
+   * @param checkOrdering 为 false 时允许字段顺序不同
+   * @return 错误详情列表；无错误返回空列表
    */
   public static List<String> typeCompatibilityErrors(
       Schema readSchema, Schema writeSchema, boolean checkOrdering) {
@@ -74,25 +88,22 @@ public class CheckCompatibility extends TypeUtil.CustomOrderSchemaVisitor<List<S
   }
 
   /**
-   * Returns a list of compatibility errors for writing with the given write schema. This checks
-   * type compatibility and not nullability: writing optional (nullable) values to a required field
-   * is not an error. To check nullability as well as types, use {@link
-   * #writeCompatibilityErrors(Schema, Schema)}.
+   * 返回类型兼容性错误列表（不含可空性检查）。
    *
-   * @param readSchema a read schema
-   * @param writeSchema a write schema
-   * @return a list of error details, or an empty list if there are no compatibility problems
+   * @param readSchema 读 schema
+   * @param writeSchema 写 schema
+   * @return 错误详情列表；无错误返回空列表
    */
   public static List<String> typeCompatibilityErrors(Schema readSchema, Schema writeSchema) {
     return TypeUtil.visit(readSchema, new CheckCompatibility(writeSchema, true, false));
   }
 
   /**
-   * Returns a list of compatibility errors for reading with the given read schema.
+   * 返回读取兼容性错误列表。
    *
-   * @param readSchema a read schema
-   * @param writeSchema a write schema
-   * @return a list of error details, or an empty list if there are no compatibility problems
+   * @param readSchema 读 schema
+   * @param writeSchema 写 schema
+   * @return 错误详情列表；无错误返回空列表
    */
   public static List<String> readCompatibilityErrors(Schema readSchema, Schema writeSchema) {
     return TypeUtil.visit(readSchema, new CheckCompatibility(writeSchema, false, true));

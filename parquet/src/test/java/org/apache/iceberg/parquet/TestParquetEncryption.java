@@ -44,6 +44,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestParquetEncryption 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquetEncryption 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetEncryption {
 
   private static final String columnName = "intCol";
@@ -55,6 +62,7 @@ public class TestParquetEncryption {
 
   @TempDir private Path temp;
 
+  /** 辅助方法：writeEncryptedFile。 */
   @BeforeEach
   public void writeEncryptedFile() throws IOException {
     List<GenericData.Record> records = Lists.newArrayListWithCapacity(recordCount);
@@ -83,6 +91,11 @@ public class TestParquetEncryption {
     }
   }
 
+  /**
+   * 测试场景：Read Encrypted File Without Keys。
+   *
+   * <p>验证该方法在 Read Encrypted File Without Keys 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadEncryptedFileWithoutKeys() throws IOException {
     TestHelpers.assertThrows(
@@ -92,6 +105,11 @@ public class TestParquetEncryption {
         () -> Parquet.read(localInput(file)).project(schema).callInit().build().iterator());
   }
 
+  /**
+   * 测试场景：Read Encrypted File Without AAD Prefix。
+   *
+   * <p>验证该方法在 Read Encrypted File Without AAD Prefix 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadEncryptedFileWithoutAADPrefix() throws IOException {
     TestHelpers.assertThrows(
@@ -108,6 +126,11 @@ public class TestParquetEncryption {
                 .iterator());
   }
 
+  /**
+   * 测试场景：Read Encrypted File。
+   *
+   * <p>验证该方法在 Read Encrypted File 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadEncryptedFile() throws IOException {
     try (CloseableIterator readRecords =

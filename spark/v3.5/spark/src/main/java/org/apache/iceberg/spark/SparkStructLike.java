@@ -22,6 +22,15 @@ import org.apache.iceberg.StructLike;
 import org.apache.iceberg.types.Types;
 import org.apache.spark.sql.Row;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Iceberg StructLike 的 Spark 实现，以 Spark InternalRow 作为底层数据载体。
+ *
+ * <p>设计意图：适配器模式，使 Spark 行可在需要 StructLike 的 Iceberg API（如分区值）中使用。
+ *
+ * <p>上下游关系：由分区计算、排序等场景使用。
+ */
 public class SparkStructLike implements StructLike {
 
   private final Types.StructType type;
@@ -30,12 +39,12 @@ public class SparkStructLike implements StructLike {
   public SparkStructLike(Types.StructType type) {
     this.type = type;
   }
-
+  /** 包装。 */
   public SparkStructLike wrap(Row row) {
     this.wrapped = row;
     return this;
   }
-
+  /** 返回大小。 */
   @Override
   public int size() {
     return type.fields().size();

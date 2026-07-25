@@ -50,9 +50,21 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkParquetReader 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkParquetReader 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkParquetReader extends DataTest {
   private static final int NUM_RECORDS = 100;
 
+  /**
+   * 测试场景：Two Level List。
+   *
+   * <p>验证该方法在 Two Level List 条件下的行为是否符合预期。
+   */
   @Test
   public void testTwoLevelList() throws IOException {
     Schema schema =
@@ -98,6 +110,7 @@ public class TestFlinkParquetReader extends DataTest {
     }
   }
 
+  /** 辅助方法：writeAndValidate，write And Validate。 */
   private void writeAndValidate(Iterable<Record> iterable, Schema schema) throws IOException {
     File testFile = temp.newFile();
     Assert.assertTrue("Delete should succeed", testFile.delete());
@@ -126,6 +139,7 @@ public class TestFlinkParquetReader extends DataTest {
     }
   }
 
+  /** 辅助方法：writeAndValidate，write And Validate。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     writeAndValidate(RandomGenericData.generate(schema, NUM_RECORDS, 19981), schema);

@@ -22,32 +22,41 @@ import java.util.Map;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 表对象缓存，按标识符缓存已加载的 SparkTable 以减少元数据重复读取。
+ *
+ * <p>设计意图：采用带过期时间的 ConcurrentMap 缓存，支持大小与时间淘汰。
+ *
+ * <p>上下游关系：由 SparkCachedTableCatalog 使用。
+ */
 public class SparkTableCache {
 
   private static final SparkTableCache INSTANCE = new SparkTableCache();
 
   private final Map<String, Table> cache = Maps.newConcurrentMap();
-
+  /** 返回值。 */
   public static SparkTableCache get() {
     return INSTANCE;
   }
-
+  /** 返回大小。 */
   public int size() {
     return cache.size();
   }
-
+  /** 添加元素。 */
   public void add(String key, Table table) {
     cache.put(key, table);
   }
-
+  /** 判断是否包含。 */
   public boolean contains(String key) {
     return cache.containsKey(key);
   }
-
+  /** 返回值。 */
   public Table get(String key) {
     return cache.get(key);
   }
-
+  /** 移除元素。 */
   public Table remove(String key) {
     return cache.remove(key);
   }

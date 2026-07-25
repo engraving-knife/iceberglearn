@@ -29,22 +29,33 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkTable extends SparkCatalogTestBase {
 
+  /** 测试Spark表。 */
   public TestSparkTable(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试表等值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTableEquality() throws NoSuchTableException {
     CatalogManager catalogManager = spark.sessionState().catalogManager();

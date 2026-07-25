@@ -26,7 +26,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestEnvironmentUtil，用于验证 Environment Util 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Environment Util 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 class TestEnvironmentUtil {
+  /**
+   * 测试场景：environment substitution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEnvironmentSubstitution() {
     Optional<Map.Entry<String, String>> envEntry = System.getenv().entrySet().stream().findFirst();
@@ -39,6 +52,11 @@ class TestEnvironmentUtil {
         .isEqualTo(ImmutableMap.of("env-test", envEntry.get().getValue()));
   }
 
+  /**
+   * 测试场景：multiple environment substitutions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleEnvironmentSubstitutions() {
     Map<String, String> result =
@@ -51,6 +69,11 @@ class TestEnvironmentUtil {
         .isEqualTo(ImmutableMap.of("user-test", "u", "other", "left-alone", "var", "value"));
   }
 
+  /**
+   * 测试场景：environment substitution with missing var。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEnvironmentSubstitutionWithMissingVar() {
     Map<String, String> result =

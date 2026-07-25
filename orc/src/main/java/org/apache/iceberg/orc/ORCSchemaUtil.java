@@ -33,7 +33,38 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.orc.TypeDescription;
 
-/** Utilities for mapping Iceberg to ORC schemas. */
+/**
+ * Iceberg 与 ORC schema 之间的双向映射工具类。
+ *
+ * <p>所属模块：iceberg-orc。是 Iceberg Schema 与 ORC TypeDescription 之间的核心转换层， 处理类型映射、字段 id 关联、schema
+ * 投影与演进。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link #convert(Schema)}：Iceberg Schema → ORC TypeDescription，写入 id/required 等属性。
+ *   <li>{@link #convert(TypeDescription)}：ORC TypeDescription → Iceberg Schema，仅保留有 id 的列。
+ *   <li>{@link #buildOrcProjection}：按期望 Iceberg schema 对 ORC 文件 schema 做投影与类型提升。
+ *   <li>{@link #icebergID}/{@link #fieldId}/{@link #isOptional}：从 ORC TypeDescription 读取 Iceberg
+ *       属性。
+ *   <li>{@link #hasIds}/{@link #applyNameMapping}/{@link #removeIds}/{@link #idToOrcName}：schema
+ *       辅助操作。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>用 ORC TypeDescription 的 attribute 机制存储 Iceberg id/required/binary-type/long-type/length， 实现
+ *       id 与列的关联，不依赖列名。
+ *   <li>TYPE_MAPPING 多对一映射（如 Iceberg INTEGER ↔ ORC BYTE/SHORT/INT）支持读取旧文件。
+ *   <li>buildOrcProjection 处理 schema 演进：类型提升（int→long, float→double, decimal 精度提升）、 新增列（用 _r
+ *       后缀避免列名冲突）、删除列（跳过）。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ORC}、{@link OrcFileAppender}、{@link OrcIterable}、{@link OrcMetrics} 等广泛调用；依赖
+ * {@link OrcToIcebergVisitor}、{@link ApplyNameMapping}、{@link HasIds}、 {@link RemoveIds}、{@link
+ * IdToOrcName} 等访问器。
+ */
 public final class ORCSchemaUtil {
 
   public enum BinaryType {
@@ -103,6 +134,12 @@ public final class ORCSchemaUtil {
 
   private ORCSchemaUtil() {}
 
+  /**
+   * 把 Iceberg Schema 转为 ORC TypeDescription（根为 struct）。
+   *
+   * <p>逻辑：遍历根 struct 各字段，递归调用 convert(fieldId, type, isRequired)， 把 id/required 等属性写入
+   * TypeDescription。
+   */
   public static TypeDescription convert(Schema schema) {
     final TypeDescription root = TypeDescription.createStruct();
     final Types.StructType schemaRoot = schema.asStruct();
@@ -113,6 +150,15 @@ public final class ORCSchemaUtil {
     return root;
   }
 
+  /**
+   * 递归把 Iceberg Type 转为 ORC TypeDescription 并设 Iceberg 属性。
+   *
+   * <p>逻辑：按 typeId 分支创建对应 ORC 类型；TIME/LONG 设 ICEBERG_LONG_TYPE_ATTRIBUTE 区分； UUID/FIXED/BINARY 设
+   * ICEBERG_BINARY_TYPE_ATTRIBUTE 区分；FIXED 额外设 length； TIMESTAMP 按 shouldAdjustToUTC 选
+   * TIMESTAMP/TIMESTAMP_INSTANT；最后统一设 id 和 required。
+   *
+   * @throws IllegalArgumentException 出现未覆盖的类型
+   */
   private static TypeDescription convert(Integer fieldId, Type type, boolean isRequired) {
     final TypeDescription orcType;
 
@@ -338,6 +384,12 @@ public final class ORCSchemaUtil {
     return orcType;
   }
 
+  /**
+   * 递归构建 Iceberg 字段 id → ORC OrcField（名称+类型）的映射。
+   *
+   * <p>逻辑：按 ORC category 递归子节点（struct/list/map），自身有 id 则加入映射。 用于 buildOrcProjection 时按 id
+   * 查找文件中对应的列。
+   */
   private static Map<Integer, OrcField> icebergToOrcMapping(String name, TypeDescription orcType) {
     Map<Integer, OrcField> icebergToOrc = Maps.newHashMap();
     switch (orcType.getCategory()) {
@@ -366,6 +418,11 @@ public final class ORCSchemaUtil {
     return icebergToOrc;
   }
 
+  /**
+   * 检查并返回类型提升后的 ORC 类型。
+   *
+   * <p>逻辑：支持 int→long、float→double、decimal(P,S)→decimal(P',S)（P' > P）三种提升。 不需提升时返回 empty。
+   */
   private static Optional<TypeDescription> getPromotedType(
       Type icebergType, TypeDescription originalOrcType) {
     TypeDescription promotedOrcType = null;
@@ -392,6 +449,7 @@ public final class ORCSchemaUtil {
     return Optional.ofNullable(promotedOrcType);
   }
 
+  /** 检查 ORC 类型与 Iceberg 类型是否匹配（TIMESTAMP 需区分时区，其余查 TYPE_MAPPING）。 */
   private static boolean isSameType(TypeDescription orcType, Type icebergType) {
     if (icebergType.typeId() == Type.TypeID.TIMESTAMP) {
       Types.TimestampType tsType = (Types.TimestampType) icebergType;
@@ -405,17 +463,20 @@ public final class ORCSchemaUtil {
     }
   }
 
+  /** 从 ORC TypeDescription 读取 Iceberg 字段 id（可能不存在）。 */
   static Optional<Integer> icebergID(TypeDescription orcType) {
     return Optional.ofNullable(orcType.getAttributeValue(ICEBERG_ID_ATTRIBUTE))
         .map(Integer::parseInt);
   }
 
+  /** 从 ORC TypeDescription 读取 Iceberg 字段 id（必须存在）。 */
   public static int fieldId(TypeDescription orcType) {
     String idStr = orcType.getAttributeValue(ICEBERG_ID_ATTRIBUTE);
     Preconditions.checkNotNull(idStr, "Missing expected '%s' property", ICEBERG_ID_ATTRIBUTE);
     return Integer.parseInt(idStr);
   }
 
+  /** 判断 ORC TypeDescription 对应的 Iceberg 字段是否可选（无属性默认可选）。 */
   static boolean isOptional(TypeDescription orcType) {
     String isRequiredStr = orcType.getAttributeValue(ICEBERG_REQUIRED_ATTRIBUTE);
     if (isRequiredStr != null) {
@@ -424,21 +485,22 @@ public final class ORCSchemaUtil {
     return true;
   }
 
+  /** 用 RemoveIds 访问器清除 ORC schema 上的 Iceberg id 属性。 */
   static TypeDescription removeIds(TypeDescription type) {
     return OrcSchemaVisitor.visit(type, new RemoveIds());
   }
 
+  /** 用 HasIds 访问器检查 ORC schema 是否含 Iceberg id。 */
   static boolean hasIds(TypeDescription orcSchema) {
     return OrcSchemaVisitor.visit(orcSchema, new HasIds());
   }
 
+  /** 用 ApplyNameMapping 访问器为无 id 的 ORC schema 补全 Iceberg id。 */
   static TypeDescription applyNameMapping(TypeDescription orcSchema, NameMapping nameMapping) {
     return OrcSchemaVisitor.visit(orcSchema, new ApplyNameMapping(nameMapping));
   }
 
-  /**
-   * Generates mapping from field IDs to ORC qualified names. See {@link IdToOrcName} for details.
-   */
+  /** 生成 Iceberg 字段 id → ORC 限定列名映射，委托 {@link IdToOrcName}。 */
   public static Map<Integer, String> idToOrcName(Schema schema) {
     return TypeUtil.visit(schema, new IdToOrcName());
   }

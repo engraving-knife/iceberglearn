@@ -36,34 +36,47 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDropTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 删除表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDropTable extends SparkCatalogTestBase {
 
+  /** 测试删除表。 */
   public TestDropTable(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE %s (id INT, name STRING) USING iceberg", tableName);
     sql("INSERT INTO %s VALUES (1, 'test')", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() throws IOException {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试删除表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTable() throws IOException {
     dropTableInternal();
   }
 
+  /** 测试删除表gcdisabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTableGCDisabled() throws IOException {
     sql("ALTER TABLE %s SET TBLPROPERTIES (gc.enabled = false)", tableName);
     dropTableInternal();
   }
 
+  /** 删除表internal。 */
   private void dropTableInternal() throws IOException {
     assertEquals(
         "Should have expected rows",
@@ -128,6 +141,7 @@ public class TestDropTable extends SparkCatalogTestBase {
     Assert.assertTrue("All files should not be deleted", checkFilesExist(manifestAndFiles, true));
   }
 
+  /** 清单与文件。 */
   private List<String> manifestsAndFiles() {
     List<Object[]> files = sql("SELECT file_path FROM %s.%s", tableName, MetadataTableType.FILES);
     List<Object[]> manifests =
@@ -137,6 +151,7 @@ public class TestDropTable extends SparkCatalogTestBase {
         .collect(Collectors.toList());
   }
 
+  /** 检查文件存在。 */
   private boolean checkFilesExist(List<String> files, boolean shouldExist) throws IOException {
     boolean mask = !shouldExist;
     if (files.isEmpty()) {

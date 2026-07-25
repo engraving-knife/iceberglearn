@@ -21,8 +21,24 @@ package org.apache.iceberg;
 import java.util.Set;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 
+/**
+ * 表属性键名常量与默认值定义。
+ *
+ * <p>所属模块：iceberg-core。职责：集中声明 Iceberg 表支持的全部表属性键名及其默认值， 是表属性配置的"字典"。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>常量集中管理：所有 {@code write.*}、{@code commit.*}、{@code history.*} 等键名在此定义， 避免魔法字符串。
+ *   <li>每个键配默认值常量：形如 {@code XXX} 与 {@code XXX_DEFAULT} 成对出现。
+ *   <li>不可实例化：构造函数私有。
+ * </ul>
+ *
+ * <p>上下游关系：被 core 内几乎全部模块引用（写入、扫描、提交、维护动作等），是配置层的基石。
+ */
 public class TableProperties {
 
+  /** 私有构造：常量类禁止实例化。 */
   private TableProperties() {}
 
   /**

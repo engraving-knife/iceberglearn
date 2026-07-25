@@ -26,15 +26,13 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * This class computes the net changes across multiple snapshots. It is different from {@link
- * org.apache.iceberg.spark.RemoveCarryoverIterator}, which only removes carry-over rows within a
- * single snapshot. It takes a row iterator, and assumes the following:
+ * 所属模块：iceberg-spark v3.4
  *
- * <ul>
- *   <li>The row iterator is partitioned by all columns.
- *   <li>The row iterator is sorted by all columns, change order, and change type. The change order
- *       is 1-to-1 mapping to snapshot id.
- * </ul>
+ * <p>职责：去除净 carryover 行的迭代器，过滤 changelog 中净效果为零的 delete+insert 对。
+ *
+ * <p>设计意图：相比 RemoveCarryoverIterator 更精细，保留有实际净变更的行。
+ *
+ * <p>上下游关系：由 ChangelogRowReader 使用。
  */
 public class RemoveNetCarryoverIterator extends ChangelogIterator {
 
@@ -48,7 +46,7 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
     super(rowIterator, rowType);
     this.indicesToIdentifySameRow = generateIndicesToIdentifySameRow();
   }
-
+  /** 判断是否有下一个元素。 */
   @Override
   public boolean hasNext() {
     if (cachedRowCount > 0) {
@@ -61,7 +59,7 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
 
     return rowIterator().hasNext();
   }
-
+  /** 返回下一个元素。 */
   @Override
   public Row next() {
     // if there are cached rows, return one of them from the beginning
@@ -101,7 +99,7 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
 
     return null;
   }
-
+  /** 返回 CurrentRow 属性。 */
   private Row getCurrentRow() {
     Row currentRow;
     if (cachedNextRow != null) {
@@ -112,12 +110,12 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
     }
     return currentRow;
   }
-
+  /** 执行 oppositeChangeType 相关操作。 */
   private boolean oppositeChangeType(Row currentRow, Row nextRow) {
     return (changeType(nextRow).equals(INSERT) && changeType(currentRow).equals(DELETE))
         || (changeType(nextRow).equals(DELETE) && changeType(currentRow).equals(INSERT));
   }
-
+  /** 执行 generateIndicesToIdentifySameRow 相关操作。 */
   private int[] generateIndicesToIdentifySameRow() {
     Set<Integer> metadataColumnIndices =
         Sets.newHashSet(

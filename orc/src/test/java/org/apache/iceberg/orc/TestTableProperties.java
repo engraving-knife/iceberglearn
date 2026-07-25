@@ -42,6 +42,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestTableProperties 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestTableProperties 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTableProperties {
 
   public static final Schema SCHEMA =
@@ -52,6 +59,11 @@ public class TestTableProperties {
   @TempDir private File folder;
   @TempDir private File testFile;
 
+  /**
+   * 测试场景：Orc Table Properties。
+   *
+   * <p>验证该方法在 Orc Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testOrcTableProperties() throws Exception {
     Random random = new Random();
@@ -101,6 +113,11 @@ public class TestTableProperties {
         .isEqualTo(FileFormat.ORC.name());
   }
 
+  /**
+   * 测试场景：Orc Table Delete Properties。
+   *
+   * <p>验证该方法在 Orc Table Delete Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testOrcTableDeleteProperties() throws Exception {
     Random random = new Random();

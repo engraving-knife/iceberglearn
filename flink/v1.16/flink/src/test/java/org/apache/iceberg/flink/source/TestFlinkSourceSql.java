@@ -35,8 +35,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.Test;
 
-/** Use the FlinkSource */
+/**
+ * 文件级说明：测试 TestFlinkSourceSql 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkSourceSql 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkSourceSql extends TestSqlBase {
+  /** 辅助方法：before，before。 */
   @Override
   public void before() throws IOException {
     SqlHelpers.sql(
@@ -50,6 +57,11 @@ public class TestFlinkSourceSql extends TestSqlBase {
         .set(TableConfigOptions.TABLE_DYNAMIC_TABLE_OPTIONS_ENABLED, true);
   }
 
+  /**
+   * 测试场景：Infer Parallelism With Global Setting。
+   *
+   * <p>验证该方法在 Infer Parallelism With Global Setting 条件下的行为是否符合预期。
+   */
   @Test
   public void testInferParallelismWithGlobalSetting() throws IOException {
     Configuration cfg = getTableEnv().getConfig().getConfiguration();

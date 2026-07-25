@@ -23,7 +23,13 @@ import org.apache.iceberg.flink.source.DataIterator;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.io.CloseableIterator;
 
-/** A {@link ReaderFunction} implementation that uses {@link DataIterator}. */
+/**
+ * 数据迭代器读取函数抽象基类，封装 DataIterator 到迭代器的转换。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：提供公共读取逻辑，子类提供 FileScanTaskReader。
+ *
+ * <p>设计意图：抽象基类 + 模板方法；被 split reader 调用。
+ */
 public abstract class DataIteratorReaderFunction<T> implements ReaderFunction<T> {
   private final DataIteratorBatcher<T> batcher;
 

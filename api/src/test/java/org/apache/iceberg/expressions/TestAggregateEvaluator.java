@@ -35,6 +35,13 @@ import org.apache.iceberg.types.Types.IntegerType;
 import org.apache.iceberg.types.Types.StringType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestAggregateEvaluator 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestAggregateEvaluator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestAggregateEvaluator {
   private static final Schema SCHEMA =
       new Schema(
@@ -95,6 +102,11 @@ public class TestAggregateEvaluator {
     FILE, MISSING_SOME_NULLS_STATS_1, MISSING_SOME_NULLS_STATS_2
   };
 
+  /**
+   * 测试场景：Int Aggregate。
+   *
+   * <p>验证该方法在 Int Aggregate 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntAggregate() {
     List<Expression> list =
@@ -115,6 +127,11 @@ public class TestAggregateEvaluator {
     assertEvaluatorResult(result, expected);
   }
 
+  /**
+   * 测试场景：All Nulls。
+   *
+   * <p>验证该方法在 All Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllNulls() {
     List<Expression> list =
@@ -135,6 +152,11 @@ public class TestAggregateEvaluator {
     assertEvaluatorResult(result, expected);
   }
 
+  /**
+   * 测试场景：Some Nulls。
+   *
+   * <p>验证该方法在 Some Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testSomeNulls() {
     List<Expression> list =
@@ -154,6 +176,11 @@ public class TestAggregateEvaluator {
     assertEvaluatorResult(result, expected);
   }
 
+  /**
+   * 测试场景：No Stats。
+   *
+   * <p>验证该方法在 No Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoStats() {
     List<Expression> list =
@@ -173,6 +200,7 @@ public class TestAggregateEvaluator {
     assertEvaluatorResult(result, expected);
   }
 
+  /** 辅助方法：assertEvaluatorResult。 */
   private void assertEvaluatorResult(StructLike result, Object[] expected) {
     Object[] actual = new Object[result.size()];
     for (int i = 0; i < result.size(); i++) {

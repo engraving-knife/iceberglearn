@@ -38,6 +38,15 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.ShortType;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Avro 文件的 Spark 写入器，将 Spark InternalRow 写为 Avro 记录。
+ *
+ * <p>设计意图：基于 AvroWithSparkSchemaVisitor 构建按列写入器。
+ *
+ * <p>上下游关系：由 SparkAppenderFactory 在写出 Avro 文件时使用。
+ */
 public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
   private final StructType dsSchema;
   private ValueWriter<InternalRow> writer = null;
@@ -45,7 +54,7 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
   public SparkAvroWriter(StructType dsSchema) {
     this.dsSchema = dsSchema;
   }
-
+  /** 设置 Schema 属性。 */
   @Override
   @SuppressWarnings("unchecked")
   public void setSchema(Schema schema) {
@@ -58,13 +67,14 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
   public void write(InternalRow datum, Encoder out) throws IOException {
     writer.write(datum, out);
   }
-
+  /** 执行 metrics 相关操作。 */
   @Override
   public Stream<FieldMetrics> metrics() {
     return writer.metrics();
   }
 
   private static class WriteBuilder extends AvroWithSparkSchemaVisitor<ValueWriter<?>> {
+    /** 执行 record 相关操作。 */
     @Override
     public ValueWriter<?> record(
         DataType struct, Schema record, List<String> names, List<ValueWriter<?>> fields) {
@@ -74,7 +84,7 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
               .mapToObj(i -> fieldNameAndType(struct, i).second())
               .collect(Collectors.toList()));
     }
-
+    /** 执行 union 相关操作。 */
     @Override
     public ValueWriter<?> union(DataType type, Schema union, List<ValueWriter<?>> options) {
       Preconditions.checkArgument(
@@ -89,25 +99,25 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
         return ValueWriters.option(1, options.get(0));
       }
     }
-
+    /** 执行 array 相关操作。 */
     @Override
     public ValueWriter<?> array(DataType sArray, Schema array, ValueWriter<?> elementWriter) {
       return SparkValueWriters.array(elementWriter, arrayElementType(sArray));
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ValueWriter<?> map(DataType sMap, Schema map, ValueWriter<?> valueReader) {
       return SparkValueWriters.map(
           SparkValueWriters.strings(), mapKeyType(sMap), valueReader, mapValueType(sMap));
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ValueWriter<?> map(
         DataType sMap, Schema map, ValueWriter<?> keyWriter, ValueWriter<?> valueWriter) {
       return SparkValueWriters.arrayMap(
           keyWriter, mapKeyType(sMap), valueWriter, mapValueType(sMap));
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public ValueWriter<?> primitive(DataType type, Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();

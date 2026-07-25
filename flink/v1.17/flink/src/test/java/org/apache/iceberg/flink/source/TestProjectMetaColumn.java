@@ -47,12 +47,20 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestProjectMetaColumn 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestProjectMetaColumn 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestProjectMetaColumn {
 
   @Rule public final TemporaryFolder folder = new TemporaryFolder();
   private final FileFormat format;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "fileFormat={0}")
   public static Iterable<Object[]> parameters() {
     return Lists.newArrayList(
@@ -61,10 +69,16 @@ public class TestProjectMetaColumn {
         new Object[] {FileFormat.AVRO});
   }
 
+  /** 辅助方法：TestProjectMetaColumn，Project Meta Column。 */
   public TestProjectMetaColumn(FileFormat format) {
     this.format = format;
   }
 
+  /**
+   * 测试场景：Skip To Remove Meta Column。
+   *
+   * <p>验证该方法在 Skip To Remove Meta Column 条件下的行为是否符合预期。
+   */
   private void testSkipToRemoveMetaColumn(int formatVersion) throws IOException {
     // Create the table with given format version.
     String location = folder.getRoot().getAbsolutePath();
@@ -97,16 +111,31 @@ public class TestProjectMetaColumn {
     TestHelpers.assertRows(rows, results, SimpleDataUtil.ROW_TYPE);
   }
 
+  /**
+   * 测试场景：1 Skip To Remove Meta Column。
+   *
+   * <p>验证该方法在 1 Skip To Remove Meta Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testV1SkipToRemoveMetaColumn() throws IOException {
     testSkipToRemoveMetaColumn(1);
   }
 
+  /**
+   * 测试场景：2 Skip To Remove Meta Column。
+   *
+   * <p>验证该方法在 2 Skip To Remove Meta Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testV2SkipToRemoveMetaColumn() throws IOException {
     testSkipToRemoveMetaColumn(2);
   }
 
+  /**
+   * 测试场景：2 Remove Meta Column。
+   *
+   * <p>验证该方法在 2 Remove Meta Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testV2RemoveMetaColumn() throws Exception {
     // Create the v2 table.
@@ -144,6 +173,7 @@ public class TestProjectMetaColumn {
         SimpleDataUtil.ROW_TYPE);
   }
 
+  /** 辅助方法：writeAndCommit，write And Commit。 */
   private void writeAndCommit(
       Table table, List<Integer> eqFieldIds, boolean upsert, List<RowData> rows)
       throws IOException {
@@ -168,6 +198,7 @@ public class TestProjectMetaColumn {
     delta.commit();
   }
 
+  /** 辅助方法：createTaskWriter，create Task Writer。 */
   private TaskWriter<RowData> createTaskWriter(
       Table table, List<Integer> equalityFieldIds, boolean upsert) {
     TaskWriterFactory<RowData> taskWriterFactory =

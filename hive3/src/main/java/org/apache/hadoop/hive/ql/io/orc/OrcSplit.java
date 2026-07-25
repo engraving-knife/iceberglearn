@@ -43,15 +43,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * In order to fix some compatibility issues with ORC support with Hive 3.x and the shaded ORC
- * libraries, this class has been copied from Hive 3.x source code. However, this class should be
- * removed once Hive 4 is out.
+ * 文件级说明：从 Hive 3.x 源码复制而来的 ORC 文件分片表示类。
+ *
+ * <p>所属模块：iceberg-hive3（Iceberg 与 Hive3 集成模块）。
+ *
+ * <p>职责：在 ORC 与 Hive 3.x 及 shaded ORC 库之间存在兼容性问题时，
+ * 提供与 Hive 内置一致的分片对象，使 Iceberg 向量化读取能够正确序列化
+ * OrcTail、ACID 增量、根目录等附加信息。
+ *
+ * <p>设计意图：临时性兼容层，当 Hive 4 发布且 Iceberg 切换依赖后应被移除。
+ *
+ * <p>上下游关系：上游为 {@code HiveVectorizedReader} 的 ORC 分支，
+ * 下游为 Hive 的 {@code VectorizedOrcInputFormat}。
  */
 public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit {
   private static final Logger LOG = LoggerFactory.getLogger(OrcSplit.class);
   private OrcTail orcTail;
   private boolean hasFooter;
-  /** This means {@link AcidUtils.AcidBaseFileType#ORIGINAL_BASE} */
+  /** 表示文件类型为 {@link AcidUtils.AcidBaseFileType#ORIGINAL_BASE}，即非 ACID 原始文件。 */
   private boolean isOriginal;
 
   private boolean hasBase;
@@ -68,6 +77,12 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
   static final int ORIGINAL_FLAG = 2;
   static final int FOOTER_FLAG = 1;
 
+  /**
+   * 受保护的无参构造。
+   *
+   * <p>Hadoop 0.20/1.x 中 FileSplit 的无参构造为包私有，无法直接调用，
+   * 这里传 null 给父构造仅用于创建对象后再通过 readFields 反序列化。
+   */
   protected OrcSplit() {
     // The FileSplit() constructor in hadoop 0.20 and 1.x is package private so can't use it.
     // This constructor is used to create the object and then call readFields()
@@ -75,6 +90,13 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     super(null, 0, 0, (String[]) null);
   }
 
+  /**
+   * 构造 OrcSplit 实例。
+   *
+   * <p>逻辑：先调用父类 FileSplit 完成基础字段序列化，再保存 OrcTail、ACID 标记、
+   * 根目录、增量列表等 ORC 专用信息。fileLen 若小于等于 0 则置为 Long.MAX_VALUE，
+   * 让 ORC reader 从文件系统自行获取长度。
+   */
   public OrcSplit(
       Path path,
       Object fileId,
@@ -103,6 +125,12 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     this.fileLen = fileLen <= 0 ? Long.MAX_VALUE : fileLen;
   }
 
+  /**
+   * 序列化分片内容，包括父类基础字段与 ORC 附加 payload。
+   *
+   * @param out 数据输出目标
+   * @throws IOException 写入失败时抛出
+   */
   @Override
   public void write(DataOutput out) throws IOException {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -124,6 +152,12 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     }
   }
 
+  /**
+   * 写入 ORC 专用附加 payload：标记位、ACID 增量、OrcTail、文件 ID、文件长度、根目录。
+   *
+   * @param out 数据输出流
+   * @throws IOException 写入失败时抛出
+   */
   private void writeAdditionalPayload(final DataOutputStream out) throws IOException {
     boolean isFileIdLong = fileKey instanceof Long;
     boolean isFileIdWritable = fileKey instanceof Writable;
@@ -154,6 +188,12 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     out.writeUTF(rootDir.toString());
   }
 
+  /**
+   * 反序列化分片内容，与 {@link #write} 对应。
+   *
+   * @param in 数据输入源
+   * @throws IOException 读取失败或字段不合法时抛出
+   */
   @Override
   public void readFields(DataInput in) throws IOException {
     // deserialize path, offset, length using FileSplit
@@ -194,66 +234,85 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     rootDir = new Path(in.readUTF());
   }
 
+  /** 返回 ORC 文件尾元数据，可能为 null。 */
   public OrcTail getOrcTail() {
     return orcTail;
   }
 
+  /** 是否携带 OrcTail 元数据。 */
   public boolean hasFooter() {
     return hasFooter;
   }
 
   /**
-   * Returns {@code true} if file schema doesn't have Acid metadata columns Such file may be in a
-   * delta_x_y/ or base_x due to being added via "load data" command. It could be at partition|table
-   * root due to table having been converted from non-acid to acid table. It could even be something
-   * like "warehouse/t/HIVE_UNION_SUBDIR_15/000000_0" if it was written by an "insert into t select
-   * ... from A union all select ... from B"
+   * 返回文件是否为非 ACID 原始文件。
    *
-   * @return {@code true} if file schema doesn't have Acid metadata columns
+   * <p>说明：这类文件 schema 不含 ACID 元数据列，可能因 "load data" 命令位于
+   * delta_x_y/ 或 base_x 目录，也可能因表从非 ACID 转换为 ACID 表而位于分区或表根目录，
+   * 甚至是 union 子查询写入的临时目录。
+   *
+   * @return 若文件 schema 不含 ACID 元数据列则返回 true
    */
   public boolean isOriginal() {
     return isOriginal;
   }
 
+  /** 是否存在 base 文件。 */
   public boolean hasBase() {
     return hasBase;
   }
 
+  /** 返回分区根目录。 */
   public Path getRootDir() {
     return rootDir;
   }
 
+  /** 返回 ACID 增量列表。 */
   public List<AcidInputFormat.DeltaMetaData> getDeltas() {
     return deltas;
   }
 
+  /** 返回文件总长度。 */
   public long getFileLength() {
     return fileLen;
   }
 
   /**
-   * If this method returns true, then for sure it is ACID. However, if it returns false.. it could
-   * be ACID or non-ACID.
+   * 判断是否为 ACID 分片。
    *
-   * @return true if is ACID
+   * <p>注意：返回 true 一定是 ACID；返回 false 不能确定，可能为 ACID 或非 ACID。
+   *
+   * @return 若存在 base 或 deltas 则返回 true
    */
   public boolean isAcid() {
     return hasBase || deltas.size() > 0;
   }
 
+  /** 返回投影列未压缩大小。 */
   public long getProjectedColumnsUncompressedSize() {
     return projColsUncompressedSize;
   }
 
+  /** 返回文件标识。 */
   public Object getFileKey() {
     return fileKey;
   }
 
+  /** 返回列式投影大小，等于投影列未压缩大小。 */
   @Override
   public long getColumnarProjectionSize() {
     return projColsUncompressedSize;
   }
 
+  /**
+   * 判断当前分片是否可使用 LLAP IO 缓存读取。
+   *
+   * <p>逻辑：根据是否为原始文件、是否 ACID 全表扫描、是否有 delta、是否向量化、
+   * 是否启用 LLAP ACID 等条件综合判断，仅在确定可走 LLAP 路径时返回 true。
+   *
+   * @param conf 任务配置
+   * @return 是否可使用 LLAP IO
+   */
   @Override
   public boolean canUseLlapIo(Configuration conf) {
     final boolean hasDelta = deltas != null && !deltas.isEmpty();
@@ -287,6 +346,7 @@ public class OrcSplit extends FileSplit implements ColumnarSplit, LlapAwareSplit
     return false;
   }
 
+  /** 返回可读的分片摘要字符串。 */
   @Override
   public String toString() {
     return "OrcSplit ["

@@ -30,10 +30,18 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.junit.After;
 import org.junit.BeforeClass;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceHiveTables 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Iceberg源hive表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
 
   private static TableIdentifier currentIdentifier;
 
+  /** 启动。 */
   @BeforeClass
   public static void start() {
     Namespace db = Namespace.of("db");
@@ -42,6 +50,7 @@ public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
     }
   }
 
+  /** 删除表。 */
   @After
   public void dropTable() throws IOException {
     if (!catalog.tableExists(currentIdentifier)) {
@@ -51,6 +60,7 @@ public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
     dropTable(currentIdentifier);
   }
 
+  /** 创建表。 */
   @Override
   public Table createTable(
       TableIdentifier ident, Schema schema, PartitionSpec spec, Map<String, String> properties) {
@@ -58,6 +68,7 @@ public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
     return TestIcebergSourceHiveTables.catalog.createTable(ident, schema, spec, properties);
   }
 
+  /** 删除表。 */
   @Override
   public void dropTable(TableIdentifier ident) throws IOException {
     Table table = catalog.loadTable(ident);
@@ -67,6 +78,7 @@ public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
     catalog.dropTable(ident, false);
   }
 
+  /** 加载表。 */
   @Override
   public Table loadTable(TableIdentifier ident, String entriesSuffix) {
     TableIdentifier identifier =
@@ -74,11 +86,13 @@ public class TestIcebergSourceHiveTables extends TestIcebergSourceTablesBase {
     return TestIcebergSourceHiveTables.catalog.loadTable(identifier);
   }
 
+  /** 加载路径。 */
   @Override
   public String loadLocation(TableIdentifier ident, String entriesSuffix) {
     return String.format("%s.%s", loadLocation(ident), entriesSuffix);
   }
 
+  /** 加载路径。 */
   @Override
   public String loadLocation(TableIdentifier ident) {
     return ident.toString();

@@ -40,7 +40,15 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkOrcReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 SparkORC读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkOrcReader extends AvroDataTest {
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     final Iterable<InternalRow> expected = RandomData.generateSpark(schema, 100, 0L);
@@ -48,6 +56,7 @@ public class TestSparkOrcReader extends AvroDataTest {
     writeAndValidateRecords(schema, expected);
   }
 
+  /** 写与校验repeating记录。 */
   @Test
   public void writeAndValidateRepeatingRecords() throws IOException {
     Schema structSchema =
@@ -60,6 +69,7 @@ public class TestSparkOrcReader extends AvroDataTest {
     writeAndValidateRecords(structSchema, expectedRepeating);
   }
 
+  /** 写与校验记录。 */
   private void writeAndValidateRecords(Schema schema, Iterable<InternalRow> expected)
       throws IOException {
     final File testFile = temp.newFile();
@@ -104,6 +114,7 @@ public class TestSparkOrcReader extends AvroDataTest {
     }
   }
 
+  /** batches到行。 */
   private Iterator<InternalRow> batchesToRows(Iterator<ColumnarBatch> batches) {
     return Iterators.concat(Iterators.transform(batches, ColumnarBatch::rowIterator));
   }

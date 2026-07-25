@@ -26,6 +26,13 @@ import org.apache.iceberg.expressions.Term
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.catalog.CatalogV2Implicits
 
+/**
+ * Spark Catalyst 逻辑计划节点的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.2。
+ * 类型：样例类 SetWriteDistributionAndOrdering。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class SetWriteDistributionAndOrdering(
     table: Seq[String],
     distributionMode: DistributionMode,
@@ -35,6 +42,10 @@ case class SetWriteDistributionAndOrdering(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     val order = sortOrder.map {
       case (term, direction, nullOrder) => s"$term $direction $nullOrder"

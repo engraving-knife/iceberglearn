@@ -35,6 +35,14 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergEnumeratorStateSerializer 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestIcebergEnumeratorStateSerializer 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergEnumeratorStateSerializer {
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
@@ -44,21 +52,33 @@ public class TestIcebergEnumeratorStateSerializer {
 
   protected final int version;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "version={0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：TestIcebergEnumeratorStateSerializer，Iceberg Enumerator State Serializer。 */
   public TestIcebergEnumeratorStateSerializer(int version) {
     this.version = version;
   }
 
+  /**
+   * 测试场景：Empty Snapshot Id And Pending Splits。
+   *
+   * <p>验证该方法在 Empty Snapshot Id And Pending Splits 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptySnapshotIdAndPendingSplits() throws Exception {
     IcebergEnumeratorState enumeratorState = new IcebergEnumeratorState(Collections.emptyList());
     testSerializer(enumeratorState);
   }
 
+  /**
+   * 测试场景：Some Snapshot Id And Empty Pending Splits。
+   *
+   * <p>验证该方法在 Some Snapshot Id And Empty Pending Splits 条件下的行为是否符合预期。
+   */
   @Test
   public void testSomeSnapshotIdAndEmptyPendingSplits() throws Exception {
     IcebergEnumeratorPosition position =
@@ -69,6 +89,11 @@ public class TestIcebergEnumeratorStateSerializer {
     testSerializer(enumeratorState);
   }
 
+  /**
+   * 测试场景：Some Snapshot Id And Pending Splits。
+   *
+   * <p>验证该方法在 Some Snapshot Id And Pending Splits 条件下的行为是否符合预期。
+   */
   @Test
   public void testSomeSnapshotIdAndPendingSplits() throws Exception {
     IcebergEnumeratorPosition position =
@@ -87,6 +112,11 @@ public class TestIcebergEnumeratorStateSerializer {
     testSerializer(enumeratorState);
   }
 
+  /**
+   * 测试场景：Enumeration Split Count History。
+   *
+   * <p>验证该方法在 Enumeration Split Count History 条件下的行为是否符合预期。
+   */
   @Test
   public void testEnumerationSplitCountHistory() throws Exception {
     if (version == 2) {
@@ -109,6 +139,11 @@ public class TestIcebergEnumeratorStateSerializer {
     }
   }
 
+  /**
+   * 测试场景：Serializer。
+   *
+   * <p>验证该方法在 Serializer 条件下的行为是否符合预期。
+   */
   private void testSerializer(IcebergEnumeratorState enumeratorState) throws IOException {
     byte[] result;
     if (version == 1) {
@@ -121,6 +156,7 @@ public class TestIcebergEnumeratorStateSerializer {
     assertEnumeratorStateEquals(enumeratorState, deserialized);
   }
 
+  /** 辅助方法：assertEnumeratorStateEquals，assert Enumerator State Equals。 */
   private void assertEnumeratorStateEquals(
       IcebergEnumeratorState expected, IcebergEnumeratorState actual) {
     Assert.assertEquals(expected.lastEnumeratedPosition(), actual.lastEnumeratedPosition());

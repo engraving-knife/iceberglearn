@@ -29,6 +29,13 @@ import org.apache.iceberg.io.TaskWriter;
 import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 
+/**
+ * Iceberg 流式写入算子，把上游 RowData 写入数据文件并产出 DeltaManifests。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按行写入 TaskWriter，checkpoint 时输出已写文件清单。
+ *
+ * <p>设计意图：Flink 算子（AbstractStreamOperator）；上下游：上游为业务 DataStream，下游为 IcebergFilesCommitter。
+ */
 class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
     implements OneInputStreamOperator<T, WriteResult>, BoundedOneInput {
 

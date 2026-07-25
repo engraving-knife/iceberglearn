@@ -38,6 +38,14 @@ import org.junit.rules.RuleChain;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 
+/**
+ * 文件级说明：测试 TestContinuousSplitPlannerImplStartStrategy 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestContinuousSplitPlannerImplStartStrategy
+ * 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestContinuousSplitPlannerImplStartStrategy {
   private static final FileFormat FILE_FORMAT = FileFormat.PARQUET;
 
@@ -52,11 +60,13 @@ public class TestContinuousSplitPlannerImplStartStrategy {
   private Snapshot snapshot2;
   private Snapshot snapshot3;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     dataAppender = new GenericAppenderHelper(tableResource.table(), FILE_FORMAT, temporaryFolder);
   }
 
+  /** 辅助方法：appendThreeSnapshots，append Three Snapshots。 */
   private void appendThreeSnapshots() throws IOException {
     List<Record> batch1 = RandomGenericData.generate(TestFixtures.SCHEMA, 2, 0L);
     dataAppender.appendToTable(batch1);
@@ -71,6 +81,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     snapshot3 = tableResource.table().currentSnapshot();
   }
 
+  /**
+   * 测试场景：Table Scan Then Incremental Strategy。
+   *
+   * <p>验证该方法在 Table Scan Then Incremental Strategy 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableScanThenIncrementalStrategy() throws IOException {
     ScanContext scanContext =
@@ -89,6 +104,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     Assert.assertEquals(snapshot3.snapshotId(), startSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：For Latest Snapshot Strategy。
+   *
+   * <p>验证该方法在 For Latest Snapshot Strategy 条件下的行为是否符合预期。
+   */
   @Test
   public void testForLatestSnapshotStrategy() throws IOException {
     ScanContext scanContext =
@@ -107,6 +127,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     Assert.assertEquals(snapshot3.snapshotId(), startSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：For Earliest Snapshot Strategy。
+   *
+   * <p>验证该方法在 For Earliest Snapshot Strategy 条件下的行为是否符合预期。
+   */
   @Test
   public void testForEarliestSnapshotStrategy() throws IOException {
     ScanContext scanContext =
@@ -125,6 +150,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     Assert.assertEquals(snapshot1.snapshotId(), startSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：For Specific Snapshot Id Strategy。
+   *
+   * <p>验证该方法在 For Specific Snapshot Id Strategy 条件下的行为是否符合预期。
+   */
   @Test
   public void testForSpecificSnapshotIdStrategy() throws IOException {
     ScanContext scanContextInvalidSnapshotId =
@@ -157,6 +187,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     Assert.assertEquals(snapshot2.snapshotId(), startSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：For Specific Snapshot Timestamp Strategy Snapshot 2。
+   *
+   * <p>验证该方法在 For Specific Snapshot Timestamp Strategy Snapshot 2 条件下的行为是否符合预期。
+   */
   @Test
   public void testForSpecificSnapshotTimestampStrategySnapshot2() throws IOException {
     ScanContext scanContextInvalidSnapshotTimestamp =
@@ -189,6 +224,11 @@ public class TestContinuousSplitPlannerImplStartStrategy {
     Assert.assertEquals(snapshot2.snapshotId(), startSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：For Specific Snapshot Timestamp Strategy Snapshot 2 Minus 1。
+   *
+   * <p>验证该方法在 For Specific Snapshot Timestamp Strategy Snapshot 2 Minus 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testForSpecificSnapshotTimestampStrategySnapshot2Minus1() throws IOException {
     appendThreeSnapshots();

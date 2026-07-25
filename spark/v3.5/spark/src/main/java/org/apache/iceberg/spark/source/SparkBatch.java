@@ -38,6 +38,18 @@ import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 
+/**
+ * Spark 批量读取的 {@link Batch} 实现。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。负责把扫描任务组规划为 Spark 输入分区，并创建 对应的分区读取器工厂（行式或列式向量化）。
+ *
+ * <p>职责：广播可序列化表元数据，按 locality 开关并发构建输入分区；根据格式与向量化开关 选择列式（Parquet/ORC batch）或行式读取器工厂。
+ *
+ * <p>设计意图：列式向量化读取仅在投影均为基本/元数据列且文件格式匹配时启用，避免不兼容场景； 通过 equals/hashCode（表名 + scanHashCode）支持 Spark
+ * 缓存与复用。
+ *
+ * <p>上下游关系：由 {@link SparkScan} 创建；产出 {@link SparkInputPartition} 与读取器工厂供 Spark 任务使用。
+ */
 class SparkBatch implements Batch {
 
   private final JavaSparkContext sparkContext;
@@ -51,6 +63,7 @@ class SparkBatch implements Batch {
   private final boolean localityEnabled;
   private final int scanHashCode;
 
+  /** 全参数构造，从读取配置初始化分支、大小写敏感、locality 等开关。 */
   SparkBatch(
       JavaSparkContext sparkContext,
       Table table,
@@ -71,6 +84,7 @@ class SparkBatch implements Batch {
     this.scanHashCode = scanHashCode;
   }
 
+  /** 规划输入分区：广播表元数据，按 locality 开关并发地为每个任务组构造 {@link SparkInputPartition}。 */
   @Override
   public InputPartition[] planInputPartitions() {
     // broadcast the table metadata as input partitions will be sent to executors
@@ -98,6 +112,7 @@ class SparkBatch implements Batch {
     return partitions;
   }
 
+  /** 按向量化条件选择列式读取器工厂（Parquet/ORC batch）或行式读取器工厂。 */
   @Override
   public PartitionReaderFactory createReaderFactory() {
     if (useParquetBatchReads()) {
@@ -117,12 +132,14 @@ class SparkBatch implements Batch {
   // - Parquet vectorization is enabled
   // - only primitives or metadata columns are projected
   // - all tasks are of FileScanTask type and read only Parquet files
+  /** 是否启用 Parquet 向量化读取：向量化开启、投影均为基本/元数据列且全部为 Parquet 文件扫描。 */
   private boolean useParquetBatchReads() {
     return readConf.parquetVectorizationEnabled()
         && expectedSchema.columns().stream().allMatch(this::supportsParquetBatchReads)
         && taskGroups.stream().allMatch(this::supportsParquetBatchReads);
   }
 
+  /** 判断单个任务是否支持 Parquet 向量化读取（FileScanTask 且为 Parquet）。 */
   private boolean supportsParquetBatchReads(ScanTask task) {
     if (task instanceof ScanTaskGroup) {
       ScanTaskGroup<?> taskGroup = (ScanTaskGroup<?>) task;
@@ -137,6 +154,7 @@ class SparkBatch implements Batch {
     }
   }
 
+  /** 判断字段是否支持 Parquet 向量化（基本类型或元数据列）。 */
   private boolean supportsParquetBatchReads(Types.NestedField field) {
     return field.type().isPrimitiveType() || MetadataColumns.isMetadataColumn(field.fieldId());
   }
@@ -144,11 +162,13 @@ class SparkBatch implements Batch {
   // conditions for using ORC batch reads:
   // - ORC vectorization is enabled
   // - all tasks are of type FileScanTask and read only ORC files with no delete files
+  /** 是否启用 ORC 向量化读取：向量化开启且全部为无删除文件的 ORC 文件扫描。 */
   private boolean useOrcBatchReads() {
     return readConf.orcVectorizationEnabled()
         && taskGroups.stream().allMatch(this::supportsOrcBatchReads);
   }
 
+  /** 判断单个任务是否支持 ORC 向量化读取（FileScanTask、ORC、无删除文件）。 */
   private boolean supportsOrcBatchReads(ScanTask task) {
     if (task instanceof ScanTaskGroup) {
       ScanTaskGroup<?> taskGroup = (ScanTaskGroup<?>) task;
@@ -162,7 +182,7 @@ class SparkBatch implements Batch {
       return false;
     }
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -176,7 +196,7 @@ class SparkBatch implements Batch {
     SparkBatch that = (SparkBatch) o;
     return table.name().equals(that.table.name()) && scanHashCode == that.scanHashCode;
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table.name(), scanHashCode);

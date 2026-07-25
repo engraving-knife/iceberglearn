@@ -33,7 +33,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestSparkAvroReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 SparkAvro读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkAvroReader extends AvroDataTest {
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     List<Record> expected = RandomData.generateList(schema, 100, 0L);

@@ -19,107 +19,92 @@
 package org.apache.iceberg;
 
 import org.apache.iceberg.exceptions.CommitFailedException;
-import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.expressions.Term;
 
 /**
- * API for partition spec evolution.
+ * 分区 spec 演化 API。
  *
- * <p>When committing, these changes will be applied to the current table metadata. Commit conflicts
- * will not be resolved and will result in a {@link CommitFailedException}.
+ * <p>所属模块：iceberg-api（表更新操作接口层）。
+ *
+ * <p>职责：支持按源列名或表达式 term 添加分区字段、按名或 term 移除分区字段、重命名分区 字段，从而演化表的分区策略。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>提交时将变更应用到当前表元数据；与 SnapshotUpdate 不同，本接口在发生提交冲突时 不会重试，而是直接抛 {@link CommitFailedException}。
+ *   <li>对同名/同 transform 的字段做冲突检测，避免演化过程中产生歧义。
+ * </ul>
+ *
+ * <p>上下游关系：继承 {@link PendingUpdate}；由 core 模块实现，被引擎/用户调用以演化分区。
  */
 public interface UpdatePartitionSpec extends PendingUpdate<PartitionSpec> {
   /**
-   * Set whether column resolution in the source schema should be case sensitive.
+   * 设置源 schema 列解析是否大小写敏感。
    *
-   * @param isCaseSensitive whether column resolution should be case sensitive
-   * @return this for method chaining
+   * @param isCaseSensitive 列解析是否大小写敏感
+   * @return this，便于链式调用
    */
   UpdatePartitionSpec caseSensitive(boolean isCaseSensitive);
 
   /**
-   * Add a new partition field from a source column.
+   * 按源列名添加一个 identity 分区字段（字段名与源列名相同）。
    *
-   * <p>The partition field will be created as an identity partition field for the given source
-   * column, with the same name as the source column.
+   * <p>设计要点：源列通过 {@link Schema#findField(String)} 定位。
    *
-   * <p>The source column is located using {@link Schema#findField(String)}.
-   *
-   * @param sourceName source column name in the table schema
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the an identity partition field for the source already
-   *     exists, or if this change conflicts with other additions, removals, or renames.
+   * @param sourceName 表 schema 中的源列名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若该源列已有 identity 分区字段，或与其他增删/重命名冲突
    */
   UpdatePartitionSpec addField(String sourceName);
 
   /**
-   * Add a new partition field from an {@link Expressions expression term}.
+   * 按表达式 term 添加分区字段。
    *
-   * <p>The partition field will use the term's transform or the identity transform if the term is a
-   * reference.
+   * <p>设计要点：若 term 含 transform 则使用该 transform，否则用 identity；新分区字段名 由源列名与 transform 拼出。
    *
-   * <p>The term's reference is used to locate the source column using {@link
-   * Schema#findField(String)}.
-   *
-   * <p>The new partition field will be named for the source column and the transform.
-   *
-   * @param term source column name in the table schema
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the a partition field for the transform and source already
-   *     exists, or if this change conflicts with other additions, removals, or renames.
+   * @param term 表达式 term
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若该 transform+源列已存在分区字段，或与其他变更冲突
    */
   UpdatePartitionSpec addField(Term term);
 
   /**
-   * Add a new partition field from an {@link Expressions expression term}, with the given partition
-   * field name.
+   * 按表达式 term 添加分区字段，并指定分区字段名。
    *
-   * <p>The partition field will use the term's transform or the identity transform if the term is a
-   * reference.
-   *
-   * <p>The term's reference is used to locate the source column using {@link
-   * Schema#findField(String)}.
-   *
-   * @param name name for the partition field
-   * @param term expression for the partition transform
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the a partition field for the transform and source already
-   *     exists, if a partition field with the given name already exists, or if this change
-   *     conflicts with other additions, removals, or renames.
+   * @param name 分区字段名
+   * @param term 分区 transform 表达式
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若该 transform+源列已存在、同名分区字段已存在，或与其他变更冲突
    */
   UpdatePartitionSpec addField(String name, Term term);
 
   /**
-   * Remove a partition field by name.
+   * 按分区字段名移除分区字段。
    *
-   * @param name name of the partition field to remove
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the a partition field with the given name does not exist,
-   *     or if this change conflicts with other additions, removals, or renames.
+   * @param name 待移除的分区字段名
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若该名分区字段不存在，或与其他变更冲突
    */
   UpdatePartitionSpec removeField(String name);
 
   /**
-   * Remove a partition field by its transform {@link Expressions expression term}.
+   * 按 transform 表达式 term 移除分区字段。
    *
-   * <p>The partition field with the same transform and source reference will be removed. If the
-   * term is a reference and does not have a transform, the identity transform is used.
+   * <p>设计要点：移除 transform 与源引用都匹配的分区字段；若 term 是无 transform 的引用， 则按 identity 处理。
    *
-   * @param term expression for the partition transform to remove
-   * @return this for method chaining
-   * @throws IllegalArgumentException If the a partition field with the given transform and source
-   *     does not exist, or if this change conflicts with other additions, removals, or renames.
+   * @param term 待移除的分区 transform 表达式
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若对应 transform+源列的分区字段不存在，或与其他变更冲突
    */
   UpdatePartitionSpec removeField(Term term);
 
   /**
-   * Rename a field in the partition spec.
+   * 重命名分区 spec 中的字段。
    *
-   * @param name name of the partition field to rename
-   * @param newName replacement name for the partition field
-   * @return this for method chaining
-   * @throws IllegalArgumentException If name doesn't identify a column in the schema or if this
-   *     change conflicts with other additions, removals, or renames.
+   * @param name 待重命名的分区字段名
+   * @param newName 新名称
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若 name 不是 schema 中的列，或与其他变更冲突
    */
   UpdatePartitionSpec renameField(String name, String newName);
 }

@@ -23,6 +23,13 @@ import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 增量清单集合，承载一次 checkpoint 周期内写入的 DataFile/DeleteFile 清单。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装已写数据文件清单与删除文件清单，供 committer 合并提交。
+ *
+ * <p>设计意图：值对象；上下游：由 IcebergStreamWriter 产出，被 IcebergFilesCommitter 消费。
+ */
 class DeltaManifests {
 
   private static final CharSequence[] EMPTY_REF_DATA_FILES = new CharSequence[0];

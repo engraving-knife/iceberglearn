@@ -31,6 +31,13 @@ import org.apache.iceberg.flink.SimpleDataUtil;
 import org.apache.iceberg.flink.source.BoundedTestSource;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 文件级说明：测试 TestFlinkIcebergSinkBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkIcebergSinkBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkIcebergSinkBase {
 
   protected Table table;
@@ -41,10 +48,12 @@ public class TestFlinkIcebergSinkBase {
   protected static final DataFormatConverters.RowConverter CONVERTER =
       new DataFormatConverters.RowConverter(SimpleDataUtil.FLINK_SCHEMA.getFieldDataTypes());
 
+  /** 辅助方法：createBoundedSource，create Bounded Source。 */
   protected BoundedTestSource<Row> createBoundedSource(List<Row> rows) {
     return new BoundedTestSource<>(rows.toArray(new Row[0]));
   }
 
+  /** 辅助方法：createRows，create Rows。 */
   protected List<Row> createRows(String prefix) {
     return Lists.newArrayList(
         Row.of(1, prefix + "aaa"),
@@ -58,6 +67,7 @@ public class TestFlinkIcebergSinkBase {
         Row.of(3, prefix + "ccc"));
   }
 
+  /** 辅助方法：convertToRowData，convert To Row Data。 */
   protected List<RowData> convertToRowData(List<Row> rows) {
     return rows.stream().map(CONVERTER::toInternal).collect(Collectors.toList());
   }

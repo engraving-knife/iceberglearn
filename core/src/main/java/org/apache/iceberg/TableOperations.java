@@ -24,105 +24,129 @@ import org.apache.iceberg.exceptions.CleanableFailure;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
 
-/** SPI interface to abstract table metadata access and updates. */
+/**
+ * 表元数据访问与更新的 SPI（服务提供者接口）抽象。
+ *
+ * <p>所属模块：iceberg-core，定位为表存储后端（如 Hive Metastore、Hadoop 文件系统、NESSIE 等） 与上层 Iceberg API 之间的桥梁。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供当前表元数据的读取（{@link #current()}）与刷新（{@link #refresh()}）能力；
+ *   <li>定义原子提交契约（{@link #commit(TableMetadata, TableMetadata)}），由具体后端实现保证原子性与一致性；
+ *   <li>暴露读写文件所需的 {@link FileIO}、{@link LocationProvider}、{@link EncryptionManager} 等基础设施；
+ *   <li>提供临时 {@link TableOperations}、新快照 ID 生成、严格清理策略等辅助方法。
+ * </ul>
+ *
+ * <p>设计意图：通过 SPI 接口将 Iceberg 核心逻辑与具体存储后端解耦，让 Hive、Hadoop、Glue、NESSIE 等 后端只需实现该接口即可接入 Iceberg
+ * 生态。{@code commit} 方法明确要求实现方在状态未知时抛出 {@link
+ * org.apache.iceberg.exceptions.CommitStateUnknownException}，以便上层正确处理文件清理。
+ *
+ * <p>上下游关系：上游被 {@link Table}、各种 SnapshotProducer / 扫描器调用；下游对接具体的元数据存储 （如 Hive Metastore、文件系统上的
+ * metadata.json）。
+ */
 public interface TableOperations {
 
   /**
-   * Return the currently loaded table metadata, without checking for updates.
+   * 返回当前已加载的表元数据，不会检查后端是否已有更新。
    *
-   * @return table metadata
+   * <p>调用方需自行决定是否需要先调用 {@link #refresh()} 来获取最新版本。
+   *
+   * @return 当前内存中的表元数据
    */
   TableMetadata current();
 
   /**
-   * Return the current table metadata after checking for updates.
+   * 检查后端是否有更新，并返回最新的表元数据。
    *
-   * @return table metadata
+   * <p>具体实现负责从底层存储重新加载元数据，并按需替换内存中的版本。
+   *
+   * @return 最新刷新后的表元数据
    */
   TableMetadata refresh();
 
   /**
-   * Replace the base table metadata with a new version.
+   * 用新的元数据版本替换基线元数据，实现一次原子提交。
    *
-   * <p>This method should implement and document atomicity guarantees.
+   * <p>本方法应由实现方提供并明确文档化其原子性保证。
    *
-   * <p>Implementations must check that the base metadata is current to avoid overwriting updates.
-   * Once the atomic commit operation succeeds, implementations must not perform any operations that
-   * may fail because failure in this method cannot be distinguished from commit failure.
+   * <p>实现要求：
    *
-   * <p>Implementations must throw a {@link
-   * org.apache.iceberg.exceptions.CommitStateUnknownException} in cases where it cannot be
-   * determined if the commit succeeded or failed. For example if a network partition causes the
-   * confirmation of the commit to be lost, the implementation should throw a
-   * CommitStateUnknownException. This is important because downstream users of this API need to
-   * know whether they can clean up the commit or not, if the state is unknown then it is not safe
-   * to remove any files. All other exceptions will be treated as if the commit has failed.
+   * <ul>
+   *   <li>必须校验 base 元数据仍是当前版本，以避免覆盖其他并发更新；
+   *   <li>原子提交成功后，不得执行任何可能失败的操作——因为此处的失败无法与提交失败区分；
+   *   <li>当无法确定提交是否成功时（如网络分区导致提交确认丢失），必须抛出 {@link
+   *       org.apache.iceberg.exceptions.CommitStateUnknownException}，以便上层决定是否清理
+   *       提交产生的文件；其余异常将被视为提交失败。
+   * </ul>
    *
-   * @param base table metadata on which changes were based
-   * @param metadata new table metadata with updates
+   * @param base 提交所基于的旧元数据，用于乐观并发校验
+   * @param metadata 待提交的新元数据
    */
   void commit(TableMetadata base, TableMetadata metadata);
 
-  /** Returns a {@link FileIO} to read and write table data and metadata files. */
+  /** 返回用于读写表数据与元数据文件的 {@link FileIO}。 */
   FileIO io();
 
   /**
-   * Returns a {@link org.apache.iceberg.encryption.EncryptionManager} to encrypt and decrypt data
-   * files.
+   * 返回用于加解密数据文件的 {@link org.apache.iceberg.encryption.EncryptionManager}。
+   *
+   * <p>默认实现返回 {@link PlaintextEncryptionManager}，即不进行加密。
+   *
+   * @return 加密管理器
    */
   default EncryptionManager encryption() {
     return new PlaintextEncryptionManager();
   }
 
   /**
-   * Given the name of a metadata file, obtain the full path of that file using an appropriate base
-   * location of the implementation's choosing.
+   * 根据元数据文件名生成其在底层存储中的完整路径。
    *
-   * <p>The file may not exist yet, in which case the path should be returned as if it were to be
-   * created by e.g. {@link FileIO#newOutputFile(String)}.
+   * <p>文件可能尚未创建，此时返回的路径应能直接用于 {@link FileIO#newOutputFile(String)} 等创建操作。
+   *
+   * @param fileName 元数据文件名
+   * @return 完整的元数据文件路径
    */
   String metadataFileLocation(String fileName);
 
   /**
-   * Returns a {@link LocationProvider} that supplies locations for new new data files.
+   * 返回用于为新增数据文件分配写入位置的 {@link LocationProvider}。
    *
-   * @return a location provider configured for the current table state
+   * <p>该 provider 基于当前表的状态（如表位置、分区策略）生成新数据文件路径。
+   *
+   * @return 与当前表状态匹配的位置提供者
    */
   LocationProvider locationProvider();
 
   /**
-   * Return a temporary {@link TableOperations} instance that uses configuration from uncommitted
-   * metadata.
+   * 基于未提交的元数据返回一个临时 {@link TableOperations} 实例。
    *
-   * <p>This is called by transactions when uncommitted table metadata should be used; for example,
-   * to create a metadata file location based on metadata in the transaction that has not been
-   * committed.
+   * <p>用于事务场景：当事务内部尚未提交的元数据需要被使用时（例如根据事务中修改后的表位置生成元数据文件路径）， 通过本方法获得一个"仿佛未提交的元数据已经是当前版本"的临时 ops。
    *
-   * <p>Transactions will not call {@link #refresh()} or {@link #commit(TableMetadata,
-   * TableMetadata)}.
+   * <p>事务不会在该临时 ops 上调用 {@link #refresh()} 或 {@link #commit(TableMetadata, TableMetadata)}。
    *
-   * @param uncommittedMetadata uncommitted table metadata
-   * @return a temporary table operations that behaves like the uncommitted metadata is current
+   * @param uncommittedMetadata 未提交的表元数据
+   * @return 表现为"未提交元数据即当前"的临时表操作对象
    */
   default TableOperations temp(TableMetadata uncommittedMetadata) {
     return this;
   }
 
   /**
-   * Create a new ID for a Snapshot
+   * 生成一个新的快照 ID。
    *
-   * @return a long snapshot ID
+   * @return 一个 long 类型的快照 ID
    */
   default long newSnapshotId() {
     return SnapshotIdGeneratorUtil.generateSnapshotID();
   }
 
   /**
-   * Whether to clean up uncommitted metadata files only when a commit fails with a {@link
-   * CleanableFailure} exception.
+   * 是否仅在提交抛出 {@link CleanableFailure} 时才清理未提交的元数据文件。
    *
-   * <p>This defaults to true: cleanup will only occur for exceptions marked as {@link
-   * CleanableFailure}
+   * <p>默认返回 {@code true}：仅在异常被标记为 {@link CleanableFailure} 时才进行清理。
+   *
+   * @return 是否要求严格清理策略
    */
   default boolean requireStrictCleanup() {
     return true;

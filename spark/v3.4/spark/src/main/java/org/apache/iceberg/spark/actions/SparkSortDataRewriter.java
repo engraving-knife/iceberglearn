@@ -26,6 +26,15 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：数据文件排序重写器，按指定 SortOrder 重组数据文件使其内部有序。
+ *
+ * <p>设计意图：通过 shuffle + sort 写出有序文件，加速范围查询与列裁剪。
+ *
+ * <p>上下游关系：由 RewriteDataFilesSparkAction 选择；继承 SparkShufflingDataRewriter。
+ */
 class SparkSortDataRewriter extends SparkShufflingDataRewriter {
 
   private final SortOrder sortOrder;
@@ -46,17 +55,17 @@ class SparkSortDataRewriter extends SparkShufflingDataRewriter {
         "Cannot sort data without a valid sort order, the provided sort order is null or empty");
     this.sortOrder = sortOrder;
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "SORT";
   }
-
+  /** 执行 sortOrder 相关操作。 */
   @Override
   protected SortOrder sortOrder() {
     return sortOrder;
   }
-
+  /** 执行 sortedDF 相关操作。 */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, Function<Dataset<Row>, Dataset<Row>> sortFunc) {
     return sortFunc.apply(df);

@@ -80,11 +80,23 @@ import org.apache.thrift.TException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 HiveTableTest 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 HiveTableTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class HiveTableTest extends HiveTableBaseTest {
   static final String NON_DEFAULT_DATABASE = "nondefault";
 
   @TempDir private Path tempFolder;
 
+  /**
+   * 测试场景：Create。
+   *
+   * <p>验证该方法在 Create 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreate() throws TException {
     // Table should be created in hive metastore
@@ -114,6 +126,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(icebergTable.schema().asStruct()).isEqualTo(schema.asStruct());
   }
 
+  /**
+   * 测试场景：Rename。
+   *
+   * <p>验证该方法在 Rename 条件下的行为是否符合预期。
+   */
   @Test
   public void testRename() {
     String renamedTableName = "rename_table_name";
@@ -135,6 +152,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(catalog.dropTable(renameTableIdentifier)).isTrue();
   }
 
+  /**
+   * 测试场景：Drop。
+   *
+   * <p>验证该方法在 Drop 条件下的行为是否符合预期。
+   */
   @Test
   public void testDrop() {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should exist").isTrue();
@@ -144,6 +166,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(catalog.tableExists(TABLE_IDENTIFIER)).as("Table should not exist").isFalse();
   }
 
+  /**
+   * 测试场景：Drop Without Purge Leaves Table Data。
+   *
+   * <p>验证该方法在 Drop Without Purge Leaves Table Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropWithoutPurgeLeavesTableData() throws IOException {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -162,6 +189,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(new File(manifestListLocation)).as("Table metadata files should exist").exists();
   }
 
+  /**
+   * 测试场景：Drop Table。
+   *
+   * <p>验证该方法在 Drop Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTable() throws IOException {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -241,6 +273,11 @@ public class HiveTableTest extends HiveTableBaseTest {
         .doesNotExist();
   }
 
+  /**
+   * 测试场景：Existing Table Update。
+   *
+   * <p>验证该方法在 Existing Table Update 条件下的行为是否符合预期。
+   */
   @Test
   public void testExistingTableUpdate() throws TException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -263,6 +300,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(hiveColumns).isEqualTo(icebergColumns);
   }
 
+  /**
+   * 测试场景：Column Type Change In Metastore。
+   *
+   * <p>验证该方法在 Column Type Change In Metastore 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnTypeChangeInMetastore() throws TException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -305,6 +347,11 @@ public class HiveTableTest extends HiveTableBaseTest {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Failure。
+   *
+   * <p>验证该方法在 Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void testFailure() throws TException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -319,6 +366,11 @@ public class HiveTableTest extends HiveTableBaseTest {
         .hasMessageContaining("is not same as the current table metadata location 'dummylocation'");
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() throws TException, IOException {
     List<TableIdentifier> tableIdents = catalog.listTables(TABLE_IDENTIFIER.namespace());
@@ -347,6 +399,7 @@ public class HiveTableTest extends HiveTableBaseTest {
     metastoreClient.dropTable(DB_NAME, hiveTableName);
   }
 
+  /** 辅助方法：createHiveTable。 */
   private org.apache.hadoop.hive.metastore.api.Table createHiveTable(String hiveTableName)
       throws IOException {
     Map<String, String> parameters = Maps.newHashMap();
@@ -389,6 +442,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     return hiveTable;
   }
 
+  /**
+   * 测试场景：Non Default Database Location。
+   *
+   * <p>验证该方法在 Non Default Database Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testNonDefaultDatabaseLocation() throws IOException, TException {
     Namespace namespace = Namespace.of(NON_DEFAULT_DATABASE);
@@ -413,6 +471,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     metastoreClient.dropDatabase(NON_DEFAULT_DATABASE, true, true, true);
   }
 
+  /**
+   * 测试场景：Register Table。
+   *
+   * <p>验证该方法在 Register Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTable() throws TException {
     org.apache.hadoop.hive.metastore.api.Table originalTable =
@@ -442,6 +505,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(newTable.getSd()).isEqualTo(originalTable.getSd());
   }
 
+  /**
+   * 测试场景：Register Hadoop Table To Hive Catalog。
+   *
+   * <p>验证该方法在 Register Hadoop Table To Hive Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterHadoopTableToHiveCatalog() throws IOException, TException {
     // create a hadoop catalog
@@ -491,6 +559,7 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(files).contains(file1Location, file2Location);
   }
 
+  /** 辅助方法：appendData。 */
   private String appendData(Table table, String fileName) throws IOException {
     GenericRecordBuilder recordBuilder =
         new GenericRecordBuilder(AvroSchemaUtil.convert(schema, "test"));
@@ -520,6 +589,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     return fileLocation;
   }
 
+  /**
+   * 测试场景：Register Existing Table。
+   *
+   * <p>验证该方法在 Register Existing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterExistingTable() throws TException {
     org.apache.hadoop.hive.metastore.api.Table originalTable =
@@ -540,6 +614,11 @@ public class HiveTableTest extends HiveTableBaseTest {
         .hasMessage("Table already exists: hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Engine Hive Enabled Default。
+   *
+   * <p>验证该方法在 Engine Hive Enabled Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testEngineHiveEnabledDefault() throws TException {
     // Drop the previously created table to make place for the new one
@@ -555,6 +634,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertHiveEnabled(hmsTable, false);
   }
 
+  /**
+   * 测试场景：Engine Hive Enabled Config。
+   *
+   * <p>验证该方法在 Engine Hive Enabled Config 条件下的行为是否符合预期。
+   */
   @Test
   public void testEngineHiveEnabledConfig() throws TException {
     // Drop the previously created table to make place for the new one
@@ -580,6 +664,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertHiveEnabled(hmsTable, false);
   }
 
+  /**
+   * 测试场景：Engine Hive Enabled Table Property。
+   *
+   * <p>验证该方法在 Engine Hive Enabled Table Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testEngineHiveEnabledTableProperty() throws TException {
     // Drop the previously created table to make place for the new one
@@ -608,6 +697,11 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertHiveEnabled(hmsTable, false);
   }
 
+  /**
+   * 测试场景：Missing Metadata Wont Cause Hang。
+   *
+   * <p>验证该方法在 Missing Metadata Wont Cause Hang 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingMetadataWontCauseHang() {
     catalog.loadTable(TABLE_IDENTIFIER);
@@ -622,6 +716,7 @@ public class HiveTableTest extends HiveTableBaseTest {
     assertThat(fakeLocation.renameTo(realLocation)).isTrue();
   }
 
+  /** 辅助方法：assertHiveEnabled。 */
   private void assertHiveEnabled(
       org.apache.hadoop.hive.metastore.api.Table hmsTable, boolean expected) {
     if (expected) {

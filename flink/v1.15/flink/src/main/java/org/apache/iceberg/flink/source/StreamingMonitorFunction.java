@@ -44,17 +44,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is the single (non-parallel) monitoring task which takes a {@link FlinkInputFormat}, it is
- * responsible for:
+ * 流式监控函数，周期性扫描 Iceberg 新增数据并下发分片。
  *
- * <ol>
- *   <li>Monitoring snapshots of the Iceberg table.
- *   <li>Creating the {@link FlinkInputSplit splits} corresponding to the incremental files
- *   <li>Assigning them to downstream tasks for further processing.
- * </ol>
+ * <p>所属模块：iceberg-flink v1.15。职责：定时检查新快照，发现增量数据后构造 FlinkInputSplit。
  *
- * <p>The splits to be read are forwarded to the downstream {@link StreamingReaderOperator} which
- * can have parallelism greater than one.
+ * <p>设计意图：继承 RichSourceFunction；被旧版 FlinkSource 调用。
  */
 public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit>
     implements CheckpointedFunction {

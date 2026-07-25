@@ -26,12 +26,21 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 文件级说明：测试 TestSparkWriterMetrics 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Spark写入器指标 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkWriterMetrics extends TestWriterMetrics<InternalRow> {
 
+  /** 测试Spark写入器指标。 */
   public TestSparkWriterMetrics(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 新建写入器factory。 */
   @Override
   protected FileWriterFactory<InternalRow> newWriterFactory(Table sourceTable) {
     return SparkFileWriterFactory.builderFor(sourceTable)
@@ -42,6 +51,7 @@ public class TestSparkWriterMetrics extends TestWriterMetrics<InternalRow> {
         .build();
   }
 
+  /** 到行。 */
   @Override
   protected InternalRow toRow(Integer id, String data, boolean boolValue, Long longValue) {
     InternalRow row = new GenericInternalRow(3);
@@ -56,6 +66,7 @@ public class TestSparkWriterMetrics extends TestWriterMetrics<InternalRow> {
     return row;
   }
 
+  /** 到generic行。 */
   @Override
   protected InternalRow toGenericRow(int value, int repeated) {
     InternalRow row = new GenericInternalRow(repeated);

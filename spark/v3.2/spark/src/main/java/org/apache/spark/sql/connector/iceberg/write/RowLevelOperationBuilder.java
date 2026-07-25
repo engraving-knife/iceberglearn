@@ -18,11 +18,16 @@
  */
 package org.apache.spark.sql.connector.iceberg.write;
 
-/** An interface for building a row-level operation. */
+/**
+ * Spark DataSource V2 连接器扩展的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 RowLevelOperationBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface RowLevelOperationBuilder {
-  /**
-   * Returns a row-level operation that controls how Spark rewrites data for DELETE, UPDATE, MERGE
-   * commands.
-   */
+  /** 构造并返回目标对象。 */
   RowLevelOperation build();
 }

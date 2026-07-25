@@ -42,9 +42,39 @@ import org.apache.orc.storage.ql.io.sarg.SearchArgument.TruthValue;
 import org.apache.orc.storage.ql.io.sarg.SearchArgumentFactory;
 import org.apache.orc.storage.serde2.io.HiveDecimalWritable;
 
+/**
+ * 将 Iceberg {@link Expression} 转换为 ORC {@link SearchArgument} 的访问器。
+ *
+ * <p>所属模块：iceberg-orc。用于把 Iceberg 的过滤谓词下推到 ORC Reader 层， 让 ORC 在读取 stripe 时跳过不满足条件的行组，减少 IO。
+ *
+ * <p>职责：遍历已绑定（Bound）的 Iceberg 表达式树，按谓词类型生成对应的 ORC SearchArgument 构建调用（以 Action 延迟执行的方式组织），最终
+ * builder.build() 生成 SearchArgument。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>使用 Action（函数式接口）延迟执行：表达式树的访问顺序与 builder 的 and/or/not 嵌套顺序需要严格匹配，Action 让先访问的子树在父节点 invoke
+ *       时才真正写入 builder。
+ *   <li>语义适配：ORC SearchArgument 使用 SQL 三值逻辑（NULL 传播），而 Iceberg 表达式 对 NULL 有不同处理（如 notEq 保留 NULL
+ *       行），因此在 notEq/notIn 中额外补 IS NULL 分支。
+ *   <li>不支持类型的谓词返回 YES_NO_NULL，表示该谓词不参与过滤（安全降级）。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ORC} 读取入口调用；依赖 {@link ORCSchemaUtil} 做字段 id→列名映射。
+ */
 class ExpressionToSearchArgument
     extends ExpressionVisitors.BoundVisitor<ExpressionToSearchArgument.Action> {
 
+  /**
+   * 将 Iceberg 表达式转为 ORC SearchArgument。
+   *
+   * <p>逻辑：先把 readSchema 转为 Iceberg schema 再生成 id→ORC 列名映射； 创建 builder 后访问表达式树并 invoke 所有 Action，最后
+   * build 返回。
+   *
+   * @param expr Iceberg 已绑定表达式
+   * @param readSchema ORC 读取 schema
+   * @return 对应的 ORC SearchArgument
+   */
   static SearchArgument convert(Expression expr, TypeDescription readSchema) {
     Map<Integer, String> idToColumnName =
         ORCSchemaUtil.idToOrcName(ORCSchemaUtil.convert(readSchema));
@@ -132,6 +162,7 @@ class ExpressionToSearchArgument
             literal(expr.ref().type(), getNaNForType(expr.ref().type())));
   }
 
+  /** 返回指定浮点类型的 NaN 值（ORC 无原生 isNaN 谓词，用 equals(NaN) 模拟）。 */
   private Object getNaNForType(Type type) {
     switch (type.typeId()) {
       case FLOAT:
@@ -210,6 +241,12 @@ class ExpressionToSearchArgument
             literal(expr.ref().type(), lit.value()));
   }
 
+  /**
+   * 转换 notEq 谓词。
+   *
+   * <p>逻辑：因 ORC 用 SQL 语义（col != x 排除 NULL），而 Iceberg 保留 NULL 行， 故等价转换为 {@code col IS NULL OR col !=
+   * x}。
+   */
   @Override
   public <T> Action notEq(Bound<T> expr, Literal<T> lit) {
     // NOTE: ORC uses SQL semantics for Search Arguments, so an expression like
@@ -236,6 +273,11 @@ class ExpressionToSearchArgument
             literalSet.stream().map(lit -> literal(expr.ref().type(), lit)).toArray(Object[]::new));
   }
 
+  /**
+   * 转换 notIn 谓词。
+   *
+   * <p>逻辑：同 notEq，补 IS NULL 分支：{@code col IS NULL OR col NOT IN {x}}。
+   */
   @Override
   public <T> Action notIn(Bound<T> expr, Set<T> literalSet) {
     // NOTE: ORC uses SQL semantics for Search Arguments, so an expression like
@@ -253,6 +295,11 @@ class ExpressionToSearchArgument
     };
   }
 
+  /**
+   * 转换 startsWith 谓词。
+   *
+   * <p>设计要点：ORC 不支持前缀匹配下推，返回 YES_NO_NULL 表示该谓词不参与过滤。
+   */
   @Override
   public <T> Action startsWith(Bound<T> expr, Literal<T> lit) {
     // Cannot push down STARTS_WITH operator to ORC, so return TruthValue.YES_NO_NULL which
@@ -261,6 +308,11 @@ class ExpressionToSearchArgument
     return () -> this.builder.literal(TruthValue.YES_NO_NULL);
   }
 
+  /**
+   * 转换 notStartsWith 谓词。
+   *
+   * <p>设计要点：同 startsWith，ORC 不支持下推，返回 YES_NO_NULL。
+   */
   @Override
   public <T> Action notStartsWith(Bound<T> expr, Literal<T> lit) {
     // Cannot push down NOT_STARTS_WITH operator to ORC, so return TruthValue.YES_NO_NULL which
@@ -269,6 +321,12 @@ class ExpressionToSearchArgument
     return () -> this.builder.literal(TruthValue.YES_NO_NULL);
   }
 
+  /**
+   * 谓词分派入口：对不支持类型或非 BoundReference 的项返回 YES_NO_NULL 降级。
+   *
+   * <p>逻辑：UNSUPPORTED_TYPES（BINARY/FIXED/UUID/STRUCT/MAP/LIST）因 ORC PredicateLeaf
+   * 无法表示而跳过；其余委托父类分派到具体 eq/lt/gt 等方法。
+   */
   @Override
   public <T> Action predicate(BoundPredicate<T> pred) {
     if (UNSUPPORTED_TYPES.contains(pred.ref().type().typeId())
@@ -287,6 +345,11 @@ class ExpressionToSearchArgument
     void invoke();
   }
 
+  /**
+   * Iceberg 类型 → ORC PredicateLeaf.Type 映射。
+   *
+   * @throws UnsupportedOperationException 出现 ORC 不支持的谓词类型
+   */
   private PredicateLeaf.Type type(Type icebergType) {
     switch (icebergType.typeId()) {
       case BOOLEAN:
@@ -312,6 +375,14 @@ class ExpressionToSearchArgument
     }
   }
 
+  /**
+   * Iceberg 字面量 → ORC SearchArgument 所需的 Java 对象转换。
+   *
+   * <p>逻辑：INTEGER→Long，FLOAT→Double，DATE→java.sql.Date，TIMESTAMP→java.sql.Timestamp，
+   * DECIMAL→HiveDecimalWritable，STRING→toString，其余原样返回。
+   *
+   * @throws UnsupportedOperationException 出现 ORC 不支持的类型
+   */
   private <T> Object literal(Type icebergType, T icebergLiteral) {
     switch (icebergType.typeId()) {
       case BOOLEAN:

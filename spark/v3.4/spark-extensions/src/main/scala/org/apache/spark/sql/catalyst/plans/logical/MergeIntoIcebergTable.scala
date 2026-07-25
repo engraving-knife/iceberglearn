@@ -21,6 +21,12 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.AssignmentUtils
 import org.apache.spark.sql.catalyst.expressions.Expression
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：已解析的 MERGE INTO Iceberg 表逻辑计划节点，封装匹配条件与 WHEN 子句。
+ * <p>设计意图：表示针对 Iceberg 表的 MERGE 操作，待重写为可执行计划。
+ * <p>上下游关系：由 ResolveMergeIntoTableReferences 产出；由 RewriteMergeIntoTable 重写。
+ */
 
 case class MergeIntoIcebergTable(
     targetTable: LogicalPlan,
@@ -49,18 +55,22 @@ case class MergeIntoIcebergTable(
 
     matchedActionsAligned && notMatchedActionsAligned
   }
+  /** 执行 condition 相关操作。 */
 
   def condition: Option[Expression] = Some(mergeCondition)
+  /** 执行 children 相关操作。 */
 
   override def children: Seq[LogicalPlan] = if (rewritePlan.isDefined) {
     targetTable :: sourceTable :: rewritePlan.get :: Nil
   } else {
     targetTable :: sourceTable :: Nil
   }
+  /** 返回带 NewRewritePlan 设置的副本。 */
 
   override def withNewRewritePlan(newRewritePlan: LogicalPlan): RowLevelCommand = {
     copy(rewritePlan = Some(newRewritePlan))
   }
+  /** 返回带 NewChildrenInternal 设置的副本。 */
 
   override protected def withNewChildrenInternal(
       newChildren: IndexedSeq[LogicalPlan]): MergeIntoIcebergTable = {

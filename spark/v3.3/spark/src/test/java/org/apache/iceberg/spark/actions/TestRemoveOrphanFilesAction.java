@@ -86,6 +86,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestRemoveOrphanFilesAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 移除孤儿文件动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
 
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
@@ -101,12 +108,14 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
   private File tableDir = null;
   protected String tableLocation = null;
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     this.tableDir = temp.newFolder();
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** 测试 testDryRun 场景：验证 DryRun 相关操作的行为与结果。 */
   @Test
   public void testDryRun() throws IOException, InterruptedException {
     Table table =
@@ -181,6 +190,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试所有valid文件arekept场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllValidFilesAreKept() throws IOException, InterruptedException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
@@ -243,6 +253,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     }
   }
 
+  /** orphaned文件removed带并行任务。 */
   @Test
   public void orphanedFileRemovedWithParallelTasks() throws InterruptedException, IOException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
@@ -307,6 +318,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Should delete 4 files", 4, deletedFiles.size());
   }
 
+  /** 测试wap文件arekept场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWapFilesAreKept() throws InterruptedException {
     Map<String, String> props = Maps.newHashMap();
@@ -341,6 +353,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         "Should not delete any files", Iterables.isEmpty(result.orphanFileLocations()));
   }
 
+  /** 测试元数据folder是否intact场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataFolderIsIntact() throws InterruptedException {
     // write data directly to the table location
@@ -371,6 +384,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试olderthan时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOlderThanTimestamp() throws InterruptedException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
@@ -401,6 +415,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         "Should delete only 2 files", 2, Iterables.size(result.orphanFileLocations()));
   }
 
+  /** 测试移除unreachable元数据版本文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveUnreachableMetadataVersionFiles() throws InterruptedException {
     Map<String, String> props = Maps.newHashMap();
@@ -439,6 +454,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试manytop级别分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManyTopLevelPartitions() throws InterruptedException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
@@ -468,6 +484,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试manyleaf分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManyLeafPartitions() throws InterruptedException {
     Table table = TABLES.create(SCHEMA, SPEC, Maps.newHashMap(), tableLocation);
@@ -497,6 +514,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试hidden分区路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiddenPartitionPaths() throws InterruptedException {
     Schema schema =
@@ -530,6 +548,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Should delete 2 files", 2, Iterables.size(result.orphanFileLocations()));
   }
 
+  /** 测试hidden分区路径带分区演进场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiddenPartitionPathsWithPartitionEvolution() throws InterruptedException {
     Schema schema =
@@ -566,6 +585,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Should delete 2 files", 2, Iterables.size(result.orphanFileLocations()));
   }
 
+  /** 测试hidden路径starting带分区namesareignored场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiddenPathsStartingWithPartitionNamesAreIgnored()
       throws InterruptedException, IOException {
@@ -603,6 +623,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertTrue(fs.exists(pathToFileInHiddenFolder));
   }
 
+  /** 快照文件。 */
   private List<String> snapshotFiles(long snapshotId) {
     return spark
         .read()
@@ -614,6 +635,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         .collectAsList();
   }
 
+  /** 测试移除孤儿文件带relative文件路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWithRelativeFilePath() throws IOException, InterruptedException {
     Table table =
@@ -670,6 +692,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertTrue("Invalid file should be present", fs.exists(new Path(invalidFiles.get(0))));
   }
 
+  /** 测试移除孤儿文件带Hadoop目录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWithHadoopCatalog() throws InterruptedException {
     HadoopCatalog catalog = new HadoopCatalog(new Configuration(), tableLocation);
@@ -706,6 +729,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试hive目录表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiveCatalogTable() throws IOException {
     Table table =
@@ -741,6 +765,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
             .anyMatch(file -> file.contains("file:" + location + "/data/trashfile")));
   }
 
+  /** 测试 testGarbageCollectionDisabled 场景：验证 GarbageCollectionDisabled 相关操作的行为与结果。 */
   @Test
   public void testGarbageCollectionDisabled() {
     Table table =
@@ -762,6 +787,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         () -> SparkActions.get().deleteOrphanFiles(table).execute());
   }
 
+  /** 测试compare到文件列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCompareToFileList() throws IOException, InterruptedException {
     Table table =
@@ -882,6 +908,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         "Action should find nothing", Lists.newArrayList(), result4.orphanFileLocations());
   }
 
+  /** waituntil后。 */
   protected long waitUntilAfter(long timestampMillis) {
     long current = System.currentTimeMillis();
     while (current <= timestampMillis) {
@@ -890,6 +917,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     return current;
   }
 
+  /** 测试移除孤儿文件带statistic文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWithStatisticFiles() throws Exception {
     Table table =
@@ -966,6 +994,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     Assertions.assertThat(statsLocation.exists()).as("stats file should be deleted").isFalse();
   }
 
+  /** 测试路径带extraslashes场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathsWithExtraSlashes() {
     List<String> validFiles = Lists.newArrayList("file:///dir1/dir2/file1");
@@ -973,6 +1002,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     executeTest(validFiles, actualFiles, Lists.newArrayList());
   }
 
+  /** 测试路径带valid文件过滤noauthority场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathsWithValidFileHavingNoAuthority() {
     List<String> validFiles = Lists.newArrayList("hdfs:///dir1/dir2/file1");
@@ -980,6 +1010,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     executeTest(validFiles, actualFiles, Lists.newArrayList());
   }
 
+  /** 测试路径带实际文件过滤noauthority场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathsWithActualFileHavingNoAuthority() {
     List<String> validFiles = Lists.newArrayList("hdfs://servicename/dir1/dir2/file1");
@@ -987,6 +1018,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
     executeTest(validFiles, actualFiles, Lists.newArrayList());
   }
 
+  /** 测试路径带equalschemes场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathsWithEqualSchemes() {
     List<String> validFiles = Lists.newArrayList("scheme1://bucket1/dir1/dir2/file1");
@@ -1016,6 +1048,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         DeleteOrphanFiles.PrefixMismatchMode.ERROR);
   }
 
+  /** 测试路径带equalauthorities场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPathsWithEqualAuthorities() {
     List<String> validFiles = Lists.newArrayList("hdfs://servicename1/dir1/dir2/file1");
@@ -1045,6 +1078,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         DeleteOrphanFiles.PrefixMismatchMode.ERROR);
   }
 
+  /** 测试移除孤儿文件动作带删除模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFileActionWithDeleteMode() {
     List<String> validFiles = Lists.newArrayList("hdfs://servicename1/dir1/dir2/file1");
@@ -1059,6 +1093,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         DeleteOrphanFiles.PrefixMismatchMode.DELETE);
   }
 
+  /** 执行测试。 */
   private void executeTest(
       List<String> validFiles, List<String> actualFiles, List<String> expectedOrphanFiles) {
     executeTest(
@@ -1070,6 +1105,7 @@ public abstract class TestRemoveOrphanFilesAction extends SparkTestBase {
         DeleteOrphanFiles.PrefixMismatchMode.IGNORE);
   }
 
+  /** 执行测试。 */
   private void executeTest(
       List<String> validFiles,
       List<String> actualFiles,

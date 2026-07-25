@@ -26,31 +26,58 @@ import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.parser.ParserInterface;
 
+/**
+ * Iceberg Spark 集成相关组件，扩展 Spark SQL 解析能力。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 ExtendedParser。
+ */
 public interface ExtendedParser extends ParserInterface {
+  /**
+   * Iceberg Spark 集成相关组件。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 RawOrderField。
+   */
   class RawOrderField {
     private final Term term;
     private final SortDirection direction;
     private final NullOrder nullOrder;
 
+    /** 构造 RawOrderField 实例。 */
     public RawOrderField(Term term, SortDirection direction, NullOrder nullOrder) {
       this.term = term;
       this.direction = direction;
       this.nullOrder = nullOrder;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public Term term() {
       return term;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public SortDirection direction() {
       return direction;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public NullOrder nullOrder() {
       return nullOrder;
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   static List<RawOrderField> parseSortOrder(SparkSession spark, String orderString) {
     if (spark.sessionState().sqlParser() instanceof ExtendedParser) {
       ExtendedParser parser = (ExtendedParser) spark.sessionState().sqlParser();
@@ -66,5 +93,6 @@ public interface ExtendedParser extends ParserInterface {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   List<RawOrderField> parseSortOrder(String orderString) throws AnalysisException;
 }

@@ -56,6 +56,13 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 abstract class SparkScan implements Scan, SupportsReportStatistics {
   private static final Logger LOG = LoggerFactory.getLogger(SparkScan.class);
 
@@ -88,35 +95,58 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     this.readTimestampWithoutZone = readConf.handleTimestampWithoutZone();
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Table table() {
     return table;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected boolean caseSensitive() {
     return caseSensitive;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Schema expectedSchema() {
     return expectedSchema;
   }
 
+  /** 按条件过滤。 */
   protected List<Expression> filterExpressions() {
     return filterExpressions;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract List<CombinedScanTask> tasks();
 
+  /**
+   * 转换为batch。
+   *
+   * @return 结果对象
+   */
   @Override
   public Batch toBatch() {
+    /** 执行该方法的具体逻辑。 */
     return new SparkBatch(sparkContext, table, readConf, tasks(), expectedSchema, hashCode());
   }
 
+  /**
+   * 转换为microbatchstream。
+   *
+   * @param checkpointLocation 参数
+   * @return 结果对象
+   */
   @Override
   public MicroBatchStream toMicroBatchStream(String checkpointLocation) {
+    /** 执行该方法的具体逻辑。 */
     return new SparkMicroBatchStream(
         sparkContext, table, readConf, expectedSchema, checkpointLocation);
   }
 
+  /**
+   * 读取数据。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType readSchema() {
     if (readSchema == null) {
@@ -128,14 +158,21 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     return readSchema;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     return estimateStatistics(table.currentSnapshot());
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Statistics estimateStatistics(Snapshot snapshot) {
     // its a fresh table, no data
     if (snapshot == null) {
+      /** 执行该方法的具体逻辑。 */
       return new Stats(0L, 0L);
     }
 
@@ -146,14 +183,21 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
       long totalRecords =
           PropertyUtil.propertyAsLong(
               snapshot.summary(), SnapshotSummary.TOTAL_RECORDS_PROP, Long.MAX_VALUE);
+      /** 执行该方法的具体逻辑。 */
       return new Stats(SparkSchemaUtil.estimateSize(readSchema(), totalRecords), totalRecords);
     }
 
     long rowsCount = tasks().stream().mapToLong(ScanTaskGroup::estimatedRowsCount).sum();
     long sizeInBytes = SparkSchemaUtil.estimateSize(readSchema(), rowsCount);
+    /** 执行该方法的具体逻辑。 */
     return new Stats(sizeInBytes, rowsCount);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     String filters =
@@ -161,11 +205,25 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     return String.format("%s [filters=%s]", table, filters);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public CustomMetric[] supportedCustomMetrics() {
     return new CustomMetric[] {new NumSplits(), new NumDeletes()};
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ReaderFactory。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   static class ReaderFactory implements PartitionReaderFactory {
     private final int batchSize;
 
@@ -173,6 +231,12 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
       this.batchSize = batchSize;
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     @Override
     public PartitionReader<InternalRow> createReader(InputPartition partition) {
       Preconditions.checkArgument(
@@ -180,9 +244,16 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
           "Unknown input partition type: %s",
           partition.getClass().getName());
 
+      /** 执行该方法的具体逻辑。 */
       return new RowReader((SparkInputPartition) partition);
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     @Override
     public PartitionReader<ColumnarBatch> createColumnarReader(InputPartition partition) {
       Preconditions.checkArgument(
@@ -190,15 +261,29 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
           "Unknown input partition type: %s",
           partition.getClass().getName());
 
+      /** 执行该方法的具体逻辑。 */
       return new BatchReader((SparkInputPartition) partition, batchSize);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param partition 参数
+     * @return 结果对象
+     */
     @Override
     public boolean supportColumnarReads(InputPartition partition) {
       return batchSize > 1;
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 RowReader。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class RowReader extends RowDataReader implements PartitionReader<InternalRow> {
     private static final Logger LOG = LoggerFactory.getLogger(RowReader.class);
 
@@ -215,6 +300,11 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
       LOG.debug("Reading {} file split(s) for table {}", numSplits, partition.table().name());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public CustomTaskMetric[] currentMetricsValues() {
       return new CustomTaskMetric[] {
@@ -223,6 +313,13 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 BatchReader。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class BatchReader extends BatchDataReader
       implements PartitionReader<ColumnarBatch> {
 
@@ -242,6 +339,11 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
       LOG.debug("Reading {} file split(s) for table {}", numSplits, partition.table().name());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public CustomTaskMetric[] currentMetricsValues() {
       return new CustomTaskMetric[] {

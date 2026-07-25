@@ -30,9 +30,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestTableUpdatePartitionSpec，用于验证 Table Update Partition Spec 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Table Update Partition Spec
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestTableUpdatePartitionSpec extends TableTestBase {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters
   public static Object[][] parameters() {
     return new Object[][] {
@@ -40,10 +49,12 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     };
   }
 
+  /** 辅助方法：table update partition spec。 */
   public TestTableUpdatePartitionSpec(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：verify initial spec。 */
   @Before
   public void verifyInitialSpec() {
     PartitionSpec initialSpec = PartitionSpec.builderFor(table.schema()).bucket("data", 16).build();
@@ -52,6 +63,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(0, table.spec().specId());
   }
 
+  /**
+   * 测试场景：commit updated spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCommitUpdatedSpec() {
     table.updateSpec().addField(bucket("id", 8)).commit();
@@ -93,6 +109,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1002, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：noop commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoopCommit() {
     TableMetadata current = table.ops().current();
@@ -115,6 +136,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(currentVersion, updatedVersion.intValue());
   }
 
+  /**
+   * 测试场景：rename field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameField() {
     table
@@ -151,6 +177,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1002, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：rename only evolution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameOnlyEvolution() {
     table.updateSpec().renameField("data_bucket", "data_partition").commit();
@@ -165,6 +196,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1000, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：remove and add field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveAndAddField() {
     table.updateSpec().removeField("data_bucket").addField(bucket("id", 8)).commit();
@@ -189,6 +225,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1001, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：remove and add year field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveAndAddYearField() {
     table.updateSchema().addColumn("year_field", Types.DateType.get()).commit();
@@ -227,6 +268,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1001, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：add and remove field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAndRemoveField() {
     table.updateSpec().addField(bucket("data", 6)).removeField("data_bucket").commit();
@@ -249,6 +295,11 @@ public class TestTableUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(1001, table.spec().lastAssignedFieldId());
   }
 
+  /**
+   * 测试场景：add after last field removed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAfterLastFieldRemoved() {
     table.updateSpec().removeField("data_bucket").commit();

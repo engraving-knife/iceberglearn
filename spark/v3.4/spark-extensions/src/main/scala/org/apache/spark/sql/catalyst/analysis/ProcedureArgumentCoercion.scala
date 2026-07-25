@@ -24,8 +24,15 @@ import org.apache.spark.sql.catalyst.expressions.Cast
 import org.apache.spark.sql.catalyst.plans.logical.Call
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.rules.Rule
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：存储过程参数类型强转规则，将 CALL 语句的参数强转为过程声明的类型。
+ * <p>设计意图：在分析阶段对齐过程参数类型，保证调用类型匹配。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
+ */
 
 object ProcedureArgumentCoercion extends Rule[LogicalPlan] {
+  /** 应用转换。 */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case c @ Call(procedure, args) if c.resolved =>
       val params = procedure.parameters

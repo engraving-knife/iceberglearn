@@ -65,16 +65,51 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
+/**
+ * 文件级说明：Parquet 文件工具类，提供 metrics 提取、字典检测、Bloom Filter 检测等能力。
+ *
+ * <p>所属模块：iceberg-parquet（工具类，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>从 Parquet 文件 footer 提取 Iceberg {@link Metrics}（行数、列大小、值计数、null 计数、 上下界），支持截断（truncate）模式和
+ *       NameMapping。
+ *   <li>检测列是否包含非字典页（{@link #hasNonDictionaryPages}）、是否无 Bloom Filter 页。
+ *   <li>读取字典页（{@link #readDictionary}）、提取 INT96 时间戳（{@link #extractTimestampInt96}）。
+ *   <li>获取行组分裂偏移量（{@link #getSplitOffsets}）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>metrics 聚合：遍历所有行组的列元数据，按字段 ID 聚合统计值；若某行组缺统计则丢弃该列 的 null 计数和上下界（保守策略，避免不完整统计导致错误过滤）。
+ *   <li>截断优化：对 STRING/BINARY 类型的上下界按 MetricsMode.Truncate 截断，减少存储开销。
+ *   <li>INT96 兼容：extractTimestampInt96 将 Impala/Spark 旧版 INT96 时间戳转为微秒。
+ * </ul>
+ *
+ * <p>上下游关系：被 iceberg-core 的 Parquet 写入器和 metrics 收集流程调用； 依赖
+ * ParquetFileReader、ParquetSchemaUtil、ParquetConversions。
+ */
 public class ParquetUtil {
   // not meant to be instantiated
   private ParquetUtil() {}
 
   private static final long UNIX_EPOCH_JULIAN = 2_440_588L;
 
+  /** 计算文件 metrics（不带 NameMapping）。 */
   public static Metrics fileMetrics(InputFile file, MetricsConfig metricsConfig) {
     return fileMetrics(file, metricsConfig, null);
   }
 
+  /**
+   * 计算文件 metrics：打开 Parquet 文件，从 footer 提取 metrics。
+   *
+   * @param file 输入文件
+   * @param metricsConfig metrics 配置
+   * @param nameMapping 字段名→ID 映射
+   * @return 文件级 metrics
+   */
   public static Metrics fileMetrics(
       InputFile file, MetricsConfig metricsConfig, NameMapping nameMapping) {
     try (ParquetFileReader reader = ParquetFileReader.open(ParquetIO.file(file))) {
@@ -89,6 +124,25 @@ public class ParquetUtil {
     return footerMetrics(metadata, fieldMetrics, metricsConfig, null);
   }
 
+  /**
+   * 从 Parquet footer 计算 Iceberg metrics（核心方法）。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>获取带 ID 的 Parquet schema（通过 hasIds/nameMapping/addFallbackIds）；
+   *   <li>遍历所有行组的列元数据，按字段 ID 聚合 columnSizes/valueCounts/nullValueCounts；
+   *   <li>对有统计的列提取上下界（通过 ParquetConversions 转为 Iceberg Literal）， 按 MetricsMode 截断；
+   *   <li>若有 Iceberg 写入期 FieldMetrics（float/double），优先使用；
+   *   <li>缺统计的列丢弃其 null 计数和上下界。
+   * </ol>
+   *
+   * @param metadata Parquet 文件元数据
+   * @param fieldMetrics Iceberg 写入期收集的字段 metrics
+   * @param metricsConfig metrics 配置
+   * @param nameMapping 字段名→ID 映射
+   * @return 聚合后的文件级 metrics
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public static Metrics footerMetrics(
       ParquetMetadata metadata,
@@ -226,8 +280,10 @@ public class ParquetUtil {
   }
 
   /**
-   * Returns a list of offsets in ascending order determined by the starting position of the row
-   * groups.
+   * 获取行组起始偏移量列表（升序排列），用于文件分裂。
+   *
+   * @param md Parquet 元数据
+   * @return 行组起始偏移量列表
    */
   public static List<Long> getSplitOffsets(ParquetMetadata md) {
     List<Long> splitOffsets = Lists.newArrayListWithExpectedSize(md.getBlocks().size());
@@ -348,6 +404,14 @@ public class ParquetUtil {
     return bufferMap;
   }
 
+  /**
+   * 检测列是否包含非字典编码的页（用于判断是否适合字典过滤）。
+   *
+   * <p>逻辑：优先使用 EncodingStats；若不可用，回退到检查编码列表中是否除 PLAIN_DICTIONARY/RLE/BIT_PACKED 外还有其他编码。
+   *
+   * @param meta 列块元数据
+   * @return true 表示存在非字典页
+   */
   @SuppressWarnings("deprecation")
   public static boolean hasNonDictionaryPages(ColumnChunkMetaData meta) {
     EncodingStats stats = meta.getEncodingStats();
@@ -376,10 +440,19 @@ public class ParquetUtil {
     }
   }
 
+  /** 检测列是否完全没有 Bloom Filter 页（offset ≤ 0 表示无）。 */
   public static boolean hasNoBloomFilterPages(ColumnChunkMetaData meta) {
     return meta.getBloomFilterOffset() <= 0;
   }
 
+  /**
+   * 读取字典页并初始化字典。
+   *
+   * @param desc 列描述符
+   * @param pageSource 页面读取器
+   * @return Dictionary 实例，若无字典页则返回 null
+   * @throws ParquetDecodingException 若解码失败
+   */
   public static Dictionary readDictionary(ColumnDescriptor desc, PageReader pageSource) {
     DictionaryPage dictionaryPage = pageSource.readDictionaryPage();
     if (dictionaryPage != null) {
@@ -392,6 +465,12 @@ public class ParquetUtil {
     return null;
   }
 
+  /**
+   * 判断 Parquet 原始类型是否为整数类型（INT_8/INT_16/INT_32/DATE 逻辑类型，或 INT32 原始类型）。
+   *
+   * @param primitiveType Parquet 原始类型
+   * @return true 表示整数类型
+   */
   public static boolean isIntType(PrimitiveType primitiveType) {
     if (primitiveType.getOriginalType() != null) {
       switch (primitiveType.getOriginalType()) {
@@ -408,8 +487,12 @@ public class ParquetUtil {
   }
 
   /**
-   * Method to read timestamp (parquet Int96) from bytebuffer. Read 12 bytes in byteBuffer: 8 bytes
-   * (time of day nanos) + 4 bytes(julianDay)
+   * 从 ByteBuffer 读取 INT96 时间戳并转为微秒。
+   *
+   * <p>逻辑：读取 8 字节纳秒（一天内时间）+ 4 字节 Julian Day， 转换为自 Unix Epoch 以来的微秒数。
+   *
+   * @param buffer 包含 12 字节 INT96 的 ByteBuffer
+   * @return 自 Unix Epoch 以来的微秒数
    */
   public static long extractTimestampInt96(ByteBuffer buffer) {
     // 8 bytes (time of day nanos)

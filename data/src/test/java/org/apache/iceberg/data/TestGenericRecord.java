@@ -26,8 +26,20 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestGenericRecord 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericRecord 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericRecord {
 
+  /**
+   * 测试场景：Get Null Value。
+   *
+   * <p>验证该方法在 Get Null Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetNullValue() {
     Types.LongType type = Types.LongType.get();
@@ -38,6 +50,11 @@ public class TestGenericRecord {
     Assert.assertNull(record.get(0, type.typeId().javaClass()));
   }
 
+  /**
+   * 测试场景：Get Not Null Value。
+   *
+   * <p>验证该方法在 Get Not Null Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetNotNullValue() {
     Types.LongType type = Types.LongType.get();
@@ -48,6 +65,11 @@ public class TestGenericRecord {
     Assert.assertEquals(10L, record.get(0, type.typeId().javaClass()));
   }
 
+  /**
+   * 测试场景：Get Incorrect Class Instance。
+   *
+   * <p>验证该方法在 Get Incorrect Class Instance 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetIncorrectClassInstance() {
     Schema schema = new Schema(optional(1, "id", Types.LongType.get()));

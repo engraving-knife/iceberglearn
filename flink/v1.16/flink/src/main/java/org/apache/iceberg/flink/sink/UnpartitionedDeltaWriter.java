@@ -29,6 +29,13 @@ import org.apache.iceberg.io.FileAppenderFactory;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFileFactory;
 
+/**
+ * 非分区表增量写入器，直接把数据写入单个数据文件。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：缓存行数据并写入单一 TaskWriter，同时处理 equality delete。
+ *
+ * <p>设计意图：继承 BaseDeltaTaskWriter；被 RowDataTaskWriterFactory 创建。
+ */
 class UnpartitionedDeltaWriter extends BaseDeltaTaskWriter {
   private final RowDataDeltaWriter writer;
 

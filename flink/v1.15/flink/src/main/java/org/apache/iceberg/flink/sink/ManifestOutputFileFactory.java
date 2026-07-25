@@ -28,6 +28,13 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.base.Strings;
 
+/**
+ * Manifest 输出文件工厂，为每次 checkpoint 生成 manifest 文件路径。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按分区与 attempt ID 构造 manifest 文件输出路径。
+ *
+ * <p>设计意图：工厂模式；被 FlinkManifestUtil 调用。
+ */
 class ManifestOutputFileFactory {
   // Users could define their own flink manifests directory by setting this value in table
   // properties.

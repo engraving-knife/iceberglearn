@@ -30,8 +30,20 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestMetricsSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestMetricsSerialization 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestMetricsSerialization {
 
+  /**
+   * 测试场景：Serialization。
+   *
+   * <p>验证该方法在 Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerialization() throws IOException, ClassNotFoundException {
     Metrics original = generateMetrics();
@@ -42,6 +54,11 @@ public class TestMetricsSerialization {
     assertEquals(original, result);
   }
 
+  /**
+   * 测试场景：Serialization With Nulls。
+   *
+   * <p>验证该方法在 Serialization With Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializationWithNulls() throws IOException, ClassNotFoundException {
     Metrics original = generateMetricsWithNulls();
@@ -52,6 +69,7 @@ public class TestMetricsSerialization {
     assertEquals(original, result);
   }
 
+  /** 辅助方法：serialize。 */
   private static byte[] serialize(Metrics metrics) throws IOException {
     try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
       ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
@@ -62,6 +80,7 @@ public class TestMetricsSerialization {
     }
   }
 
+  /** 辅助方法：deserialize。 */
   private static Metrics deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
     try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes)) {
       ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
@@ -70,6 +89,7 @@ public class TestMetricsSerialization {
     }
   }
 
+  /** 辅助方法：generateMetrics。 */
   private static Metrics generateMetrics() {
     Map<Integer, Long> longMap1 = Maps.newHashMap();
     longMap1.put(1, 2L);
@@ -91,6 +111,7 @@ public class TestMetricsSerialization {
     return new Metrics(0L, longMap1, longMap2, longMap3, null, byteMap1, byteMap2);
   }
 
+  /** 辅助方法：generateMetricsWithNulls。 */
   private static Metrics generateMetricsWithNulls() {
     Map<Integer, Long> longMap = Maps.newHashMap();
     longMap.put(null, 1L);
@@ -103,6 +124,7 @@ public class TestMetricsSerialization {
     return new Metrics(null, null, longMap, longMap, null, null, byteMap);
   }
 
+  /** 辅助方法：assertEquals。 */
   private static void assertEquals(Metrics expected, Metrics actual) {
     assertThat(actual.recordCount()).isEqualTo(expected.recordCount());
     assertThat(actual.columnSizes()).isEqualTo(expected.columnSizes());
@@ -113,6 +135,7 @@ public class TestMetricsSerialization {
     assertEquals(expected.upperBounds(), actual.upperBounds());
   }
 
+  /** 辅助方法：assertEquals。 */
   private static void assertEquals(
       Map<Integer, ByteBuffer> expected, Map<Integer, ByteBuffer> actual) {
     if (expected == null) {

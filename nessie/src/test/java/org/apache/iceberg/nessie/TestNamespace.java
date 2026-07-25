@@ -38,13 +38,26 @@ import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
 
+/**
+ * 文件级说明：测试 TestNamespace 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestNamespace 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNamespace extends BaseTestIceberg {
   private static final String BRANCH = "test-namespace";
 
+  /** 辅助方法：TestNamespace。 */
   public TestNamespace() {
     super(BRANCH);
   }
 
+  /**
+   * 测试场景：List Namespaces。
+   *
+   * <p>验证该方法在 List Namespaces 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaces() {
     Namespace nsA = Namespace.of("a");
@@ -79,6 +92,11 @@ public class TestNamespace extends BaseTestIceberg {
     Assertions.assertThat(namespaces).containsExactly(nsBC);
   }
 
+  /**
+   * 测试场景：Creating And Dropping Namespace。
+   *
+   * <p>验证该方法在 Creating And Dropping Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatingAndDroppingNamespace() {
     Namespace namespace = Namespace.of("test");
@@ -88,6 +106,11 @@ public class TestNamespace extends BaseTestIceberg {
     Assertions.assertThat(catalog.namespaceExists(namespace)).isFalse();
   }
 
+  /**
+   * 测试场景：Creating And Dropping Namespace With Content。
+   *
+   * <p>验证该方法在 Creating And Dropping Namespace With Content 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatingAndDroppingNamespaceWithContent() throws NessieNotFoundException {
     Namespace namespace = Namespace.of("test");
@@ -113,6 +136,11 @@ public class TestNamespace extends BaseTestIceberg {
     Assertions.assertThat(catalog.namespaceExists(namespace)).isFalse();
   }
 
+  /**
+   * 测试场景：Setting Properties。
+   *
+   * <p>验证该方法在 Setting Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testSettingProperties() {
     Map<String, String> properties = ImmutableMap.of("prop", "val");
@@ -132,6 +160,11 @@ public class TestNamespace extends BaseTestIceberg {
         .hasMessage("Namespace does not exist: unknown");
   }
 
+  /**
+   * 测试场景：Removing Properties。
+   *
+   * <p>验证该方法在 Removing Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testRemovingProperties() {
     Map<String, String> properties = ImmutableMap.of("prop2", "val2", "prop", "val");
@@ -150,6 +183,11 @@ public class TestNamespace extends BaseTestIceberg {
         .hasMessage("Namespace does not exist: unknown");
   }
 
+  /**
+   * 测试场景：Custom Location。
+   *
+   * <p>验证该方法在 Custom Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomLocation() {
     Map<String, String> properties = ImmutableMap.of("location", "/custom/location");

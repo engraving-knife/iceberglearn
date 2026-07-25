@@ -30,8 +30,20 @@ import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 
+/**
+ * 文件级说明：测试 TestHttpClientProperties 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestHttpClientProperties 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHttpClientProperties {
 
+  /**
+   * 测试场景：Url Http Client Configuration。
+   *
+   * <p>验证该方法在 Url Http Client Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testUrlHttpClientConfiguration() {
     Map<String, String> properties = Maps.newHashMap();
@@ -50,6 +62,11 @@ public class TestHttpClientProperties {
         .isInstanceOf(UrlConnectionHttpClient.Builder.class);
   }
 
+  /**
+   * 测试场景：Apache Http Client Configuration。
+   *
+   * <p>验证该方法在 Apache Http Client Configuration 条件下的行为是否符合预期。
+   */
   @Test
   public void testApacheHttpClientConfiguration() {
     Map<String, String> properties = Maps.newHashMap();
@@ -67,6 +84,11 @@ public class TestHttpClientProperties {
         .isInstanceOf(ApacheHttpClient.Builder.class);
   }
 
+  /**
+   * 测试场景：Invalid Http Client Type。
+   *
+   * <p>验证该方法在 Invalid Http Client Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidHttpClientType() {
     Map<String, String> properties = Maps.newHashMap();

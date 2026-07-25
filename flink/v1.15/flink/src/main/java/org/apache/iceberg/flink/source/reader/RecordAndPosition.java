@@ -31,6 +31,13 @@ import org.apache.flink.annotation.Internal;
  * is needed at a time. Then the same instance of RecordAndPosition can be reused.
  */
 @Internal
+/**
+ * 记录与位置对，承载一条记录及其在 split 中的位置。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装记录值与 position，供 checkpoint 恢复。
+ *
+ * <p>设计意图：值对象；被 emitter/reader 使用。
+ */
 public class RecordAndPosition<T> {
   private T record;
   private int fileOffset;

@@ -28,8 +28,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestLocationProvider，用于验证 Location Provider 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Location Provider 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestLocationProvider extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters
   public static Object[][] parameters() {
     return new Object[][] {
@@ -37,6 +46,7 @@ public class TestLocationProvider extends TableTestBase {
     };
   }
 
+  /** 辅助方法：location provider。 */
   public TestLocationProvider(int formatVersion) {
     super(formatVersion);
   }
@@ -46,17 +56,20 @@ public class TestLocationProvider extends TableTestBase {
     String tableLocation;
     Map<String, String> properties;
 
+    /** 辅助方法：two arg dynamically loaded location provider。 */
     public TwoArgDynamicallyLoadedLocationProvider(
         String tableLocation, Map<String, String> properties) {
       this.tableLocation = tableLocation;
       this.properties = properties;
     }
 
+    /** 辅助方法：new data location。 */
     @Override
     public String newDataLocation(String filename) {
       return String.format("%s/test_custom_provider/%s", this.tableLocation, filename);
     }
 
+    /** 辅助方法：new data location。 */
     @Override
     public String newDataLocation(PartitionSpec spec, StructLike partitionData, String filename) {
       throw new RuntimeException("Test custom provider does not expect any invocation");
@@ -72,6 +85,7 @@ public class TestLocationProvider extends TableTestBase {
       return String.format("test_no_arg_provider/%s", filename);
     }
 
+    /** 辅助方法：new data location。 */
     @Override
     public String newDataLocation(PartitionSpec spec, StructLike partitionData, String filename) {
       throw new RuntimeException("Test custom provider does not expect any invocation");
@@ -81,13 +95,16 @@ public class TestLocationProvider extends TableTestBase {
   // publicly visible for testing to be dynamically loaded
   public static class InvalidArgTypesDynamicallyLoadedLocationProvider implements LocationProvider {
 
+    /** 辅助方法：invalid arg types dynamically loaded location provider。 */
     public InvalidArgTypesDynamicallyLoadedLocationProvider(Integer bogusArg1, String bogusArg2) {}
 
+    /** 辅助方法：new data location。 */
     @Override
     public String newDataLocation(String filename) {
       throw new RuntimeException("Invalid provider should have not been instantiated!");
     }
 
+    /** 辅助方法：new data location。 */
     @Override
     public String newDataLocation(PartitionSpec spec, StructLike partitionData, String filename) {
       throw new RuntimeException("Invalid provider should have not been instantiated!");
@@ -99,6 +116,11 @@ public class TestLocationProvider extends TableTestBase {
     // Default no-arg constructor is present, but does not impelemnt interface LocationProvider
   }
 
+  /**
+   * 测试场景：default location provider。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultLocationProvider() {
     this.table.updateProperties().commit();
@@ -110,6 +132,11 @@ public class TestLocationProvider extends TableTestBase {
         this.table.locationProvider().newDataLocation("my_file"));
   }
 
+  /**
+   * 测试场景：default location provider with custom data location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultLocationProviderWithCustomDataLocation() {
     this.table.updateProperties().set(TableProperties.WRITE_DATA_LOCATION, "new_location").commit();
@@ -121,6 +148,11 @@ public class TestLocationProvider extends TableTestBase {
         this.table.locationProvider().newDataLocation("my_file"));
   }
 
+  /**
+   * 测试场景：no arg dynamically loaded location provider。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoArgDynamicallyLoadedLocationProvider() {
     String invalidImpl =
@@ -139,6 +171,11 @@ public class TestLocationProvider extends TableTestBase {
         this.table.locationProvider().newDataLocation("my_file"));
   }
 
+  /**
+   * 测试场景：two arg dynamically loaded location provider。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTwoArgDynamicallyLoadedLocationProvider() {
     this.table
@@ -161,6 +198,11 @@ public class TestLocationProvider extends TableTestBase {
         this.table.locationProvider().newDataLocation("my_file"));
   }
 
+  /**
+   * 测试场景：dynamically loaded location provider not found。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDynamicallyLoadedLocationProviderNotFound() {
     String nonExistentImpl =
@@ -185,6 +227,11 @@ public class TestLocationProvider extends TableTestBase {
                 + "taking in the string base table location and its property string map.");
   }
 
+  /**
+   * 测试场景：invalid no interface dynamically loaded location provider。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidNoInterfaceDynamicallyLoadedLocationProvider() {
     String invalidImpl =
@@ -205,6 +252,11 @@ public class TestLocationProvider extends TableTestBase {
                 LocationProvider.class));
   }
 
+  /**
+   * 测试场景：invalid arg types dynamically loaded location provider。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidArgTypesDynamicallyLoadedLocationProvider() {
     String invalidImpl =
@@ -225,6 +277,11 @@ public class TestLocationProvider extends TableTestBase {
                 invalidImpl, LocationProvider.class));
   }
 
+  /**
+   * 测试场景：object storage location provider path resolution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testObjectStorageLocationProviderPathResolution() {
     table.updateProperties().set(TableProperties.OBJECT_STORE_ENABLED, "true").commit();
@@ -258,6 +315,11 @@ public class TestLocationProvider extends TableTestBase {
         table.locationProvider().newDataLocation("file").contains(dataPath));
   }
 
+  /**
+   * 测试场景：default storage location provider path resolution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultStorageLocationProviderPathResolution() {
     table.updateProperties().set(TableProperties.OBJECT_STORE_ENABLED, "false").commit();
@@ -284,6 +346,11 @@ public class TestLocationProvider extends TableTestBase {
         table.locationProvider().newDataLocation("file").contains(dataPath));
   }
 
+  /**
+   * 测试场景：object storage within table location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testObjectStorageWithinTableLocation() {
     table.updateProperties().set(TableProperties.OBJECT_STORE_ENABLED, "true").commit();

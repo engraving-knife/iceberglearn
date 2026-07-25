@@ -32,6 +32,13 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Spark 向量化读取 Iceberg 数据的列式访问组件的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 VectorizedSparkParquetReaders。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class VectorizedSparkParquetReaders {
 
   private static final Logger LOG = LoggerFactory.getLogger(VectorizedSparkParquetReaders.class);
@@ -49,8 +56,10 @@ public class VectorizedSparkParquetReaders {
     }
   }
 
+  /** 构造 VectorizedSparkParquetReaders 实例。 */
   private VectorizedSparkParquetReaders() {}
 
+  /** 构造并返回目标对象。 */
   public static ColumnarBatchReader buildReader(
       Schema expectedSchema,
       MessageType fileSchema,
@@ -59,6 +68,7 @@ public class VectorizedSparkParquetReaders {
     return (ColumnarBatchReader)
         TypeWithSchemaVisitor.visit(
             expectedSchema.asStruct(),
+            /** 读取数据。 */
             fileSchema,
             new ReaderBuilder(
                 expectedSchema,
@@ -71,6 +81,7 @@ public class VectorizedSparkParquetReaders {
 
   // enables unsafe memory access to avoid costly checks to see if index is within bounds
   // as long as it is not configured explicitly (see BoundsChecking in Arrow)
+  /** 执行该方法的具体逻辑。 */
   private static void enableUnsafeMemoryAccess() {
     String value = confValue(ENABLE_UNSAFE_MEMORY_ACCESS, ENABLE_UNSAFE_MEMORY_ACCESS_ENV);
     if (value == null) {
@@ -83,6 +94,7 @@ public class VectorizedSparkParquetReaders {
 
   // disables expensive null checks for every get call in favor of Iceberg nullability
   // as long as it is not configured explicitly (see NullCheckingForGet in Arrow)
+  /** 执行该方法的具体逻辑。 */
   private static void disableNullCheckForGet() {
     String value = confValue(ENABLE_NULL_CHECK_FOR_GET, ENABLE_NULL_CHECK_FOR_GET_ENV);
     if (value == null) {
@@ -93,6 +105,7 @@ public class VectorizedSparkParquetReaders {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static String confValue(String propName, String envName) {
     String propValue = System.getProperty(propName);
     if (propValue != null) {
@@ -102,6 +115,15 @@ public class VectorizedSparkParquetReaders {
     return System.getenv(envName);
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ReaderBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ReaderBuilder extends VectorizedReaderBuilder {
     private final DeleteFilter<InternalRow> deleteFilter;
 
@@ -116,6 +138,7 @@ public class VectorizedSparkParquetReaders {
       this.deleteFilter = deleteFilter;
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected VectorizedReader<?> vectorizedReader(List<VectorizedReader<?>> reorderedFields) {
       VectorizedReader<?> reader = super.vectorizedReader(reorderedFields);

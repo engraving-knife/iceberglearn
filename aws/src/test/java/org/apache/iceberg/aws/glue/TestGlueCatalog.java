@@ -65,6 +65,13 @@ import software.amazon.awssdk.services.glue.model.Table;
 import software.amazon.awssdk.services.glue.model.UpdateDatabaseRequest;
 import software.amazon.awssdk.services.glue.model.UpdateDatabaseResponse;
 
+/**
+ * 文件级说明：测试 TestGlueCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestGlueCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGlueCatalog {
 
   private static final String WAREHOUSE_PATH = "s3://bucket";
@@ -72,6 +79,7 @@ public class TestGlueCatalog {
   private GlueClient glue;
   private GlueCatalog glueCatalog;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     glue = Mockito.mock(GlueClient.class);
@@ -86,6 +94,11 @@ public class TestGlueCatalog {
         ImmutableMap.of());
   }
 
+  /**
+   * 测试场景：Constructor Empty Warehouse Path。
+   *
+   * <p>验证该方法在 Constructor Empty Warehouse Path 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructorEmptyWarehousePath() {
     GlueCatalog catalog = new GlueCatalog();
@@ -111,6 +124,11 @@ public class TestGlueCatalog {
         .isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * 测试场景：Constructor Warehouse Path With End Slash。
+   *
+   * <p>验证该方法在 Constructor Warehouse Path With End Slash 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructorWarehousePathWithEndSlash() {
     GlueCatalog catalogWithSlash = new GlueCatalog();
@@ -130,6 +148,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(location).isEqualTo(WAREHOUSE_PATH + "/db.db/table");
   }
 
+  /**
+   * 测试场景：Default Warehouse Location No Db Uri。
+   *
+   * <p>验证该方法在 Default Warehouse Location No Db Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationNoDbUri() {
     Mockito.doReturn(
@@ -140,6 +163,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(location).isEqualTo(WAREHOUSE_PATH + "/db.db/table");
   }
 
+  /**
+   * 测试场景：Default Warehouse Location Db Uri。
+   *
+   * <p>验证该方法在 Default Warehouse Location Db Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationDbUri() {
     Mockito.doReturn(
@@ -152,6 +180,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(location).isEqualTo("s3://bucket2/db/table");
   }
 
+  /**
+   * 测试场景：Default Warehouse Location Custom Catalog Id。
+   *
+   * <p>验证该方法在 Default Warehouse Location Custom Catalog Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocationCustomCatalogId() {
     GlueCatalog catalogWithCustomCatalogId = new GlueCatalog();
@@ -180,6 +213,11 @@ public class TestGlueCatalog {
             Mockito.argThat((GetDatabaseRequest req) -> req.catalogId().equals(catalogId)));
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() {
     Mockito.doReturn(
@@ -231,6 +269,11 @@ public class TestGlueCatalog {
             Lists.newArrayList(TableIdentifier.of("db1", "t1"), TableIdentifier.of("db1", "t2")));
   }
 
+  /**
+   * 测试场景：List Tables Pagination。
+   *
+   * <p>验证该方法在 List Tables Pagination 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesPagination() {
     AtomicInteger counter = new AtomicInteger(10);
@@ -240,6 +283,7 @@ public class TestGlueCatalog {
         .getDatabase(Mockito.any(GetDatabaseRequest.class));
     Mockito.doAnswer(
             new Answer() {
+              /** 辅助方法：answer。 */
               @Override
               public Object answer(InvocationOnMock invocation) throws Throwable {
                 if (counter.decrementAndGet() > 0) {
@@ -275,6 +319,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(glueCatalog.listTables(Namespace.of("db1"))).hasSize(10);
   }
 
+  /**
+   * 测试场景：Drop Table。
+   *
+   * <p>验证该方法在 Drop Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTable() {
     Map<String, String> properties = Maps.newHashMap();
@@ -298,6 +347,11 @@ public class TestGlueCatalog {
     glueCatalog.dropTable(TableIdentifier.of("db1", "t1"));
   }
 
+  /**
+   * 测试场景：Rename Table。
+   *
+   * <p>验证该方法在 Rename Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameTable() {
     AtomicInteger counter = new AtomicInteger(1);
@@ -321,6 +375,7 @@ public class TestGlueCatalog {
         .getDatabase(Mockito.any(GetDatabaseRequest.class));
     Mockito.doAnswer(
             new Answer() {
+              /** 辅助方法：answer。 */
               @Override
               public Object answer(InvocationOnMock invocation) throws Throwable {
                 counter.decrementAndGet();
@@ -333,6 +388,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(counter.get()).isEqualTo(0);
   }
 
+  /**
+   * 测试场景：Rename Table With Storage Descriptor。
+   *
+   * <p>验证该方法在 Rename Table With Storage Descriptor 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameTableWithStorageDescriptor() {
     AtomicInteger counter = new AtomicInteger(1);
@@ -370,6 +430,7 @@ public class TestGlueCatalog {
 
     Mockito.doAnswer(
             new Answer() {
+              /** 辅助方法：answer。 */
               @Override
               public Object answer(InvocationOnMock invocation) throws Throwable {
                 CreateTableRequest createTableRequest =
@@ -387,6 +448,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(counter.get()).isEqualTo(0);
   }
 
+  /**
+   * 测试场景：Create Namespace。
+   *
+   * <p>验证该方法在 Create Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     Mockito.doReturn(CreateDatabaseResponse.builder().build())
@@ -395,6 +461,11 @@ public class TestGlueCatalog {
     glueCatalog.createNamespace(Namespace.of("db"));
   }
 
+  /**
+   * 测试场景：Create Namespace Bad Name。
+   *
+   * <p>验证该方法在 Create Namespace Bad Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespaceBadName() {
     Mockito.doReturn(CreateDatabaseResponse.builder().build())
@@ -413,6 +484,11 @@ public class TestGlueCatalog {
     }
   }
 
+  /**
+   * 测试场景：List All Namespaces。
+   *
+   * <p>验证该方法在 List All Namespaces 条件下的行为是否符合预期。
+   */
   @Test
   public void testListAllNamespaces() {
     Mockito.doReturn(
@@ -426,11 +502,17 @@ public class TestGlueCatalog {
         .isEqualTo(Lists.newArrayList(Namespace.of("db1"), Namespace.of("db2")));
   }
 
+  /**
+   * 测试场景：List Namespaces Pagination。
+   *
+   * <p>验证该方法在 List Namespaces Pagination 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespacesPagination() {
     AtomicInteger counter = new AtomicInteger(10);
     Mockito.doAnswer(
             new Answer() {
+              /** 辅助方法：answer。 */
               @Override
               public Object answer(InvocationOnMock invocation) throws Throwable {
                 if (counter.decrementAndGet() > 0) {
@@ -453,6 +535,11 @@ public class TestGlueCatalog {
     Assertions.assertThat(glueCatalog.listNamespaces()).hasSize(10);
   }
 
+  /**
+   * 测试场景：List Namespaces With Name Should Return Itself。
+   *
+   * <p>验证该方法在 List Namespaces With Name Should Return Itself 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespacesWithNameShouldReturnItself() {
     Mockito.doReturn(
@@ -464,6 +551,11 @@ public class TestGlueCatalog {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：List Namespaces Bad Name。
+   *
+   * <p>验证该方法在 List Namespaces Bad Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespacesBadName() {
 
@@ -474,6 +566,11 @@ public class TestGlueCatalog {
                 + "because it must be 1-252 chars of lowercase letters, numbers, underscore");
   }
 
+  /**
+   * 测试场景：Load Namespace Metadata。
+   *
+   * <p>验证该方法在 Load Namespace Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadNamespaceMetadata() {
     Map<String, String> parameters = Maps.newHashMap();
@@ -488,6 +585,11 @@ public class TestGlueCatalog {
         .isEqualTo(parameters);
   }
 
+  /**
+   * 测试场景：Drop Namespace。
+   *
+   * <p>验证该方法在 Drop Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNamespace() {
     Mockito.doReturn(GetTablesResponse.builder().build())
@@ -503,6 +605,11 @@ public class TestGlueCatalog {
     glueCatalog.dropNamespace(Namespace.of("db1"));
   }
 
+  /**
+   * 测试场景：Drop Namespace That Contains Only Iceberg Table。
+   *
+   * <p>验证该方法在 Drop Namespace That Contains Only Iceberg Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNamespaceThatContainsOnlyIcebergTable() {
     Mockito.doReturn(
@@ -532,6 +639,11 @@ public class TestGlueCatalog {
         .hasMessage("Cannot drop namespace db1 because it still contains Iceberg tables");
   }
 
+  /**
+   * 测试场景：Drop Namespace That Contains Non Iceberg Table。
+   *
+   * <p>验证该方法在 Drop Namespace That Contains Non Iceberg Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNamespaceThatContainsNonIcebergTable() {
     Mockito.doReturn(
@@ -553,6 +665,11 @@ public class TestGlueCatalog {
         .hasMessage("Cannot drop namespace db1 because it still contains non-Iceberg tables");
   }
 
+  /**
+   * 测试场景：Set Properties。
+   *
+   * <p>验证该方法在 Set Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetProperties() {
     Map<String, String> parameters = Maps.newHashMap();
@@ -569,6 +686,11 @@ public class TestGlueCatalog {
     glueCatalog.setProperties(Namespace.of("db1"), parameters);
   }
 
+  /**
+   * 测试场景：Remove Properties。
+   *
+   * <p>验证该方法在 Remove Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testRemoveProperties() {
     Map<String, String> parameters = Maps.newHashMap();
@@ -585,6 +707,11 @@ public class TestGlueCatalog {
     glueCatalog.removeProperties(Namespace.of("db1"), Sets.newHashSet("key"));
   }
 
+  /**
+   * 测试场景：Table Props Defined At Catalog Level。
+   *
+   * <p>验证该方法在 Table Props Defined At Catalog Level 条件下的行为是否符合预期。
+   */
   @Test
   public void testTablePropsDefinedAtCatalogLevel() {
     ImmutableMap<String, String> catalogProps =
@@ -612,6 +739,11 @@ public class TestGlueCatalog {
         .containsEntry("table-override.key4", "catalog-override-key4");
   }
 
+  /**
+   * 测试场景：Validate Identifier Skip Name Validation。
+   *
+   * <p>验证该方法在 Validate Identifier Skip Name Validation 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidateIdentifierSkipNameValidation() {
     AwsProperties props = new AwsProperties();
@@ -629,6 +761,11 @@ public class TestGlueCatalog {
         .isEqualTo(true);
   }
 
+  /**
+   * 测试场景：Table Level 3 Tag Properties。
+   *
+   * <p>验证该方法在 Table Level 3 Tag Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableLevelS3TagProperties() {
     Map<String, String> properties =

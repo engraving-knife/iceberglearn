@@ -41,9 +41,17 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkRecordOrcReaderWriter 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark记录ORC读取器写入器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkRecordOrcReaderWriter extends AvroDataTest {
   private static final int NUM_RECORDS = 200;
 
+  /** 写与校验。 */
   private void writeAndValidate(Schema schema, List<Record> expectedRecords) throws IOException {
     final File originalFile = temp.newFile();
     Assert.assertTrue("Delete should succeed", originalFile.delete());
@@ -99,12 +107,14 @@ public class TestSparkRecordOrcReaderWriter extends AvroDataTest {
     }
   }
 
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     List<Record> expectedRecords = RandomGenericData.generate(schema, NUM_RECORDS, 1992L);
     writeAndValidate(schema, expectedRecords);
   }
 
+  /** 测试十进制带trailingzero场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDecimalWithTrailingZero() throws IOException {
     Schema schema =
@@ -125,6 +135,7 @@ public class TestSparkRecordOrcReaderWriter extends AvroDataTest {
     writeAndValidate(schema, expected);
   }
 
+  /** 断言记录equals。 */
   private static void assertRecordEquals(
       Iterable<Record> expected, Iterable<Record> actual, int size) {
     Iterator<Record> expectedIter = expected.iterator();
@@ -138,6 +149,7 @@ public class TestSparkRecordOrcReaderWriter extends AvroDataTest {
     Assert.assertFalse("Actual iterator should not have any extra rows.", actualIter.hasNext());
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(
       Types.StructType struct, Iterable<Record> expected, Iterable<InternalRow> actual, int size) {
     Iterator<Record> expectedIter = expected.iterator();

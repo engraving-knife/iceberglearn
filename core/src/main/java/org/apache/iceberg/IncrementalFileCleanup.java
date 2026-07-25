@@ -35,9 +35,44 @@ import org.apache.iceberg.util.Tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 增量式文件清理策略：在快照过期后，删除不再被引用的数据文件、manifest 与 manifest list。
+ *
+ * <p>所属模块：iceberg-core（核心实现层），是 {@link FileCleanupStrategy} 的一种实现。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>识别过期快照中已被删除且不属于当前表状态的数据文件并删除。
+ *   <li>识别不再被任何有效快照引用的 manifest 文件并删除。
+ *   <li>删除过期快照对应的 manifest list 文件。
+ *   <li>处理被回滚（rolled back）或被 cherry-pick 的快照，避免误删当前表状态中的文件。
+ * </ul>
+ *
+ * <p>设计意图：增量清理只删除“确定安全”的文件——
+ *
+ * <ul>
+ *   <li>对祖先链中的过期快照：删除其 DELETED 条目指向的文件（这些文件确实不再需要）。
+ *   <li>对非祖先的过期快照：删除其 ADDED 条目指向的文件（这些文件从未进入当前表状态）。
+ *   <li>cherry-pick 快照：跳过清理，等待被 pick 的原始快照过期时再清理。
+ * </ul>
+ *
+ * 通过 {@link Tasks} 框架并发执行读取与删除，并 suppressFailureWhenFinished 以尽量完成清理。
+ *
+ * <p>上下游关系：被 {@link RemoveSnapshots} 在快照过期后调用；底层使用 {@link FileIO} 删除文件、 {@link ManifestReader} 读取
+ * manifest 条目。
+ */
 class IncrementalFileCleanup extends FileCleanupStrategy {
   private static final Logger LOG = LoggerFactory.getLogger(IncrementalFileCleanup.class);
 
+  /**
+   * 构造方法。
+   *
+   * @param fileIO 文件 IO
+   * @param deleteExecutorService 删除执行线程池
+   * @param planExecutorService 规划执行线程池（用于并发读取 manifest）
+   * @param deleteFunc 删除回调（可选，可做统计或自定义删除）
+   */
   IncrementalFileCleanup(
       FileIO fileIO,
       ExecutorService deleteExecutorService,
@@ -46,6 +81,27 @@ class IncrementalFileCleanup extends FileCleanupStrategy {
     super(fileIO, deleteExecutorService, planExecutorService, deleteFunc);
   }
 
+  /**
+   * 执行增量文件清理。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>计算过期快照集合（before 中有、after 中无）。
+   *   <li>识别当前表状态的祖先链与 cherry-pick 来源快照，保护被 pick 的快照不误清理。
+   *   <li>遍历有效快照的 manifest，收集仍被引用的 manifest 路径（validManifests）， 并把“由过期祖先快照写入且含删除条目”的 manifest
+   *       加入待扫描集合。
+   *   <li>遍历过期快照的 manifest，把不再被引用的 manifest 加入待删除集合； 祖先过期快照中含删除条目的 manifest 加入待扫描集合（删除其指向的数据文件）；
+   *       非祖先过期快照中含新增条目的 manifest 加入待回滚集合（删除其新增的数据文件）。
+   *   <li>调用 {@link #findFilesToDelete} 读取待扫描/待回滚 manifest 收集数据文件路径。
+   *   <li>删除数据文件、manifest、manifest list、过期统计文件。
+   * </ol>
+   *
+   * <p>设计要点：通过 {@link Tasks#foreach} 并发执行，suppressFailureWhenFinished 尽量完成清理， 避免因部分失败导致孤儿文件。
+   *
+   * @param beforeExpiration 过期前的表元数据
+   * @param afterExpiration 过期后的表元数据
+   */
   @Override
   @SuppressWarnings({"checkstyle:CyclomaticComplexity", "MethodLength"})
   public void cleanFiles(TableMetadata beforeExpiration, TableMetadata afterExpiration) {
@@ -269,6 +325,24 @@ class IncrementalFileCleanup extends FileCleanupStrategy {
     }
   }
 
+  /**
+   * 读取待扫描与待回滚的 manifest，收集需要删除的数据文件路径。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>manifestsToScan：读取其中的 DELETED 条目，若条目快照 id 已失效则把文件路径加入删除集合。
+   *   <li>manifestsToRevert：读取其中的 ADDED 条目，全部加入删除集合（因为这些文件来自被回滚的快照）。
+   * </ul>
+   *
+   * 通过 {@link Tasks} 并发执行，使用 ConcurrentHashMap.newKeySet 保证线程安全。
+   *
+   * @param manifestsToScan 待扫描删除条目的 manifest 集合
+   * @param manifestsToRevert 待回滚新增条目的 manifest 集合
+   * @param validIds 仍然有效的快照 id 集合
+   * @param current 当前表元数据
+   * @return 待删除的数据文件路径集合
+   */
   private Set<String> findFilesToDelete(
       Set<ManifestFile> manifestsToScan,
       Set<ManifestFile> manifestsToRevert,

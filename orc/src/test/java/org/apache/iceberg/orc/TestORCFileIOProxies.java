@@ -30,7 +30,19 @@ import org.apache.iceberg.io.OutputFile;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestORCFileIOProxies 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestORCFileIOProxies 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestORCFileIOProxies {
+  /**
+   * 测试场景：Input File System。
+   *
+   * <p>验证该方法在 Input File System 条件下的行为是否符合预期。
+   */
   @Test
   public void testInputFileSystem() throws IOException {
     File inputFile = File.createTempFile("read", ".orc");
@@ -51,6 +63,11 @@ public class TestORCFileIOProxies {
         .hasMessageStartingWith("Input /tmp/dummy does not equal expected");
   }
 
+  /**
+   * 测试场景：Output File System。
+   *
+   * <p>验证该方法在 Output File System 条件下的行为是否符合预期。
+   */
   @Test
   public void testOutputFileSystem() throws IOException {
     File localFile = File.createTempFile("write", ".orc");

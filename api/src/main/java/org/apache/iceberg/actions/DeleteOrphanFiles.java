@@ -26,84 +26,78 @@ import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * An action that deletes orphan metadata, data and delete files in a table.
+ * 删除表中孤儿（orphan）元数据、数据及删除文件的动作。
  *
- * <p>A file is considered orphan if it is not reachable by any valid snapshot. The set of actual
- * files is built by listing the underlying storage which makes this operation expensive.
+ * <p>所属模块：iceberg-api。继承自 {@link Action}，用于表存储层的空间回收与清理。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>列出底层存储中的实际文件，与表有效快照可达的文件集合比对，找出"孤儿文件"并删除。
+ *   <li>提供安全阈值（olderThan）、自定义删除函数、并行删除执行器等可配置项。
+ *   <li>处理路径前缀（scheme/authority）不一致的冲突场景。
+ * </ul>
+ *
+ * <p>设计意图：孤儿文件判定需要列出存储目录，开销较大，故作为独立 Action 而非常规表操作。 通过 olderThan 默认 3
+ * 天的安全阈值，避免误删并发写入尚未被元数据引用的新文件。prefix mismatch 相关配置用于应对同文件在不同 scheme/authority（如
+ * s3a/s3/s3n）下的等价判定问题， 默认 ERROR 模式保证安全，仅在人工确认后切换为 DELETE。
+ *
+ * <p>上下游关系：由引擎模块实现；删除执行依赖 {@link org.apache.iceberg.io.FileIO} 或自定义 deleteFunc；结果通过 {@link Result}
+ * 返回被删除文件位置。
  */
 public interface DeleteOrphanFiles extends Action<DeleteOrphanFiles, DeleteOrphanFiles.Result> {
   /**
-   * Passes a location which should be scanned for orphan files.
+   * 指定扫描孤儿文件的存储位置。
    *
-   * <p>If not set, the root table location will be scanned potentially removing both orphan data
-   * and metadata files.
+   * <p>若未设置，则扫描表根目录，可能同时删除孤儿数据文件与元数据文件。
    *
-   * @param location the location where to look for orphan files
-   * @return this for method chaining
+   * @param location 待扫描的存储位置
+   * @return this，便于链式调用
    */
   DeleteOrphanFiles location(String location);
 
   /**
-   * Removes orphan files only if they are older than the given timestamp.
+   * 仅删除早于给定时间戳的孤儿文件。
    *
-   * <p>This is a safety measure to avoid removing files that are being added to the table. For
-   * example, there may be a concurrent operation adding new files while this action searches for
-   * orphan files. New files may not be referenced by the metadata yet but they are not orphan.
+   * <p>这是一项安全措施，避免删除正在被并发写入但尚未被元数据引用的新文件。若未设置，默认取 3 天前的时间戳。
    *
-   * <p>If not set, defaults to a timestamp 3 days ago.
-   *
-   * @param olderThanTimestamp a long timestamp, as returned by {@link System#currentTimeMillis()}
-   * @return this for method chaining
+   * @param olderThanTimestamp 时间戳，单位毫秒，由 {@link System#currentTimeMillis()} 返回
+   * @return this，便于链式调用
    */
   DeleteOrphanFiles olderThan(long olderThanTimestamp);
 
   /**
-   * Passes an alternative delete implementation that will be used for orphan files.
+   * 指定用于删除孤儿文件的自定义删除函数。
    *
-   * <p>This method allows users to customize the delete function. For example, one may set a custom
-   * delete func and collect all orphan files into a set instead of physically removing them.
+   * <p>允许调用方自定义删除行为，例如仅收集孤儿文件路径而不真正物理删除。若未设置，默认使用 表的 {@link org.apache.iceberg.io.FileIO io} 实现。
    *
-   * <p>If not set, defaults to using the table's {@link org.apache.iceberg.io.FileIO io}
-   * implementation.
-   *
-   * @param deleteFunc a function that will be called to delete files
-   * @return this for method chaining
+   * @param deleteFunc 接收文件路径的删除函数
+   * @return this，便于链式调用
    */
   DeleteOrphanFiles deleteWith(Consumer<String> deleteFunc);
 
   /**
-   * Passes an alternative executor service that will be used for removing orphaned files. This
-   * service will only be used if a custom delete function is provided by {@link
-   * #deleteWith(Consumer)} or if the FileIO does not {@link SupportsBulkOperations support bulk
-   * deletes}. Otherwise, parallelism should be controlled by the IO specific {@link
-   * SupportsBulkOperations#deleteFiles(Iterable) deleteFiles} method.
+   * 指定用于删除孤儿文件的替代执行器服务。
    *
-   * <p>If this method is not called and bulk deletes are not supported, orphaned manifests and data
-   * files will still be deleted in the current thread.
+   * <p>仅当通过 {@link #deleteWith(Consumer)} 提供自定义删除函数、或 FileIO 不 {@link SupportsBulkOperations
+   * 支持批量删除}时才会使用该执行器；否则并行度由 IO 专属的 {@link SupportsBulkOperations#deleteFiles(Iterable) deleteFiles}
+   * 控制。若未调用且不支持 批量删除，孤儿清单与数据文件仍会在当前线程被删除。
    *
-   * @param executorService the service to use
-   * @return this for method chaining
+   * @param executorService 使用的执行器服务
+   * @return this，便于链式调用
    */
   DeleteOrphanFiles executeDeleteWith(ExecutorService executorService);
 
   /**
-   * Passes a prefix mismatch mode that determines how this action should handle situations when the
-   * metadata references files that match listed/provided files except for authority/scheme.
+   * 指定前缀不匹配（prefix mismatch）模式，决定当元数据引用的文件与列出文件除 authority/scheme 外完全一致时的处理方式。
    *
-   * <p>Possible values are "ERROR", "IGNORE", "DELETE". The default mismatch mode is "ERROR", which
-   * means an exception is thrown whenever there is a mismatch in authority/scheme. It's the
-   * recommended mismatch mode and should be changed only in some rare circumstances. If there is a
-   * mismatch, use {@link #equalSchemes(Map)} and {@link #equalAuthorities(Map)} to resolve
-   * conflicts by providing equivalent schemes and authorities. If it is impossible to determine
-   * whether the conflicting authorities/schemes are equal, set the prefix mismatch mode to "IGNORE"
-   * to skip files with mismatches. If you have manually inspected all conflicting
-   * authorities/schemes, provided equivalent schemes/authorities and are absolutely confident the
-   * remaining ones are different, set the prefix mismatch mode to "DELETE" to consider files with
-   * mismatches as orphan. It will be impossible to recover files after deletion, so the "DELETE"
-   * prefix mismatch mode must be used with extreme caution.
+   * <p>可选值为 "ERROR"、"IGNORE"、"DELETE"。默认为 "ERROR"：只要 authority/scheme 不一致即抛
+   * 异常，这是推荐模式，仅在极少数情况下修改。若出现不匹配，可先通过 {@link #equalSchemes(Map)} 与 {@link #equalAuthorities(Map)}
+   * 提供等价 scheme/authority 来 解决冲突；若无法判断是否等价，可设为 "IGNORE" 跳过这些文件；若已人工核对全部冲突、提供等价 映射且确信剩余确属不同，可设为
+   * "DELETE" 将不匹配文件视为孤儿删除。删除后不可恢复，"DELETE" 模式须极度谨慎使用。
    *
-   * @param newPrefixMismatchMode mode for handling prefix mismatches
-   * @return this for method chaining
+   * @param newPrefixMismatchMode 前缀不匹配处理模式
+   * @return this，便于链式调用
    */
   default DeleteOrphanFiles prefixMismatchMode(PrefixMismatchMode newPrefixMismatchMode) {
     throw new UnsupportedOperationException(
@@ -111,13 +105,12 @@ public interface DeleteOrphanFiles extends Action<DeleteOrphanFiles, DeleteOrpha
   }
 
   /**
-   * Passes schemes that should be considered equal.
+   * 指定应被视为等价的 scheme 集合。
    *
-   * <p>The key may include a comma-separated list of schemes. For instance, Map("s3a,s3,s3n",
-   * "s3").
+   * <p>Map 的 key 可包含逗号分隔的多个 scheme，例如 Map("s3a,s3,s3n", "s3")。
    *
-   * @param newEqualSchemes list of equal schemes
-   * @return this for method chaining
+   * @param newEqualSchemes 等价 scheme 映射
+   * @return this，便于链式调用
    */
   default DeleteOrphanFiles equalSchemes(Map<String, String> newEqualSchemes) {
     throw new UnsupportedOperationException(
@@ -125,36 +118,47 @@ public interface DeleteOrphanFiles extends Action<DeleteOrphanFiles, DeleteOrpha
   }
 
   /**
-   * Passes authorities that should be considered equal.
+   * 指定应被视为等价的 authority 集合。
    *
-   * <p>The key may include a comma-separate list of authorities. For instance, Map("s1name,s2name",
-   * "servicename").
+   * <p>Map 的 key 可包含逗号分隔的多个 authority，例如 Map("s1name,s2name", "servicename")。
    *
-   * @param newEqualAuthorities list of equal authorities
-   * @return this for method chaining
+   * @param newEqualAuthorities 等价 authority 映射
+   * @return this，便于链式调用
    */
   default DeleteOrphanFiles equalAuthorities(Map<String, String> newEqualAuthorities) {
     throw new UnsupportedOperationException(
         this.getClass().getName() + " does not implement equalAuthorities");
   }
 
-  /** The action result that contains a summary of the execution. */
+  /** 动作执行结果，包含执行摘要。 */
   interface Result {
-    /** Returns locations of orphan files. */
+    /**
+     * 返回被删除的孤儿文件位置。
+     *
+     * @return 孤儿文件路径可迭代集合
+     */
     Iterable<String> orphanFileLocations();
   }
 
   /**
-   * Defines the action behavior when location prefixes (scheme/authority) mismatch.
+   * 定义路径前缀（scheme/authority）不匹配时动作行为的枚举。
    *
-   * <p>{@link #ERROR} - throw an exception. {@link #IGNORE} - no action. {@link #DELETE} - delete
-   * files.
+   * <p>{@link #ERROR} 抛出异常；{@link #IGNORE} 跳过不处理；{@link #DELETE} 删除文件。
    */
   enum PrefixMismatchMode {
     ERROR,
     IGNORE,
     DELETE;
 
+    /**
+     * 将字符串解析为 {@link PrefixMismatchMode}。
+     *
+     * <p>逻辑：先校验入参非 null，再以英文大写形式匹配枚举常量；匹配失败时抛出 {@link IllegalArgumentException}，异常信息包含原始输入。
+     *
+     * @param modeAsString 模式字符串
+     * @return 解析得到的枚举值
+     * @throws IllegalArgumentException 当入参为 null 或无法匹配时
+     */
     public static PrefixMismatchMode fromString(String modeAsString) {
       Preconditions.checkArgument(modeAsString != null, "Invalid mode: null");
       try {

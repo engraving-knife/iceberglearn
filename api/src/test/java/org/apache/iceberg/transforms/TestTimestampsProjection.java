@@ -43,10 +43,18 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTimestampsProjection 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTimestampsProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTimestampsProjection {
   private static final Types.TimestampType TYPE = Types.TimestampType.withoutZone();
   private static final Schema SCHEMA = new Schema(optional(1, "timestamp", TYPE));
 
+  /** 辅助方法：assertProjectionStrict。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionStrict(
       PartitionSpec spec,
@@ -81,6 +89,7 @@ public class TestTimestampsProjection {
     }
   }
 
+  /** 辅助方法：assertProjectionStrictValue。 */
   public void assertProjectionStrictValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -88,6 +97,7 @@ public class TestTimestampsProjection {
     assertThat(projection.op()).isEqualTo(expectedOp);
   }
 
+  /** 辅助方法：assertProjectionInclusiveValue。 */
   public void assertProjectionInclusiveValue(
       PartitionSpec spec, UnboundPredicate<?> filter, Expression.Operation expectedOp) {
 
@@ -95,6 +105,7 @@ public class TestTimestampsProjection {
     assertThat(projection.op()).isEqualTo(expectedOp);
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   @SuppressWarnings("unchecked")
   public void assertProjectionInclusive(
       PartitionSpec spec,
@@ -128,6 +139,11 @@ public class TestTimestampsProjection {
     }
   }
 
+  /**
+   * 测试场景：Day Strict Epoch。
+   *
+   * <p>验证该方法在 Day Strict Epoch 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayStrictEpoch() {
     Long date = (long) Literal.of("1970-01-01T00:00:00.00000").to(TYPE).value();
@@ -155,6 +171,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Day Inclusive Epoch。
+   *
+   * <p>验证该方法在 Day Inclusive Epoch 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayInclusiveEpoch() {
     Long date = (long) Literal.of("1970-01-01T00:00:00.00000").to(TYPE).value();
@@ -182,6 +203,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Month Strict Lower Bound。
+   *
+   * <p>验证该方法在 Month Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthStrictLowerBound() {
     Long date = (long) Literal.of("2017-12-01T00:00:00.00000").to(TYPE).value();
@@ -208,6 +234,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Month Strict Lower Bound。
+   *
+   * <p>验证该方法在 Negative Month Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthStrictLowerBound() {
     Long date = (long) Literal.of("1969-01-01T00:00:00.00000").to(TYPE).value();
@@ -234,6 +265,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Month Strict Upper Bound。
+   *
+   * <p>验证该方法在 Month Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthStrictUpperBound() {
     Long date = (long) Literal.of("2017-12-31T23:59:59.999999").to(TYPE).value();
@@ -260,6 +296,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Month Strict Upper Bound。
+   *
+   * <p>验证该方法在 Negative Month Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthStrictUpperBound() {
     Long date = (long) Literal.of("1969-12-31T23:59:59.999999").to(TYPE).value();
@@ -286,6 +327,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", anotherDate, date), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Month Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Month Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthInclusiveLowerBound() {
     Long date = (long) Literal.of("2017-12-01T00:00:00.00000").to(TYPE).value();
@@ -309,6 +355,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Month Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Negative Month Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthInclusiveLowerBound() {
     Long date = (long) Literal.of("1969-01-01T00:00:00.00000").to(TYPE).value();
@@ -336,6 +387,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Month Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Month Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testMonthInclusiveUpperBound() {
     Long date = (long) Literal.of("2017-12-01T23:59:59.999999").to(TYPE).value();
@@ -359,6 +415,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Month Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Negative Month Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeMonthInclusiveUpperBound() {
     Long date = (long) Literal.of("1969-12-31T23:59:59.999999").to(TYPE).value();
@@ -383,6 +444,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Day Strict Lower Bound。
+   *
+   * <p>验证该方法在 Day Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayStrictLowerBound() {
     Long date = (long) Literal.of("2017-12-01T00:00:00.00000").to(TYPE).value();
@@ -410,6 +476,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Day Strict Lower Bound。
+   *
+   * <p>验证该方法在 Negative Day Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayStrictLowerBound() {
     Long date = (long) Literal.of("1969-01-01T00:00:00.00000").to(TYPE).value();
@@ -437,6 +508,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Day Strict Upper Bound。
+   *
+   * <p>验证该方法在 Day Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayStrictUpperBound() {
     Long date = (long) Literal.of("2017-12-01T23:59:59.999999").to(TYPE).value();
@@ -464,6 +540,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Negative Day Strict Upper Bound。
+   *
+   * <p>验证该方法在 Negative Day Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayStrictUpperBound() {
     Long date = (long) Literal.of("1969-12-31T23:59:59.999999").to(TYPE).value();
@@ -491,6 +572,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Day Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Day Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayInclusiveLowerBound() {
     Long date = (long) Literal.of("2017-12-01T00:00:00.00000").to(TYPE).value();
@@ -518,6 +604,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Day Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Negative Day Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayInclusiveLowerBound() {
     Long date = (long) Literal.of("1969-01-01T00:00:00.00000").to(TYPE).value();
@@ -545,6 +636,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Day Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Day Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDayInclusiveUpperBound() {
     Long date = (long) Literal.of("2017-12-01T23:59:59.999999").to(TYPE).value();
@@ -572,6 +668,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Negative Day Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Negative Day Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDayInclusiveUpperBound() {
     Long date = (long) Literal.of("1969-12-31T23:59:59.999999").to(TYPE).value();
@@ -599,6 +700,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Year Strict Lower Bound。
+   *
+   * <p>验证该方法在 Year Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearStrictLowerBound() {
     Long date = (long) Literal.of("2017-01-01T00:00:00.00000").to(TYPE).value();
@@ -620,6 +726,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Year Strict Upper Bound。
+   *
+   * <p>验证该方法在 Year Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearStrictUpperBound() {
     Long date = (long) Literal.of("2017-12-31T23:59:59.999999").to(TYPE).value();
@@ -641,6 +752,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Year Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Year Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearInclusiveLowerBound() {
     Long date = (long) Literal.of("2017-01-01T00:00:00.00000").to(TYPE).value();
@@ -664,6 +780,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Year Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Year Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testYearInclusiveUpperBound() {
     Long date = (long) Literal.of("2017-12-31T23:59:59.999999").to(TYPE).value();
@@ -687,6 +808,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Hour Strict Lower Bound。
+   *
+   * <p>验证该方法在 Hour Strict Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testHourStrictLowerBound() {
     Long date = (long) Literal.of("2017-12-01T10:00:00.00000").to(TYPE).value();
@@ -714,6 +840,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Hour Strict Upper Bound。
+   *
+   * <p>验证该方法在 Hour Strict Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testHourStrictUpperBound() {
     Long date = (long) Literal.of("2017-12-01T10:59:59.999999").to(TYPE).value();
@@ -741,6 +872,11 @@ public class TestTimestampsProjection {
         spec, in("timestamp", date, anotherDate), Expression.Operation.FALSE);
   }
 
+  /**
+   * 测试场景：Hour Inclusive Lower Bound。
+   *
+   * <p>验证该方法在 Hour Inclusive Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testHourInclusiveLowerBound() {
     Long date = (long) Literal.of("2017-12-01T10:00:00.00000").to(TYPE).value();
@@ -768,6 +904,11 @@ public class TestTimestampsProjection {
         spec, notIn("timestamp", date, anotherDate), Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：Hour Inclusive Upper Bound。
+   *
+   * <p>验证该方法在 Hour Inclusive Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testHourInclusiveUpperBound() {
     Long date = (long) Literal.of("2017-12-01T10:59:59.999999").to(TYPE).value();

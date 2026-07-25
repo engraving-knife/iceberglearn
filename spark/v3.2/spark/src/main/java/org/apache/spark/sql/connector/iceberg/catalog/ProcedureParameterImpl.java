@@ -21,7 +21,15 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 import java.util.Objects;
 import org.apache.spark.sql.types.DataType;
 
-/** A {@link ProcedureParameter} implementation. */
+/**
+ * Spark DataSource V2 连接器扩展，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 ProcedureParameterImpl。
+ *
+ * <p>设计意图：实现类，提供具体行为。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 class ProcedureParameterImpl implements ProcedureParameter {
   private final String name;
   private final DataType dataType;
@@ -33,21 +41,37 @@ class ProcedureParameterImpl implements ProcedureParameter {
     this.required = required;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return name;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public DataType dataType() {
     return dataType;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public boolean required() {
     return required;
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -62,11 +86,13 @@ class ProcedureParameterImpl implements ProcedureParameter {
         && Objects.equals(dataType, that.dataType);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(name, dataType, required);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(

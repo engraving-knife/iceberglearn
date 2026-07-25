@@ -23,24 +23,47 @@ import org.apache.iceberg.types.Comparators;
 import org.apache.iceberg.types.Type;
 
 /**
- * Represents a bound term.
+ * 已绑定项（BoundTerm）：在数据行上求出值并携带类型与比较器的已绑定表达式。
  *
- * @param <T> the Java type of values produced by this term
+ * <p>所属模块：iceberg-api（表达式体系“已绑定项”的核心接口，同时继承 {@link Bound} 与 {@link Term}，是 {@link
+ * BoundReference}、{@link BoundTransform} 的父类型）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供 {@link #type()}：返回该项求值结果的 {@link Type}，用于类型校验与字面量转换。
+ *   <li>提供 {@link #comparator()}：返回值比较器，供谓词判断大小关系使用。
+ *   <li>提供 {@link #isEquivalentTo(BoundTerm)}：判定两个项是否对相同输入产生相同值， 用于表达式等价化简。
+ * </ul>
+ *
+ * <p>设计意图：把“类型”与“比较器”下沉到 term 层，使谓词（如 {@link BoundLiteralPredicate}） 可直接复用 term
+ * 的比较器进行大小判断，而无需各自实现。比较器默认基于原始类型 （{@link Comparators#forType}），子类可按需覆盖（如字符串使用 CharSequence 比较）。
+ *
+ * <p>上下游关系：由 {@link UnboundTerm#bind} 绑定产生；被 {@link BoundPredicate} 持有为操作数； 被 {@link
+ * ExpressionVisitors.BoundVisitor}、{@link Evaluator} 等遍历求值。
+ *
+ * @param <T> 该项求值产生的 Java 类型
  */
 public interface BoundTerm<T> extends Bound<T>, Term {
-  /** Returns the type produced by this expression. */
+  /** 返回该项求值结果的数据类型。 */
   Type type();
 
-  /** Returns a {@link Comparator} for values produced by this term. */
+  /**
+   * 返回用于比较该项所产生值的 {@link Comparator}。
+   *
+   * <p>逻辑：默认按项的原始类型从 {@link Comparators#forType} 获取比较器。
+   *
+   * @return 值比较器
+   */
   default Comparator<T> comparator() {
     return Comparators.forType(type().asPrimitiveType());
   }
 
   /**
-   * Returns whether this term is equivalent to another.
+   * 判断本项是否与另一项等价（对相同输入产生相同值）。
    *
-   * @param other a term
-   * @return true if this term returns the same values as the other, false otherwise
+   * @param other 另一项
+   * @return 两者等价返回 true，否则 false
    */
   boolean isEquivalentTo(BoundTerm<?> other);
 }

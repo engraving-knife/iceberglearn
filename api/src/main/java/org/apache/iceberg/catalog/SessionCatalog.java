@@ -30,9 +30,34 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
-/** A Catalog API for table and namespace operations that includes session context. */
+/**
+ * 文件级说明：带会话上下文（SessionContext）的目录服务接口。
+ *
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>在 {@link Catalog} 基础上引入 {@link SessionContext}，使表的加载/创建/删除、命名空间 管理等操作可以绑定到特定会话（含身份、凭证、属性）。
+ *   <li>定义支持会话语境下的表 CRUD、命名空间 CRUD 与缓存失效等操作。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>多租户/多用户隔离：REST catalog 等场景需在服务端区分发起请求的用户与凭证， SessionContext 携带这些信息由实现侧用于鉴权与缓存隔离。
+ *   <li>与 {@link Catalog} 解耦：Catalog 的方法不含会话参数，适合单用户引擎内嵌场景； SessionCatalog 面向服务化、需要上下文透传的部署。
+ * </ul>
+ *
+ * <p>上下游关系：被 REST catalog 等需要会话隔离的实现实现；上层由 Spark/Flink 等引擎 在每次请求时构造 SessionContext 调用。
+ */
 public interface SessionCatalog {
-  /** Context for a session. */
+  /**
+   * 会话上下文：封装一次会话的标识、身份、凭证与属性。
+   *
+   * <p>设计意图：作为不可变的请求元数据载体在引擎与 catalog 之间传递；sessionId 可用于 服务端按会话缓存状态，identity/credentials
+   * 用于鉴权。wrappedIdentity 用于承载引擎 特定的复杂身份对象（如 Spark 的 Principal），避免在 API 层引入引擎依赖。
+   */
   final class SessionContext {
     private final String sessionId;
     private final String identity;
@@ -40,10 +65,25 @@ public interface SessionCatalog {
     private final Map<String, String> properties;
     private final Object wrappedIdentity;
 
+    /**
+     * 创建一个空的会话上下文（随机 sessionId、无身份、无凭证、空属性）。
+     *
+     * <p>用于无需鉴权或上下文无关的调用场景。
+     *
+     * @return 空 {@link SessionContext}
+     */
     public static SessionContext createEmpty() {
       return new SessionContext(UUID.randomUUID().toString(), null, null, ImmutableMap.of());
     }
 
+    /**
+     * 构造会话上下文（不带 wrappedIdentity）。
+     *
+     * @param sessionId 会话标识
+     * @param identity 用户/主体身份字符串
+     * @param credentials 凭证映射
+     * @param properties 会话属性
+     */
     public SessionContext(
         String sessionId,
         String identity,
@@ -52,6 +92,15 @@ public interface SessionCatalog {
       this(sessionId, identity, credentials, properties, null);
     }
 
+    /**
+     * 构造会话上下文（完整版，含 wrappedIdentity）。
+     *
+     * @param sessionId 会话标识
+     * @param identity 用户/主体身份字符串
+     * @param credentials 凭证映射
+     * @param properties 会话属性
+     * @param wrappedIdentity 引擎特定的不透明身份对象
+     */
     public SessionContext(
         String sessionId,
         String identity,
@@ -66,51 +115,53 @@ public interface SessionCatalog {
     }
 
     /**
-     * Returns a string that identifies this session.
+     * 返回会话标识字符串。
      *
-     * <p>This can be used for caching state within a session.
+     * <p>可用于在会话内缓存状态。
      *
-     * @return a string that identifies this session
+     * @return 会话标识
      */
     public String sessionId() {
       return sessionId;
     }
 
     /**
-     * Returns a string that identifies the current user or principal.
+     * 返回当前用户/主体的身份字符串。
      *
-     * <p>This identity cannot change for a given session ID.
+     * <p>同一 sessionId 下 identity 不可变。
      *
-     * @return a user or principal identity string
+     * @return 用户/主体身份字符串
      */
     public String identity() {
       return identity;
     }
 
     /**
-     * Returns the session's credential map.
+     * 返回会话的凭证映射。
      *
-     * <p>This cannot change for a given session ID.
+     * <p>同一 sessionId 下 credentials 不可变。
      *
-     * @return a credential string
+     * @return 凭证字符串映射
      */
     public Map<String, String> credentials() {
       return credentials;
     }
 
     /**
-     * Returns a map of properties currently set for the session.
+     * 返回会话当前属性映射。
      *
-     * @return a map of properties
+     * @return 会话属性映射
      */
     public Map<String, String> properties() {
       return properties;
     }
 
     /**
-     * Returns the opaque wrapped identity object.
+     * 返回不透明的包装身份对象。
      *
-     * @return the wrapped identity
+     * <p>承载引擎特定的复杂身份信息，API 层不解析其内容。
+     *
+     * @return 包装身份对象
      */
     public Object wrappedIdentity() {
       return wrappedIdentity;
@@ -118,64 +169,67 @@ public interface SessionCatalog {
   }
 
   /**
-   * Initialize given a custom name and a map of catalog properties.
+   * 使用自定义名称和属性映射初始化 catalog。
    *
-   * @param name a custom name for the catalog
-   * @param properties catalog properties
+   * @param name catalog 自定义名称
+   * @param properties catalog 配置属性
    */
   void initialize(String name, Map<String, String> properties);
 
   /**
-   * Return the name for this catalog.
+   * 返回本 catalog 的名称。
    *
-   * @return this catalog's name
+   * @return catalog 名称
    */
   String name();
 
   /**
-   * Return the properties for this catalog.
+   * 返回本 catalog 的配置属性。
    *
-   * @return this catalog's config properties
+   * @return catalog 配置属性映射
    */
   Map<String, String> properties();
 
   /**
-   * Return all the identifiers under this namespace.
+   * 列举指定命名空间下的所有表标识符。
    *
-   * @param context session context
-   * @param namespace a namespace
-   * @return a list of identifiers for tables
-   * @throws NoSuchNamespaceException if the namespace does not exist
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @return 该命名空间下的表标识符列表
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出
    */
   List<TableIdentifier> listTables(SessionContext context, Namespace namespace);
 
   /**
-   * Create a builder to create a table or start a create/replace transaction.
+   * 构造一个 {@link Catalog.TableBuilder}，用于在指定会话下创建表或开启创建/替换事务。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @param schema a schema
-   * @return the builder to create a table or start a create/replace transaction
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @param schema 表 Schema
+   * @return 表构建器
    */
   Catalog.TableBuilder buildTable(SessionContext context, TableIdentifier ident, Schema schema);
 
   /**
-   * Register a table if it does not exist.
+   * 在指定会话下注册一个已存在的表（由 metadata 文件位置指定）。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @param metadataFileLocation the location of a metadata file
-   * @return a Table instance
-   * @throws AlreadyExistsException if the table already exists in the catalog.
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @param metadataFileLocation 元数据文件位置
+   * @return 注册后的 {@link Table} 实例
+   * @throws AlreadyExistsException 当表已在 catalog 中存在时抛出
    */
   Table registerTable(SessionContext context, TableIdentifier ident, String metadataFileLocation);
 
   /**
-   * Check whether table exists.
+   * 判断指定会话下表是否存在。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @return true if the table exists, false otherwise
+   * <p>逻辑：默认实现尝试 {@link #loadTable(SessionContext, TableIdentifier)}，捕获 {@link
+   * NoSuchTableException} 时返回 false。
+   *
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @return 表存在返回 true，否则 false
    */
   default boolean tableExists(SessionContext context, TableIdentifier ident) {
     try {
@@ -187,158 +241,144 @@ public interface SessionCatalog {
   }
 
   /**
-   * Load a table.
+   * 在指定会话下加载表。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @return instance of {@link Table} implementation referred by {@code tableIdentifier}
-   * @throws NoSuchTableException if the table does not exist
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @return 该标识符对应的 {@link Table} 实现实例
+   * @throws NoSuchTableException 当表不存在时抛出
    */
   Table loadTable(SessionContext context, TableIdentifier ident);
 
   /**
-   * Drop a table, without requesting that files are immediately deleted.
+   * 在指定会话下删除表，不要求立即删除文件。
    *
-   * <p>Data and metadata files should be deleted according to the catalog's policy.
+   * <p>数据与元数据文件应按 catalog 自身策略删除。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @return true if the table was dropped, false if the table did not exist
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @return 表存在并已删除返回 true，表不存在返回 false
    */
   boolean dropTable(SessionContext context, TableIdentifier ident);
 
   /**
-   * Drop a table and request that files are immediately deleted.
+   * 在指定会话下删除表并要求立即清理文件。
    *
-   * @param context session context
-   * @param ident a table identifier
-   * @return true if the table was dropped and purged, false if the table did not exist
-   * @throws UnsupportedOperationException if immediate delete is not supported
+   * @param context 会话上下文
+   * @param ident 表标识符
+   * @return 表存在并已清理返回 true，表不存在返回 false
+   * @throws UnsupportedOperationException 当实现不支持立即删除时抛出
    */
   boolean purgeTable(SessionContext context, TableIdentifier ident);
 
   /**
-   * Rename a table.
+   * 在指定会话下重命名表。
    *
-   * @param context session context
-   * @param from identifier of the table to rename
-   * @param to new table name
-   * @throws NoSuchTableException if the from table does not exist
-   * @throws AlreadyExistsException if the to table already exists
+   * @param context 会话上下文
+   * @param from 原表标识符
+   * @param to 新表标识符
+   * @throws NoSuchTableException 当 from 表不存在时抛出
+   * @throws AlreadyExistsException 当 to 表已存在时抛出
    */
   void renameTable(SessionContext context, TableIdentifier from, TableIdentifier to);
 
   /**
-   * Invalidate cached table metadata from current catalog.
+   * 在指定会话下使本 catalog 中缓存的表元数据失效。
    *
-   * <p>If the table is already loaded or cached, drop cached data. If the table does not exist or
-   * is not cached, do nothing.
+   * <p>若表已被加载或缓存，则丢弃缓存数据；若表不存在或未被缓存，则不做任何操作。
    *
-   * @param context session context
-   * @param ident a table identifier
+   * @param context 会话上下文
+   * @param ident 表标识符
    */
   void invalidateTable(SessionContext context, TableIdentifier ident);
 
   /**
-   * Create a namespace in the catalog.
+   * 在指定会话下创建命名空间（不带属性）。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @throws AlreadyExistsException If the namespace already exists
-   * @throws UnsupportedOperationException If create is not a supported operation
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @throws AlreadyExistsException 当命名空间已存在时抛出
+   * @throws UnsupportedOperationException 当实现不支持创建命名空间时抛出
    */
   default void createNamespace(SessionContext context, Namespace namespace) {
     createNamespace(context, namespace, ImmutableMap.of());
   }
 
   /**
-   * Create a namespace in the catalog.
+   * 在指定会话下创建命名空间（带属性）。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @param metadata a string Map of properties for the given namespace
-   * @throws AlreadyExistsException If the namespace already exists
-   * @throws UnsupportedOperationException If create is not a supported operation
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @param metadata 命名空间属性映射
+   * @throws AlreadyExistsException 当命名空间已存在时抛出
+   * @throws UnsupportedOperationException 当实现不支持创建命名空间时抛出
    */
   void createNamespace(SessionContext context, Namespace namespace, Map<String, String> metadata);
 
   /**
-   * List top-level namespaces from the catalog.
+   * 列举顶层命名空间。
    *
-   * <p>If an object such as a table, view, or function exists, its parent namespaces must also
-   * exist and must be returned by this discovery method. For example, if table a.b.t exists, this
-   * method must return ["a"] in the result array.
+   * <p>若某对象（表/视图/函数）存在，其各级父命名空间也必须存在并被本方法返回。 例如存在表 a.b.t 时，本方法须返回 ["a"]。
    *
-   * @param context session context
-   * @return a List of namespace {@link Namespace} names
+   * @param context 会话上下文
+   * @return 顶层命名空间列表
    */
   default List<Namespace> listNamespaces(SessionContext context) {
     return listNamespaces(context, Namespace.empty());
   }
 
   /**
-   * List child namespaces from the namespace.
+   * 列举指定命名空间的子命名空间。
    *
-   * <p>For two existing tables named 'a.b.c.table' and 'a.b.d.table', this method returns:
-   *
-   * <ul>
-   *   <li>Given: {@code Namespace.empty()}
-   *   <li>Returns: {@code Namespace.of("a")}
-   * </ul>
+   * <p>例如对已存在的表 a.b.c.table 与 a.b.d.table：
    *
    * <ul>
-   *   <li>Given: {@code Namespace.of("a")}
-   *   <li>Returns: {@code Namespace.of("a", "b")}
+   *   <li>传入 {@code Namespace.empty()} 返回 {@code Namespace.of("a")}
+   *   <li>传入 {@code Namespace.of("a")} 返回 {@code Namespace.of("a","b")}
+   *   <li>传入 {@code Namespace.of("a","b")} 返回 {@code Namespace.of("a","b","c")} 与 {@code
+   *       Namespace.of("a","b","d")}
+   *   <li>传入 {@code Namespace.of("a","b","c")} 返回空列表（无子命名空间）
    * </ul>
    *
-   * <ul>
-   *   <li>Given: {@code Namespace.of("a", "b")}
-   *   <li>Returns: {@code Namespace.of("a", "b", "c")} and {@code Namespace.of("a", "b", "d")}
-   * </ul>
-   *
-   * <ul>
-   *   <li>Given: {@code Namespace.of("a", "b", "c")}
-   *   <li>Returns: empty list, because there are no child namespaces
-   * </ul>
-   *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @return a List of child {@link Namespace} names from the given namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
+   * @param context 会话上下文
+   * @param namespace 父命名空间
+   * @return 子命名空间列表
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
    */
   List<Namespace> listNamespaces(SessionContext context, Namespace namespace);
 
   /**
-   * Load metadata properties for a namespace.
+   * 加载命名空间的元数据属性。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @return a string map of properties for the given namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @return 命名空间属性映射
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
    */
   Map<String, String> loadNamespaceMetadata(SessionContext context, Namespace namespace);
 
   /**
-   * Drop a namespace. If the namespace exists and was dropped, this will return true.
+   * 删除命名空间。命名空间存在并已删除返回 true。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @return true if the namespace was dropped, false otherwise.
-   * @throws NamespaceNotEmptyException If the namespace is not empty
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @return 已删除返回 true，否则 false
+   * @throws NamespaceNotEmptyException 当命名空间非空时抛出
    */
   boolean dropNamespace(SessionContext context, Namespace namespace);
 
   /**
-   * Set a collection of properties on a namespace in the catalog.
+   * 在指定会话下批量更新命名空间属性。
    *
-   * <p>Properties that are not in the given map are not modified or removed by this method.
+   * <p>未出现在 updates 中的属性不会被修改或移除。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @param updates properties to set for the namespace
-   * @param removals properties to remove from the namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
-   * @throws UnsupportedOperationException If namespace properties are not supported
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @param updates 待设置的属性
+   * @param removals 待移除的属性键集合
+   * @return 成功更新返回 true
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
+   * @throws UnsupportedOperationException 当实现不支持命名空间属性时抛出
    */
   boolean updateNamespaceMetadata(
       SessionContext context,
@@ -347,11 +387,14 @@ public interface SessionCatalog {
       Set<String> removals);
 
   /**
-   * Checks whether the Namespace exists.
+   * 判断指定命名空间是否存在。
    *
-   * @param context session context
-   * @param namespace a {@link Namespace namespace}
-   * @return true if the Namespace exists, false otherwise
+   * <p>逻辑：默认实现尝试 {@link #loadNamespaceMetadata(SessionContext, Namespace)}， 捕获 {@link
+   * NoSuchNamespaceException} 时返回 false。
+   *
+   * @param context 会话上下文
+   * @param namespace 命名空间
+   * @return 存在返回 true，否则 false
    */
   default boolean namespaceExists(SessionContext context, Namespace namespace) {
     try {

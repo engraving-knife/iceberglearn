@@ -32,8 +32,25 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * Schema 的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把 {@link Schema} 与 {@link Type} 树与 JSON 互转， 是表元数据持久化的核心组件之一。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>类型分发：按 {@link Type.TypeID} 分发到 struct/list/map/基础类型的读写分支。
+ *   <li>字段 id 持久化：每个字段都写 id，支持 schema 演化（重命名/重排）。
+ *   <li>identifier-field-ids：单独保存主键字段 id 列表。
+ *   <li>Caffeine 缓存：缓存类型到 JSON 片段，减少重复计算。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link TableMetadataParser}、各 REST/序列化层调用；依赖 {@link JsonUtil}。
+ */
 public class SchemaParser {
 
+  /** 私有构造：工具类禁止实例化。 */
   private SchemaParser() {}
 
   private static final String SCHEMA_ID = "schema-id";
@@ -56,10 +73,26 @@ public class SchemaParser {
   private static final String ELEMENT_REQUIRED = "element-required";
   private static final String VALUE_REQUIRED = "value-required";
 
+  /**
+   * 把 StructType 写入 JSON 生成器（不带 schema-id 与 identifier-field-ids）。
+   *
+   * @param struct struct 类型
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   private static void toJson(Types.StructType struct, JsonGenerator generator) throws IOException {
     toJson(struct, null, null, generator);
   }
 
+  /**
+   * 把 StructType 写入 JSON 生成器，可选附加 schema-id 与 identifier-field-ids。
+   *
+   * <p>输出格式：
+   *
+   * <pre>
+   * {type:"struct", schema-id:?, identifier-field-ids:[?], fields:[{id,name,required,type,doc?}]}
+   * </pre>
+   */
   private static void toJson(
       Types.StructType struct,
       Integer schemaId,
@@ -95,6 +128,13 @@ public class SchemaParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把 ListType 写入 JSON 生成器。
+   *
+   * @param list list 类型
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(Types.ListType list, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
 
@@ -108,6 +148,13 @@ public class SchemaParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把 MapType 写入 JSON 生成器。
+   *
+   * @param map map 类型
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(Types.MapType map, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
 
@@ -125,10 +172,24 @@ public class SchemaParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把原始类型写入 JSON 生成器（直接写字符串形式，如 "long"、"string"）。
+   *
+   * @param primitive 原始类型
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(Type.PrimitiveType primitive, JsonGenerator generator) throws IOException {
     generator.writeString(primitive.toString());
   }
 
+  /**
+   * 按类型分发到 struct/list/map/primitive 各自的写入方法。
+   *
+   * @param type 任意 Iceberg 类型
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(Type type, JsonGenerator generator) throws IOException {
     if (type.isPrimitiveType()) {
       toJson(type.asPrimitiveType(), generator);
@@ -150,20 +211,49 @@ public class SchemaParser {
     }
   }
 
+  /**
+   * 把 Schema 写入 JSON 生成器（带 schema-id 与 identifier-field-ids）。
+   *
+   * @param schema 表 schema
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   public static void toJson(Schema schema, JsonGenerator generator) throws IOException {
     toJson(schema.asStruct(), schema.schemaId(), schema.identifierFieldIds(), generator);
   }
 
+  /**
+   * 把 Schema 序列化为 JSON 字符串（紧凑形式）。
+   *
+   * @param schema 表 schema
+   * @return JSON 字符串
+   */
   public static String toJson(Schema schema) {
     return toJson(schema, false);
   }
 
+  /**
+   * 把 Schema 序列化为 JSON 字符串，可选择是否美化输出。
+   *
+   * @param schema 表 schema
+   * @param pretty 是否美化输出
+   * @return JSON 字符串
+   */
   public static String toJson(Schema schema, boolean pretty) {
     return JsonUtil.generate(
         gen -> toJson(schema.asStruct(), schema.schemaId(), schema.identifierFieldIds(), gen),
         pretty);
   }
 
+  /**
+   * 从 JSON 节点解析出任意 {@link Type}。
+   *
+   * <p>步骤：文本节点视为原始类型；对象节点按 type 字段分发到 struct/list/map。
+   *
+   * @param json JSON 节点
+   * @return 解析得到的类型
+   * @throws IllegalArgumentException 当 JSON 无法识别为有效类型时
+   */
   private static Type typeFromJson(JsonNode json) {
     if (json.isTextual()) {
       return Types.fromPrimitiveString(json.asText());
@@ -184,6 +274,14 @@ public class SchemaParser {
     throw new IllegalArgumentException("Cannot parse type from json: " + json);
   }
 
+  /**
+   * 从 JSON 节点解析 StructType。
+   *
+   * <p>步骤：取 fields 数组，逐字段解析 id/name/type/doc/required 并构造 NestedField。
+   *
+   * @param json JSON 节点
+   * @return 解析得到的 StructType
+   */
   private static Types.StructType structFromJson(JsonNode json) {
     JsonNode fieldArray = JsonUtil.get(FIELDS, json);
     Preconditions.checkArgument(
@@ -212,6 +310,12 @@ public class SchemaParser {
     return Types.StructType.of(fields);
   }
 
+  /**
+   * 从 JSON 节点解析 ListType。
+   *
+   * @param json JSON 节点
+   * @return 解析得到的 ListType
+   */
   private static Types.ListType listFromJson(JsonNode json) {
     int elementId = JsonUtil.getInt(ELEMENT_ID, json);
     Type elementType = typeFromJson(JsonUtil.get(ELEMENT, json));
@@ -224,6 +328,12 @@ public class SchemaParser {
     }
   }
 
+  /**
+   * 从 JSON 节点解析 MapType。
+   *
+   * @param json JSON 节点
+   * @return 解析得到的 MapType
+   */
   private static Types.MapType mapFromJson(JsonNode json) {
     int keyId = JsonUtil.getInt(KEY_ID, json);
     Type keyType = typeFromJson(JsonUtil.get(KEY, json));
@@ -240,6 +350,21 @@ public class SchemaParser {
     }
   }
 
+  /**
+   * 从 JSON 节点解析 Schema。
+   *
+   * <p>步骤：
+   *
+   * <ol>
+   *   <li>调用 {@link #typeFromJson} 取类型，校验必须是 struct；
+   *   <li>读取可选的 schema-id 与 identifier-field-ids；
+   *   <li>schema-id 为 null 时构造无 id 的 Schema，否则带 id 构造。
+   * </ol>
+   *
+   * @param json JSON 节点
+   * @return 解析得到的 Schema
+   * @throws IllegalArgumentException 当解析出的类型不是 struct 时
+   */
   public static Schema fromJson(JsonNode json) {
     Type type = typeFromJson(json);
     Preconditions.checkArgument(
@@ -256,9 +381,16 @@ public class SchemaParser {
     }
   }
 
+  /** Schema 反序列化结果缓存。键为 JSON 字符串，值为弱引用 Schema，避免热路径重复解析。 */
   private static final Cache<String, Schema> SCHEMA_CACHE =
       Caffeine.newBuilder().weakValues().build();
 
+  /**
+   * 从 JSON 字符串解析 Schema（带缓存）。
+   *
+   * @param json JSON 字符串
+   * @return 解析得到的 Schema（可能来自缓存）
+   */
   public static Schema fromJson(String json) {
     return SCHEMA_CACHE.get(json, jsonKey -> JsonUtil.parse(json, SchemaParser::fromJson));
   }

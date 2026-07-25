@@ -24,10 +24,19 @@ import org.apache.spark.sql.connector.catalog.Table
 import org.apache.spark.sql.connector.write.RowLevelOperationTable
 
 /**
- * A class similar to DataSourceV2Implicits in Spark but contains custom implicit helpers.
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 ExtendedDataSourceV2Implicits。
+ * <p>设计意图：实现类，提供具体行为。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 object ExtendedDataSourceV2Implicits {
   implicit class TableHelper(table: Table) {
+    /**
+     * 执行该方法的具体逻辑。
+     * @return 结果对象
+     */
     def asRowLevelOperationTable: RowLevelOperationTable = {
       table match {
         case rowLevelOperationTable: RowLevelOperationTable =>

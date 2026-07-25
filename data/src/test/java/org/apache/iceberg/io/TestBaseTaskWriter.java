@@ -43,6 +43,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestBaseTaskWriter 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestBaseTaskWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestBaseTaskWriter extends TableTestBase {
   private static final int FORMAT_V2 = 2;
 
@@ -52,16 +59,19 @@ public class TestBaseTaskWriter extends TableTestBase {
   private OutputFileFactory fileFactory = null;
   private FileAppenderFactory<Record> appenderFactory = null;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat = {0}")
   public static Object[][] parameters() {
     return new Object[][] {{"avro"}, {"orc"}, {"parquet"}};
   }
 
+  /** 辅助方法：TestBaseTaskWriter。 */
   public TestBaseTaskWriter(String fileFormat) {
     super(FORMAT_V2);
     this.format = FileFormat.fromString(fileFormat);
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -86,10 +96,16 @@ public class TestBaseTaskWriter extends TableTestBase {
     table.updateProperties().defaultFormat(format).commit();
   }
 
+  /** 辅助方法：createRecord。 */
   private Record createRecord(Integer id, String data) {
     return gRecord.copy("id", id, "data", data);
   }
 
+  /**
+   * 测试场景：Write Zero Record。
+   *
+   * <p>验证该方法在 Write Zero Record 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteZeroRecord() throws IOException {
     try (TestTaskWriter writer = createTaskWriter(128 * 1024 * 1024)) {
@@ -106,6 +122,11 @@ public class TestBaseTaskWriter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Abort。
+   *
+   * <p>验证该方法在 Abort 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbort() throws IOException {
     List<Record> records = Lists.newArrayList();
@@ -139,6 +160,11 @@ public class TestBaseTaskWriter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Roll If Exceed Target File Size。
+   *
+   * <p>验证该方法在 Roll If Exceed Target File Size 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollIfExceedTargetFileSize() throws IOException {
     List<Record> records = Lists.newArrayListWithCapacity(8000);
@@ -191,12 +217,14 @@ public class TestBaseTaskWriter extends TableTestBase {
         "Should have expected records", expectedRowSet(expected), actualRowSet("*"));
   }
 
+  /** 辅助方法：expectedRowSet。 */
   private StructLikeSet expectedRowSet(Iterable<Record> records) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     records.forEach(set::add);
     return set;
   }
 
+  /** 辅助方法：actualRowSet。 */
   private StructLikeSet actualRowSet(String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     try (CloseableIterable<Record> reader = IcebergGenerics.read(table).select(columns).build()) {
@@ -205,6 +233,7 @@ public class TestBaseTaskWriter extends TableTestBase {
     return set;
   }
 
+  /** 辅助方法：createTaskWriter。 */
   private TestTaskWriter createTaskWriter(long targetFileSize) {
     return new TestTaskWriter(
         table.spec(), format, appenderFactory, fileFactory, table.io(), targetFileSize);
@@ -215,6 +244,7 @@ public class TestBaseTaskWriter extends TableTestBase {
     private RollingFileWriter dataWriter;
     private RollingEqDeleteWriter deleteWriter;
 
+    /** 辅助方法：TestTaskWriter。 */
     private TestTaskWriter(
         PartitionSpec spec,
         FileFormat format,
@@ -227,6 +257,7 @@ public class TestBaseTaskWriter extends TableTestBase {
       this.deleteWriter = new RollingEqDeleteWriter(null);
     }
 
+    /** 辅助方法：write。 */
     @Override
     public void write(Record row) throws IOException {
       dataWriter.write(row);
@@ -236,6 +267,7 @@ public class TestBaseTaskWriter extends TableTestBase {
       deleteWriter.write(row);
     }
 
+    /** 辅助方法：close。 */
     @Override
     public void close() throws IOException {
       if (dataWriter != null) {

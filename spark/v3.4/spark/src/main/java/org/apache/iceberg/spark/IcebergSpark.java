@@ -25,9 +25,18 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Spark 集成的入口工具类，提供 bucket/truncate 等变换的 Spark UDF 注册静态方法。
+ *
+ * <p>设计意图：作为门面（Facade）聚合常用变换注册 API，简化上层调用。
+ *
+ * <p>上下游关系：被用户代码与 Spark 表函数注册调用；依赖 SparkTypeToType 与 SparkValueConverter。
+ */
 public class IcebergSpark {
   private IcebergSpark() {}
-
+  /** 执行 registerBucketUDF 相关操作。 */
   public static void registerBucketUDF(
       SparkSession session, String funcName, DataType sourceType, int numBuckets) {
     SparkTypeToType typeConverter = new SparkTypeToType();
@@ -40,7 +49,7 @@ public class IcebergSpark {
             value -> bucket.apply(SparkValueConverter.convert(sourceIcebergType, value)),
             DataTypes.IntegerType);
   }
-
+  /** 执行 registerTruncateUDF 相关操作。 */
   public static void registerTruncateUDF(
       SparkSession session, String funcName, DataType sourceType, int width) {
     SparkTypeToType typeConverter = new SparkTypeToType();

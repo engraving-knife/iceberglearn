@@ -21,45 +21,63 @@ package org.apache.iceberg.actions;
 import java.util.function.Predicate;
 import org.apache.iceberg.ManifestFile;
 
-/** An action that rewrites manifests. */
+/**
+ * 重写清单（manifests）的动作。
+ *
+ * <p>所属模块：iceberg-api。继承自 {@link SnapshotUpdate}，重写过程会产出新快照。
+ *
+ * <p>职责：按分区规范 ID、谓词过滤等条件重写清单文件，将多个小清单合并或重新组织，以改善读取 性能；可指定暂存位置写入新清单。
+ *
+ * <p>设计意图：随着表持续写入，清单文件可能过多或布局不佳，影响计划阶段效率。本动作提供受控的 清单重写能力，支持按 specId 与谓词精确选择待重写清单，避免无差别全量重写。
+ *
+ * <p>上下游关系：由引擎模块实现；结果通过 {@link Result} 返回被重写与新增的清单。
+ */
 public interface RewriteManifests
     extends SnapshotUpdate<RewriteManifests, RewriteManifests.Result> {
   /**
-   * Rewrites manifests for a given spec id.
+   * 重写指定分区规范 ID 对应的清单。
    *
-   * <p>If not set, defaults to the table's default spec ID.
+   * <p>若未设置，默认使用表的默认 spec ID。
    *
-   * @param specId a spec id
-   * @return this for method chaining
+   * @param specId 分区规范 ID
+   * @return this，便于链式调用
    */
   RewriteManifests specId(int specId);
 
   /**
-   * Rewrites only manifests that match the given predicate.
+   * 仅重写匹配给定谓词的清单。
    *
-   * <p>If not set, all manifests will be rewritten.
+   * <p>若未设置，则重写全部清单。
    *
-   * @param predicate a predicate
-   * @return this for method chaining
+   * @param predicate 清单过滤谓词
+   * @return this，便于链式调用
    */
   RewriteManifests rewriteIf(Predicate<ManifestFile> predicate);
 
   /**
-   * Passes a location where the staged manifests should be written.
+   * 指定暂存清单的写入位置。
    *
-   * <p>If not set, defaults to the table's metadata location.
+   * <p>若未设置，默认使用表的元数据位置。
    *
-   * @param stagingLocation a staging location
-   * @return this for method chaining
+   * @param stagingLocation 暂存位置
+   * @return this，便于链式调用
    */
   RewriteManifests stagingLocation(String stagingLocation);
 
-  /** The action result that contains a summary of the execution. */
+  /** 动作执行结果，包含执行摘要。 */
   interface Result {
-    /** Returns rewritten manifests. */
+    /**
+     * 返回被重写（替换）的清单。
+     *
+     * @return 被重写清单可迭代集合
+     */
     Iterable<ManifestFile> rewrittenManifests();
 
-    /** Returns added manifests. */
+    /**
+     * 返回新增的清单。
+     *
+     * @return 新增清单可迭代集合
+     */
     Iterable<ManifestFile> addedManifests();
   }
 }

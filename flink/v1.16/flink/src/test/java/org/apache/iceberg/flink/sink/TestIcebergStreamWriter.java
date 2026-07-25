@@ -64,6 +64,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergStreamWriter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestIcebergStreamWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergStreamWriter {
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -73,6 +80,7 @@ public class TestIcebergStreamWriter {
   private final FileFormat format;
   private final boolean partitioned;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "format = {0}, partitioned = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -85,11 +93,13 @@ public class TestIcebergStreamWriter {
     };
   }
 
+  /** 辅助方法：TestIcebergStreamWriter，Iceberg Stream Writer。 */
   public TestIcebergStreamWriter(String format, boolean partitioned) {
     this.format = FileFormat.fromString(format);
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     File folder = tempFolder.newFolder();
@@ -98,6 +108,11 @@ public class TestIcebergStreamWriter {
     table = SimpleDataUtil.createTable(folder.getAbsolutePath(), props, partitioned);
   }
 
+  /**
+   * 测试场景：Writing Table。
+   *
+   * <p>验证该方法在 Writing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWritingTable() throws Exception {
     long checkpointId = 1L;
@@ -143,6 +158,11 @@ public class TestIcebergStreamWriter {
     }
   }
 
+  /**
+   * 测试场景：Snapshot Twice。
+   *
+   * <p>验证该方法在 Snapshot Twice 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshotTwice() throws Exception {
     long checkpointId = 1;
@@ -169,6 +189,11 @@ public class TestIcebergStreamWriter {
     }
   }
 
+  /**
+   * 测试场景：Table Without Snapshot。
+   *
+   * <p>验证该方法在 Table Without Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableWithoutSnapshot() throws Exception {
     try (OneInputStreamOperatorTestHarness<RowData, WriteResult> testHarness =
@@ -188,6 +213,7 @@ public class TestIcebergStreamWriter {
     Assert.assertEquals(1, scanDataFiles().size());
   }
 
+  /** 辅助方法：scanDataFiles，scan Data Files。 */
   private Set<String> scanDataFiles() throws IOException {
     Path dataDir = new Path(table.location(), "data");
     FileSystem fs = FileSystem.get(new Configuration());
@@ -209,6 +235,11 @@ public class TestIcebergStreamWriter {
     }
   }
 
+  /**
+   * 测试场景：Bounded Stream Close With Emitting Data Files。
+   *
+   * <p>验证该方法在 Bounded Stream Close With Emitting Data Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedStreamCloseWithEmittingDataFiles() throws Exception {
     try (OneInputStreamOperatorTestHarness<RowData, WriteResult> testHarness =
@@ -233,6 +264,11 @@ public class TestIcebergStreamWriter {
     }
   }
 
+  /**
+   * 测试场景：Bounded Stream Triggered End Input Before Triggering Checkpoint。
+   *
+   * <p>验证该方法在 Bounded Stream Triggered End Input Before Triggering Checkpoint 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedStreamTriggeredEndInputBeforeTriggeringCheckpoint() throws Exception {
     try (OneInputStreamOperatorTestHarness<RowData, WriteResult> testHarness =
@@ -257,6 +293,11 @@ public class TestIcebergStreamWriter {
     }
   }
 
+  /**
+   * 测试场景：Table With Target File Size。
+   *
+   * <p>验证该方法在 Table With Target File Size 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableWithTargetFileSize() throws Exception {
     // Adjust the target-file-size in table properties.
@@ -301,6 +342,11 @@ public class TestIcebergStreamWriter {
     SimpleDataUtil.assertTableRecords(table, records);
   }
 
+  /**
+   * 测试场景：Promoted Flink Data Type。
+   *
+   * <p>验证该方法在 Promoted Flink Data Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testPromotedFlinkDataType() throws Exception {
     Schema iSchema =
@@ -363,11 +409,13 @@ public class TestIcebergStreamWriter {
     SimpleDataUtil.assertTableRecords(location, expected);
   }
 
+  /** 辅助方法：createIcebergStreamWriter，create Iceberg Stream Writer。 */
   private OneInputStreamOperatorTestHarness<RowData, WriteResult> createIcebergStreamWriter()
       throws Exception {
     return createIcebergStreamWriter(table, SimpleDataUtil.FLINK_SCHEMA);
   }
 
+  /** 辅助方法：createIcebergStreamWriter，create Iceberg Stream Writer。 */
   private OneInputStreamOperatorTestHarness<RowData, WriteResult> createIcebergStreamWriter(
       Table icebergTable, TableSchema flinkSchema) throws Exception {
     RowType flinkRowType = FlinkSink.toFlinkRowType(icebergTable.schema(), flinkSchema);

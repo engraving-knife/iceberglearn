@@ -40,6 +40,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Internal
+/**
+ * 连续分片规划器实现，基于 Iceberg 增量扫描产出分片。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 snapshot 间新增数据文件切分 split，记录枚举位置。
+ *
+ * <p>设计意图：实现 ContinuousSplitPlanner；被 ContinuousIcebergEnumerator 调用。
+ */
 public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ContinuousSplitPlannerImpl.class);
 

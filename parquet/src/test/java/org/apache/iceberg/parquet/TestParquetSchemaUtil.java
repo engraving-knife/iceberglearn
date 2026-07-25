@@ -41,6 +41,13 @@ import org.apache.parquet.schema.Types.MapBuilder;
 import org.apache.parquet.schema.Types.PrimitiveBuilder;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestParquetSchemaUtil 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquetSchemaUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetSchemaUtil {
   private static final Types.StructType SUPPORTED_PRIMITIVES =
       Types.StructType.of(
@@ -61,6 +68,11 @@ public class TestParquetSchemaUtil {
           required(116, "dec_38_10", Types.DecimalType.of(38, 10)) // spark's maximum precision
           );
 
+  /**
+   * 测试场景：Assign Ids By Name Mapping。
+   *
+   * <p>验证该方法在 Assign Ids By Name Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssignIdsByNameMapping() {
     Types.StructType structType =
@@ -127,6 +139,11 @@ public class TestParquetSchemaUtil {
     assertThat(messageTypeWithIdsFromNameMapping).isEqualTo(messageTypeWithIds);
   }
 
+  /**
+   * 测试场景：Schema Conversion Without Assigning Ids。
+   *
+   * <p>验证该方法在 Schema Conversion Without Assigning Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaConversionWithoutAssigningIds() {
     MessageType messageType =
@@ -264,6 +281,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Schema Conversion For Hive Style Lists。
+   *
+   * <p>验证该方法在 Schema Conversion For Hive Style Lists 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaConversionForHiveStyleLists() {
     String parquetSchemaString =
@@ -293,6 +315,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Legacy Two Level List Type With Primitive Element。
+   *
+   * <p>验证该方法在 Legacy Two Level List Type With Primitive Element 条件下的行为是否符合预期。
+   */
   @Test
   public void testLegacyTwoLevelListTypeWithPrimitiveElement() {
     String parquetSchemaString =
@@ -313,6 +340,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Legacy Two Level List Type With Group Type Element With Two Fields。
+   *
+   * <p>验证该方法在 Legacy Two Level List Type With Group Type Element With Two Fields 条件下的行为是否符合预期。
+   */
   @Test
   public void testLegacyTwoLevelListTypeWithGroupTypeElementWithTwoFields() {
     String messageType =
@@ -349,6 +381,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Legacy Two Level List Gen By Parquet Avro。
+   *
+   * <p>验证该方法在 Legacy Two Level List Gen By Parquet Avro 条件下的行为是否符合预期。
+   */
   @Test
   public void testLegacyTwoLevelListGenByParquetAvro() {
     String messageType =
@@ -375,6 +412,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Legacy Two Level List Gen By Parquet Thrift。
+   *
+   * <p>验证该方法在 Legacy Two Level List Gen By Parquet Thrift 条件下的行为是否符合预期。
+   */
   @Test
   public void testLegacyTwoLevelListGenByParquetThrift() {
     String messageType =
@@ -401,6 +443,11 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Legacy Two Level List Gen By Parquet Thrift 1。
+   *
+   * <p>验证该方法在 Legacy Two Level List Gen By Parquet Thrift 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testLegacyTwoLevelListGenByParquetThrift1() {
     String messageType =
@@ -427,6 +474,7 @@ public class TestParquetSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /** 辅助方法：primitive。 */
   private Type primitive(
       Integer id, String name, PrimitiveTypeName typeName, Repetition repetition) {
     PrimitiveBuilder<PrimitiveType> builder =
@@ -437,6 +485,7 @@ public class TestParquetSchemaUtil {
     return builder.named(name);
   }
 
+  /** 辅助方法：struct。 */
   private Type struct(Integer id, String name, Repetition repetition, Type... types) {
     GroupBuilder<GroupType> builder = org.apache.parquet.schema.Types.buildGroup(repetition);
     builder.addFields(types);
@@ -446,6 +495,7 @@ public class TestParquetSchemaUtil {
     return builder.named(name);
   }
 
+  /** 辅助方法：list。 */
   private Type list(Integer id, String name, Repetition repetition, Type elementType) {
     ListBuilder<GroupType> builder = org.apache.parquet.schema.Types.list(repetition);
     builder.element(elementType);
@@ -455,6 +505,7 @@ public class TestParquetSchemaUtil {
     return builder.named(name);
   }
 
+  /** 辅助方法：map。 */
   private Type map(Integer id, String name, Repetition repetition, Type keyType, Type valueType) {
     MapBuilder<GroupType> builder = org.apache.parquet.schema.Types.map(repetition);
     builder.key(keyType);

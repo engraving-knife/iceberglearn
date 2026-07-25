@@ -47,12 +47,22 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 测试类：TestMetadataTableScans，用于验证 Metadata Table Scans 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metadata Table Scans 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestMetadataTableScans extends MetadataTableScanTestBase {
 
+  /** 辅助方法：metadata table scans。 */
   public TestMetadataTableScans(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：prepare partitioned table。 */
   private void preparePartitionedTable(boolean transactional) {
     preparePartitionedTableData(transactional);
 
@@ -74,10 +84,12 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /** 辅助方法：prepare partitioned table。 */
   private void preparePartitionedTable() {
     preparePartitionedTable(false);
   }
 
+  /** 辅助方法：prepare partitioned table data。 */
   private void preparePartitionedTableData(boolean transactional) {
     if (transactional) {
       table
@@ -95,10 +107,16 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /** 辅助方法：prepare partitioned table data。 */
   private void preparePartitionedTableData() {
     preparePartitionedTableData(false);
   }
 
+  /**
+   * 测试场景：manifests table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestsTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -122,6 +140,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：manifests table always ignores residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestsTableAlwaysIgnoresResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -138,6 +161,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：data files table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFilesTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -161,6 +189,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：data files table honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFilesTableHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -175,6 +208,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateTaskScanResiduals(scan2, true);
   }
 
+  /**
+   * 测试场景：manifest entries table honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestEntriesTableHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -192,6 +230,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateTaskScanResiduals(scan2, true);
   }
 
+  /**
+   * 测试场景：manifest entries table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestEntriesTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -215,6 +258,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：all data files table honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllDataFilesTableHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -229,6 +277,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateTaskScanResiduals(scan2, true);
   }
 
+  /**
+   * 测试场景：all data files table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllDataFilesTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -252,6 +305,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：all entries table honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllEntriesTableHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -266,6 +324,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateTaskScanResiduals(scan2, true);
   }
 
+  /**
+   * 测试场景：all entries table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllEntriesTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -289,6 +352,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：all manifests table with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableWithDroppedPartition() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -313,6 +381,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：all manifests table honors ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableHonorsIgnoreResiduals() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -330,6 +403,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateTaskScanResiduals(scan2, true);
   }
 
+  /**
+   * 测试场景：partitions table scan no filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanNoFilter() {
     preparePartitionedTable();
@@ -359,6 +437,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：partitions table scan with projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanWithProjection() {
     preparePartitionedTable();
@@ -384,6 +467,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：partitions table scan no stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanNoStats() {
     table.newFastAppend().appendFile(FILE_WITH_STATS).commit();
@@ -401,6 +489,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：partitions table scan and filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanAndFilter() {
     preparePartitionedTable();
@@ -423,6 +516,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 0);
   }
 
+  /**
+   * 测试场景：partitions table scan lt filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanLtFilter() {
     preparePartitionedTable();
@@ -446,6 +544,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 1);
   }
 
+  /**
+   * 测试场景：partitions table scan or filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanOrFilter() {
     preparePartitionedTable();
@@ -472,6 +575,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：partitions scan not filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsScanNotFilter() {
     preparePartitionedTable();
@@ -491,6 +599,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：partitions table scan in filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanInFilter() {
     preparePartitionedTable();
@@ -511,6 +624,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：partitions table scan not null filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanNotNullFilter() {
     preparePartitionedTable();
@@ -533,6 +651,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 3);
   }
 
+  /**
+   * 测试场景：files table scan with dropped partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilesTableScanWithDroppedPartition() throws IOException {
     preparePartitionedTable();
@@ -579,6 +702,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：delete files table selection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFilesTableSelection() throws IOException {
     Assume.assumeTrue("Only V2 Tables Support Deletes", formatVersion >= 2);
@@ -608,6 +736,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertEquals(expected, scan.schema().asStruct());
   }
 
+  /**
+   * 测试场景：files table readable metrics schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilesTableReadableMetricsSchema() {
     Table filesTable = new FilesTable(table);
@@ -695,6 +828,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertEquals("Dynamic schema for readable_metrics should match", actual, expected);
   }
 
+  /**
+   * 测试场景：entries table readable metrics schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEntriesTableReadableMetricsSchema() {
     Table entriesTable = new ManifestEntriesTable(table);
@@ -782,6 +920,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertEquals("Dynamic schema for readable_metrics should match", actual, expected);
   }
 
+  /**
+   * 测试场景：partition spec evolution additive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionAdditive() {
     preparePartitionedTable();
@@ -847,6 +990,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：partition spec evolution removal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionRemoval() {
     preparePartitionedTable();
@@ -926,6 +1074,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     }
   }
 
+  /**
+   * 测试场景：partition column named partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionColumnNamedPartition() throws Exception {
     TestTables.clearTables();
@@ -979,6 +1132,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     validateSingleFieldPartition(entries, 0);
   }
 
+  /**
+   * 测试场景：all data files table scan with plan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllDataFilesTableScanWithPlanExecutor() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -1002,6 +1160,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：all entries table scan with plan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllEntriesTableScanWithPlanExecutor() throws IOException {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -1025,6 +1188,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：partitions table scan with plan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanWithPlanExecutor() {
     preparePartitionedTable();
@@ -1055,6 +1223,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /**
+   * 测试场景：all manifests table snapshot gt。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotGt() {
     // Snapshots 1,2,3,4
@@ -1070,6 +1243,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot gte。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotGte() {
     // Snapshots 1,2,3,4
@@ -1085,6 +1263,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot lt。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotLt() {
     // Snapshots 1,2,3,4
@@ -1100,6 +1283,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot lte。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotLte() {
     // Snapshots 1,2,3,4
@@ -1115,6 +1303,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot eq。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotEq() {
     // Snapshots 1,2,3,4
@@ -1130,6 +1323,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot not eq。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotNotEq() {
     // Snapshots 1,2,3,4
@@ -1145,6 +1343,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot in。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotIn() {
     // Snapshots 1,2,3,4
@@ -1160,6 +1363,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot not in。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotNotIn() {
     // Snapshots 1,2,3,4
@@ -1175,6 +1383,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot and。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotAnd() {
     // Snapshots 1,2,3,4
@@ -1195,6 +1408,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot or。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotOr() {
     // Snapshots 1,2,3,4
@@ -1215,6 +1433,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：all manifests table snapshot not。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableSnapshotNot() {
     // Snapshots 1,2,3,4
@@ -1232,6 +1455,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         actualManifestListPaths(manifestsTableScan));
   }
 
+  /**
+   * 测试场景：position deletes with filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesWithFilter() {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);
@@ -1289,16 +1517,31 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         constantsMap(posDeleteTask, partitionType).get(MetadataColumns.FILE_PATH.fieldId()));
   }
 
+  /**
+   * 测试场景：position deletes base table filter manifest level。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesBaseTableFilterManifestLevel() {
     testPositionDeletesBaseTableFilter(false);
   }
 
+  /**
+   * 测试场景：position deletes base table filter entries level。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesBaseTableFilterEntriesLevel() {
     testPositionDeletesBaseTableFilter(true);
   }
 
+  /**
+   * 测试场景：position deletes base table filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   private void testPositionDeletesBaseTableFilter(boolean transactional) {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);
     preparePartitionedTable(transactional);
@@ -1362,6 +1605,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         constantsMap(posDeleteTask, partitionType).get(MetadataColumns.FILE_PATH.fieldId()));
   }
 
+  /**
+   * 测试场景：position deletes with base table filter not。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesWithBaseTableFilterNot() {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);
@@ -1446,6 +1694,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         constantsMap(posDeleteTask, partitionType).get(MetadataColumns.FILE_PATH.fieldId()));
   }
 
+  /**
+   * 测试场景：position deletes residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesResiduals() {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);
@@ -1477,6 +1730,11 @@ public class TestMetadataTableScans extends MetadataTableScanTestBase {
         "Expected partition residual to be evaluated", Literal.of(1), residualPred.literal());
   }
 
+  /**
+   * 测试场景：position deletes unpartitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesUnpartitioned() {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);

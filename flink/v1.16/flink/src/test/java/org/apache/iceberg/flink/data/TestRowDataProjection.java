@@ -38,7 +38,19 @@ import org.apache.iceberg.util.StructProjection;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestRowDataProjection 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestRowDataProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestRowDataProjection {
+  /**
+   * 测试场景：Null Root Row Data。
+   *
+   * <p>验证该方法在 Null Root Row Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullRootRowData() {
     Schema schema =
@@ -53,6 +65,11 @@ public class TestRowDataProjection {
         .hasMessage("Invalid row data: null");
   }
 
+  /**
+   * 测试场景：Full Projection。
+   *
+   * <p>验证该方法在 Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullProjection() {
     Schema schema =
@@ -68,6 +85,11 @@ public class TestRowDataProjection {
     testEqualsAndHashCode(schema, schema, rowData, copyRowData, otherRowData);
   }
 
+  /**
+   * 测试场景：Reordered Full Projection。
+   *
+   * <p>验证该方法在 Reordered Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testReorderedFullProjection() {
     Schema schema =
@@ -88,6 +110,11 @@ public class TestRowDataProjection {
     testEqualsAndHashCode(schema, reordered, rowData, copyRowData, otherRowData);
   }
 
+  /**
+   * 测试场景：Basic Projection。
+   *
+   * <p>验证该方法在 Basic Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicProjection() {
     Schema schema =
@@ -106,6 +133,11 @@ public class TestRowDataProjection {
     testEqualsAndHashCode(schema, dataOnly, rowData, copyRowData, otherRowData);
   }
 
+  /**
+   * 测试场景：Empty Projection。
+   *
+   * <p>验证该方法在 Empty Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyProjection() {
     Schema schema =
@@ -120,6 +152,11 @@ public class TestRowDataProjection {
     testEqualsAndHashCode(schema, schema.select(), rowData, copyRowData, otherRowData, true);
   }
 
+  /**
+   * 测试场景：Rename。
+   *
+   * <p>验证该方法在 Rename 条件下的行为是否符合预期。
+   */
   @Test
   public void testRename() {
     Schema schema =
@@ -139,6 +176,11 @@ public class TestRowDataProjection {
     testEqualsAndHashCode(schema, renamed, rowData, copyRowData, otherRowData);
   }
 
+  /**
+   * 测试场景：Nested Projection。
+   *
+   * <p>验证该方法在 Nested Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedProjection() {
     Schema schema =
@@ -207,6 +249,11 @@ public class TestRowDataProjection {
         true);
   }
 
+  /**
+   * 测试场景：Primitives Full Projection。
+   *
+   * <p>验证该方法在 Primitives Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimitivesFullProjection() {
     DataGenerator dataGenerator = new DataGenerators.Primitives();
@@ -236,6 +283,7 @@ public class TestRowDataProjection {
         otherRowDataNullOptionalFields);
   }
 
+  /** 辅助方法：setOptionalFieldsNullForPrimitives，set Optional Fields Null For Primitives。 */
   private void setOptionalFieldsNullForPrimitives(GenericRowData rowData) {
     // fields from [1, 5] range are optional
     for (int pos = 1; pos <= 5; ++pos) {
@@ -243,6 +291,11 @@ public class TestRowDataProjection {
     }
   }
 
+  /**
+   * 测试场景：Map Of Primitives Projection。
+   *
+   * <p>验证该方法在 Map Of Primitives Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfPrimitivesProjection() {
     DataGenerator dataGenerator = new DataGenerators.MapOfPrimitives();
@@ -301,6 +354,11 @@ public class TestRowDataProjection {
         otherRowDataNullOptionalFields);
   }
 
+  /**
+   * 测试场景：Map Of Struct Struct Projection。
+   *
+   * <p>验证该方法在 Map Of Struct Struct Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfStructStructProjection() {
     DataGenerator dataGenerator = new DataGenerators.MapOfStructStruct();
@@ -405,6 +463,11 @@ public class TestRowDataProjection {
         otherRowDataNullOptionalFields);
   }
 
+  /**
+   * 测试场景：Array Of Primitive Projection。
+   *
+   * <p>验证该方法在 Array Of Primitive Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfPrimitiveProjection() {
     DataGenerator dataGenerator = new DataGenerators.ArrayOfPrimitive();
@@ -467,6 +530,11 @@ public class TestRowDataProjection {
         otherRowDataNullOptionalFields);
   }
 
+  /**
+   * 测试场景：Array Of Struct Projection。
+   *
+   * <p>验证该方法在 Array Of Struct Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfStructProjection() {
     DataGenerator dataGenerator = new DataGenerators.ArrayOfStruct();
@@ -529,6 +597,7 @@ public class TestRowDataProjection {
         otherRowDataNullOptionalFields);
   }
 
+  /** 辅助方法：generateAndValidate，generate And Validate。 */
   private void generateAndValidate(Schema schema, Schema projectSchema) {
     int numRecords = 100;
     List<Record> recordList = RandomGenericData.generate(schema, numRecords, 102L);
@@ -551,6 +620,11 @@ public class TestRowDataProjection {
     }
   }
 
+  /**
+   * 测试场景：Equals And Hash Code。
+   *
+   * <p>验证该方法在 Equals And Hash Code 条件下的行为是否符合预期。
+   */
   private void testEqualsAndHashCode(
       Schema schema,
       Schema projectionSchema,

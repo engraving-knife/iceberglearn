@@ -63,8 +63,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestStructuredStreamingRead3 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 结构化流式读3 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
+  /** 测试结构化流式读3。 */
   public TestStructuredStreamingRead3(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
@@ -110,6 +118,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
               Lists.newArrayList(
                   new SimpleRecord(15, "fifteen"), new SimpleRecord(16, "sixteen"))));
 
+  /** 初始化表。 */
   @Before
   public void setupTable() {
     sql(
@@ -122,6 +131,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     microBatches.set(0);
   }
 
+  /** 停止流。 */
   @After
   public void stopStreams() throws TimeoutException {
     for (StreamingQuery query : spark.streams().active()) {
@@ -129,11 +139,13 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     }
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试读流上Iceberg表带多个快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergTableWithMultipleSnapshots() throws Exception {
     List<List<SimpleRecord>> expected = TEST_DATA_MULTIPLE_SNAPSHOTS;
@@ -145,6 +157,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试读流上Iceberg表带多个快照带number的文件1场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergTableWithMultipleSnapshots_WithNumberOfFiles_1()
       throws Exception {
@@ -156,6 +169,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
             ImmutableMap.of(SparkReadOptions.STREAMING_MAX_FILES_PER_MICRO_BATCH, "1")));
   }
 
+  /** 测试读流上Iceberg表带多个快照带number的文件2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergTableWithMultipleSnapshots_WithNumberOfFiles_2()
       throws Exception {
@@ -167,6 +181,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
             ImmutableMap.of(SparkReadOptions.STREAMING_MAX_FILES_PER_MICRO_BATCH, "2")));
   }
 
+  /** 测试读流上Iceberg表带多个快照带number的行1场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergTableWithMultipleSnapshots_WithNumberOfRows_1()
       throws Exception {
@@ -186,6 +201,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
             Lists.newArrayList(TEST_DATA_MULTIPLE_SNAPSHOTS.get(0).get(0)));
   }
 
+  /** 测试读流上Iceberg表带多个快照带number的行4场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergTableWithMultipleSnapshots_WithNumberOfRows_4()
       throws Exception {
@@ -196,6 +212,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         microBatchCount(ImmutableMap.of(SparkReadOptions.STREAMING_MAX_ROWS_PER_MICRO_BATCH, "4")));
   }
 
+  /** 测试读流上Icebergthen添加数据场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamOnIcebergThenAddData() throws Exception {
     List<List<SimpleRecord>> expected = TEST_DATA_MULTIPLE_SNAPSHOTS;
@@ -208,6 +225,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试reading流从时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadingStreamFromTimestamp() throws Exception {
     List<SimpleRecord> dataBeforeTimestamp =
@@ -235,6 +253,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试reading流从futuretimetsamp场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadingStreamFromFutureTimetsamp() throws Exception {
     long futureTimestamp = System.currentTimeMillis() + 10000;
@@ -267,6 +286,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(data);
   }
 
+  /** 测试reading流从时间戳future带已存在的快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadingStreamFromTimestampFutureWithExistingSnapshots() throws Exception {
     List<SimpleRecord> dataBeforeTimestamp =
@@ -290,6 +310,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         .containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试reading流从时间戳的已存在的快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadingStreamFromTimestampOfExistingSnapshot() throws Exception {
     List<List<SimpleRecord>> expected = TEST_DATA_MULTIPLE_SNAPSHOTS;
@@ -312,6 +333,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试reading流带expired快照从时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadingStreamWithExpiredSnapshotFromTimestamp() throws TimeoutException {
     List<SimpleRecord> firstSnapshotRecordList = Lists.newArrayList(new SimpleRecord(1, "one"));
@@ -341,6 +363,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expectedRecordList);
   }
 
+  /** 测试resuming流读从检查点场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testResumingStreamReadFromCheckpoint() throws Exception {
     File writerCheckpointFolder = temp.newFolder("writer-checkpoint-folder");
@@ -381,6 +404,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     }
   }
 
+  /** 测试failreading检查点invalid快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFailReadingCheckpointInvalidSnapshot() throws IOException, TimeoutException {
     File writerCheckpointFolder = temp.newFolder("writer-checkpoint-folder");
@@ -421,6 +445,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
                 firstSnapshotid));
   }
 
+  /** 测试ParquetORCAvro数据在one表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParquetOrcAvroDataInOneTable() throws Exception {
     List<SimpleRecord> parquetFileRecords =
@@ -443,6 +468,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
             Iterables.concat(parquetFileRecords, orcFileRecords, avroFileRecords));
   }
 
+  /** 测试读流从空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamFromEmptyTable() throws Exception {
     StreamingQuery stream = startStream();
@@ -450,6 +476,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assert.assertEquals(Collections.emptyList(), actual);
   }
 
+  /** 测试读流带快照类型覆盖写errorsout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamWithSnapshotTypeOverwriteErrorsOut() throws Exception {
     // upgrade table to version 2 - to facilitate creation of Snapshot of type OVERWRITE.
@@ -491,6 +518,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         () -> query.processAllAvailable());
   }
 
+  /** 测试读流带快照类型替换ignores替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamWithSnapshotTypeReplaceIgnoresReplace() throws Exception {
     // fill table with some data
@@ -508,6 +536,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(Iterables.concat(expected));
   }
 
+  /** 测试读流带快照类型删除errorsout场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamWithSnapshotTypeDeleteErrorsOut() throws Exception {
     table.updateSpec().removeField("id_bucket").addField(ref("id")).commit();
@@ -532,6 +561,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         () -> query.processAllAvailable());
   }
 
+  /** 测试读流带快照类型删除与skip删除选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamWithSnapshotTypeDeleteAndSkipDeleteOption() throws Exception {
     table.updateSpec().removeField("id_bucket").addField(ref("id")).commit();
@@ -552,6 +582,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         .containsExactlyInAnyOrderElementsOf(Iterables.concat(dataAcrossSnapshots));
   }
 
+  /** 测试读流带快照类型删除与skip覆盖写选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadStreamWithSnapshotTypeDeleteAndSkipOverwriteOption() throws Exception {
     table.updateSpec().removeField("id_bucket").addField(ref("id")).commit();
@@ -572,6 +603,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         .containsExactlyInAnyOrderElementsOf(Iterables.concat(dataAcrossSnapshots));
   }
 
+  /** 追加数据作为多个快照。 */
   /**
    * appends each list as a Snapshot on the iceberg table at the given location. accepts a list of
    * lists - each list representing data per snapshot.
@@ -582,10 +614,12 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     }
   }
 
+  /** 追加数据。 */
   private void appendData(List<SimpleRecord> data) {
     appendData(data, "parquet");
   }
 
+  /** 追加数据。 */
   private void appendData(List<SimpleRecord> data, String format) {
     Dataset<Row> df = spark.createDataFrame(data, SimpleRecord.class);
     df.select("id", "data")
@@ -598,6 +632,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
 
   private static final String MEMORY_TABLE = "_stream_view_mem";
 
+  /** 启动流。 */
   private StreamingQuery startStream(Map<String, String> options) throws TimeoutException {
     return spark
         .readStream()
@@ -612,15 +647,18 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
         .start();
   }
 
+  /** 启动流。 */
   private StreamingQuery startStream() throws TimeoutException {
     return startStream(Collections.emptyMap());
   }
 
+  /** 启动流。 */
   private StreamingQuery startStream(String key, String value) throws TimeoutException {
     return startStream(
         ImmutableMap.of(key, value, SparkReadOptions.STREAMING_MAX_FILES_PER_MICRO_BATCH, "1"));
   }
 
+  /** 微批计数。 */
   private int microBatchCount(Map<String, String> options) throws TimeoutException {
     Dataset<Row> ds = spark.readStream().options(options).format("iceberg").load(tableName);
 
@@ -638,6 +676,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     return microBatches.get();
   }
 
+  /** 行available。 */
   private List<SimpleRecord> rowsAvailable(StreamingQuery query) {
     query.processAllAvailable();
     return spark

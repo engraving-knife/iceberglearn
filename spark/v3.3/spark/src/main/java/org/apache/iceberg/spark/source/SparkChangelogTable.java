@@ -38,6 +38,13 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkChangelogTable。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadataColumns {
 
   public static final String TABLE_NAME = "changes";
@@ -52,16 +59,27 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
   private StructType lazyTableSparkType = null;
   private Schema lazyChangelogSchema = null;
 
+  /** 构造 SparkChangelogTable 实例。 */
   public SparkChangelogTable(org.apache.iceberg.Table icebergTable, boolean refreshEagerly) {
     this.icebergTable = icebergTable;
     this.refreshEagerly = refreshEagerly;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return icebergTable.name() + "." + TABLE_NAME;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType schema() {
     if (lazyTableSparkType == null) {
@@ -71,18 +89,35 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     return lazyTableSparkType;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<TableCapability> capabilities() {
     return CAPABILITIES;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (refreshEagerly) {
       icebergTable.refresh();
     }
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkScanBuilder(spark(), icebergTable, changelogSchema(), options) {
+      /**
+       * 构造并返回目标对象。
+       *
+       * @return 结果对象
+       */
       @Override
       public Scan build() {
         return buildChangelogScan();
@@ -90,6 +125,7 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     };
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Schema changelogSchema() {
     if (lazyChangelogSchema == null) {
       this.lazyChangelogSchema = ChangelogUtil.changelogSchema(icebergTable.schema());
@@ -98,6 +134,7 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     return lazyChangelogSchema;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private SparkSession spark() {
     if (lazySpark == null) {
       this.lazySpark = SparkSession.active();
@@ -106,6 +143,11 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     return lazySpark;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public MetadataColumn[] metadataColumns() {
     DataType sparkPartitionType = SparkSchemaUtil.convert(Partitioning.partitionType(icebergTable));

@@ -48,6 +48,15 @@ import org.apache.spark.sql.connector.catalog.V1Table;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseTableCreationSparkAction。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT> {
   private static final Set<String> ALLOWED_SOURCES =
       ImmutableSet.of("parquet", "avro", "orc", "hive");
@@ -88,42 +97,54 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
         CatalogUtils.URIToString(sourceCatalogTable.storage().locationUri().get());
   }
 
+  /** 校验前置条件或参数。 */
   protected abstract TableCatalog checkSourceCatalog(CatalogPlugin catalog);
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract StagingTableCatalog destCatalog();
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract Identifier destTableIdent();
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract Map<String, String> destTableProps();
 
+  /** 执行该方法的具体逻辑。 */
   protected String sourceTableLocation() {
     return sourceTableLocation;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected CatalogTable v1SourceTable() {
     return sourceCatalogTable;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected TableCatalog sourceCatalog() {
     return sourceCatalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Identifier sourceTableIdent() {
     return sourceTableIdent;
   }
 
+  /** 设置properties。 */
   protected void setProperties(Map<String, String> properties) {
     additionalProperties.putAll(properties);
   }
 
+  /** 设置property。 */
   protected void setProperty(String key, String value) {
     additionalProperties.put(key, value);
   }
 
+  /** 添加元素或项。 */
   protected Map<String, String> additionalProperties() {
     return additionalProperties;
   }
 
+  /** 校验前置条件或参数。 */
   private void validateSourceTable() {
     String sourceTableProvider = sourceCatalogTable.provider().get().toLowerCase(Locale.ROOT);
     Preconditions.checkArgument(
@@ -135,6 +156,7 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
         "Cannot create an Iceberg table from a source without an explicit location");
   }
 
+  /** 校验前置条件或参数。 */
   protected StagingTableCatalog checkDestinationCatalog(CatalogPlugin catalog) {
     Preconditions.checkArgument(
         catalog instanceof SparkSessionCatalog || catalog instanceof SparkCatalog,
@@ -148,6 +170,7 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     return (StagingTableCatalog) catalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected StagedSparkTable stageDestTable() {
     try {
       Map<String, String> props = destTableProps();
@@ -164,6 +187,7 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected void ensureNameMappingPresent(Table table) {
     if (!table.properties().containsKey(TableProperties.DEFAULT_NAME_MAPPING)) {
       NameMapping nameMapping = MappingUtil.create(table.schema());
@@ -172,6 +196,7 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     }
   }
 
+  /** 返回metadatalocation。 */
   protected String getMetadataLocation(Table table) {
     return table
         .properties()

@@ -29,8 +29,21 @@ import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestCommitMetricsResultParser，用于验证 Commit Metrics Result Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Commit Metrics Result Parser
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestCommitMetricsResultParser {
 
+  /**
+   * 测试场景：null metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void nullMetrics() {
     assertThatThrownBy(() -> CommitMetricsResultParser.fromJson((JsonNode) null))
@@ -51,6 +64,11 @@ public class TestCommitMetricsResultParser {
         .hasMessage("Invalid snapshot summary: null");
   }
 
+  /**
+   * 测试场景：invalid number in snapshot summary。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidNumberInSnapshotSummary() {
     CommitMetricsResult result =
@@ -60,6 +78,11 @@ public class TestCommitMetricsResultParser {
     assertThat(result.addedDataFiles()).isNull();
   }
 
+  /**
+   * 测试场景：round trip serde。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @SuppressWarnings("MethodLength")
   @Test
   public void roundTripSerde() {
@@ -224,6 +247,11 @@ public class TestCommitMetricsResultParser {
     assertThat(json).isEqualTo(expectedJson);
   }
 
+  /**
+   * 测试场景：round trip serde noop commit metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void roundTripSerdeNoopCommitMetrics() {
     CommitMetricsResult commitMetricsResult =

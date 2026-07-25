@@ -21,8 +21,20 @@ package org.apache.iceberg.types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTypes 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTypes 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTypes {
 
+  /**
+   * 测试场景：from Primitive String。
+   *
+   * <p>验证该方法在 from Primitive String 条件下的行为是否符合预期。
+   */
   @Test
   public void fromPrimitiveString() {
     Assertions.assertThat(Types.fromPrimitiveString("boolean")).isSameAs(Types.BooleanType.get());

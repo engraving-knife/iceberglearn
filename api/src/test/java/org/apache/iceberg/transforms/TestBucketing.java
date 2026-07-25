@@ -39,10 +39,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestBucketing 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestBucketing 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestBucketing {
   private static final HashFunction MURMUR3 = Hashing.murmur3_32_fixed();
   private static Constructor<UUID> uuidBytesConstructor;
 
+  /** 辅助方法：getUUIDConstructor。 */
   @BeforeAll
   public static void getUUIDConstructor() {
     try {
@@ -55,12 +63,18 @@ public class TestBucketing {
 
   private Random testRandom = null;
 
+  /** 辅助方法：initRandom。 */
   @BeforeEach
   public void initRandom() {
     // reinitialize random for each test to avoid dependence on run order
     this.testRandom = new Random(314358);
   }
 
+  /**
+   * 测试场景：Spec Values。
+   *
+   * <p>验证该方法在 Spec Values 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecValues() {
     assertThat(BucketUtil.hash(1))
@@ -141,6 +155,11 @@ public class TestBucketing {
         .isEqualTo(-188683207);
   }
 
+  /**
+   * 测试场景：Integer。
+   *
+   * <p>验证该方法在 Integer 条件下的行为是否符合预期。
+   */
   @Test
   public void testInteger() {
     int num = testRandom.nextInt();
@@ -153,6 +172,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(buffer.array()));
   }
 
+  /**
+   * 测试场景：Long。
+   *
+   * <p>验证该方法在 Long 条件下的行为是否符合预期。
+   */
   @Test
   public void testLong() {
     long num = testRandom.nextLong();
@@ -165,6 +189,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(buffer.array()));
   }
 
+  /**
+   * 测试场景：Integer Type Promotion。
+   *
+   * <p>验证该方法在 Integer Type Promotion 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerTypePromotion() {
     int randomInt = testRandom.nextInt();
@@ -174,6 +203,11 @@ public class TestBucketing {
         .isEqualTo(BucketUtil.hash(randomInt));
   }
 
+  /**
+   * 测试场景：Float Type Promotion。
+   *
+   * <p>验证该方法在 Float Type Promotion 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatTypePromotion() {
     float randomFloat = testRandom.nextFloat();
@@ -183,6 +217,11 @@ public class TestBucketing {
         .isEqualTo(BucketUtil.hash(randomFloat));
   }
 
+  /**
+   * 测试场景：Float Negative Zero。
+   *
+   * <p>验证该方法在 Float Negative Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatNegativeZero() {
     assertThat(BucketUtil.hash(0.0f))
@@ -190,6 +229,11 @@ public class TestBucketing {
         .isEqualTo(BucketUtil.hash(-0.0f));
   }
 
+  /**
+   * 测试场景：Double Negative Zero。
+   *
+   * <p>验证该方法在 Double Negative Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleNegativeZero() {
     assertThat(BucketUtil.hash(0.0))
@@ -197,6 +241,11 @@ public class TestBucketing {
         .isEqualTo(BucketUtil.hash(-0.0));
   }
 
+  /**
+   * 测试场景：Float Na N。
+   *
+   * <p>验证该方法在 Float Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatNaN() {
     double canonicalNaN = Double.longBitsToDouble(0x7ff8000000000000L);
@@ -223,6 +272,11 @@ public class TestBucketing {
     }
   }
 
+  /**
+   * 测试场景：Double Na N。
+   *
+   * <p>验证该方法在 Double Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleNaN() {
     double canonicalNaN = Double.longBitsToDouble(0x7ff8000000000000L);
@@ -249,6 +303,11 @@ public class TestBucketing {
     }
   }
 
+  /**
+   * 测试场景：Decimal。
+   *
+   * <p>验证该方法在 Decimal 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimal() {
     double num = testRandom.nextDouble();
@@ -260,6 +319,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(unscaledBytes));
   }
 
+  /**
+   * 测试场景：String。
+   *
+   * <p>验证该方法在 String 条件下的行为是否符合预期。
+   */
   @Test
   public void testString() {
     String string = "string to test murmur3 hash";
@@ -270,6 +334,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(asBytes));
   }
 
+  /**
+   * 测试场景：String With Surrogate Pair。
+   *
+   * <p>验证该方法在 String With Surrogate Pair 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringWithSurrogatePair() {
     String string = "string with a surrogate pair: 💰";
@@ -283,6 +352,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(asBytes));
   }
 
+  /**
+   * 测试场景：Utf 8。
+   *
+   * <p>验证该方法在 Utf 8 条件下的行为是否符合预期。
+   */
   @Test
   public void testUtf8() {
     Utf8 utf8 = new Utf8("string to test murmur3 hash");
@@ -293,6 +367,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(asBytes));
   }
 
+  /**
+   * 测试场景：Byte Buffer On Heap。
+   *
+   * <p>验证该方法在 Byte Buffer On Heap 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferOnHeap() {
     byte[] bytes = randomBytes(128);
@@ -307,6 +386,11 @@ public class TestBucketing {
     assertThat(buffer.limit()).as("Buffer limit should not change").isEqualTo(105);
   }
 
+  /**
+   * 测试场景：Byte Buffer On Heap Array Offset。
+   *
+   * <p>验证该方法在 Byte Buffer On Heap Array Offset 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferOnHeapArrayOffset() {
     byte[] bytes = randomBytes(128);
@@ -323,6 +407,11 @@ public class TestBucketing {
     assertThat(buffer.limit()).as("Buffer limit should not change").isEqualTo(100);
   }
 
+  /**
+   * 测试场景：Byte Buffer Off Heap。
+   *
+   * <p>验证该方法在 Byte Buffer Off Heap 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferOffHeap() {
     byte[] bytes = randomBytes(128);
@@ -344,6 +433,11 @@ public class TestBucketing {
     assertThat(buffer.limit()).as("Buffer limit should not change").isEqualTo(105);
   }
 
+  /**
+   * 测试场景：UUID Hash。
+   *
+   * <p>验证该方法在 UUID Hash 条件下的行为是否符合预期。
+   */
   @Test
   public void testUUIDHash() {
     byte[] uuidBytes = randomBytes(16);
@@ -354,6 +448,11 @@ public class TestBucketing {
         .isEqualTo(hashBytes(uuidBytes));
   }
 
+  /**
+   * 测试场景：Verified Illegal Num Buckets。
+   *
+   * <p>验证该方法在 Verified Illegal Num Buckets 条件下的行为是否符合预期。
+   */
   @Test
   public void testVerifiedIllegalNumBuckets() {
     Assertions.assertThatThrownBy(() -> Bucket.get(0))
@@ -361,16 +460,19 @@ public class TestBucketing {
         .hasMessage("Invalid number of buckets: 0 (must be > 0)");
   }
 
+  /** 辅助方法：randomBytes。 */
   private byte[] randomBytes(int length) {
     byte[] bytes = new byte[length];
     testRandom.nextBytes(bytes);
     return bytes;
   }
 
+  /** 辅助方法：hashBytes。 */
   private int hashBytes(byte[] bytes) {
     return hashBytes(bytes, 0, bytes.length);
   }
 
+  /** 辅助方法：hashBytes。 */
   private int hashBytes(byte[] bytes, int offset, int length) {
     return MURMUR3.hashBytes(bytes, offset, length).asInt();
   }

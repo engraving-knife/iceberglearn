@@ -49,16 +49,31 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ByteBuffers;
 
+/**
+ * 将 Iceberg {@link StructLike} 适配为 Flink {@link RowData} 的包装器。
+ *
+ * <p>所属模块：iceberg-flink，位于数据读取/转换层。
+ *
+ * <p>职责：把 Iceberg 内部基于 {@link StructLike} 的行数据按 Flink {@link RowData} 接口暴露，
+ * 支持各类基本类型与复合类型（list/map/struct）的取值，并做必要的类型/单位转换。
+ *
+ * <p>设计意图：避免数据拷贝，通过包装复用底层 StructLike；针对 Iceberg 与 Flink 在日期/时间/时间戳 表示上的差异（如 LocalTime 纳秒 vs 毫秒、时间戳
+ * epoch 微秒）在 getter 中就地转换。
+ *
+ * <p>上下游关系：被 Flink 读取链路中需要把 Iceberg 内部行转为 RowData 的场景使用。
+ */
 @Internal
 public class StructRowData implements RowData {
   private final Types.StructType type;
   private RowKind kind;
   private StructLike struct;
 
+  /** 构造包装器，默认行类型为 {@link RowKind#INSERT}。 */
   public StructRowData(Types.StructType type) {
     this(type, RowKind.INSERT);
   }
 
+  /** 构造包装器并指定行类型（用于 changelog 场景）。 */
   public StructRowData(Types.StructType type, RowKind kind) {
     this(type, null, kind);
   }
@@ -73,47 +88,65 @@ public class StructRowData implements RowData {
     this.kind = kind;
   }
 
+  /**
+   * 设置底层 StructLike 并返回自身，便于链式调用。
+   *
+   * @param newStruct 新的底层行数据
+   * @return 当前对象
+   */
   public StructRowData setStruct(StructLike newStruct) {
     this.struct = newStruct;
     return this;
   }
 
+  /** 返回字段数量。 */
   @Override
   public int getArity() {
     return struct.size();
   }
 
+  /** 返回行类型（INSERT/UPDATE_BEFORE/UPDATE_AFTER/DELETE）。 */
   @Override
   public RowKind getRowKind() {
     return kind;
   }
 
+  /** 设置行类型，不允许为 null。 */
   @Override
   public void setRowKind(RowKind newKind) {
     Preconditions.checkNotNull(newKind, "kind can not be null");
     this.kind = newKind;
   }
 
+  /** 判断指定位置字段是否为 null。 */
   @Override
   public boolean isNullAt(int pos) {
     return struct.get(pos, Object.class) == null;
   }
 
+  /** 读取布尔字段。 */
   @Override
   public boolean getBoolean(int pos) {
     return struct.get(pos, Boolean.class);
   }
 
+  /** 读取字节字段（底层以 Integer 存储，强转）。 */
   @Override
   public byte getByte(int pos) {
     return (byte) (int) struct.get(pos, Integer.class);
   }
 
+  /** 读取短整数字段（底层以 Integer 存储，强转）。 */
   @Override
   public short getShort(int pos) {
     return (short) (int) struct.get(pos, Integer.class);
   }
 
+  /**
+   * 读取整数字段。
+   *
+   * <p>逻辑：底层值可能为 Integer、LocalDate（日期，转 epoch 天数）或 LocalTime（时间，转毫秒）， 按运行时类型分发转换；其余类型抛出异常。
+   */
   @Override
   public int getInt(int pos) {
     Object integer = struct.get(pos, Object.class);
@@ -130,6 +163,12 @@ public class StructRowData implements RowData {
     }
   }
 
+  /**
+   * 读取长整数字段。
+   *
+   * <p>逻辑：底层值可能为 Long、OffsetDateTime、LocalDate、LocalTime、LocalDateTime， 分别转换为 epoch
+   * 微秒/天数/纳秒等长整型表示；其余类型抛出异常。
+   */
   @Override
   public long getLong(int pos) {
     Object longVal = struct.get(pos, Object.class);
@@ -152,26 +191,31 @@ public class StructRowData implements RowData {
     }
   }
 
+  /** 读取浮点字段。 */
   @Override
   public float getFloat(int pos) {
     return struct.get(pos, Float.class);
   }
 
+  /** 读取双精度字段。 */
   @Override
   public double getDouble(int pos) {
     return struct.get(pos, Double.class);
   }
 
+  /** 读取字符串字段，null 时返回 null。 */
   @Override
   public StringData getString(int pos) {
     return isNullAt(pos) ? null : getStringDataInternal(pos);
   }
 
+  /** 内部读取字符串：将 CharSequence 转为 Flink {@link StringData}。 */
   private StringData getStringDataInternal(int pos) {
     CharSequence seq = struct.get(pos, CharSequence.class);
     return StringData.fromString(seq.toString());
   }
 
+  /** 读取十进制字段，按指定精度与标度从 BigDecimal 转换。 */
   @Override
   public DecimalData getDecimal(int pos, int precision, int scale) {
     return isNullAt(pos)
@@ -179,26 +223,39 @@ public class StructRowData implements RowData {
         : DecimalData.fromBigDecimal(getDecimalInternal(pos), precision, scale);
   }
 
+  /** 内部读取十进制底层 BigDecimal。 */
   private BigDecimal getDecimalInternal(int pos) {
     return struct.get(pos, BigDecimal.class);
   }
 
+  /**
+   * 读取时间戳字段。
+   *
+   * <p>逻辑：底层以 epoch 微秒（long）存储，拆分为毫秒与微秒余量构造 {@link TimestampData}。
+   */
   @Override
   public TimestampData getTimestamp(int pos, int precision) {
     long timeLong = getLong(pos);
     return TimestampData.fromEpochMillis(timeLong / 1000, (int) (timeLong % 1000) * 1000);
   }
 
+  /** 读取原始值字段，当前不支持。 */
   @Override
   public <T> RawValueData<T> getRawValue(int pos) {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  /** 读取二进制字段，null 时返回 null。 */
   @Override
   public byte[] getBinary(int pos) {
     return isNullAt(pos) ? null : getBinaryInternal(pos);
   }
 
+  /**
+   * 内部读取二进制。
+   *
+   * <p>逻辑：底层值可能为 ByteBuffer、byte[] 或 UUID（转为 16 字节），按类型分发转换； 其余类型抛出异常。
+   */
   private byte[] getBinaryInternal(int pos) {
     Object bytes = struct.get(pos, Object.class);
 
@@ -219,6 +276,7 @@ public class StructRowData implements RowData {
     }
   }
 
+  /** 读取数组字段，按 Iceberg list 类型转换。 */
   @Override
   public ArrayData getArray(int pos) {
     return isNullAt(pos)
@@ -227,6 +285,7 @@ public class StructRowData implements RowData {
             convertValue(type.fields().get(pos).type().asListType(), struct.get(pos, List.class));
   }
 
+  /** 读取 map 字段，按 Iceberg map 类型转换。 */
   @Override
   public MapData getMap(int pos) {
     return isNullAt(pos)
@@ -235,16 +294,29 @@ public class StructRowData implements RowData {
             convertValue(type.fields().get(pos).type().asMapType(), struct.get(pos, Map.class));
   }
 
+  /** 读取嵌套 struct 字段，包装为新的 StructRowData。 */
   @Override
   public RowData getRow(int pos, int numFields) {
     return isNullAt(pos) ? null : getStructRowData(pos, numFields);
   }
 
+  /** 内部构造嵌套 StructRowData。 */
   private StructRowData getStructRowData(int pos, int numFields) {
     return new StructRowData(
         type.fields().get(pos).type().asStructType(), struct.get(pos, StructLike.class));
   }
 
+  /**
+   * 将 Iceberg 内部值按目标元素类型转换为 Flink 数据结构。
+   *
+   * <p>逻辑：按 {@code elementType.typeId()} 分发——基本类型直接返回或简单包装； TIMESTAMP 拆分毫秒/微秒；STRING 转
+   * StringData；FIXED/BINARY 转 byte[]； STRUCT 包装为 StructRowData；LIST 逐元素递归转 GenericArrayData； MAP
+   * 逐键值递归转 GenericMapData；其余类型抛出异常。
+   *
+   * @param elementType Iceberg 元素类型
+   * @param value 底层值
+   * @return Flink 数据结构
+   */
   private Object convertValue(Type elementType, Object value) {
     switch (elementType.typeId()) {
       case BOOLEAN:

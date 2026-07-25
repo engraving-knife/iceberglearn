@@ -57,8 +57,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestHiveIcebergStorageHandlerLocalScan 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergStorageHandlerLocalScan 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergStorageHandlerLocalScan {
 
+  /** 辅助方法：parameters。 */
   @Parameters(name = "fileFormat={0}, catalog={1}")
   public static Collection<Object[]> parameters() {
     Collection<Object[]> testParams = Lists.newArrayList();
@@ -91,16 +99,19 @@ public class TestHiveIcebergStorageHandlerLocalScan {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：beforeClass。 */
   @BeforeClass
   public static void beforeClass() {
     shell = HiveIcebergStorageHandlerTestUtils.shell();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterClass
   public static void afterClass() throws Exception {
     shell.stop();
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     testTables = HiveIcebergStorageHandlerTestUtils.testTables(shell, testTableType, temp);
@@ -109,11 +120,17 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     HiveIcebergStorageHandlerTestUtils.init(shell, testTables, temp, "spark");
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws Exception {
     HiveIcebergStorageHandlerTestUtils.close(shell);
   }
 
+  /**
+   * 测试场景：Scan Empty Table。
+   *
+   * <p>验证该方法在 Scan Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testScanEmptyTable() throws IOException {
     Schema emptySchema = new Schema(required(1, "empty", Types.StringType.get()));
@@ -123,6 +140,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertEquals(0, rows.size());
   }
 
+  /**
+   * 测试场景：Scan Table。
+   *
+   * <p>验证该方法在 Scan Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testScanTable() throws IOException {
     testTables.createTable(
@@ -141,6 +163,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertArrayEquals(new Object[] {2L, "Trudy", "Pink"}, rows.get(2));
   }
 
+  /**
+   * 测试场景：Scan Table Case Insensitive。
+   *
+   * <p>验证该方法在 Scan Table Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testScanTableCaseInsensitive() throws IOException {
     testTables.createTable(
@@ -167,6 +194,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertArrayEquals(new Object[] {1L, "Bob", "Green"}, rows.get(1));
   }
 
+  /**
+   * 测试场景：Decimal Table With Predicate Literals。
+   *
+   * <p>验证该方法在 Decimal Table With Predicate Literals 条件下的行为是否符合预期。
+   */
   @Test
   public void testDecimalTableWithPredicateLiterals() throws IOException {
     Schema schema = new Schema(required(1, "decimal_field", Types.DecimalType.of(7, 2)));
@@ -202,6 +234,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertEquals(0, rows.size());
   }
 
+  /**
+   * 测试场景：Column Selection。
+   *
+   * <p>验证该方法在 Column Selection 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnSelection() throws IOException {
     testTables.createTable(
@@ -244,6 +281,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertArrayEquals(new Object[] {2L, "Trudy"}, allButLastColumn.get(2));
   }
 
+  /**
+   * 测试场景：select Same Column Twice。
+   *
+   * <p>验证该方法在 select Same Column Twice 条件下的行为是否符合预期。
+   */
   @Test
   public void selectSameColumnTwice() throws IOException {
     testTables.createTable(
@@ -262,6 +304,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     Assert.assertArrayEquals(new Object[] {"Trudy", "Trudy"}, columns.get(2));
   }
 
+  /**
+   * 测试场景：Create Table With Column Specification。
+   *
+   * <p>验证该方法在 Create Table With Column Specification 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithColumnSpecification() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -283,6 +330,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
         data);
   }
 
+  /**
+   * 测试场景：Create Table With Column Specification Partitioned。
+   *
+   * <p>验证该方法在 Create Table With Column Specification Partitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithColumnSpecificationPartitioned() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -313,6 +365,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
         identifier, createSql, HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA, spec, data);
   }
 
+  /**
+   * 测试场景：Create Partitioned Table By Property。
+   *
+   * <p>验证该方法在 Create Partitioned Table By Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatePartitionedTableByProperty() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -355,6 +412,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
         identifier, createSql, HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA, spec, data);
   }
 
+  /**
+   * 测试场景：Create Table With Column Specification Multilevel Partitioned。
+   *
+   * <p>验证该方法在 Create Table With Column Specification Multilevel Partitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithColumnSpecificationMultilevelPartitioned() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -387,6 +449,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
         identifier, createSql, HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA, spec, data);
   }
 
+  /**
+   * 测试场景：Array Of Primitives In Table。
+   *
+   * <p>验证该方法在 Array Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfPrimitivesInTable() throws IOException {
     Schema schema =
@@ -409,6 +476,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Array Of Arrays In Table。
+   *
+   * <p>验证该方法在 Array Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfArraysInTable() throws IOException {
     Schema schema =
@@ -436,6 +508,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Array Of Maps In Table。
+   *
+   * <p>验证该方法在 Array Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfMapsInTable() throws IOException {
     Schema schema =
@@ -466,6 +543,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Array Of Structs In Table。
+   *
+   * <p>验证该方法在 Array Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testArrayOfStructsInTable() throws IOException {
     Schema schema =
@@ -500,6 +582,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Map Of Primitives In Table。
+   *
+   * <p>验证该方法在 Map Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfPrimitivesInTable() throws IOException {
     Schema schema =
@@ -524,6 +611,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Map Of Arrays In Table。
+   *
+   * <p>验证该方法在 Map Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfArraysInTable() throws IOException {
     Schema schema =
@@ -555,6 +647,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Map Of Maps In Table。
+   *
+   * <p>验证该方法在 Map Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfMapsInTable() throws IOException {
     Schema schema =
@@ -587,6 +684,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Map Of Structs In Table。
+   *
+   * <p>验证该方法在 Map Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfStructsInTable() throws IOException {
     Schema schema =
@@ -623,6 +725,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Struct Of Primitives In Table。
+   *
+   * <p>验证该方法在 Struct Of Primitives In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructOfPrimitivesInTable() throws IOException {
     Schema schema =
@@ -648,6 +755,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Struct Of Arrays In Table。
+   *
+   * <p>验证该方法在 Struct Of Arrays In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructOfArraysInTable() throws IOException {
     Schema schema =
@@ -684,6 +796,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Struct Of Maps In Table。
+   *
+   * <p>验证该方法在 Struct Of Maps In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructOfMapsInTable() throws IOException {
     Schema schema =
@@ -728,6 +845,11 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /**
+   * 测试场景：Struct Of Structs In Table。
+   *
+   * <p>验证该方法在 Struct Of Structs In Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructOfStructsInTable() throws IOException {
     Schema schema =
@@ -759,6 +881,7 @@ public class TestHiveIcebergStorageHandlerLocalScan {
     }
   }
 
+  /** 辅助方法：runCreateAndReadTest。 */
   private void runCreateAndReadTest(
       TableIdentifier identifier,
       String createSQL,

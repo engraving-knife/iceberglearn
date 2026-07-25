@@ -45,16 +45,26 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：测试 RowDataConverter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 RowDataConverter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class RowDataConverter {
   private static final OffsetDateTime EPOCH = Instant.ofEpochSecond(0).atOffset(ZoneOffset.UTC);
   private static final LocalDate EPOCH_DAY = EPOCH.toLocalDate();
 
+  /** 辅助方法：RowDataConverter，Row Data Converter。 */
   private RowDataConverter() {}
 
+  /** 辅助方法：convert，convert。 */
   public static RowData convert(Schema iSchema, Record record) {
     return convert(iSchema.asStruct(), record);
   }
 
+  /** 辅助方法：convert，convert。 */
   private static RowData convert(Types.StructType struct, Record record) {
     GenericRowData rowData = new GenericRowData(struct.fields().size());
     List<Types.NestedField> fields = struct.fields();
@@ -67,6 +77,7 @@ public class RowDataConverter {
     return rowData;
   }
 
+  /** 辅助方法：convert，convert。 */
   private static Object convert(Type type, Object object) {
     if (object == null) {
       return null;

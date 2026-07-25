@@ -42,12 +42,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is a common base class to share code between different BaseScan implementations that handle
- * scans of a particular snapshot.
+ * 基于特定快照扫描的抽象基类，为不同 BaseScan 实现提供共享代码。
  *
- * @param <ThisT> actual BaseScan implementation class type
- * @param <T> type of ScanTask returned
- * @param <G> type of ScanTaskGroup returned
+ * <p>所属模块：iceberg-core（扫描实现层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供快照选择能力（useSnapshot、useRef、asOfTime），支持时间旅行扫描；
+ *   <li>在 {@link #planFiles()} 中记录扫描日志、通知 {@link ScanEvent} 监听器、收集扫描指标， 并在完成后生成 {@link ScanReport}
+ *       上报。
+ * </ul>
+ *
+ * <p>设计意图：把快照级扫描的通用流程（日志、事件、指标、报告）集中到基类， 子类只需实现 {@link #doPlanFiles} 产出具体任务。
+ *
+ * <p>上下游关系：被 {@link DataScan}、元数据表扫描等继承；底层使用 {@link SnapshotUtil} 解析快照与 schema。
+ *
+ * @param <ThisT> 实际扫描实现类类型
+ * @param <T> 返回的 ScanTask 类型
+ * @param <G> 返回的 ScanTaskGroup 类型
  */
 public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends BaseScan<ThisT, T, G> {
@@ -56,21 +69,45 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
 
   private ScanMetrics scanMetrics;
 
+  /**
+   * 构造快照扫描实例。
+   *
+   * @param table 表
+   * @param schema 扫描 schema
+   * @param context 扫描上下文
+   */
   protected SnapshotScan(Table table, Schema schema, TableScanContext context) {
     super(table, schema, context);
   }
 
+  /** 返回上下文中设置的快照 id（可能为 null 表示使用当前快照）。 */
   protected Long snapshotId() {
     return context().snapshotId();
   }
 
+  /**
+   * 子类实现：实际产出扫描任务。
+   *
+   * @return 扫描任务集合
+   */
   protected abstract CloseableIterable<T> doPlanFiles();
 
-  // controls whether to use the snapshot schema while time travelling
+  /**
+   * 时间旅行时是否使用快照对应的 schema（而非当前表 schema）。
+   *
+   * <p>设计要点：默认返回 false（使用当前 schema），子类（如 {@link DataScan}）可覆盖为 true。
+   *
+   * @return 是否使用快照 schema
+   */
   protected boolean useSnapshotSchema() {
     return false;
   }
 
+  /**
+   * 返回扫描指标收集器，惰性初始化。
+   *
+   * @return {@link ScanMetrics}
+   */
   protected ScanMetrics scanMetrics() {
     if (scanMetrics == null) {
       this.scanMetrics = ScanMetrics.of(new DefaultMetricsContext());
@@ -79,6 +116,12 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
     return scanMetrics;
   }
 
+  /**
+   * 指定按某个快照 id 扫描（时间旅行）。
+   *
+   * @param scanSnapshotId 快照 id
+   * @return 当前扫描
+   */
   public ThisT useSnapshot(long scanSnapshotId) {
     Preconditions.checkArgument(
         snapshotId() == null, "Cannot override snapshot, already set snapshot id=%s", snapshotId());
@@ -92,6 +135,14 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
     return newRefinedScan(table(), newSchema, newContext);
   }
 
+  /**
+   * 按引用名（分支或标签）扫描。
+   *
+   * <p>逻辑：若为 main 分支则直接使用当前 schema；否则解析引用对应的快照，并用该快照的 schema。
+   *
+   * @param name 引用名
+   * @return 当前扫描
+   */
   public ThisT useRef(String name) {
     if (SnapshotRef.MAIN_BRANCH.equals(name)) {
       return newRefinedScan(table(), tableSchema(), context());
@@ -105,6 +156,12 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
     return newRefinedScan(table(), SnapshotUtil.schemaFor(table(), name), newContext);
   }
 
+  /**
+   * 按时间戳扫描：使用该时间戳之前最新的快照。
+   *
+   * @param timestampMillis 时间戳（毫秒）
+   * @return 当前扫描
+   */
   public ThisT asOfTime(long timestampMillis) {
     Preconditions.checkArgument(
         snapshotId() == null, "Cannot override snapshot, already set snapshot id=%s", snapshotId());
@@ -112,6 +169,20 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
     return useSnapshot(SnapshotUtil.snapshotIdAsOfTime(table(), timestampMillis));
   }
 
+  /**
+   * 执行扫描文件计划。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>获取目标快照，若为空表则记录日志并返回空；
+   *   <li>记录扫描信息日志，通知 {@link ScanEvent} 监听器；
+   *   <li>启动计划耗时计时器；
+   *   <li>调用 {@link #doPlanFiles} 产出任务，并在完成后停止计时、构造 {@link ScanReport} 上报。
+   * </ol>
+   *
+   * @return 扫描任务集合
+   */
   @Override
   public CloseableIterable<T> planFiles() {
     Snapshot snapshot = snapshot();
@@ -158,6 +229,11 @@ public abstract class SnapshotScan<ThisT, T extends ScanTask, G extends ScanTask
         });
   }
 
+  /**
+   * 返回目标快照：若设置了 snapshotId 则取该快照，否则取当前快照。
+   *
+   * @return 目标快照
+   */
   public Snapshot snapshot() {
     return snapshotId() != null ? table().snapshot(snapshotId()) : table().currentSnapshot();
   }

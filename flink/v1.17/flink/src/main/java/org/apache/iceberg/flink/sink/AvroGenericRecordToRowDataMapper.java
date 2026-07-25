@@ -28,30 +28,39 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.utils.TypeConversions;
-import org.apache.iceberg.avro.AvroSchemaUtil;
 
 /**
- * This util class converts Avro GenericRecord to Flink RowData. <br>
- * <br>
- * Internally it uses Flink {@link AvroToRowDataConverters}. Because of the precision difference
- * between how Iceberg schema (micro) and Flink {@link AvroToRowDataConverters} (milli) deal with
- * time type, we can't directly use the Avro Schema converted from Iceberg schema via {@link
- * AvroSchemaUtil#convert(org.apache.iceberg.Schema, String)}.
+ * 文件级说明：将 Avro {@link GenericRecord} 转换为 Flink {@link RowData} 的映射器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 sink 子包）。
+ *
+ * <p>职责：实现 Flink {@link MapFunction}，把 Avro 通用记录转换为 Flink 行数据。
+ *
+ * <p>设计意图：内部使用 Flink 的 {@link AvroToRowDataConverters} 完成实际转换。 由于 Iceberg schema 中时间类型精度为微秒，而 Flink
+ * 转换器使用毫秒， 不能直接使用由 Iceberg schema 转换得到的 Avro schema， 必须以 Flink 自身从 Avro schema 推导出的 RowType 为准。
+ *
+ * <p>上下游关系：上游为 Avro 数据源，下游为 Flink sink 算子。
  */
 public class AvroGenericRecordToRowDataMapper implements MapFunction<GenericRecord, RowData> {
 
   private final AvroToRowDataConverters.AvroToRowDataConverter converter;
 
+  /** 构造映射器，按 Flink 行类型创建 Avro 到 RowData 的转换器。 */
   AvroGenericRecordToRowDataMapper(RowType rowType) {
     this.converter = AvroToRowDataConverters.createRowConverter(rowType);
   }
 
+  /** 把单条 Avro GenericRecord 转换为 RowData。 */
   @Override
   public RowData map(GenericRecord genericRecord) throws Exception {
     return (RowData) converter.convert(genericRecord);
   }
 
-  /** Create a mapper based on Avro schema. */
+  /**
+   * 基于 Avro schema 创建映射器。
+   *
+   * <p>逻辑：把 Avro schema 转为 Flink DataType 再转为 LogicalType， 取其子类型数组构造 RowType，避免 Iceberg 微秒精度的影响。
+   */
   public static AvroGenericRecordToRowDataMapper forAvroSchema(Schema avroSchema) {
     DataType dataType = AvroSchemaConverter.convertToDataType(avroSchema.toString());
     LogicalType logicalType = TypeConversions.fromDataToLogicalType(dataType);

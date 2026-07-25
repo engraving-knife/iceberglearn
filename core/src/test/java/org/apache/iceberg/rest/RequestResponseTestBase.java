@@ -27,46 +27,44 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：RequestResponseTestBase，用于验证 Request Response 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Request Response 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class RequestResponseTestBase<T extends RESTMessage> {
 
   private static final ObjectMapper MAPPER = RESTObjectMapper.mapper();
 
+  /** 辅助方法：mapper。 */
   public static ObjectMapper mapper() {
     return MAPPER;
   }
 
-  /** Return a list of all the fields used in this class, as defined in the spec. */
+  /** 辅助方法：all fields from spec。 */
   public abstract String[] allFieldsFromSpec();
 
-  /** Return a valid instance of the request / response object. Used when validating fields. */
+  /** 辅助方法：create example instance。 */
   public abstract T createExampleInstance();
 
-  /**
-   * Compare if two request / response objects are equivalent.
-   *
-   * <p>This helper method is used as opposed to implementing equals so that fields that deserialize
-   * into null can be compared to the fields of instances created via the corresponding Builder,
-   * which typically have a default value (such as an empty collection) for those fields.
-   *
-   * @param actual - request / response object to validate
-   * @param expected - the corresponding object to check that {@code actual} is semantically
-   *     equivalent to.
-   */
+  /** 辅助方法：assert equals。 */
   public abstract void assertEquals(T actual, T expected);
 
-  /** Parse and return the input json into a value of type T. */
+  /** 辅助方法：deserialize。 */
   public abstract T deserialize(String json) throws JsonProcessingException;
 
-  /** Serialize T to a String. */
+  /** 辅助方法：serialize。 */
   public String serialize(T object) throws JsonProcessingException {
     return MAPPER.writeValueAsString(object);
   }
 
   /**
-   * This test ensures that the serialized JSON of each class has only fields that are expected from
-   * the spec. Only top level fields are checked presently, as nested fields generally come from
-   * some existing type that is tested elsewhere. The fields from the spec should be populated into
-   * each subclass's {@link RequestResponseTestBase#allFieldsFromSpec()}.
+   * 测试场景：has only known fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   @Test
   public void testHasOnlyKnownFields() {
@@ -88,10 +86,7 @@ public abstract class RequestResponseTestBase<T extends RESTMessage> {
     }
   }
 
-  /**
-   * Test that the input JSON can be parsed into an equivalent object as {@code expected}, and then
-   * re-serialized into the same JSON.
-   */
+  /** 辅助方法：assert round trip serializes equally from。 */
   protected void assertRoundTripSerializesEquallyFrom(String json, T expected)
       throws JsonProcessingException {
     // Check that the JSON deserializes into the expected value;

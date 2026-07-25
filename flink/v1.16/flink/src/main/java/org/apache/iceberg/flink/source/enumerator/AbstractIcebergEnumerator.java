@@ -37,8 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO: publish enumerator monitor metrics like number of pending metrics after FLINK-21000 is
- * resolved
+ * Iceberg enumerator 抽象基类，封装分片分配与事件处理公共逻辑。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：管理 SplitAssigner，处理 SourceEvent，提供 checkpoint 状态。
+ *
+ * <p>设计意图：模板方法模式，继承 Flink SplitEnumerator；被 Continuous/Static 子类复用。
  */
 abstract class AbstractIcebergEnumerator
     implements SplitEnumerator<IcebergSourceSplit, IcebergEnumeratorState> {

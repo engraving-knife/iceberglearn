@@ -27,12 +27,27 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestByteBufferInputStreams，用于验证 Byte Buffer Input Streams 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Byte Buffer Input Streams
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class TestByteBufferInputStreams {
 
+  /** 辅助方法：new stream。 */
   protected abstract ByteBufferInputStream newStream();
 
+  /** 辅助方法：check original data。 */
   protected abstract void checkOriginalData();
 
+  /**
+   * 测试场景：read 0。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRead0() throws Exception {
     byte[] bytes = new byte[0];
@@ -49,6 +64,11 @@ public abstract class TestByteBufferInputStreams {
         .isEqualTo(0);
   }
 
+  /**
+   * 测试场景：read all。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadAll() throws Exception {
     byte[] bytes = new byte[35];
@@ -76,6 +96,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：small reads。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSmallReads() throws Exception {
     for (int size = 1; size < 36; size += 1) {
@@ -122,6 +147,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：partial buffer reads。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartialBufferReads() throws Exception {
     for (int size = 1; size < 35; size += 1) {
@@ -170,6 +200,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：read byte。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadByte() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -185,6 +220,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：slice。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   @SuppressWarnings("LocalVariableName")
   public void testSlice() throws Exception {
@@ -216,6 +256,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：slice buffers 0。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSliceBuffers0() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -225,6 +270,11 @@ public abstract class TestByteBufferInputStreams {
         .isEqualTo(Collections.emptyList());
   }
 
+  /**
+   * 测试场景：whole slice buffers。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWholeSliceBuffers() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -246,6 +296,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：slice buffers coverage。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSliceBuffersCoverage() throws Exception {
     for (int size = 1; size < 36; size += 1) {
@@ -269,6 +324,11 @@ public abstract class TestByteBufferInputStreams {
     checkOriginalData();
   }
 
+  /**
+   * 测试场景：slice buffers modification。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSliceBuffersModification() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -331,6 +391,11 @@ public abstract class TestByteBufferInputStreams {
     }
   }
 
+  /**
+   * 测试场景：skip。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSkip() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -353,6 +418,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(stream.skip(10)).as("Should return -1 when at end").isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：skip fully。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSkipFully() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -381,6 +451,11 @@ public abstract class TestByteBufferInputStreams {
         .hasMessageStartingWith("Not enough bytes to skip");
   }
 
+  /**
+   * 测试场景：mark。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMark() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -413,6 +488,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：mark twice。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkTwice() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -445,6 +525,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：mark at start。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkAtStart() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -472,6 +557,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：mark at end。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkAtEnd() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -502,6 +592,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(afterReset).as("Content should be equal").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：mark unset。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkUnset() {
     ByteBufferInputStream stream = newStream();
@@ -511,6 +606,11 @@ public abstract class TestByteBufferInputStreams {
         .hasMessageStartingWith("No mark defined");
   }
 
+  /**
+   * 测试场景：mark and reset twice over same range。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkAndResetTwiceOverSameRange() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -541,6 +641,11 @@ public abstract class TestByteBufferInputStreams {
     Assertions.assertThat(secondRead).as("Second read should be correct").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：mark limit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkLimit() throws Exception {
     ByteBufferInputStream stream = newStream();
@@ -557,6 +662,11 @@ public abstract class TestByteBufferInputStreams {
         .hasMessageStartingWith("No mark defined");
   }
 
+  /**
+   * 测试场景：mark double reset。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMarkDoubleReset() throws Exception {
     ByteBufferInputStream stream = newStream();

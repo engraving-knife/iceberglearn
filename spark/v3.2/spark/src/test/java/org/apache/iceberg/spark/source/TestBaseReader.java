@@ -52,6 +52,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestBaseReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 基类读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestBaseReader {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
@@ -118,6 +125,7 @@ public class TestBaseReader {
     }
   }
 
+  /** 测试closure上数据exhaustion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testClosureOnDataExhaustion() throws IOException {
     Integer totalTasks = 10;
@@ -140,6 +148,7 @@ public class TestBaseReader {
                 "All iterators should be closed after read exhausion", reader.isIteratorClosed(t)));
   }
 
+  /** 测试 testClosureDuringIteration 场景：验证 ClosureDuringIteration 相关操作的行为与结果。 */
   @Test
   public void testClosureDuringIteration() throws IOException {
     Integer totalTasks = 2;
@@ -169,6 +178,7 @@ public class TestBaseReader {
     Assert.assertTrue(reader.isIteratorClosed(secondTask));
   }
 
+  /** 测试closure无任意读场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testClosureWithoutAnyRead() throws IOException {
     Integer totalTasks = 10;
@@ -185,6 +195,7 @@ public class TestBaseReader {
                 "Iterator should not be created eagerly for tasks", reader.hasIterator(t)));
   }
 
+  /** 测试 testExplicitClosure 场景：验证 ExplicitClosure 相关操作的行为与结果。 */
   @Test
   public void testExplicitClosure() throws IOException {
     Integer totalTasks = 10;
@@ -212,6 +223,7 @@ public class TestBaseReader {
         });
   }
 
+  /** 测试 testIdempotentExplicitClosure 场景：验证 IdempotentExplicitClosure 相关操作的行为与结果。 */
   @Test
   public void testIdempotentExplicitClosure() throws IOException {
     Integer totalTasks = 10;
@@ -240,6 +252,7 @@ public class TestBaseReader {
     }
   }
 
+  /** 创建文件扫描任务。 */
   private List<FileScanTask> createFileScanTasks(Integer totalTasks, Integer recordPerTask)
       throws IOException {
     String desc = "make_scan_tasks";

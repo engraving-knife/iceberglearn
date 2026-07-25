@@ -32,6 +32,11 @@ import org.junit.jupiter.api.Test;
  * operation can be used: a &lt; b is equivalent to compare(a, b) &lt; 0.
  */
 public class TestComparableComparator {
+  /**
+   * 测试场景：Natural Order。
+   *
+   * <p>验证该方法在 Natural Order 条件下的行为是否符合预期。
+   */
   @Test
   public void testNaturalOrder() {
     Comparator<Long> cmp = Literal.of(34L).comparator();
@@ -41,6 +46,11 @@ public class TestComparableComparator {
     assertThat(cmp.compare(33L, -34L)).as("Should use signed ordering").isGreaterThan(0);
   }
 
+  /**
+   * 测试场景：Null Handling。
+   *
+   * <p>验证该方法在 Null Handling 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHandling() {
     Comparator<Long> cmp = Literal.of(34L).comparator();

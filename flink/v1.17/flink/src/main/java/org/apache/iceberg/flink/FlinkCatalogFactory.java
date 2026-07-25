@@ -39,24 +39,41 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.PropertyUtil;
 
 /**
- * A Flink Catalog factory implementation that creates {@link FlinkCatalog}.
+ * 文件级说明：Flink Catalog 工厂实现，用于创建 {@link FlinkCatalog}。
  *
- * <p>This supports the following catalog configuration options:
+ * <p>所属模块：iceberg-flink（Flink 集成模块），实现 Flink 的 {@link CatalogFactory} SPI 接口。
+ *
+ * <p>职责：
  *
  * <ul>
- *   <li><code>type</code> - Flink catalog factory key, should be "iceberg"
- *   <li><code>catalog-type</code> - iceberg catalog type, "hive", "hadoop" or "rest"
- *   <li><code>uri</code> - the Hive Metastore URI (Hive catalog only)
- *   <li><code>clients</code> - the Hive Client Pool Size (Hive catalog only)
- *   <li><code>warehouse</code> - the warehouse path (Hadoop catalog only)
- *   <li><code>default-database</code> - a database name to use as the default
- *   <li><code>base-namespace</code> - a base namespace as the prefix for all databases (Hadoop
- *       catalog only)
- *   <li><code>cache-enabled</code> - whether to enable catalog cache
+ *   <li>解析 Flink SQL CREATE CATALOG 时的配置项，创建对应的 Iceberg {@link CatalogLoader}。
+ *   <li>加载 Hadoop/Hive 配置（hive-site.xml、hdfs-site.xml、core-site.xml）。
+ *   <li>组装 {@link FlinkCatalog} 实例（含默认数据库、base namespace、缓存策略等）。
  * </ul>
  *
- * <p>To use a custom catalog that is not a Hive or Hadoop catalog, extend this class and override
- * {@link #createCatalogLoader(String, Map, Configuration)}.
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>支持 catalog-type（hive/hadoop/rest）与 catalog-impl（自定义）两种方式，互斥校验。
+ *   <li>Hive 配置支持显式目录路径和 classpath 自动发现两种加载方式。
+ *   <li>可通过继承并重写 {@link #createCatalogLoader} 来支持非内置 Catalog 类型。
+ * </ul>
+ *
+ * <p>支持的配置项：
+ *
+ * <ul>
+ *   <li><code>type</code> - Flink catalog factory key，固定为 "iceberg"
+ *   <li><code>catalog-type</code> - Iceberg catalog 类型：hive、hadoop 或 rest
+ *   <li><code>uri</code> - Hive Metastore URI（仅 Hive）
+ *   <li><code>clients</code> - Hive 客户端连接池大小（仅 Hive）
+ *   <li><code>warehouse</code> - 仓库路径（仅 Hadoop）
+ *   <li><code>default-database</code> - 默认数据库名
+ *   <li><code>base-namespace</code> - 基础命名空间前缀（仅 Hadoop）
+ *   <li><code>cache-enabled</code> - 是否启用 catalog 缓存
+ * </ul>
+ *
+ * <p>上下游关系：被 Flink Table API 通过 SPI 机制调用；内部委托 {@link CatalogLoader} 创建 底层 Iceberg Catalog，再包装为
+ * {@link FlinkCatalog}。
  */
 public class FlinkCatalogFactory implements CatalogFactory {
 
@@ -76,13 +93,20 @@ public class FlinkCatalogFactory implements CatalogFactory {
   public static final String PROPERTY_VERSION = "property-version";
 
   /**
-   * Create an Iceberg {@link org.apache.iceberg.catalog.Catalog} loader to be used by this Flink
-   * catalog adapter.
+   * 根据配置创建 Iceberg {@link org.apache.iceberg.catalog.Catalog} 加载器。
    *
-   * @param name Flink's catalog name
-   * @param properties Flink's catalog properties
-   * @param hadoopConf Hadoop configuration for catalog
-   * @return an Iceberg catalog loader
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>若设置了 catalog-impl，则创建 CustomCatalogLoader（与 catalog-type 互斥）。
+   *   <li>否则按 catalog-type 分支：hive → 合并 Hive 配置后创建 HiveCatalogLoader； hadoop →
+   *       HadoopCatalogLoader；rest → RESTCatalogLoader。
+   * </ul>
+   *
+   * @param name Flink catalog 名称
+   * @param properties Flink catalog 属性
+   * @param hadoopConf Hadoop 配置
+   * @return Iceberg catalog 加载器
    */
   static CatalogLoader createCatalogLoader(
       String name, Map<String, String> properties, Configuration hadoopConf) {
@@ -121,6 +145,7 @@ public class FlinkCatalogFactory implements CatalogFactory {
     }
   }
 
+  /** 返回 Flink 识别此 factory 所需的必要上下文（type=iceberg, property-version=1）。 */
   @Override
   public Map<String, String> requiredContext() {
     Map<String, String> context = Maps.newHashMap();
@@ -129,16 +154,35 @@ public class FlinkCatalogFactory implements CatalogFactory {
     return context;
   }
 
+  /** 返回支持的属性通配符（支持所有属性）。 */
   @Override
   public List<String> supportedProperties() {
     return ImmutableList.of("*");
   }
 
+  /**
+   * 创建 Flink Catalog 实例（使用集群 Hadoop 配置）。
+   *
+   * @param name catalog 名称
+   * @param properties catalog 属性
+   * @return FlinkCatalog 实例
+   */
   @Override
   public Catalog createCatalog(String name, Map<String, String> properties) {
     return createCatalog(name, properties, clusterHadoopConf());
   }
 
+  /**
+   * 创建 Flink Catalog 实例的核心方法。
+   *
+   * <p>逻辑：创建 CatalogLoader → 解析 default-database → 解析 base-namespace → 解析缓存配置
+   * （cache-enabled、cache-expiration-interval-ms）→ 组装 FlinkCatalog。
+   *
+   * @param name catalog 名称
+   * @param properties catalog 属性
+   * @param hadoopConf Hadoop 配置
+   * @return FlinkCatalog 实例
+   */
   protected Catalog createCatalog(
       String name, Map<String, String> properties, Configuration hadoopConf) {
     CatalogLoader catalogLoader = createCatalogLoader(name, properties, hadoopConf);
@@ -172,6 +216,17 @@ public class FlinkCatalogFactory implements CatalogFactory {
         cacheExpirationIntervalMs);
   }
 
+  /**
+   * 将 hive-site.xml / hdfs-site.xml / core-site.xml 合并到 Hadoop Configuration 中。
+   *
+   * <p>逻辑：以传入的 hadoopConf 为基础创建新 Configuration。若显式指定 hive-confDir， 则校验 hive-site.xml 存在并加载；否则从
+   * classpath 尝试加载。hadoop-confDir 类似处理， 同时加载 hdfs-site.xml 和 core-site.xml。
+   *
+   * @param hadoopConf 基础 Hadoop 配置
+   * @param hiveConfDir Hive 配置目录路径（可为空）
+   * @param hadoopConfDir Hadoop 配置目录路径（可为空）
+   * @return 合并后的新 Hadoop Configuration
+   */
   private static Configuration mergeHiveConf(
       Configuration hadoopConf, String hiveConfDir, String hadoopConfDir) {
     Configuration newConf = new Configuration(hadoopConf);
@@ -207,6 +262,14 @@ public class FlinkCatalogFactory implements CatalogFactory {
     return newConf;
   }
 
+  /**
+   * 从 Flink 全局配置中提取 Hadoop Configuration。
+   *
+   * <p>逻辑：加载 Flink global configuration，通过 {@link HadoopUtils#getHadoopConfiguration} 转换为 Hadoop
+   * Configuration。
+   *
+   * @return 集群 Hadoop 配置
+   */
   public static Configuration clusterHadoopConf() {
     return HadoopUtils.getHadoopConfiguration(GlobalConfiguration.loadConfiguration());
   }

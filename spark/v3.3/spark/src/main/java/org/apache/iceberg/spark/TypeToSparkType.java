@@ -43,16 +43,35 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 TypeToSparkType。
+ */
 class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
   TypeToSparkType() {}
 
   public static final String METADATA_COL_ATTR_KEY = "__metadata_col";
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param schema 参数
+   * @param structType 参数
+   * @return 结果对象
+   */
   @Override
   public DataType schema(Schema schema, DataType structType) {
     return structType;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param struct 参数
+   * @param fieldResults 参数
+   * @return 结果对象
+   */
   @Override
   public DataType struct(Types.StructType struct, List<DataType> fieldResults) {
     List<Types.NestedField> fields = struct.fields();
@@ -72,21 +91,49 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
     return StructType$.MODULE$.apply(sparkFields);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param field 参数
+   * @param fieldResult 参数
+   * @return 结果对象
+   */
   @Override
   public DataType field(Types.NestedField field, DataType fieldResult) {
     return fieldResult;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param list 参数
+   * @param elementResult 参数
+   * @return 结果对象
+   */
   @Override
   public DataType list(Types.ListType list, DataType elementResult) {
     return ArrayType$.MODULE$.apply(elementResult, list.isElementOptional());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param map 参数
+   * @param keyResult 参数
+   * @param valueResult 参数
+   * @return 结果对象
+   */
   @Override
   public DataType map(Types.MapType map, DataType keyResult, DataType valueResult) {
     return MapType$.MODULE$.apply(keyResult, valueResult, map.isValueOptional());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param primitive 参数
+   * @return 结果对象
+   */
   @Override
   public DataType primitive(Type.PrimitiveType primitive) {
     switch (primitive.typeId()) {
@@ -124,8 +171,10 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Metadata fieldMetadata(int fieldId) {
     if (MetadataColumns.metadataFieldIds().contains(fieldId)) {
+      /** 执行该方法的具体逻辑。 */
       return new MetadataBuilder().putBoolean(METADATA_COL_ATTR_KEY, true).build();
     }
 

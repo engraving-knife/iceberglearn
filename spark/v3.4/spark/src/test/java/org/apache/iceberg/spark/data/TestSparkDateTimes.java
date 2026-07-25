@@ -27,7 +27,15 @@ import org.apache.spark.sql.catalyst.util.TimestampFormatter;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkDateTimes 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark日期时间 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkDateTimes {
+  /** 测试Spark日期场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkDate() {
     // checkSparkDate("1582-10-14"); // -141428
@@ -44,12 +52,14 @@ public class TestSparkDateTimes {
     checkSparkDate("3224-10-05");
   }
 
+  /** 检查Spark日期。 */
   public void checkSparkDate(String dateString) {
     Literal<Integer> date = Literal.of(dateString).to(Types.DateType.get());
     String sparkDate = DateTimeUtils.toJavaDate(date.value()).toString();
     Assert.assertEquals("Should be the same date (" + date.value() + ")", dateString, sparkDate);
   }
 
+  /** 测试Spark时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkTimestamp() {
     TimeZone currentTz = TimeZone.getDefault();
@@ -63,6 +73,7 @@ public class TestSparkDateTimes {
     }
   }
 
+  /** 检查Spark时间戳。 */
   public void checkSparkTimestamp(String timestampString, String sparkRepr) {
     Literal<Long> ts = Literal.of(timestampString).to(Types.TimestampType.withZone());
     ZoneId zoneId = DateTimeUtils.getZoneId("UTC");

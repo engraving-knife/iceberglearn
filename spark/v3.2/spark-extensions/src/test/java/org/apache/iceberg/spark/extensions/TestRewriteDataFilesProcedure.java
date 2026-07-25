@@ -47,21 +47,31 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRewriteDataFilesProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 重写数据文件存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
 
   private static final String QUOTED_SPECIAL_CHARS_TABLE_NAME = "`table:with.special:chars`";
 
+  /** 测试重写数据文件存储过程。 */
   public TestRewriteDataFilesProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS %s", tableName(QUOTED_SPECIAL_CHARS_TABLE_NAME));
   }
 
+  /** 测试z顺序排序表达式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderSortExpression() {
     List<ExtendedParser.RawOrderField> order =
@@ -72,6 +82,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertTrue("Second field should be zorder", order.get(1).term() instanceof Zorder);
   }
 
+  /** 测试重写数据文件在空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesInEmptyTable() {
     createTable();
@@ -79,6 +90,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Procedure output must match", ImmutableList.of(row(0, 0, 0L)), output);
   }
 
+  /** 测试重写数据文件上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesOnPartitionTable() {
     createPartitionTable();
@@ -103,6 +115,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件上不存在的分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesOnNonPartitionTable() {
     createTable();
@@ -127,6 +140,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithOptions() {
     createTable();
@@ -149,6 +163,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带排序strategy场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithSortStrategy() {
     createTable();
@@ -177,6 +192,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带z顺序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithZOrder() {
     createTable();
@@ -218,6 +234,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Should have expected rows", expectedRows, sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试重写数据文件带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithFilter() {
     createTable();
@@ -246,6 +263,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带过滤器上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithFilterOnPartitionTable() {
     createPartitionTable();
@@ -274,6 +292,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带在过滤器上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithInFilterOnPartitionTable() {
     createPartitionTable();
@@ -302,6 +321,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写数据文件带所有possible过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithAllPossibleFilters() {
     createPartitionTable();
@@ -370,6 +390,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     //     " where => 'c2 like \"%s\"')", catalogName, tableIdent, "%car%");
   }
 
+  /** 测试重写数据文件带invalidinputs场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteDataFilesWithInvalidInputs() {
     createTable();
@@ -476,6 +497,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
                 catalogName, tableIdent));
   }
 
+  /** 测试invalid场景用于重写数据文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidCasesForRewriteDataFiles() {
     AssertHelpers.assertThrows(
@@ -509,6 +531,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.rewrite_data_files('')", catalogName));
   }
 
+  /** 测试binpack表带specialchars场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinPackTableWithSpecialChars() {
     Assume.assumeTrue(catalogName.equals(SparkCatalogConfig.HADOOP.catalogName()));
@@ -544,6 +567,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Table cache must be empty", 0, SparkTableCache.get().size());
   }
 
+  /** 测试排序表带specialchars场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortTableWithSpecialChars() {
     Assume.assumeTrue(catalogName.equals(SparkCatalogConfig.HADOOP.catalogName()));
@@ -584,6 +608,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Table cache must be empty", 0, SparkTableCache.get().size());
   }
 
+  /** 测试z顺序表带specialchars场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testZOrderTableWithSpecialChars() {
     Assume.assumeTrue(catalogName.equals(SparkCatalogConfig.HADOOP.catalogName()));
@@ -624,6 +649,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Table cache must be empty", 0, SparkTableCache.get().size());
   }
 
+  /** 测试默认排序顺序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOrder() {
     createTable();
@@ -657,6 +683,7 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
   }
 
+  /** 测试重写带untranslated或unconverted过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteWithUntranslatedOrUnconvertedFilter() {
     createTable();
@@ -677,10 +704,12 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
         .hasMessageContaining("Cannot convert Spark filter");
   }
 
+  /** 创建表。 */
   private void createTable() {
     sql("CREATE TABLE %s (c1 int, c2 string, c3 string) USING iceberg", tableName);
   }
 
+  /** 创建分区表。 */
   private void createPartitionTable() {
     sql(
         "CREATE TABLE %s (c1 int, c2 string, c3 string) "
@@ -692,10 +721,12 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
         TableProperties.WRITE_DISTRIBUTION_MODE_NONE);
   }
 
+  /** 插入数据。 */
   private void insertData(int filesCount) {
     insertData(tableName, filesCount);
   }
 
+  /** 插入数据。 */
   private void insertData(String table, int filesCount) {
     ThreeColumnRecord record1 = new ThreeColumnRecord(1, "foo", null);
     ThreeColumnRecord record2 = new ThreeColumnRecord(2, "bar", null);
@@ -717,18 +748,22 @@ public class TestRewriteDataFilesProcedure extends SparkExtensionsTestBase {
     }
   }
 
+  /** 快照summary。 */
   private Map<String, String> snapshotSummary() {
     return snapshotSummary(tableIdent);
   }
 
+  /** 快照summary。 */
   private Map<String, String> snapshotSummary(TableIdentifier tableIdentifier) {
     return validationCatalog.loadTable(tableIdentifier).currentSnapshot().summary();
   }
 
+  /** 当前数据。 */
   private List<Object[]> currentData() {
     return currentData(tableName);
   }
 
+  /** 当前数据。 */
   private List<Object[]> currentData(String table) {
     return rowsToJava(spark.sql("SELECT * FROM " + table + " order by c1, c2, c3").collectAsList());
   }

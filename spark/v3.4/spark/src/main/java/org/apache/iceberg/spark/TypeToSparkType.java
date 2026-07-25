@@ -44,16 +44,25 @@ import org.apache.spark.sql.types.StructType$;
 import org.apache.spark.sql.types.TimestampNTZType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：将 Iceberg Type 转换为 Spark DataType 的访问器。
+ *
+ * <p>设计意图：使用访问者模式递归转换 Iceberg 类型树为 Spark 类型树。
+ *
+ * <p>上下游关系：由 SparkSchemaUtil 调用。
+ */
 class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
   TypeToSparkType() {}
 
   public static final String METADATA_COL_ATTR_KEY = "__metadata_col";
-
+  /** 返回 Schema。 */
   @Override
   public DataType schema(Schema schema, DataType structType) {
     return structType;
   }
-
+  /** 执行 struct 相关操作。 */
   @Override
   public DataType struct(Types.StructType struct, List<DataType> fieldResults) {
     List<Types.NestedField> fields = struct.fields();
@@ -72,22 +81,22 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
 
     return StructType$.MODULE$.apply(sparkFields);
   }
-
+  /** 执行 field 相关操作。 */
   @Override
   public DataType field(Types.NestedField field, DataType fieldResult) {
     return fieldResult;
   }
-
+  /** 执行 list 相关操作。 */
   @Override
   public DataType list(Types.ListType list, DataType elementResult) {
     return ArrayType$.MODULE$.apply(elementResult, list.isElementOptional());
   }
-
+  /** 执行 map 相关操作。 */
   @Override
   public DataType map(Types.MapType map, DataType keyResult, DataType valueResult) {
     return MapType$.MODULE$.apply(keyResult, valueResult, map.isValueOptional());
   }
-
+  /** 执行 primitive 相关操作。 */
   @Override
   public DataType primitive(Type.PrimitiveType primitive) {
     switch (primitive.typeId()) {
@@ -129,7 +138,7 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
             "Cannot convert unknown type to Spark: " + primitive);
     }
   }
-
+  /** 执行 fieldMetadata 相关操作。 */
   private Metadata fieldMetadata(int fieldId) {
     if (MetadataColumns.metadataFieldIds().contains(fieldId)) {
       return new MetadataBuilder().putBoolean(METADATA_COL_ATTR_KEY, true).build();

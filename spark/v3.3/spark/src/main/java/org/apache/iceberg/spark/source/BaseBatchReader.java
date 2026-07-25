@@ -37,6 +37,15 @@ import org.apache.iceberg.spark.data.vectorized.VectorizedSparkParquetReaders;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 BaseBatchReader。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBatch, T> {
   private final int batchSize;
 
@@ -51,6 +60,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
     this.batchSize = batchSize;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected CloseableIterable<ColumnarBatch> newBatchIterable(
       InputFile inputFile,
       FileFormat format,
@@ -72,6 +82,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<ColumnarBatch> newParquetIterable(
       InputFile inputFile,
       long start,
@@ -100,6 +111,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
         .build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<ColumnarBatch> newOrcIterable(
       InputFile inputFile,
       long start,

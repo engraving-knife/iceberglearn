@@ -24,9 +24,22 @@ import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.iceberg.SnapshotRef;
 
-/** Flink sink write options */
+/**
+ * 文件级说明：Iceberg Flink sink 写入选项的集中定义。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块根包）。
+ *
+ * <p>职责：以 {@link ConfigOption} 形式声明所有与写入相关的可配置项， 包括文件格式、目标文件大小、压缩编解码、upsert 模式、覆盖模式、
+ * 分布式模式、分支、写入并行度与表刷新间隔等。
+ *
+ * <p>设计意图：将所有写入相关选项集中到一处，便于使用者统一查阅， 同时作为 {@link FlinkWriteConf} 解析配置的依据。
+ *
+ * <p>上下游关系：上游为 Flink SQL Hint 与全局配置，下游为 {@link FlinkWriteConf} 与 {@link
+ * org.apache.iceberg.flink.sink.FlinkSink}。
+ */
 public class FlinkWriteOptions {
 
+  /** 私有构造，配置项类禁止实例化。 */
   private FlinkWriteOptions() {}
 
   // File format for write operations(default: Table write.format.default )

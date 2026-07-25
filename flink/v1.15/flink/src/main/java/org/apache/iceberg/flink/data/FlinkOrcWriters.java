@@ -44,30 +44,44 @@ import org.apache.orc.storage.ql.exec.vector.LongColumnVector;
 import org.apache.orc.storage.ql.exec.vector.MapColumnVector;
 import org.apache.orc.storage.ql.exec.vector.TimestampColumnVector;
 
+/**
+ * Flink 专用的 ORC 值写入器工厂与内部实现集合。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：为各种 Iceberg 类型提供对应的 ORC 列向量写入器， 把 Flink {@link RowData}/{@link
+ * ArrayData}/{@link MapData} 写入 ORC VectorizedRowBatch。
+ *
+ * <p>设计意图：工厂模式 + 单例，按类型提供 writer 实例；被 {@link FlinkOrcWriter} 调用。
+ */
 class FlinkOrcWriters {
 
   private FlinkOrcWriters() {}
 
+  /** 返回字符串写入器单例。 */
   static OrcValueWriter<StringData> strings() {
     return StringWriter.INSTANCE;
   }
 
+  /** 返回日期写入器单例。 */
   static OrcValueWriter<Integer> dates() {
     return DateWriter.INSTANCE;
   }
 
+  /** 返回时间写入器单例。 */
   static OrcValueWriter<Integer> times() {
     return TimeWriter.INSTANCE;
   }
 
+  /** 返回不带时区的时间戳写入器单例。 */
   static OrcValueWriter<TimestampData> timestamps() {
     return TimestampWriter.INSTANCE;
   }
 
+  /** 返回带时区的时间戳写入器单例。 */
   static OrcValueWriter<TimestampData> timestampTzs() {
     return TimestampTzWriter.INSTANCE;
   }
 
+  /** 按精度选择 Decimal18 或 Decimal38 写入器。 */
   static OrcValueWriter<DecimalData> decimals(int precision, int scale) {
     if (precision <= 18) {
       return new Decimal18Writer(precision, scale);
@@ -78,11 +92,13 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 构造 list 写入器。 */
   static <T> OrcValueWriter<ArrayData> list(
       OrcValueWriter<T> elementWriter, LogicalType elementType) {
     return new ListWriter<>(elementWriter, elementType);
   }
 
+  /** 构造 map 写入器。 */
   static <K, V> OrcValueWriter<MapData> map(
       OrcValueWriter<K> keyWriter,
       OrcValueWriter<V> valueWriter,
@@ -91,10 +107,12 @@ class FlinkOrcWriters {
     return new MapWriter<>(keyWriter, valueWriter, keyType, valueType);
   }
 
+  /** 构造 struct（RowData）写入器。 */
   static OrcValueWriter<RowData> struct(List<OrcValueWriter<?>> writers, List<LogicalType> types) {
     return new RowDataWriter(writers, types);
   }
 
+  /** 字符串写入器：把 Flink StringData 字节引用写入 BytesColumnVector。 */
   private static class StringWriter implements OrcValueWriter<StringData> {
     private static final StringWriter INSTANCE = new StringWriter();
 
@@ -105,6 +123,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 日期写入器：写入 int 到 LongColumnVector。 */
   private static class DateWriter implements OrcValueWriter<Integer> {
     private static final DateWriter INSTANCE = new DateWriter();
 
@@ -114,6 +133,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 时间写入器：毫秒转微秒（Iceberg 标准为微秒）。 */
   private static class TimeWriter implements OrcValueWriter<Integer> {
     private static final TimeWriter INSTANCE = new TimeWriter();
 
@@ -125,6 +145,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 不带时区的时间戳写入器，转 UTC OffsetDateTime。 */
   private static class TimestampWriter implements OrcValueWriter<TimestampData> {
     private static final TimestampWriter INSTANCE = new TimestampWriter();
 
@@ -141,6 +162,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 带时区的时间戳写入器，转 Instant。 */
   private static class TimestampTzWriter implements OrcValueWriter<TimestampData> {
     private static final TimestampTzWriter INSTANCE = new TimestampTzWriter();
 
@@ -156,6 +178,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 精度 <=18 的 Decimal 写入器，使用 unscaled long。 */
   private static class Decimal18Writer implements OrcValueWriter<DecimalData> {
     private final int precision;
     private final int scale;
@@ -185,6 +208,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 精度 19-38 的 Decimal 写入器，使用 BigDecimal。 */
   private static class Decimal38Writer implements OrcValueWriter<DecimalData> {
     private final int precision;
     private final int scale;
@@ -214,6 +238,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 数组写入器：按偏移写入元素到 ListColumnVector。 */
   static class ListWriter<T> implements OrcValueWriter<ArrayData> {
     private final OrcValueWriter<T> elementWriter;
     private final ArrayData.ElementGetter elementGetter;
@@ -245,6 +270,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** map 写入器：按偏移写入 key/value 到 MapColumnVector。 */
   static class MapWriter<K, V> implements OrcValueWriter<MapData> {
     private final OrcValueWriter<K> keyWriter;
     private final OrcValueWriter<V> valueWriter;
@@ -290,6 +316,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** struct（RowData）写入器：通过 FieldGetter 按字段索引取值后委托子写入器。 */
   static class RowDataWriter extends GenericOrcWriters.StructWriter<RowData> {
     private final List<RowData.FieldGetter> fieldGetters;
 
@@ -308,6 +335,7 @@ class FlinkOrcWriters {
     }
   }
 
+  /** 扩容列向量，使用 3 倍增长因子避免频繁分配。 */
   private static void growColumnVector(ColumnVector cv, int requestedSize) {
     if (cv.isNull.length < requestedSize) {
       // Use growth factor of 3 to avoid frequent array allocations

@@ -36,19 +36,34 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 测试类：TestBaseIncrementalChangelogScan，用于验证 Base Incremental Changelog Scan 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Base Incremental Changelog Scan
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestBaseIncrementalChangelogScan
     extends ScanTestBase<
         IncrementalChangelogScan, ChangelogScanTask, ScanTaskGroup<ChangelogScanTask>> {
 
+  /** 辅助方法：base incremental changelog scan。 */
   public TestBaseIncrementalChangelogScan(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：new scan。 */
   @Override
   protected IncrementalChangelogScan newScan() {
     return table.newIncrementalChangelogScan();
   }
 
+  /**
+   * 测试场景：data filters。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFilters() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -80,6 +95,11 @@ public class TestBaseIncrementalChangelogScan
         });
   }
 
+  /**
+   * 测试场景：overwrites。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwrites() {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -110,6 +130,11 @@ public class TestBaseIncrementalChangelogScan
     Assert.assertTrue("Must be no deletes", t2.existingDeletes().isEmpty());
   }
 
+  /**
+   * 测试场景：file deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFileDeletes() {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -134,6 +159,11 @@ public class TestBaseIncrementalChangelogScan
     Assert.assertTrue("Must be no deletes", t1.existingDeletes().isEmpty());
   }
 
+  /**
+   * 测试场景：existing entries in new data manifests are ignored。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExistingEntriesInNewDataManifestsAreIgnored() {
     table
@@ -167,6 +197,11 @@ public class TestBaseIncrementalChangelogScan
     Assert.assertTrue("Must be no deletes", t1.deletes().isEmpty());
   }
 
+  /**
+   * 测试场景：manifest rewrites are ignored。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestRewritesAreIgnored() throws IOException {
     table.newAppend().appendFile(FILE_A).commit();
@@ -220,6 +255,11 @@ public class TestBaseIncrementalChangelogScan
     Assert.assertTrue("Must be no deletes", t3.deletes().isEmpty());
   }
 
+  /**
+   * 测试场景：data file rewrites。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFileRewrites() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -249,6 +289,11 @@ public class TestBaseIncrementalChangelogScan
     Assert.assertTrue("Must be no deletes", t2.deletes().isEmpty());
   }
 
+  /**
+   * 测试场景：delete files are not supported。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFilesAreNotSupported() {
     Assume.assumeTrue(formatVersion == 2);
@@ -274,6 +319,7 @@ public class TestBaseIncrementalChangelogScan
     }
   }
 
+  /** 辅助方法：task comparator。 */
   private Comparator<? super ChangelogScanTask> taskComparator() {
     return (t1, t2) ->
         ComparisonChain.start()
@@ -283,6 +329,7 @@ public class TestBaseIncrementalChangelogScan
             .result();
   }
 
+  /** 辅助方法：path。 */
   private String path(ChangelogScanTask task) {
     return ((ContentScanTask<?>) task).file().path().toString();
   }

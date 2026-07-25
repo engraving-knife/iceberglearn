@@ -42,9 +42,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestTagDDL 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 标签DDL 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestTagDDL extends SparkExtensionsTestBase {
   private static final String[] TIME_UNITS = {"DAYS", "HOURS", "MINUTES"};
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -56,20 +64,24 @@ public class TestTagDDL extends SparkExtensionsTestBase {
     };
   }
 
+  /** 测试标签DDL。 */
   public TestTagDDL(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 前。 */
   @Before
   public void before() {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试创建标签带retain场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTagWithRetain() throws NoSuchTableException {
     Table table = insertRows();
@@ -122,6 +134,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
                 tableName, tagName, firstSnapshotId, maxRefAge));
   }
 
+  /** 测试创建标签上空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTagOnEmptyTable() {
     Assertions.assertThatThrownBy(() -> sql("ALTER TABLE %s CREATE TAG %s", tableName, "abc"))
@@ -131,6 +144,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
             tableName);
   }
 
+  /** 测试创建标签use默认配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTagUseDefaultConfig() throws NoSuchTableException {
     Table table = insertRows();
@@ -178,6 +192,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         "The tag needs to have the default max ref age, which is null.", ref.maxRefAgeMs());
   }
 
+  /** 测试创建标签if非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTagIfNotExists() throws NoSuchTableException {
     long maxSnapshotAge = 2L;
@@ -198,6 +213,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         ref.maxRefAgeMs().longValue());
   }
 
+  /** 测试替换标签fails用于分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceTagFailsForBranch() throws NoSuchTableException {
     String branchName = "branch1";
@@ -214,6 +230,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         () -> sql("ALTER TABLE %s REPLACE Tag %s", tableName, branchName, second));
   }
 
+  /** 测试替换标签场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceTag() throws NoSuchTableException {
     Table table = insertRows();
@@ -240,6 +257,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         ref.maxRefAgeMs().longValue());
   }
 
+  /** 测试替换标签does非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceTagDoesNotExist() throws NoSuchTableException {
     Table table = insertRows();
@@ -254,6 +272,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
                 tableName, "someTag", table.currentSnapshot().snapshotId()));
   }
 
+  /** 测试替换标签带retain场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceTagWithRetain() throws NoSuchTableException {
     Table table = insertRows();
@@ -280,6 +299,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试创建或替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateOrReplace() throws NoSuchTableException {
     Table table = insertRows();
@@ -296,6 +316,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         "The tag needs to point to a specific snapshot id.", first, ref.snapshotId());
   }
 
+  /** 测试删除标签场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTag() throws NoSuchTableException {
     insertRows();
@@ -314,6 +335,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
     Assert.assertNull("The tag needs to be dropped.", ref);
   }
 
+  /** 测试删除标签不存在的conformingname场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTagNonConformingName() {
     AssertHelpers.assertThrows(
@@ -323,6 +345,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         () -> sql("ALTER TABLE %s DROP TAG %s", tableName, "123"));
   }
 
+  /** 测试删除标签does非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTagDoesNotExist() {
     AssertHelpers.assertThrows(
@@ -332,6 +355,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         () -> sql("ALTER TABLE %s DROP TAG %s", tableName, "nonExistingTag"));
   }
 
+  /** 测试删除标签failes用于分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTagFailesForBranch() throws NoSuchTableException {
     String branchName = "b1";
@@ -345,6 +369,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
         () -> sql("ALTER TABLE %s DROP TAG %s", tableName, branchName));
   }
 
+  /** 测试删除标签if存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropTagIfExists() throws NoSuchTableException {
     String tagName = "nonExistingTag";
@@ -366,6 +391,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
     Assert.assertNull("The tag needs to be dropped.", table.refs().get(tagName));
   }
 
+  /** 创建或替换带不存在的已存在的标签。 */
   @Test
   public void createOrReplaceWithNonExistingTag() throws NoSuchTableException {
     Table table = insertRows();
@@ -378,6 +404,7 @@ public class TestTagDDL extends SparkExtensionsTestBase {
     assertThat(table.refs().get(tagName).snapshotId()).isEqualTo(snapshotId);
   }
 
+  /** 插入行。 */
   private Table insertRows() throws NoSuchTableException {
     List<SimpleRecord> records =
         ImmutableList.of(new SimpleRecord(1, "a"), new SimpleRecord(2, "b"));

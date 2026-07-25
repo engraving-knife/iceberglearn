@@ -38,14 +38,28 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.ShortType;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 将 Spark {@link InternalRow} 写为 Avro 记录的写入器。
+ *
+ * <p>所属模块：iceberg-spark（data 子包）。实现 {@link MetricsAwareDatumWriter}，结合 Spark StructType 与 Avro
+ * Schema 构建类型化的 ValueWriter 树，把 Spark 内部行按 Avro 编码写出， 并在写入过程中收集字段级指标（metrics）。
+ *
+ * <p>设计意图：通过 {@link AvroWithSparkSchemaVisitor} 同时遍历 Spark 与 Avro 类型，由 {@link WriteBuilder}
+ * 为每种类型生成对应的 {@link ValueWriter}，实现类型安全且可度量。
+ *
+ * <p>上下游关系：由 Iceberg Avro 文件 appender 在 Spark 写路径中使用；依赖 {@link SparkValueWriters} 提供 Spark
+ * 特有的值写入实现。
+ */
 public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
   private final StructType dsSchema;
   private ValueWriter<InternalRow> writer = null;
 
+  /** 以数据集 Spark StructType 构造。 */
   public SparkAvroWriter(StructType dsSchema) {
     this.dsSchema = dsSchema;
   }
 
+  /** 设置 Avro Schema，并据此与 dsSchema 一起构建 ValueWriter 树。 */
   @Override
   @SuppressWarnings("unchecked")
   public void setSchema(Schema schema) {
@@ -54,17 +68,21 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
             AvroWithSparkSchemaVisitor.visit(dsSchema, schema, new WriteBuilder());
   }
 
+  /** 将一行写入 Avro 编码器。 */
   @Override
   public void write(InternalRow datum, Encoder out) throws IOException {
     writer.write(datum, out);
   }
 
+  /** 返回写入过程中收集的字段指标流。 */
   @Override
   public Stream<FieldMetrics> metrics() {
     return writer.metrics();
   }
 
+  /** Spark+Avro 类型访问构建器：为 struct/union/array/map/primitive 生成对应 ValueWriter。 */
   private static class WriteBuilder extends AvroWithSparkSchemaVisitor<ValueWriter<?>> {
+    /** 构造 struct 写入器，携带各字段类型。 */
     @Override
     public ValueWriter<?> record(
         DataType struct, Schema record, List<String> names, List<ValueWriter<?>> fields) {
@@ -75,6 +93,7 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
               .collect(Collectors.toList()));
     }
 
+    /** 构造可选（union[null,T]）写入器，校验必须为两元素且含 null。 */
     @Override
     public ValueWriter<?> union(DataType type, Schema union, List<ValueWriter<?>> options) {
       Preconditions.checkArgument(
@@ -90,17 +109,20 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
       }
     }
 
+    /** 构造数组写入器。 */
     @Override
     public ValueWriter<?> array(DataType sArray, Schema array, ValueWriter<?> elementWriter) {
       return SparkValueWriters.array(elementWriter, arrayElementType(sArray));
     }
 
+    /** 构造以字符串为键的 map 写入器。 */
     @Override
     public ValueWriter<?> map(DataType sMap, Schema map, ValueWriter<?> valueReader) {
       return SparkValueWriters.map(
           SparkValueWriters.strings(), mapKeyType(sMap), valueReader, mapValueType(sMap));
     }
 
+    /** 构造以任意类型为键的 arrayMap 写入器。 */
     @Override
     public ValueWriter<?> map(
         DataType sMap, Schema map, ValueWriter<?> keyWriter, ValueWriter<?> valueWriter) {
@@ -108,6 +130,12 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
           keyWriter, mapKeyType(sMap), valueWriter, mapValueType(sMap));
     }
 
+    /**
+     * 构造基本类型写入器。
+     *
+     * <p>逻辑：优先按 Avro 逻辑类型（date/timestamp-micros/decimal/uuid）选择；否则按 Avro 基本类型 选择，并对 INT 区分 Spark 的
+     * Byte/Short。
+     */
     @Override
     public ValueWriter<?> primitive(DataType type, Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();

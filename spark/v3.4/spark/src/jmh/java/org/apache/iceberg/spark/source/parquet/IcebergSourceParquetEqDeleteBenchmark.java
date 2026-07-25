@@ -24,19 +24,18 @@ import org.apache.iceberg.spark.source.IcebergSourceDeleteBenchmark;
 import org.openjdk.jmh.annotations.Param;
 
 /**
- * A benchmark that evaluates the non-vectorized read and vectorized read with equality delete in
- * the Spark data source for Iceberg.
+ * 文件级说明：IcebergSourceParquetEqDeleteBenchmark 性能基准测试。
  *
- * <p>This class uses a dataset with a flat schema. To run this benchmark for spark-3.3: <code>
- *   ./gradlew -DsparkVersions=3.3 :iceberg-spark:iceberg-spark-3.3:jmh
- *       -PjmhIncludeRegex=IcebergSourceParquetEqDeleteBenchmark
- *       -PjmhOutputPath=benchmark/iceberg-source-parquet-eq-delete-benchmark-result.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.4）。职责：对 Iceberg数据源Parquet等值删除 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 public class IcebergSourceParquetEqDeleteBenchmark extends IcebergSourceDeleteBenchmark {
   @Param({"0", "0.000001", "0.05", "0.25", "0.5", "1"})
   private double percentDeleteRow;
 
+  /** 辅助方法：追加数据。 */
   @Override
   protected void appendData() throws IOException {
     for (int fileNum = 1; fileNum <= NUM_FILES; fileNum++) {
@@ -50,6 +49,7 @@ public class IcebergSourceParquetEqDeleteBenchmark extends IcebergSourceDeleteBe
     }
   }
 
+  /** 辅助方法：文件格式。 */
   @Override
   protected FileFormat fileFormat() {
     return FileFormat.PARQUET;

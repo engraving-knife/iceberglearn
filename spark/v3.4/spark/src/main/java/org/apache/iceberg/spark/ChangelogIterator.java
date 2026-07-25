@@ -28,7 +28,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterators;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
-/** An iterator that transforms rows from changelog tables within a single Spark task. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：变更日志迭代器，将数据文件与删除文件按行序合并，产出 Spark 可读的 changelog 行（含 _change_type 等）。
+ *
+ * <p>设计意图：基于有序文件扫描与归并迭代，处理 insert/delete/update 的行级变更语义。
+ *
+ * <p>上下游关系：被 ChangelogRowReader / SparkChangelogScan 使用；依赖 Iceberg FileScanTask 与删除文件。
+ */
 public abstract class ChangelogIterator implements Iterator<Row> {
   protected static final String DELETE = ChangelogOperation.DELETE.name();
   protected static final String INSERT = ChangelogOperation.INSERT.name();
@@ -44,21 +52,21 @@ public abstract class ChangelogIterator implements Iterator<Row> {
     this.rowType = rowType;
     this.changeTypeIndex = rowType.fieldIndex(MetadataColumns.CHANGE_TYPE.name());
   }
-
+  /** 执行 changeTypeIndex 相关操作。 */
   protected int changeTypeIndex() {
     return changeTypeIndex;
   }
-
+  /** 执行 rowType 相关操作。 */
   protected StructType rowType() {
     return rowType;
   }
-
+  /** 执行 changeType 相关操作。 */
   protected String changeType(Row row) {
     String changeType = row.getString(changeTypeIndex());
     Preconditions.checkNotNull(changeType, "Change type should not be null");
     return changeType;
   }
-
+  /** 执行 rowIterator 相关操作。 */
   protected Iterator<Row> rowIterator() {
     return rowIterator;
   }
@@ -92,12 +100,12 @@ public abstract class ChangelogIterator implements Iterator<Row> {
     RemoveCarryoverIterator changelogIterator = new RemoveCarryoverIterator(rowIterator, rowType);
     return Iterators.filter(changelogIterator, Objects::nonNull);
   }
-
+  /** 执行 removeNetCarryovers 相关操作。 */
   public static Iterator<Row> removeNetCarryovers(Iterator<Row> rowIterator, StructType rowType) {
     ChangelogIterator changelogIterator = new RemoveNetCarryoverIterator(rowIterator, rowType);
     return Iterators.filter(changelogIterator, Objects::nonNull);
   }
-
+  /** 判断是否 SameRecord。 */
   protected boolean isSameRecord(Row currentRow, Row nextRow, int[] indicesToIdentifySameRow) {
     for (int idx : indicesToIdentifySameRow) {
       if (isDifferentValue(currentRow, nextRow, idx)) {
@@ -107,11 +115,11 @@ public abstract class ChangelogIterator implements Iterator<Row> {
 
     return true;
   }
-
+  /** 判断是否 DifferentValue。 */
   protected boolean isDifferentValue(Row currentRow, Row nextRow, int idx) {
     return !Objects.equals(nextRow.get(idx), currentRow.get(idx));
   }
-
+  /** 执行 generateIndicesToIdentifySameRow 相关操作。 */
   protected static int[] generateIndicesToIdentifySameRow(
       int totalColumnCount, Set<Integer> metadataColumnIndices) {
     int[] indices = new int[totalColumnCount - metadataColumnIndices.size()];

@@ -48,6 +48,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkIcebergSinkV2 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkIcebergSinkV2 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
 
@@ -63,6 +70,7 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
 
   @Parameterized.Parameters(
       name = "FileFormat = {0}, Parallelism = {1}, Partitioned={2}, WriteDistributionMode ={3}")
+  /** 辅助方法：parameters，parameters。 */
   public static Object[][] parameters() {
     return new Object[][] {
       new Object[] {"avro", 1, true, TableProperties.WRITE_DISTRIBUTION_MODE_NONE},
@@ -80,6 +88,7 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
     };
   }
 
+  /** 辅助方法：TestFlinkIcebergSinkV2，Flink Iceberg Sink 2。 */
   public TestFlinkIcebergSinkV2(
       String format, int parallelism, boolean partitioned, String writeDistributionMode) {
     this.format = FileFormat.fromString(format);
@@ -88,6 +97,7 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
     this.writeDistributionMode = writeDistributionMode;
   }
 
+  /** 辅助方法：setupTable，setup Table。 */
   @Before
   public void setupTable() {
     table =
@@ -121,6 +131,11 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
     tableLoader = catalogResource.tableLoader();
   }
 
+  /**
+   * 测试场景：Check And Get Equality Field Ids。
+   *
+   * <p>验证该方法在 Check And Get Equality Field Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckAndGetEqualityFieldIds() {
     table
@@ -152,11 +167,21 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
         Sets.newHashSet(builder.checkAndGetEqualityFieldIds()));
   }
 
+  /**
+   * 测试场景：Change Log On Id Key。
+   *
+   * <p>验证该方法在 Change Log On Id Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnIdKey() throws Exception {
     testChangeLogOnIdKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Upsert Only Deletes On Data Key。
+   *
+   * <p>验证该方法在 Upsert Only Deletes On Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertOnlyDeletesOnDataKey() throws Exception {
     List<List<Row>> elementsPerCheckpoint =
@@ -176,21 +201,41 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
         SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Change Log On Data Key。
+   *
+   * <p>验证该方法在 Change Log On Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnDataKey() throws Exception {
     testChangeLogOnDataKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Change Log On Id Data Key。
+   *
+   * <p>验证该方法在 Change Log On Id Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnIdDataKey() throws Exception {
     testChangeLogOnIdDataKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Change Log On Same Key。
+   *
+   * <p>验证该方法在 Change Log On Same Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testChangeLogOnSameKey() throws Exception {
     testChangeLogOnSameKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Upsert Mode Check。
+   *
+   * <p>验证该方法在 Upsert Mode Check 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertModeCheck() throws Exception {
     DataStream<Row> dataStream =
@@ -219,16 +264,31 @@ public class TestFlinkIcebergSinkV2 extends TestFlinkIcebergSinkV2Base {
             "Equality field columns shouldn't be empty when configuring to use UPSERT data stream.");
   }
 
+  /**
+   * 测试场景：Upsert On Id Key。
+   *
+   * <p>验证该方法在 Upsert On Id Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertOnIdKey() throws Exception {
     testUpsertOnIdKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Upsert On Data Key。
+   *
+   * <p>验证该方法在 Upsert On Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertOnDataKey() throws Exception {
     testUpsertOnDataKey(SnapshotRef.MAIN_BRANCH);
   }
 
+  /**
+   * 测试场景：Upsert On Id Data Key。
+   *
+   * <p>验证该方法在 Upsert On Id Data Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertOnIdDataKey() throws Exception {
     testUpsertOnIdDataKey(SnapshotRef.MAIN_BRANCH);

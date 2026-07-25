@@ -44,6 +44,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestMetadataUpdateParser，用于验证 Metadata Update Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metadata Update Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestMetadataUpdateParser {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
@@ -53,6 +61,11 @@ public class TestMetadataUpdateParser {
           Types.NestedField.required(1, "id", Types.IntegerType.get()),
           Types.NestedField.optional(2, "data", Types.StringType.get()));
 
+  /**
+   * 测试场景：metadata update without action cannot deserialize。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetadataUpdateWithoutActionCannotDeserialize() {
     List<String> invalidJson =
@@ -65,7 +78,11 @@ public class TestMetadataUpdateParser {
     }
   }
 
-  /** AssignUUID * */
+  /**
+   * 测试场景：assign uuid to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssignUUIDToJson() {
     String action = MetadataUpdateParser.ASSIGN_UUID;
@@ -75,6 +92,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：assign uuid from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAssignUUIDFromJson() {
     String uuid = "9510c070-5e6d-4b40-bf40-a8915bb76e5d";
@@ -87,7 +109,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(actual));
   }
 
-  /** UpgradeFormatVersion * */
+  /**
+   * 测试场景：upgrade format version to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpgradeFormatVersionToJson() {
     int formatVersion = 2;
@@ -98,6 +124,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：upgrade format version from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpgradeFormatVersionFromJson() {
     int formatVersion = 2;
@@ -110,7 +141,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(actual));
   }
 
-  /** AddSchema * */
+  /**
+   * 测试场景：add schema from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSchemaFromJson() {
     String action = MetadataUpdateParser.ADD_SCHEMA;
@@ -124,6 +159,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, actualUpdate, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：add schema from json without last column id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSchemaFromJsonWithoutLastColumnId() {
     String action = MetadataUpdateParser.ADD_SCHEMA;
@@ -135,6 +175,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, actualUpdate, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：add schema to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSchemaToJson() {
     Schema schema = ID_DATA_SCHEMA;
@@ -148,7 +193,11 @@ public class TestMetadataUpdateParser {
     Assert.assertEquals("Add schema should convert to the correct JSON value", expected, actual);
   }
 
-  /** SetCurrentSchema * */
+  /**
+   * 测试场景：set current schema from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetCurrentSchemaFromJson() {
     String action = MetadataUpdateParser.SET_CURRENT_SCHEMA;
@@ -158,6 +207,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set current schema to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetCurrentSchemaToJson() {
     String action = MetadataUpdateParser.SET_CURRENT_SCHEMA;
@@ -169,7 +223,11 @@ public class TestMetadataUpdateParser {
         "Set current schema should convert to the correct JSON value", expected, actual);
   }
 
-  /** AddPartitionSpec * */
+  /**
+   * 测试场景：add partition spec from json with field id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPartitionSpecFromJsonWithFieldId() {
     String action = MetadataUpdateParser.ADD_PARTITION_SPEC;
@@ -207,6 +265,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：add partition spec from json without field id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPartitionSpecFromJsonWithoutFieldId() {
     // partition field ids are missing in old PartitionSpec, they always auto-increment from 1000 in
@@ -242,6 +305,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：add partition spec to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddPartitionSpecToJson() {
     String action = MetadataUpdateParser.ADD_PARTITION_SPEC;
@@ -281,7 +349,11 @@ public class TestMetadataUpdateParser {
         "Add partition spec should convert to the correct JSON value", expected, actual);
   }
 
-  /** SetDefaultPartitionSpec * */
+  /**
+   * 测试场景：set default partition spec to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetDefaultPartitionSpecToJson() {
     String action = MetadataUpdateParser.SET_DEFAULT_PARTITION_SPEC;
@@ -293,6 +365,11 @@ public class TestMetadataUpdateParser {
         "Set default partition spec should serialize to the correct JSON value", expected, actual);
   }
 
+  /**
+   * 测试场景：set default partition spec from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetDefaultPartitionSpecFromJson() {
     String action = MetadataUpdateParser.SET_DEFAULT_PARTITION_SPEC;
@@ -303,7 +380,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
-  /** AddSortOrder * */
+  /**
+   * 测试场景：add sort order to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSortOrderToJson() {
     String action = MetadataUpdateParser.ADD_SORT_ORDER;
@@ -325,6 +406,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(update));
   }
 
+  /**
+   * 测试场景：add sort order from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSortOrderFromJson() {
     String action = MetadataUpdateParser.ADD_SORT_ORDER;
@@ -343,7 +429,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
-  /** SetDefaultSortOrder * */
+  /**
+   * 测试场景：set default sort order to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetDefaultSortOrderToJson() {
     String action = MetadataUpdateParser.SET_DEFAULT_SORT_ORDER;
@@ -356,6 +446,11 @@ public class TestMetadataUpdateParser {
         "Set default sort order should serialize to the correct JSON value", expected, actual);
   }
 
+  /**
+   * 测试场景：set default sort order from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetDefaultSortOrderFromJson() {
     String action = MetadataUpdateParser.SET_DEFAULT_SORT_ORDER;
@@ -365,7 +460,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
-  /** AddSnapshot * */
+  /**
+   * 测试场景：add snapshot to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSnapshotToJson() throws IOException {
     String action = MetadataUpdateParser.ADD_SNAPSHOT;
@@ -393,6 +492,11 @@ public class TestMetadataUpdateParser {
         "Add snapshot should serialize to the correct JSON value", expected, actual);
   }
 
+  /**
+   * 测试场景：add snapshot from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddSnapshotFromJson() throws IOException {
     String action = MetadataUpdateParser.ADD_SNAPSHOT;
@@ -418,7 +522,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
-  /** RemoveSnapshots * */
+  /**
+   * 测试场景：remove snapshots from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveSnapshotsFromJson() {
     String action = MetadataUpdateParser.REMOVE_SNAPSHOTS;
@@ -428,6 +536,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：remove snapshots to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveSnapshotsToJson() {
     String action = MetadataUpdateParser.REMOVE_SNAPSHOTS;
@@ -439,7 +552,11 @@ public class TestMetadataUpdateParser {
         "Remove snapshots should serialize to the correct JSON value", expected, actual);
   }
 
-  /** RemoveSnapshotRef * */
+  /**
+   * 测试场景：remove snapshot ref from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveSnapshotRefFromJson() {
     String action = MetadataUpdateParser.REMOVE_SNAPSHOT_REF;
@@ -449,6 +566,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：remove snapshot ref to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveSnapshotRefToJson() {
     String snapshotRef = "snapshot-ref";
@@ -460,7 +582,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(actual));
   }
 
-  /** SetSnapshotRef * */
+  /**
+   * 测试场景：set snapshot ref tag from json default null values missing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagFromJsonDefault_NullValuesMissing() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -478,6 +604,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref tag from json default explicit null values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagFromJsonDefault_ExplicitNullValues() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -496,6 +627,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref tag from json all fields null values missing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagFromJsonAllFields_NullValuesMissing() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -514,6 +650,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref tag from json all fields explicit null values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagFromJsonAllFields_ExplicitNullValues() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -532,6 +673,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref branch from json default null values missing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefBranchFromJsonDefault_NullValuesMissing() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -549,6 +695,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref branch from json default explicit null values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefBranchFromJsonDefault_ExplicitNullValues() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -567,6 +718,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：branch from json all fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBranchFromJsonAllFields() {
     String action = MetadataUpdateParser.SET_SNAPSHOT_REF;
@@ -585,6 +741,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set snapshot ref tag to json default。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagToJsonDefault() {
     long snapshotId = 1L;
@@ -605,6 +766,11 @@ public class TestMetadataUpdateParser {
         actual);
   }
 
+  /**
+   * 测试场景：set snapshot ref tag to json all fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefTagToJsonAllFields() {
     long snapshotId = 1L;
@@ -626,6 +792,11 @@ public class TestMetadataUpdateParser {
         actual);
   }
 
+  /**
+   * 测试场景：set snapshot ref branch to json default。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefBranchToJsonDefault() {
     long snapshotId = 1L;
@@ -646,6 +817,11 @@ public class TestMetadataUpdateParser {
         actual);
   }
 
+  /**
+   * 测试场景：set snapshot ref branch to json all fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetSnapshotRefBranchToJsonAllFields() {
     long snapshotId = 1L;
@@ -667,7 +843,11 @@ public class TestMetadataUpdateParser {
         actual);
   }
 
-  /** SetProperties */
+  /**
+   * 测试场景：set properties from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetPropertiesFromJson() {
     String action = MetadataUpdateParser.SET_PROPERTIES;
@@ -695,6 +875,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set properties from json fails when deserializing null values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetPropertiesFromJsonFailsWhenDeserializingNullValues() {
     String action = MetadataUpdateParser.SET_PROPERTIES;
@@ -708,6 +893,11 @@ public class TestMetadataUpdateParser {
         .hasMessage("Cannot parse to a string value: prop2: null");
   }
 
+  /**
+   * 测试场景：set properties to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetPropertiesToJson() {
     String action = MetadataUpdateParser.SET_PROPERTIES;
@@ -723,7 +913,11 @@ public class TestMetadataUpdateParser {
         "Set properties should serialize to the correct JSON value", expected, actual);
   }
 
-  /** RemoveProperties */
+  /**
+   * 测试场景：remove properties from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovePropertiesFromJson() {
     String action = MetadataUpdateParser.REMOVE_PROPERTIES;
@@ -747,6 +941,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：remove properties to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovePropertiesToJson() {
     String action = MetadataUpdateParser.REMOVE_PROPERTIES;
@@ -759,7 +958,11 @@ public class TestMetadataUpdateParser {
         "Remove properties should serialize to the correct JSON value", expected, actual);
   }
 
-  /** SetLocation */
+  /**
+   * 测试场景：set location from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetLocationFromJson() {
     String action = MetadataUpdateParser.SET_LOCATION;
@@ -769,6 +972,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set location to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetLocationToJson() {
     String action = MetadataUpdateParser.SET_LOCATION;
@@ -780,6 +988,11 @@ public class TestMetadataUpdateParser {
         "Remove properties should serialize to the correct JSON value", expected, actual);
   }
 
+  /**
+   * 测试场景：set statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetStatistics() {
     String json =
@@ -813,6 +1026,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(expected));
   }
 
+  /**
+   * 测试场景：remove statistics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveStatistics() {
     String json = "{\"action\":\"remove-statistics\",\"snapshot-id\":1940541653261589030}";
@@ -825,7 +1043,11 @@ public class TestMetadataUpdateParser {
         MetadataUpdateParser.toJson(expected));
   }
 
-  /** AddViewVersion */
+  /**
+   * 测试场景：add view version from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddViewVersionFromJson() {
     String action = MetadataUpdateParser.ADD_VIEW_VERSION;
@@ -846,6 +1068,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：add view version to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddViewVersionToJson() {
     String action = MetadataUpdateParser.ADD_VIEW_VERSION;
@@ -867,7 +1094,11 @@ public class TestMetadataUpdateParser {
     Assertions.assertThat(MetadataUpdateParser.toJson(update)).isEqualTo(expected);
   }
 
-  /** SetCurrentViewVersion */
+  /**
+   * 测试场景：set current view version from json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetCurrentViewVersionFromJson() {
     String action = MetadataUpdateParser.SET_CURRENT_VIEW_VERSION;
@@ -876,6 +1107,11 @@ public class TestMetadataUpdateParser {
     assertEquals(action, expected, MetadataUpdateParser.fromJson(json));
   }
 
+  /**
+   * 测试场景：set current view version to json。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetCurrentViewVersionToJson() {
     String action = MetadataUpdateParser.SET_CURRENT_VIEW_VERSION;
@@ -884,6 +1120,7 @@ public class TestMetadataUpdateParser {
     Assertions.assertThat(MetadataUpdateParser.toJson(update)).isEqualTo(expected);
   }
 
+  /** 辅助方法：assert equals。 */
   public void assertEquals(
       String action, MetadataUpdate expectedUpdate, MetadataUpdate actualUpdate) {
     switch (action) {
@@ -983,17 +1220,20 @@ public class TestMetadataUpdateParser {
     }
   }
 
+  /** 辅助方法：assert equals assign uuid。 */
   private static void assertEqualsAssignUUID(
       MetadataUpdate.AssignUUID expected, MetadataUpdate.AssignUUID actual) {
     Assert.assertEquals("UUIDs should be equal", expected.uuid(), actual.uuid());
   }
 
+  /** 辅助方法：assert equals upgrade format version。 */
   private static void assertEqualsUpgradeFormatVersion(
       MetadataUpdate.UpgradeFormatVersion expected, MetadataUpdate.UpgradeFormatVersion actual) {
     Assert.assertEquals(
         "Format version should be equal", expected.formatVersion(), actual.formatVersion());
   }
 
+  /** 辅助方法：assert equals add schema。 */
   private static void assertEqualsAddSchema(
       MetadataUpdate.AddSchema expected, MetadataUpdate.AddSchema actual) {
     Assert.assertTrue("Schemas should be the same", expected.schema().sameSchema(actual.schema()));
@@ -1001,17 +1241,20 @@ public class TestMetadataUpdateParser {
         "Last column id should be equal", expected.lastColumnId(), actual.lastColumnId());
   }
 
+  /** 辅助方法：assert equals set current schema。 */
   private static void assertEqualsSetCurrentSchema(
       MetadataUpdate.SetCurrentSchema expected, MetadataUpdate.SetCurrentSchema actual) {
     Assert.assertEquals("Schema id should be equal", expected.schemaId(), actual.schemaId());
   }
 
+  /** 辅助方法：assert equals set default partition spec。 */
   private static void assertEqualsSetDefaultPartitionSpec(
       MetadataUpdate.SetDefaultPartitionSpec expected,
       MetadataUpdate.SetDefaultPartitionSpec actual) {
     Assertions.assertThat(actual.specId()).isEqualTo(expected.specId());
   }
 
+  /** 辅助方法：assert equals add partition spec。 */
   private static void assertEqualsAddPartitionSpec(
       MetadataUpdate.AddPartitionSpec expected, MetadataUpdate.AddPartitionSpec actual) {
     Assert.assertEquals(
@@ -1040,6 +1283,7 @@ public class TestMetadataUpdateParser {
             });
   }
 
+  /** 辅助方法：assert equals add sort order。 */
   private static void assertEqualsAddSortOrder(
       MetadataUpdate.AddSortOrder expected, MetadataUpdate.AddSortOrder actual) {
     Assert.assertEquals(
@@ -1068,12 +1312,14 @@ public class TestMetadataUpdateParser {
             });
   }
 
+  /** 辅助方法：assert equals set default sort order。 */
   private static void assertEqualsSetDefaultSortOrder(
       MetadataUpdate.SetDefaultSortOrder expected, MetadataUpdate.SetDefaultSortOrder actual) {
     Assert.assertEquals(
         "Sort order id should be the same", expected.sortOrderId(), actual.sortOrderId());
   }
 
+  /** 辅助方法：assert equals set statistics。 */
   private static void assertEqualsSetStatistics(
       MetadataUpdate.SetStatistics expected, MetadataUpdate.SetStatistics actual) {
     Assert.assertEquals("Snapshot IDs should be equal", expected.snapshotId(), actual.snapshotId());
@@ -1128,12 +1374,14 @@ public class TestMetadataUpdateParser {
             });
   }
 
+  /** 辅助方法：assert equals remove statistics。 */
   private static void assertEqualsRemoveStatistics(
       MetadataUpdate.RemoveStatistics expected, MetadataUpdate.RemoveStatistics actual) {
     Assert.assertEquals(
         "Snapshots to remove should be the same", expected.snapshotId(), actual.snapshotId());
   }
 
+  /** 辅助方法：assert equals add snapshot。 */
   private static void assertEqualsAddSnapshot(
       MetadataUpdate.AddSnapshot expected, MetadataUpdate.AddSnapshot actual) {
     Assert.assertEquals(
@@ -1161,12 +1409,14 @@ public class TestMetadataUpdateParser {
         actual.snapshot().schemaId());
   }
 
+  /** 辅助方法：assert equals remove snapshots。 */
   private static void assertEqualsRemoveSnapshots(
       MetadataUpdate.RemoveSnapshot expected, MetadataUpdate.RemoveSnapshot actual) {
     Assert.assertEquals(
         "Snapshots to remove should be the same", expected.snapshotId(), actual.snapshotId());
   }
 
+  /** 辅助方法：assert equals set snapshot ref。 */
   private static void assertEqualsSetSnapshotRef(
       MetadataUpdate.SetSnapshotRef expected, MetadataUpdate.SetSnapshotRef actual) {
     // Non-null fields
@@ -1191,11 +1441,13 @@ public class TestMetadataUpdateParser {
         actual.maxRefAgeMs());
   }
 
+  /** 辅助方法：assert equals remove snapshot ref。 */
   private static void assertEqualsRemoveSnapshotRef(
       MetadataUpdate.RemoveSnapshotRef expected, MetadataUpdate.RemoveSnapshotRef actual) {
     Assertions.assertThat(actual.name()).isEqualTo(expected.name());
   }
 
+  /** 辅助方法：assert equals set properties。 */
   private static void assertEqualsSetProperties(
       MetadataUpdate.SetProperties expected, MetadataUpdate.SetProperties actual) {
     Assertions.assertThat(actual.updated())
@@ -1205,6 +1457,7 @@ public class TestMetadataUpdateParser {
         .containsExactlyInAnyOrderEntriesOf(expected.updated());
   }
 
+  /** 辅助方法：assert equals remove properties。 */
   private static void assertEqualsRemoveProperties(
       MetadataUpdate.RemoveProperties expected, MetadataUpdate.RemoveProperties actual) {
     Assertions.assertThat(actual.removed())
@@ -1214,21 +1467,25 @@ public class TestMetadataUpdateParser {
         .containsExactlyInAnyOrderElementsOf(expected.removed());
   }
 
+  /** 辅助方法：assert equals set location。 */
   private static void assertEqualsSetLocation(
       MetadataUpdate.SetLocation expected, MetadataUpdate.SetLocation actual) {
     Assert.assertEquals("Location should be the same", expected.location(), actual.location());
   }
 
+  /** 辅助方法：assert equals add view version。 */
   private static void assertEqualsAddViewVersion(
       MetadataUpdate.AddViewVersion expected, MetadataUpdate.AddViewVersion actual) {
     Assertions.assertThat(actual.viewVersion()).isEqualTo(expected.viewVersion());
   }
 
+  /** 辅助方法：assert equals set current view version。 */
   private static void assertEqualsSetCurrentViewVersion(
       MetadataUpdate.SetCurrentViewVersion expected, MetadataUpdate.SetCurrentViewVersion actual) {
     Assertions.assertThat(actual.versionId()).isEqualTo(expected.versionId());
   }
 
+  /** 辅助方法：create manifest list with manifest files。 */
   private String createManifestListWithManifestFiles(long snapshotId, Long parentSnapshotId)
       throws IOException {
     File manifestList = temp.newFile("manifests" + UUID.randomUUID());

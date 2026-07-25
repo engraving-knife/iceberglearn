@@ -66,6 +66,13 @@ import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
+/**
+ * 文件级说明：测试 TestS3RestSigner 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3RestSigner 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3RestSigner {
 
   private static final Region REGION = Region.US_WEST_2;
@@ -80,6 +87,7 @@ public class TestS3RestSigner {
   private static ValidatingSigner validatingSigner;
   private S3Client s3;
 
+  /** 辅助方法：beforeClass。 */
   @BeforeAll
   public static void beforeClass() throws Exception {
     if (null == httpServer) {
@@ -99,6 +107,7 @@ public class TestS3RestSigner {
             new CustomAwsS3V4Signer());
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterAll
   public static void afterClass() throws Exception {
     assertThat(validatingSigner.icebergSigner.tokenRefreshExecutor())
@@ -123,6 +132,7 @@ public class TestS3RestSigner {
     }
   }
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() throws Exception {
     MINIO_CONTAINER.start();
@@ -152,6 +162,7 @@ public class TestS3RestSigner {
         CreateMultipartUploadRequest.builder().bucket(BUCKET).key("random/multipart-key").build());
   }
 
+  /** 辅助方法：initHttpServer。 */
   private static Server initHttpServer() throws Exception {
     S3SignerServlet.SignRequestValidator deleteObjectsWithBody =
         new S3SignerServlet.SignRequestValidator(
@@ -177,6 +188,11 @@ public class TestS3RestSigner {
     return server;
   }
 
+  /**
+   * 测试场景：validate Get Object。
+   *
+   * <p>验证该方法在 validate Get Object 条件下的行为是否符合预期。
+   */
   @Test
   public void validateGetObject() {
     s3.getObject(GetObjectRequest.builder().bucket(BUCKET).key("random/key").build());
@@ -184,12 +200,22 @@ public class TestS3RestSigner {
     s3.getObject(GetObjectRequest.builder().bucket(BUCKET).key("random/key").build());
   }
 
+  /**
+   * 测试场景：validate Put Object。
+   *
+   * <p>验证该方法在 validate Put Object 条件下的行为是否符合预期。
+   */
   @Test
   public void validatePutObject() {
     s3.putObject(
         PutObjectRequest.builder().bucket(BUCKET).key("some/key").build(), Paths.get("/etc/hosts"));
   }
 
+  /**
+   * 测试场景：validate Delete Objects。
+   *
+   * <p>验证该方法在 validate Delete Objects 条件下的行为是否符合预期。
+   */
   @Test
   public void validateDeleteObjects() {
     Path sourcePath = Paths.get("/etc/hosts");
@@ -206,11 +232,21 @@ public class TestS3RestSigner {
     s3.deleteObjects(DeleteObjectsRequest.builder().bucket(BUCKET).delete(objectsToDelete).build());
   }
 
+  /**
+   * 测试场景：validate List Prefix。
+   *
+   * <p>验证该方法在 validate List Prefix 条件下的行为是否符合预期。
+   */
   @Test
   public void validateListPrefix() {
     s3.listObjectsV2(ListObjectsV2Request.builder().bucket(BUCKET).prefix("some/prefix/").build());
   }
 
+  /**
+   * 测试场景：validate Encoded Get Object。
+   *
+   * <p>验证该方法在 validate Encoded Get Object 条件下的行为是否符合预期。
+   */
   @Test
   public void validateEncodedGetObject() {
     s3.getObject(GetObjectRequest.builder().bucket(BUCKET).key("encoded/key=value/file").build());
@@ -218,17 +254,28 @@ public class TestS3RestSigner {
     s3.getObject(GetObjectRequest.builder().bucket(BUCKET).key("encoded/key=value/file").build());
   }
 
+  /**
+   * 测试场景：validated Create Multi Part Upload。
+   *
+   * <p>验证该方法在 validated Create Multi Part Upload 条件下的行为是否符合预期。
+   */
   @Test
   public void validatedCreateMultiPartUpload() {
     s3.createMultipartUpload(
         CreateMultipartUploadRequest.builder().bucket(BUCKET).key("some/multipart-key").build());
   }
 
+  /** 辅助方法：after。 */
   @AfterEach
   public void after() {
     MINIO_CONTAINER.stop();
   }
 
+  /**
+   * 测试场景：validated Upload Part。
+   *
+   * <p>验证该方法在 validated Upload Part 条件下的行为是否符合预期。
+   */
   @Test
   public void validatedUploadPart() {
     String multipartUploadId =
@@ -257,11 +304,13 @@ public class TestS3RestSigner {
     private final S3V4RestSignerClient icebergSigner;
     private final AbstractAwsS3V4Signer awsSigner;
 
+    /** 辅助方法：ValidatingSigner。 */
     private ValidatingSigner(S3V4RestSignerClient icebergSigner, AbstractAwsS3V4Signer awsSigner) {
       this.icebergSigner = icebergSigner;
       this.awsSigner = awsSigner;
     }
 
+    /** 辅助方法：processRequestPayload。 */
     @Override
     protected void processRequestPayload(
         SdkHttpFullRequest.Builder mutableRequest,
@@ -272,6 +321,7 @@ public class TestS3RestSigner {
       throw new UnsupportedOperationException();
     }
 
+    /** 辅助方法：processRequestPayload。 */
     @Override
     protected void processRequestPayload(
         SdkHttpFullRequest.Builder mutableRequest,
@@ -283,18 +333,21 @@ public class TestS3RestSigner {
       throw new UnsupportedOperationException();
     }
 
+    /** 辅助方法：calculateContentHashPresign。 */
     @Override
     protected String calculateContentHashPresign(
         SdkHttpFullRequest.Builder mutableRequest, Aws4PresignerParams signerParams) {
       throw new UnsupportedOperationException();
     }
 
+    /** 辅助方法：presign。 */
     @Override
     public SdkHttpFullRequest presign(
         SdkHttpFullRequest request, ExecutionAttributes executionAttributes) {
       throw new UnsupportedOperationException();
     }
 
+    /** 辅助方法：sign。 */
     @Override
     public SdkHttpFullRequest sign(
         SdkHttpFullRequest request, ExecutionAttributes executionAttributes) {
@@ -320,6 +373,7 @@ public class TestS3RestSigner {
       return awsResult;
     }
 
+    /** 辅助方法：signWithAwsSigner。 */
     @NotNull
     private SdkHttpFullRequest signWithAwsSigner(
         SdkHttpFullRequest request, AwsS3V4SignerParams signerParams) {
@@ -359,6 +413,7 @@ public class TestS3RestSigner {
    */
   private static class CustomAwsS3V4Signer extends AbstractAwsS3V4Signer {
 
+    /** 辅助方法：calculateContentHash。 */
     @Override
     protected String calculateContentHash(
         SdkHttpFullRequest.Builder mutableRequest,

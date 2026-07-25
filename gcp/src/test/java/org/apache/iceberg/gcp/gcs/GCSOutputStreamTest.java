@@ -34,6 +34,13 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：测试 GCSOutputStreamTest 的功能。
+ *
+ * <p>所属模块：iceberg-gcp。职责：验证 GCSOutputStreamTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class GCSOutputStreamTest {
   private static final Logger LOG = LoggerFactory.getLogger(GCSOutputStreamTest.class);
   private static final String BUCKET = "test-bucket";
@@ -42,6 +49,11 @@ public class GCSOutputStreamTest {
   private final Storage storage = LocalStorageHelper.getOptions().getService();
   private final Random random = new Random(1);
 
+  /**
+   * 测试场景：Write。
+   *
+   * <p>验证该方法在 Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testWrite() {
     // Run tests for both byte and array write paths
@@ -56,6 +68,11 @@ public class GCSOutputStreamTest {
             });
   }
 
+  /**
+   * 测试场景：Multiple Close。
+   *
+   * <p>验证该方法在 Multiple Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleClose() throws IOException {
     GCSOutputStream stream =
@@ -64,6 +81,7 @@ public class GCSOutputStreamTest {
     stream.close();
   }
 
+  /** 辅助方法：writeAndVerify。 */
   private void writeAndVerify(Storage client, BlobId uri, byte[] data, boolean arrayWrite) {
     try (GCSOutputStream stream =
         new GCSOutputStream(client, uri, properties, MetricsContext.nullMetrics())) {
@@ -84,16 +102,19 @@ public class GCSOutputStreamTest {
     assertThat(actual).isEqualTo(data);
   }
 
+  /** 辅助方法：readGCSData。 */
   private byte[] readGCSData(BlobId blobId) {
     return storage.get(blobId).getContent();
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] result = new byte[size];
     random.nextBytes(result);
     return result;
   }
 
+  /** 辅助方法：randomBlobId。 */
   private BlobId randomBlobId() {
     return BlobId.fromGsUtilUri(String.format("gs://%s/data/%s.dat", BUCKET, UUID.randomUUID()));
   }

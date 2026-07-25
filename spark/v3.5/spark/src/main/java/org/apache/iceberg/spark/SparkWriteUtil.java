@@ -39,9 +39,13 @@ import org.apache.spark.sql.connector.expressions.SortOrder;
 import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 
 /**
- * A utility that contains helper methods for working with Spark writes.
+ * 所属模块：iceberg-spark v3.5
  *
- * <p>Note it is an evolving internal API that is subject to change even in minor releases.
+ * <p>职责：Spark 写入工具类，提供写入相关的静态辅助方法（如计算写入分布、文件命名等）。
+ *
+ * <p>设计意图：将写入链路中的公共计算逻辑抽离，便于复用。
+ *
+ * <p>上下游关系：由 SparkWrite / SparkWriteBuilder 调用。
  */
 public class SparkWriteUtil {
 
@@ -72,7 +76,7 @@ public class SparkWriteUtil {
     SortOrder[] ordering = writeOrdering(table, fanoutEnabled);
     return new SparkWriteRequirements(distribution, ordering, advisoryPartitionSize);
   }
-
+  /** 执行 writeDistribution 相关操作。 */
   private static Distribution writeDistribution(Table table, DistributionMode mode) {
     switch (mode) {
       case NONE:
@@ -105,7 +109,7 @@ public class SparkWriteUtil {
       return writeRequirements(table, mode, fanoutEnabled, advisoryPartitionSize);
     }
   }
-
+  /** 执行 copyOnWriteDeleteUpdateDistribution 相关操作。 */
   private static Distribution copyOnWriteDeleteUpdateDistribution(
       Table table, DistributionMode mode) {
 
@@ -150,7 +154,7 @@ public class SparkWriteUtil {
       return new SparkWriteRequirements(distribution, ordering, advisoryPartitionSize);
     }
   }
-
+  /** 执行 positionDeltaUpdateMergeDistribution 相关操作。 */
   private static Distribution positionDeltaUpdateMergeDistribution(
       Table table, DistributionMode mode) {
 
@@ -176,7 +180,7 @@ public class SparkWriteUtil {
         throw new IllegalArgumentException("Unsupported distribution mode: " + mode);
     }
   }
-
+  /** 执行 positionDeltaUpdateMergeOrdering 相关操作。 */
   private static SortOrder[] positionDeltaUpdateMergeOrdering(Table table, boolean fanoutEnabled) {
     if (fanoutEnabled && table.sortOrder().isUnsorted()) {
       return EMPTY_ORDERING;
@@ -184,7 +188,7 @@ public class SparkWriteUtil {
       return concat(POSITION_DELETE_ORDERING, ordering(table));
     }
   }
-
+  /** 执行 positionDeltaDeleteDistribution 相关操作。 */
   private static Distribution positionDeltaDeleteDistribution(Table table, DistributionMode mode) {
     switch (mode) {
       case NONE:
@@ -220,39 +224,39 @@ public class SparkWriteUtil {
       return ordering(table);
     }
   }
-
+  /** 执行 clustering 相关操作。 */
   private static Expression[] clustering(Table table) {
     return Spark3Util.toTransforms(table.spec());
   }
-
+  /** 返回排序信息。 */
   private static SortOrder[] ordering(Table table) {
     return Spark3Util.toOrdering(SortOrderUtil.buildSortOrder(table));
   }
-
+  /** 执行 concat 相关操作。 */
   private static Expression[] concat(Expression[] clustering, Expression... otherClustering) {
     return ObjectArrays.concat(clustering, otherClustering, Expression.class);
   }
-
+  /** 执行 concat 相关操作。 */
   private static SortOrder[] concat(SortOrder[] ordering, SortOrder... otherOrdering) {
     return ObjectArrays.concat(ordering, otherOrdering, SortOrder.class);
   }
-
+  /** 执行 ref 相关操作。 */
   private static NamedReference ref(Types.NestedField field) {
     return Expressions.column(field.name());
   }
-
+  /** 执行 ref 相关操作。 */
   private static NamedReference ref(String name) {
     return Expressions.column(name);
   }
-
+  /** 执行 clusterBy 相关操作。 */
   private static Expression[] clusterBy(Expression... exprs) {
     return exprs;
   }
-
+  /** 执行 orderBy 相关操作。 */
   private static SortOrder[] orderBy(Expression... exprs) {
     return Arrays.stream(exprs).map(SparkWriteUtil::sort).toArray(SortOrder[]::new);
   }
-
+  /** 执行 sort 相关操作。 */
   private static SortOrder sort(Expression expr) {
     return Expressions.sort(expr, SortDirection.ASCENDING);
   }

@@ -24,10 +24,18 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.logical.SubqueryAlias
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import scala.annotation.tailrec
+/**
+ * 所属模块：iceberg-spark v3.4
+ * <p>职责：计划工具对象，提供 Iceberg 扩展层常用的计划构建与转换辅助方法。
+ * <p>设计意图：集中放置逻辑计划相关公共操作，供分析/重写规则复用。
+ * <p>上下游关系：由 RewriteMergeIntoTable / RewriteUpdateTable 等使用。
+ */
 
 object PlanUtils {
+  /** 判断是否 IcebergRelation。 */
   @tailrec
   def isIcebergRelation(plan: LogicalPlan): Boolean = {
+    /** 判断是否 IcebergTable。 */
     def isIcebergTable(relation: DataSourceV2Relation): Boolean = relation.table match {
       case _: SparkTable => true
       case _ => false

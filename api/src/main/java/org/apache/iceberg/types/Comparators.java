@@ -26,6 +26,34 @@ import org.apache.iceberg.StructLike;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.UnicodeUtil;
 
+/**
+ * 类型比较器工厂：为每种 Iceberg 类型提供对应的 {@link Comparator}。
+ *
+ * <p>所属模块：iceberg-api（被 core 的排序、表达式求值、数据比较等使用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>为原始类型提供比较器（{@link #forType(Type.PrimitiveType)}）。
+ *   <li>为 struct/list 类型提供递归比较器（{@link #forType(Types.StructType)}/{@link
+ *       #forType(Types.ListType)}）。
+ *   <li>提供 null 安全比较器（{@link #nullsFirst()}/{@link #nullsLast()}）。
+ *   <li>提供无符号字节比较器（{@link #unsignedBytes()}/{@link #unsignedByteArrays()}）。
+ *   <li>提供 Unicode 正确排序的 CharSequence 比较器（{@link #charSequences()}）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>无参数原始类型的比较器预缓存到 COMPARATORS 不可变映射，避免重复创建。
+ *   <li>struct/list 比较器递归构建子字段比较器；可选字段用 nullsFirst 包装。
+ *   <li>字符串比较器处理 UTF-16 代理对问题：4 字节 UTF-8 字符在 Java 中用两个 char 表示， 逐 char 比较会出错，故检测高代理区并视为大于任何 3
+ *       字节以内字符。
+ *   <li>二进制比较采用无符号逐字节比较，与 Iceberg 存储排序规范一致。
+ * </ul>
+ *
+ * <p>上下游关系：被 core 的排序实现、表达式比较、各引擎的排序下推使用。
+ */
 public class Comparators {
 
   private Comparators() {}
@@ -46,14 +74,26 @@ public class Comparators {
           .put(Types.BinaryType.get(), Comparators.unsignedBytes())
           .buildOrThrow();
 
+  /** 为 struct 类型构建递归比较器。 */
   public static Comparator<StructLike> forType(Types.StructType struct) {
     return new StructLikeComparator(struct);
   }
 
+  /** 为 list 类型构建递归比较器。 */
   public static <T> Comparator<List<T>> forType(Types.ListType list) {
     return new ListComparator<>(list);
   }
 
+  /**
+   * 为原始类型返回比较器。
+   *
+   * <p>逻辑：从 COMPARATORS 缓存查找；FixedType 用无符号字节比较；DecimalType 用自然序。
+   *
+   * @param type 原始类型
+   * @param <T> 比较值类型
+   * @return 比较器
+   * @throws UnsupportedOperationException 不支持的类型
+   */
   @SuppressWarnings("unchecked")
   public static <T> Comparator<T> forType(Type.PrimitiveType type) {
     Comparator<?> cmp = COMPARATORS.get(type);
@@ -68,6 +108,7 @@ public class Comparators {
     throw new UnsupportedOperationException("Cannot determine comparator for type: " + type);
   }
 
+  /** 按类型分派到原始/struct/list 比较器的内部方法。 */
   @SuppressWarnings("unchecked")
   private static <T> Comparator<T> internal(Type type) {
     if (type.isPrimitiveType()) {
@@ -147,28 +188,34 @@ public class Comparators {
     }
   }
 
+  /** 返回 ByteBuffer 的无符号字节比较器单例。 */
   public static Comparator<ByteBuffer> unsignedBytes() {
     return UnsignedByteBufComparator.INSTANCE;
   }
 
+  /** 返回 byte 数组的无符号字节比较器单例。 */
   public static Comparator<byte[]> unsignedByteArrays() {
     return UnsignedByteArrayComparator.INSTANCE;
   }
 
+  /** 返回 ByteBuffer 的有符号字节比较器（自然序）。 */
   public static Comparator<ByteBuffer> signedBytes() {
     return Comparator.naturalOrder();
   }
 
+  /** 返回 null 排在最前的比较器单例。 */
   @SuppressWarnings("unchecked")
   public static <T> Comparator<T> nullsFirst() {
     return (Comparator<T>) NullsFirst.INSTANCE;
   }
 
+  /** 返回 null 排在最后的比较器单例。 */
   @SuppressWarnings("unchecked")
   public static <T> Comparator<T> nullsLast() {
     return (Comparator<T>) NullsLast.INSTANCE;
   }
 
+  /** 返回 Unicode 正确排序的 CharSequence 比较器单例。 */
   public static Comparator<CharSequence> charSequences() {
     return CharSeqComparator.INSTANCE;
   }
@@ -313,13 +360,10 @@ public class Comparators {
     private CharSeqComparator() {}
 
     /**
-     * Java character supports only upto 3 byte UTF-8 characters. 4 byte UTF-8 character is
-     * represented using two Java characters (using UTF-16 surrogate pairs). Character by character
-     * comparison may yield incorrect results while comparing a 4 byte UTF-8 character to a java
-     * char. Character by character comparison works as expected if both characters are <= 3 byte
-     * UTF-8 character or both characters are 4 byte UTF-8 characters.
-     * isCharInUTF16HighSurrogateRange method detects a 4-byte character and considers that
-     * character to be lexicographically greater than any 3 byte or lower UTF-8 character.
+     * 字符串比较逻辑说明。
+     *
+     * <p>Java char 只支持 3 字节以内的 UTF-8 字符。4 字节 UTF-8 字符用两个 Java char （UTF-16 代理对）表示。逐 char 比较在比较 4
+     * 字节字符与普通 char 时会出错。 通过检测高代理区，把 4 字节字符视为字典序大于任何 3 字节以内字符。
      */
     @Override
     public int compare(CharSequence s1, CharSequence s2) {

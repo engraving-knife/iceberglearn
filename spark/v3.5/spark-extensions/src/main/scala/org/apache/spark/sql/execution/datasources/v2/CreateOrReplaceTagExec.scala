@@ -26,6 +26,30 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.plans.logical.TagOptions
 import org.apache.spark.sql.connector.catalog._
 
+/**
+ * 物理执行算子：在 Iceberg 表上创建或替换快照引用 Tag。
+ *
+ * <p>所属模块：iceberg-spark（spark-extensions 扩展包，Spark v2 数据源物理执行层）。
+ *
+ * <p>职责：接收 {@link org.apache.spark.sql.catalyst.plans.logical.CreateOrReplaceTag}
+ * 逻辑算子的参数，加载目标 Iceberg 表并通过 {@code manageSnapshots} API 执行
+ * 创建/替换 Tag 的实际操作。
+ *
+ * <p>设计意图：将 create、replace、ifNotExists 三种语义合并到单一执行算子，
+ * 在 {@code run()} 内根据标志组合决定调用 createTag 还是 replaceTag，
+ * 避免拆分多个物理算子。非 Iceberg 表直接抛出 UnsupportedOperationException。
+ *
+ * <p>上下游关系：由 CreateOrReplaceTag 逻辑算子在物理计划阶段转换而来，
+ * 直接调用 Iceberg 表的快照管理 API 提交变更。
+ *
+ * @param catalog 目标表所在 catalog
+ * @param ident 目标表标识
+ * @param tag 要创建/替换的 Tag 名称
+ * @param tagOptions Tag 配置（目标快照、保留时长）
+ * @param create 是否为创建模式
+ * @param replace 是否为替换模式
+ * @param ifNotExists 仅在 Tag 不存在时创建
+ */
 case class CreateOrReplaceTagExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -39,6 +63,21 @@ case class CreateOrReplaceTagExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行创建/替换 Tag 操作。
+   *
+   * <p>逻辑：
+   * <ol>
+   *   <li>加载目标表，非 Iceberg 表则抛出异常。</li>
+   *   <li>解析目标快照 ID：优先使用 tagOptions 指定值，否则取表当前快照；为空则报错。</li>
+   *   <li>根据 create/replace/ifNotExists 与引用是否已存在，选择 createTag 或 replaceTag；
+   *       若 ifNotExists 且引用已存在则直接返回。</li>
+   *   <li>若指定了保留时长，设置该 Tag 的最大引用存活时间。</li>
+   *   <li>提交快照管理事务。</li>
+   * </ol>
+   *
+   * @return 空行集合（该命令无结果输出）
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -78,6 +117,7 @@ case class CreateOrReplaceTagExec(
     Nil
   }
 
+  /** 返回该算子的可读字符串表示，用于 explain 输出。 */
   override def simpleString(maxFields: Int): String = {
     s"Create tag: $tag for table: ${ident.quoted}"
   }

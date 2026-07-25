@@ -35,6 +35,13 @@ import org.apache.iceberg.flink.FlinkReadOptions;
 
 /** Context object with optional arguments for a Flink Scan. */
 @Internal
+/**
+ * 扫描上下文，封装 Iceberg 表扫描的所有配置参数。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：承载 case-sensitive、snapshot-id、filter、projection 等扫描选项。
+ *
+ * <p>设计意图：值对象 + 构建器；被 enumerator/reader 共享。
+ */
 public class ScanContext implements Serializable {
 
   private static final long serialVersionUID = 1L;

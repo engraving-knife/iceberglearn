@@ -34,30 +34,74 @@ import org.apache.iceberg.avro.ValueWriter;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.util.DecimalUtil;
 
+/**
+ * 文件级说明：Avro {@link ValueWriter} 的 Flink 专用实现集合。
+ *
+ * <p>所属模块：iceberg-flink（数据写入子包 data），为 {@link FlinkAvroWriter} 提供 针对 Flink
+ * 数据类型（StringData、DecimalData、TimestampData、ArrayData、MapData、RowData）的 Avro 编码器。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供工厂方法创建各类 Flink 类型的 ValueWriter（strings/decimal/array/map/row 等）。
+ *   <li>实现具体的 Avro 编码逻辑，将 Flink 内部数据结构写入 Avro Encoder。
+ * </ul>
+ *
+ * <p>设计意图：Flink 使用 StringData/DecimalData/TimestampData 等紧凑二进制表示， 与 Avro 的 UTF8/fixed/long
+ * 编码模型不同。本类为每种类型提供专用 writer 做高效转换， 避免中间字符串创建等开销。DecimalWriter 使用 ThreadLocal 字节缓冲区避免频繁分配。
+ *
+ * <p>上下游关系：被 {@link FlinkAvroWriter.WriteBuilder} 调用以构建 writer 树。
+ */
 public class FlinkValueWriters {
 
   private FlinkValueWriters() {}
 
+  /** 创建 StringData 的 Avro writer（单例）。 */
   static ValueWriter<StringData> strings() {
     return StringWriter.INSTANCE;
   }
 
+  /** 创建 TIME（微秒）的 Avro writer（单例），将毫秒值转为微秒。 */
   static ValueWriter<Integer> timeMicros() {
     return TimeMicrosWriter.INSTANCE;
   }
 
+  /** 创建 TIMESTAMP（微秒）的 Avro writer（单例）。 */
   static ValueWriter<TimestampData> timestampMicros() {
     return TimestampMicrosWriter.INSTANCE;
   }
 
+  /**
+   * 创建 DecimalData 的 Avro writer。
+   *
+   * @param precision 精度
+   * @param scale 标度
+   * @return DecimalWriter 实例
+   */
   static ValueWriter<DecimalData> decimal(int precision, int scale) {
     return new DecimalWriter(precision, scale);
   }
 
+  /**
+   * 创建 ArrayData 的 Avro writer。
+   *
+   * @param elementWriter 元素 writer
+   * @param elementType Flink 元素类型
+   * @return ArrayWriter 实例
+   */
   static <T> ValueWriter<ArrayData> array(ValueWriter<T> elementWriter, LogicalType elementType) {
     return new ArrayWriter<>(elementWriter, elementType);
   }
 
+  /**
+   * 创建数组形式 Map（arrayMap）的 Avro writer，key/value 以数组形式逐对写入。
+   *
+   * @param keyWriter key writer
+   * @param keyType Flink key 类型
+   * @param valueWriter value writer
+   * @param valueType Flink value 类型
+   * @return ArrayMapWriter 实例
+   */
   static <K, V> ValueWriter<MapData> arrayMap(
       ValueWriter<K> keyWriter,
       LogicalType keyType,
@@ -66,6 +110,15 @@ public class FlinkValueWriters {
     return new ArrayMapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /**
+   * 创建标准 Map 的 Avro writer，使用 Avro 的 map 编码。
+   *
+   * @param keyWriter key writer
+   * @param keyType Flink key 类型
+   * @param valueWriter value writer
+   * @param valueType Flink value 类型
+   * @return MapWriter 实例
+   */
   static <K, V> ValueWriter<MapData> map(
       ValueWriter<K> keyWriter,
       LogicalType keyType,
@@ -74,10 +127,18 @@ public class FlinkValueWriters {
     return new MapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /**
+   * 创建 RowData 的 Avro writer。
+   *
+   * @param writers 各字段 writer
+   * @param types 各字段 Flink 类型
+   * @return RowWriter 实例
+   */
   static ValueWriter<RowData> row(List<ValueWriter<?>> writers, List<LogicalType> types) {
     return new RowWriter(writers, types);
   }
 
+  /** StringData 写入器：将 Flink StringData 转为 Avro UTF8 写入。 */
   private static class StringWriter implements ValueWriter<StringData> {
     private static final StringWriter INSTANCE = new StringWriter();
 
@@ -90,6 +151,11 @@ public class FlinkValueWriters {
     }
   }
 
+  /**
+   * DecimalData 写入器：将 DecimalData 转为固定长度字节数组写入。
+   *
+   * <p>设计要点：使用 ThreadLocal 字节缓冲区避免每次写入时分配。
+   */
   private static class DecimalWriter implements ValueWriter<DecimalData> {
     private final int precision;
     private final int scale;
@@ -109,6 +175,7 @@ public class FlinkValueWriters {
     }
   }
 
+  /** TIME 写入器：将毫秒整数值乘以 1000 转为微秒写入。 */
   private static class TimeMicrosWriter implements ValueWriter<Integer> {
     private static final TimeMicrosWriter INSTANCE = new TimeMicrosWriter();
 
@@ -118,6 +185,7 @@ public class FlinkValueWriters {
     }
   }
 
+  /** TIMESTAMP 写入器：将 TimestampData 的毫秒+纳秒部分合成为微秒写入。 */
   private static class TimestampMicrosWriter implements ValueWriter<TimestampData> {
     private static final TimestampMicrosWriter INSTANCE = new TimestampMicrosWriter();
 
@@ -129,6 +197,11 @@ public class FlinkValueWriters {
     }
   }
 
+  /**
+   * ArrayData 写入器：遍历数组元素逐个写入 Avro array。
+   *
+   * <p>设计要点：使用预创建的 ElementGetter 避免逐元素类型判断开销。
+   */
   private static class ArrayWriter<T> implements ValueWriter<ArrayData> {
     private final ValueWriter<T> elementWriter;
     private final ArrayData.ElementGetter elementGetter;
@@ -152,6 +225,7 @@ public class FlinkValueWriters {
     }
   }
 
+  /** 数组 Map 写入器：以 Avro array 形式逐对写入 key/value，支持任意 key 类型。 */
   private static class ArrayMapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
@@ -186,6 +260,7 @@ public class FlinkValueWriters {
     }
   }
 
+  /** 标准 Map 写入器：使用 Avro map 编码写入 key/value 对。 */
   private static class MapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
@@ -220,6 +295,11 @@ public class FlinkValueWriters {
     }
   }
 
+  /**
+   * RowData 写入器：逐字段写入 Avro record。
+   *
+   * <p>设计要点：预创建 FieldGetter 数组避免逐字段类型判断；null 字段直接写 null。
+   */
   static class RowWriter implements ValueWriter<RowData> {
     private final ValueWriter<?>[] writers;
     private final RowData.FieldGetter[] getters;

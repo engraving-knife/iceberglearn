@@ -31,6 +31,24 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
+/**
+ * 文件级说明：按字段 ID 集合裁剪 Parquet schema 的列裁剪访问器。
+ *
+ * <p>所属模块：iceberg-parquet（列裁剪，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：遍历 Parquet schema 树，仅保留 selectedIds 中指定的字段（及其祖先）， 裁剪掉不需要的列，减少读取时的 IO。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>按 ID 裁剪：通过字段 ID 匹配，支持 schema 演进（字段重命名/重排）。
+ *   <li>保留结构：被选中的 struct 的祖先节点会被保留（即使本身不在 selectedIds 中）， 确保嵌套结构完整。
+ *   <li>返回 null 表示裁剪：子节点返回 null 表示该列不需要，父节点据此过滤字段列表。
+ *   <li>list/map 特殊处理：list 的元素和 map 的 key/value 只要有一个被选中就保留整个 list/map。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ParquetSchemaUtil#pruneColumns} 调用； 依赖 ParquetTypeVisitor（遍历框架）。
+ */
 class PruneColumns extends ParquetTypeVisitor<Type> {
   private final Set<Integer> selectedIds;
 
@@ -39,6 +57,11 @@ class PruneColumns extends ParquetTypeVisitor<Type> {
     this.selectedIds = selectedIds;
   }
 
+  /**
+   * 处理顶层 message：按 selectedIds 过滤顶层字段。
+   *
+   * <p>逻辑：遍历字段，若字段 ID 在 selectedIds 中则保留（含子树裁剪结果）； 若不在但子树有被选中的字段也保留。无变化时返回原 message。
+   */
   @Override
   public Type message(MessageType message, List<Type> fields) {
     Types.MessageTypeBuilder builder = Types.buildMessage();
@@ -78,6 +101,7 @@ class PruneColumns extends ParquetTypeVisitor<Type> {
     return builder.named(message.getName());
   }
 
+  /** 处理 struct：按 selectedIds 过滤字段，返回裁剪后的 struct。若无字段保留则返回 null。 */
   @Override
   public Type struct(GroupType struct, List<Type> fields) {
     boolean hasChange = false;
@@ -105,6 +129,7 @@ class PruneColumns extends ParquetTypeVisitor<Type> {
     return null;
   }
 
+  /** 处理 list：若元素 ID 在 selectedIds 中或子树有选中字段则保留，否则返回 null。 */
   @Override
   public Type list(GroupType list, Type element) {
     Type repeated = list.getType(0);
@@ -127,6 +152,7 @@ class PruneColumns extends ParquetTypeVisitor<Type> {
     return null;
   }
 
+  /** 处理 map：若 key 或 value 的 ID 在 selectedIds 中或子树有选中字段则保留，否则返回 null。 */
   @Override
   public Type map(GroupType map, Type key, Type value) {
     GroupType repeated = map.getType(0).asGroupType();
@@ -149,6 +175,7 @@ class PruneColumns extends ParquetTypeVisitor<Type> {
     return null;
   }
 
+  /** 原始类型始终返回 null（是否保留由父级 struct/message 按 ID 决定）。 */
   @Override
   public Type primitive(PrimitiveType primitive) {
     return null;

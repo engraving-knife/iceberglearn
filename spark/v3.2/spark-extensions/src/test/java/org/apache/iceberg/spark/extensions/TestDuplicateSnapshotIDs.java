@@ -27,18 +27,28 @@ import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+/**
+ * 文件级说明：测试 TestDuplicateSnapshotIDs 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 duplicate快照ids 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDuplicateSnapshotIDs extends SparkExtensionsTestBase {
 
+  /** 测试duplicate快照ids。 */
   public TestDuplicateSnapshotIDs(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试same快照idback到back场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSameSnapshotIDBackToBack() {
     sql("DROP TABLE IF EXISTS %s ", tableName);
@@ -66,6 +76,7 @@ public class TestDuplicateSnapshotIDs extends SparkExtensionsTestBase {
         sql("SELECT * from %s.snapshots where snapshot_id = 43L", tableName).size(), 1);
   }
 
+  /** 测试same快照id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSameSnapshotID() {
     sql("DROP TABLE IF EXISTS %s ", tableName);

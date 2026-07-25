@@ -21,6 +21,23 @@ package org.apache.iceberg.flink.source.reader;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.MetricGroup;
 
+/**
+ * 文件级说明：Iceberg FLIP-27 Source Reader 的指标收集类。
+ *
+ * <p>所属模块：iceberg-flink（source/reader 子包），注册和管理 source reader 的 Flink 指标。
+ *
+ * <p>职责：跟踪和暴露以下指标：
+ *
+ * <ul>
+ *   <li>assignedSplits/assignedBytes：已分配的 split 数量和字节数。
+ *   <li>finishedSplits/finishedBytes：已完成的 split 数量和字节数。
+ *   <li>splitReaderFetchCalls：SplitReader 的 fetch 调用次数。
+ * </ul>
+ *
+ * <p>设计意图：将指标注册和更新逻辑封装在单独的类中，保持 reader 代码整洁。 指标按表名分组，便于多表场景区分。
+ *
+ * <p>上下游关系：被 {@link IcebergSourceReader} 调用以更新指标。
+ */
 public class IcebergSourceReaderMetrics {
   private final Counter assignedSplits;
   private final Counter assignedBytes;
@@ -28,6 +45,12 @@ public class IcebergSourceReaderMetrics {
   private final Counter finishedBytes;
   private final Counter splitReaderFetchCalls;
 
+  /**
+   * 构造方法，注册指标。
+   *
+   * @param metrics Flink MetricGroup
+   * @param fullTableName 完整表名（用于指标分组）
+   */
   public IcebergSourceReaderMetrics(MetricGroup metrics, String fullTableName) {
     MetricGroup readerMetrics =
         metrics.addGroup("IcebergSourceReader").addGroup("table", fullTableName);

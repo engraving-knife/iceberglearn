@@ -30,26 +30,28 @@ import org.apache.iceberg.transforms.Transform;
 import org.apache.iceberg.util.NaNUtil;
 
 /**
- * Finds the residuals for an {@link Expression} the partitions in the given {@link PartitionSpec}.
+ * 模块：api，表达式层。
  *
- * <p>A residual expression is made by partially evaluating an expression using partition values.
- * For example, if a table is partitioned by day(utc_timestamp) and is read with a filter expression
- * utc_timestamp &gt;= a and utc_timestamp &lt;= b, then there are 4 possible residuals expressions
- * for the partition data, d:
+ * <p>职责：在给定 {@link PartitionSpec 分区规约} 下，利用分区值对表达式进行部分求值，得到残差表达式（residual）。
+ *
+ * <p>设计意图：分区裁剪只能定位到候选分区，但分区内仍可能存在不满足过滤条件的行。 残差表达式即"分区值已知后，原过滤条件中尚未被分区完全确定、需要在行级别继续求值的部分"。
+ *
+ * <p>示例：表按 day(utc_timestamp) 分区，过滤条件为 utc_timestamp &gt;= a and utc_timestamp &lt;= b， 对分区数据 d
+ * 有四种残差：
  *
  * <ul>
- *   <li>If d &gt; day(a) and d &lt; day(b), the residual is always true
- *   <li>If d == day(a) and d != day(b), the residual is utc_timestamp &gt;= a
- *   <li>if d == day(b) and d != day(a), the residual is utc_timestamp &lt;= b
- *   <li>If d == day(a) == day(b), the residual is utc_timestamp &gt;= a and utc_timestamp &lt;= b
+ *   <li>d &gt; day(a) 且 d &lt; day(b)：残差恒为 true
+ *   <li>d == day(a) 且 d != day(b)：残差为 utc_timestamp &gt;= a
+ *   <li>d == day(b) 且 d != day(a)：残差为 utc_timestamp &lt;= b
+ *   <li>d == day(a) == day(b)：残差为 utc_timestamp &gt;= a and utc_timestamp &lt;= b
  * </ul>
  *
- * <p>Partition data is passed using {@link StructLike}. Residuals are returned by {@link
- * #residualFor(StructLike)}.
+ * <p>分区数据通过 {@link StructLike} 传入，残差由 {@link #residualFor(StructLike)} 返回。该类线程安全。
  *
- * <p>This class is thread-safe.
+ * <p>上下游关系：上游为查询过滤表达式，下游被扫描读取流程调用以减少行级数据读取量。
  */
 public class ResidualEvaluator implements Serializable {
+  /** 针对非分区表的残差求值器：由于无分区可利用，残差恒等于原表达式。 */
   private static class UnpartitionedResidualEvaluator extends ResidualEvaluator {
     private final Expression expr;
 
@@ -65,21 +67,24 @@ public class ResidualEvaluator implements Serializable {
   }
 
   /**
-   * Return a residual evaluator for an unpartitioned {@link PartitionSpec spec}.
+   * 为非分区 {@link PartitionSpec 规约} 返回残差求值器。
    *
-   * @param expr an expression
-   * @return a residual evaluator that always returns the expression
+   * @param expr 过滤表达式
+   * @return 始终返回原表达式的残差求值器
    */
   public static ResidualEvaluator unpartitioned(Expression expr) {
     return new UnpartitionedResidualEvaluator(expr);
   }
 
   /**
-   * Return a residual evaluator for a {@link PartitionSpec spec} and {@link Expression expression}.
+   * 根据 {@link PartitionSpec 分区规约} 与 {@link Expression 表达式} 构造残差求值器。
    *
-   * @param spec a partition spec
-   * @param expr an expression
-   * @return a residual evaluator for the expression
+   * <p>若分区规约无分区字段，则返回非分区版本（直接返回原表达式）。
+   *
+   * @param spec 分区规约
+   * @param expr 过滤表达式
+   * @param caseSensitive 列名匹配是否区分大小写
+   * @return 该表达式对应的残差求值器
    */
   public static ResidualEvaluator of(PartitionSpec spec, Expression expr, boolean caseSensitive) {
     if (spec.fields().size() > 0) {
@@ -100,18 +105,20 @@ public class ResidualEvaluator implements Serializable {
   }
 
   /**
-   * Returns a residual expression for the given partition values.
+   * 返回给定分区值对应的残差表达式。
    *
-   * @param partitionData partition data values
-   * @return the residual of this evaluator's expression from the partition values
+   * @param partitionData 分区数据值
+   * @return 当前求值器表达式在该分区值下的残差
    */
   public Expression residualFor(StructLike partitionData) {
     return new ResidualVisitor().eval(partitionData);
   }
 
+  /** 残差求值访问者：基于分区值对绑定谓词进行部分求值。 对能被分区值完全确定的谓词返回常量（alwaysTrue/alwaysFalse），否则保留原谓词作为残差。 */
   private class ResidualVisitor extends BoundExpressionVisitor<Expression> {
     private StructLike struct;
 
+    /** 设置分区数据并遍历表达式树求值。 */
     private Expression eval(StructLike dataStruct) {
       this.struct = dataStruct;
       return ExpressionVisitors.visit(expr, this);
@@ -222,6 +229,18 @@ public class ResidualEvaluator implements Serializable {
           : alwaysTrue();
     }
 
+    /**
+     * 求绑定谓词的残差。
+     *
+     * <p>逻辑：
+     *
+     * <ol>
+     *   <li>取该谓词引用字段对应的所有分区字段；若无分区字段则直接返回原谓词（无法用分区值求值）
+     *   <li>对每个分区字段计算 strict 投影并求值：若为 true，说明该分区内所有行必满足谓词，残差为 alwaysTrue
+     *   <li>计算 inclusive 投影并求值：若为 false，说明该分区内所有行必不满足谓词，残差为 alwaysFalse
+     *   <li>若两类投影都无法定论，则返回原谓词作为残差
+     * </ol>
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Expression predicate(BoundPredicate<T> pred) {
@@ -287,6 +306,9 @@ public class ResidualEvaluator implements Serializable {
       return pred;
     }
 
+    /**
+     * 求未绑定谓词的残差：先按 schema 绑定，再委托 {@link #predicate(BoundPredicate)} 求值。 若结果仍是谓词则保留原未绑定谓词，否则返回常量残差。
+     */
     @Override
     public <T> Expression predicate(UnboundPredicate<T> pred) {
       Expression bound = pred.bind(spec.schema().asStruct(), caseSensitive);

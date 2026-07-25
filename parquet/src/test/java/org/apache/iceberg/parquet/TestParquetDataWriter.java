@@ -51,6 +51,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestParquetDataWriter 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquetDataWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetDataWriter {
   private static final Schema SCHEMA =
       new Schema(
@@ -62,6 +69,7 @@ public class TestParquetDataWriter {
 
   @TempDir private Path temp;
 
+  /** 辅助方法：createRecords。 */
   @BeforeEach
   public void createRecords() {
     GenericRecord record = GenericRecord.create(SCHEMA);
@@ -76,6 +84,11 @@ public class TestParquetDataWriter {
     this.records = builder.build();
   }
 
+  /**
+   * 测试场景：Data Writer。
+   *
+   * <p>验证该方法在 Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataWriter() throws IOException {
     OutputFile file = Files.localOutput(createTempFile(temp));
@@ -122,6 +135,11 @@ public class TestParquetDataWriter {
     assertThat(writtenRecords).as("Written records should match").isEqualTo(records);
   }
 
+  /**
+   * 测试场景：Invalid Upper Bound String。
+   *
+   * <p>验证该方法在 Invalid Upper Bound String 条件下的行为是否符合预期。
+   */
   @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   @Test
   public void testInvalidUpperBoundString() throws Exception {
@@ -195,6 +213,11 @@ public class TestParquetDataWriter {
     assertThat(dataFile.upperBounds()).as("Should have a null upper bound").doesNotContainKey(2);
   }
 
+  /**
+   * 测试场景：Invalid Upper Bound Binary。
+   *
+   * <p>验证该方法在 Invalid Upper Bound Binary 条件下的行为是否符合预期。
+   */
   @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   @Test
   public void testInvalidUpperBoundBinary() throws Exception {

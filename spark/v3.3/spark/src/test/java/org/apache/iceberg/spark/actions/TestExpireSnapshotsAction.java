@@ -63,6 +63,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestExpireSnapshotsAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 过期快照动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestExpireSnapshotsAction extends SparkTestBase {
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
   private static final Schema SCHEMA =
@@ -125,6 +132,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
   private String tableLocation;
   private Table table;
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     this.tableDir = temp.newFolder();
@@ -133,10 +141,12 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     spark.conf().set("spark.sql.shuffle.partitions", SHUFFLE_PARTITIONS);
   }
 
+  /** 右后快照。 */
   private Long rightAfterSnapshot() {
     return rightAfterSnapshot(table.currentSnapshot().snapshotId());
   }
 
+  /** 右后快照。 */
   private Long rightAfterSnapshot(long snapshotId) {
     Long end = System.currentTimeMillis();
     while (end <= table.snapshot(snapshotId).timestampMillis()) {
@@ -145,6 +155,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     return end;
   }
 
+  /** 检查expiration结果。 */
   private void checkExpirationResults(
       long expectedDatafiles,
       long expectedPosDeleteFiles,
@@ -175,6 +186,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         results.deletedManifestListsCount());
   }
 
+  /** 测试文件cleaned场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesCleaned() throws Exception {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -194,6 +206,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1L, 0L, 0L, 1L, 2L, results);
   }
 
+  /** 数据文件cleanup带并行任务。 */
   @Test
   public void dataFilesCleanupWithParallelTasks() throws IOException {
 
@@ -245,6 +258,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(2L, 0L, 0L, 3L, 3L, result);
   }
 
+  /** 测试no文件deleted当no快照expired场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNoFilesDeletedWhenNoSnapshotsExpired() throws Exception {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -253,6 +267,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 0L, results);
   }
 
+  /** 测试cleanuprepeated覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCleanupRepeatedOverwrites() throws Exception {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -269,6 +284,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1L, 0L, 0L, 39L, 20L, results);
   }
 
+  /** 测试retain最后一个带过期olderthan场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainLastWithExpireOlderThan() {
     table
@@ -302,6 +318,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         "First snapshot should not present.", null, table.snapshot(firstSnapshotId));
   }
 
+  /** 测试过期two快照通过id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireTwoSnapshotsById() throws Exception {
     table
@@ -340,6 +357,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 2L, result);
   }
 
+  /** 测试retain最后一个带过期通过id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainLastWithExpireById() {
     table
@@ -373,6 +391,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 1L, result);
   }
 
+  /** 测试retain最后一个带toofew快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainLastWithTooFewSnapshots() {
     table
@@ -402,6 +421,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 0L, result);
   }
 
+  /** 测试retain最后一个keepsexpiring快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainLastKeepsExpiringSnapshot() {
     table
@@ -441,6 +461,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 1L, result);
   }
 
+  /** 测试过期快照带disabledgarbagecollection场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsWithDisabledGarbageCollection() {
     table.updateProperties().set(TableProperties.GC_ENABLED, "false").commit();
@@ -454,6 +475,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         () -> SparkActions.get().expireSnapshots(table));
   }
 
+  /** 测试过期olderthan多个调用场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanMultipleCalls() {
     table
@@ -490,6 +512,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 2L, result);
   }
 
+  /** 测试retain最后一个多个调用场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainLastMultipleCalls() {
     table
@@ -527,6 +550,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 2L, result);
   }
 
+  /** 测试retainzero快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRetainZeroSnapshots() {
     AssertHelpers.assertThrows(
@@ -536,6 +560,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         () -> SparkActions.get().expireSnapshots(table).retainLast(0).execute());
   }
 
+  /** 测试扫描expired清单在valid快照追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testScanExpiredManifestInValidSnapshotAppend() {
     table.newAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -559,6 +584,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1L, 0L, 0L, 1L, 2L, result);
   }
 
+  /** 测试扫描expired清单在valid快照快速追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testScanExpiredManifestInValidSnapshotFastAppend() {
     table
@@ -588,6 +614,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1L, 0L, 0L, 1L, 2L, result);
   }
 
+  /** 测试带expiringdanglingstage提交场景：验证该方法在对应输入下的行为与断言结果。 */
   /**
    * Test on table below, and expiring the staged commit `B` using `expireOlderThan` API. Table: A -
    * C ` B (staged)
@@ -648,6 +675,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     Assert.assertTrue("Exactly same files should be deleted", expectedDeletes.isEmpty());
   }
 
+  /** 测试带cherrypick表快照场景：验证该方法在对应输入下的行为与断言结果。 */
   /**
    * Expire cherry-pick the commit as shown below, when `B` is in table's current state Table: A - B
    * - C <--current snapshot `- D (source=B)
@@ -703,6 +731,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1L, 0L, 0L, 2L, 2L, result);
   }
 
+  /** 测试带expiring暂存thencherrypick场景：验证该方法在对应输入下的行为与断言结果。 */
   /**
    * Test on table below, and expiring `B` which is not in current table state. 1) Expire `B` 2) All
    * commit Table: A - C - D (B) ` B (staged)
@@ -771,6 +800,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0L, 0L, 0L, 0L, 2L, secondResult);
   }
 
+  /** 测试过期olderthan场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThan() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -808,6 +838,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0, 0, 0, 0, 1, result);
   }
 
+  /** 测试过期olderthan带删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanWithDelete() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -872,6 +903,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1, 0, 0, 2, 2, result);
   }
 
+  /** 测试过期olderthan带删除在merged清单场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanWithDeleteInMergedManifests() {
     // merge every commit
@@ -941,6 +973,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1, 0, 0, 1, 2, result);
   }
 
+  /** 测试过期olderthan带回滚场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanWithRollback() {
     // merge every commit
@@ -999,6 +1032,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0, 0, 0, 1, 1, result);
   }
 
+  /** 测试过期olderthan带回滚与merged清单场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanWithRollbackAndMergedManifests() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1055,6 +1089,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1, 0, 0, 1, 1, result);
   }
 
+  /** 测试过期olderthan带删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOlderThanWithDeleteFile() {
     table
@@ -1122,6 +1157,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(1, 1, 1, 6, 4, result);
   }
 
+  /** 测试过期上空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireOnEmptyTable() {
     Set<String> deletedFiles = Sets.newHashSet();
@@ -1137,6 +1173,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     checkExpirationResults(0, 0, 0, 0, 0, result);
   }
 
+  /** 测试过期动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireAction() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -1183,6 +1220,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         action.expireFiles().count());
   }
 
+  /** 测试uselocal迭代器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUseLocalIterator() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -1217,6 +1255,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         });
   }
 
+  /** 测试过期后执行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireAfterExecute() {
     table
@@ -1252,16 +1291,19 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
     Assert.assertEquals("Expired results must match", 1, untypedExpiredFiles.size());
   }
 
+  /** 测试过期文件deletionmostexpired场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireFileDeletionMostExpired() {
     textExpireAllCheckFilesDeleted(5, 2);
   }
 
+  /** 测试过期文件deletionmostretained场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireFileDeletionMostRetained() {
     textExpireAllCheckFilesDeleted(2, 5);
   }
 
+  /** text过期所有检查文件deleted。 */
   public void textExpireAllCheckFilesDeleted(int dataFilesExpired, int dataFilesRetained) {
     // Add data files to be expired
     Set<String> dataFiles = Sets.newHashSet();
@@ -1318,6 +1360,7 @@ public class TestExpireSnapshotsAction extends SparkTestBase {
         "All reachable files before expiration should be deleted", expectedDeletes, deletedFiles);
   }
 
+  /** 测试过期some检查文件deleted场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSomeCheckFilesDeleted() {
 

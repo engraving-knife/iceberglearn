@@ -26,6 +26,21 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 文件级说明：内存版 FileIO 实现，用于测试和演示。
+ *
+ * <p>所属模块：iceberg-core（inmemory 子包）。职责：实现 {@link org.apache.iceberg.io.FileIO} 接口，在内存中存储文件内容，提供
+ * newInputFile/newOutputFile/deleteFile 等方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>不依赖外部存储（无 HDFS/S3），用于单元测试和快速原型验证。
+ *   <li>线程安全：内部用 ConcurrentHashMap 存储文件。
+ * </ul>
+ *
+ * <p>上下游关系：被测试代码和 InMemoryCatalog 使用；产出 {@link InMemoryInputFile} / {@link InMemoryOutputFile}。
+ */
 public class InMemoryFileIO implements FileIO {
 
   private final Map<String, byte[]> inMemoryFiles = Maps.newConcurrentMap();
@@ -57,6 +72,11 @@ public class InMemoryFileIO implements FileIO {
   }
 
   @Override
+  /**
+   * 从内存存储中删除指定路径的文件。
+   *
+   * @param location 文件路径标识
+   */
   public void deleteFile(String location) {
     Preconditions.checkState(!closed, "Cannot call deleteFile after calling close()");
     if (null == inMemoryFiles.remove(location)) {
@@ -69,6 +89,7 @@ public class InMemoryFileIO implements FileIO {
   }
 
   @Override
+  /** 关闭 FileIO，清空内存存储。 */
   public void close() {
     closed = true;
   }

@@ -35,16 +35,26 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDeleteFrom 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 删除从 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDeleteFrom extends SparkCatalogTestBase {
+  /** 测试删除从。 */
   public TestDeleteFrom(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试删除从非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFromUnpartitionedTable() throws NoSuchTableException {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -74,6 +84,7 @@ public class TestDeleteFrom extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除从表at快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFromTableAtSnapshot() throws NoSuchTableException {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
@@ -93,6 +104,7 @@ public class TestDeleteFrom extends SparkCatalogTestBase {
         () -> sql("DELETE FROM %s.%s WHERE id < 4", tableName, prefix + snapshotId));
   }
 
+  /** 测试删除从分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFromPartitionedTable() throws NoSuchTableException {
     sql(
@@ -126,6 +138,7 @@ public class TestDeleteFrom extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试删除从wherefalse场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDeleteFromWhereFalse() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -147,6 +160,7 @@ public class TestDeleteFrom extends SparkCatalogTestBase {
         "Delete should not produce a new snapshot", 1, Iterables.size(table.snapshots()));
   }
 
+  /** 测试截断场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncate() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);

@@ -44,12 +44,11 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A Spark function implementation for the Iceberg truncate transform.
+ * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
  *
- * <p>Example usage: {@code SELECT system.truncate(1, 'abc')}, which returns the String 'a'.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateFunction。
  *
- * <p>Note that for performance reasons, the given input width is not validated in the
- * implementations used in code-gen. The width must remain non-negative to give meaningful results.
+ * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
  */
 public class TruncateFunction implements UnboundFunction {
 
@@ -59,6 +58,12 @@ public class TruncateFunction implements UnboundFunction {
   private static final Set<DataType> SUPPORTED_WIDTH_TYPES =
       ImmutableSet.of(DataTypes.ByteType, DataTypes.ShortType, DataTypes.IntegerType);
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param inputType 参数
+   * @return 结果对象
+   */
   @Override
   public BoundFunction bind(StructType inputType) {
     if (inputType.size() != 2) {
@@ -75,19 +80,26 @@ public class TruncateFunction implements UnboundFunction {
 
     DataType valueType = valueField.dataType();
     if (valueType instanceof ByteType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateTinyInt();
     } else if (valueType instanceof ShortType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateSmallInt();
     } else if (valueType instanceof IntegerType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateInt();
     } else if (valueType instanceof LongType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateBigInt();
     } else if (valueType instanceof DecimalType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateDecimal(
           ((DecimalType) valueType).precision(), ((DecimalType) valueType).scale());
     } else if (valueType instanceof StringType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateString();
     } else if (valueType instanceof BinaryType) {
+      /** 执行该方法的具体逻辑。 */
       return new TruncateBinary();
     } else {
       throw new UnsupportedOperationException(
@@ -95,6 +107,11 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return name()
@@ -103,38 +120,84 @@ public class TruncateFunction implements UnboundFunction {
         + "  col :: column to truncate (must be an integer, decimal, string, or binary)";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "truncate";
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateBase。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public abstract static class TruncateBase<T> implements ScalarFunction<T> {
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public String name() {
       return "truncate";
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateTinyInt。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateTinyInt extends TruncateBase<Byte> {
+    /** 执行该方法的具体逻辑。 */
     public static byte invoke(int width, byte value) {
       return TruncateUtil.truncateByte(width, value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.ByteType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.ByteType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(tinyint)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Byte produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -145,27 +208,56 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateSmallInt。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateSmallInt extends TruncateBase<Short> {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static short invoke(int width, short value) {
       return TruncateUtil.truncateShort(width, value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.ShortType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.ShortType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(smallint)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Short produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -176,27 +268,56 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateInt。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateInt extends TruncateBase<Integer> {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(int width, int value) {
       return TruncateUtil.truncateInt(width, value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.IntegerType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(int)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -207,27 +328,56 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateBigInt。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateBigInt extends TruncateBase<Long> {
     // magic function for usage with codegen
+    /** 执行该方法的具体逻辑。 */
     public static long invoke(int width, long value) {
       return TruncateUtil.truncateLong(width, value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.LongType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.LongType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(bigint)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Long produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -238,8 +388,16 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateString。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateString extends TruncateBase<UTF8String> {
     // magic function for usage with codegen
+    /** 执行该方法的具体逻辑。 */
     public static UTF8String invoke(int width, UTF8String value) {
       if (value == null) {
         return null;
@@ -248,21 +406,42 @@ public class TruncateFunction implements UnboundFunction {
       return value.substring(0, width);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.StringType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.StringType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(string)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public UTF8String produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -273,8 +452,16 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateBinary。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateBinary extends TruncateBase<byte[]> {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static byte[] invoke(int width, byte[] value) {
       if (value == null) {
         return null;
@@ -284,21 +471,42 @@ public class TruncateFunction implements UnboundFunction {
           BinaryUtil.truncateBinaryUnsafe(ByteBuffer.wrap(value), width));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.BinaryType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.BinaryType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(binary)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public byte[] produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -309,16 +517,25 @@ public class TruncateFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TruncateDecimal。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TruncateDecimal extends TruncateBase<Decimal> {
     private final int precision;
     private final int scale;
 
+    /** 构造 TruncateDecimal 实例。 */
     public TruncateDecimal(int precision, int scale) {
       this.precision = precision;
       this.scale = scale;
     }
 
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static Decimal invoke(int width, Decimal value) {
       if (value == null) {
         return null;
@@ -328,21 +545,42 @@ public class TruncateFunction implements UnboundFunction {
           TruncateUtil.truncateDecimal(BigInteger.valueOf(width), value.toJavaBigDecimal()));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.createDecimalType(precision, scale)};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.createDecimalType(precision, scale);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return String.format("iceberg.truncate(decimal(%d,%d))", precision, scale);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Decimal produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {

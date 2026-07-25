@@ -24,114 +24,105 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.expressions.ExpressionVisitors.ExpressionVisitor;
 import org.apache.iceberg.transforms.Transform;
 
-/** Utils to project expressions on rows to expressions on partitions. */
+/**
+ * 模块：api，表达式层核心工具类。
+ *
+ * <p>职责：将基于数据行的表达式（row expression）投影为基于分区值的表达式（partition expression）， 是 Iceberg 分区裁剪（partition
+ * pruning）的核心基础。
+ *
+ * <p>设计意图：提供两类投影——inclusive（包容）与 strict（严格）：
+ *
+ * <ul>
+ *   <li>inclusive：若原表达式匹配某行，则投影后的表达式一定匹配该行所在分区（用于过滤候选分区）
+ *   <li>strict：若投影后的表达式匹配某分区，则该分区内所有行一定匹配原表达式（用于确认匹配分区）
+ * </ul>
+ *
+ * 通过访问者模式（{@link ExpressionVisitor}）遍历表达式树完成投影。
+ *
+ * <p>上下游关系：上游为查询谓词，下游被 {@code Scan} 等扫描规划逻辑调用， 内部依赖 {@link PartitionSpec} 与 {@link Transform}。
+ */
 public class Projections {
   private Projections() {}
 
   /**
-   * A class that projects expressions for a table's data rows into expressions on the table's
-   * partition values, for a table's {@link PartitionSpec partition spec}.
+   * 将数据行表达式投影为分区值表达式的访问者基类，绑定某个 {@link PartitionSpec 分区规约}。
    *
-   * <p>There are two types of projections: inclusive and strict.
+   * <p>投影分两类：inclusive（包容）与 strict（严格）。
    *
-   * <p>An inclusive projection guarantees that if an expression matches a row, the projected
-   * expression will match the row's partition.
-   *
-   * <p>A strict projection guarantees that if a partition matches a projected expression, then all
-   * rows in that partition will match the original expression.
+   * <ul>
+   *   <li>inclusive：若表达式匹配某行，则投影表达式匹配该行所在分区
+   *   <li>strict：若分区匹配投影表达式，则该分区所有行都匹配原表达式
+   * </ul>
    */
   public abstract static class ProjectionEvaluator extends ExpressionVisitor<Expression> {
     /**
-     * Project the given row expression to a partition expression.
+     * 将给定的数据行表达式投影为分区表达式。
      *
-     * @param expr an expression on data rows
-     * @return an expression on partition data (depends on the projection)
+     * @param expr 基于数据行的表达式
+     * @return 基于分区数据的表达式（具体语义由子类决定）
      */
     public abstract Expression project(Expression expr);
   }
 
   /**
-   * Creates an inclusive {@code ProjectionEvaluator} for the {@link PartitionSpec spec}, defaulting
-   * to case sensitive mode.
+   * 为指定 {@link PartitionSpec 分区规约} 创建一个 inclusive（包容）投影器，默认大小写敏感。
    *
-   * <p>An evaluator is used to project expressions for a table's data rows into expressions on the
-   * table's partition values. The evaluator returned by this function is inclusive and will build
-   * expressions with the following guarantee: if the original expression matches a row, then the
-   * projected expression will match that row's partition.
+   * <p>包容投影保证：若原表达式匹配某行，则投影表达式匹配该行所在分区。 每个谓词通过 {@link Transform#project(String, BoundPredicate)}
+   * 完成投影。
    *
-   * <p>Each predicate in the expression is projected using {@link Transform#project(String,
-   * BoundPredicate)}.
-   *
-   * @param spec a partition spec
-   * @return an inclusive projection evaluator for the partition spec
-   * @see Transform#project(String, BoundPredicate) Inclusive transform used for each predicate
+   * @param spec 分区规约
+   * @return 该分区规约对应的包容投影器
+   * @see Transform#project(String, BoundPredicate) 每个谓词使用的包容投影方法
    */
   public static ProjectionEvaluator inclusive(PartitionSpec spec) {
     return new InclusiveProjection(spec, true);
   }
 
   /**
-   * Creates an inclusive {@code ProjectionEvaluator} for the {@link PartitionSpec spec}.
+   * 为指定 {@link PartitionSpec 分区规约} 创建一个 inclusive（包容）投影器，可指定大小写敏感。
    *
-   * <p>An evaluator is used to project expressions for a table's data rows into expressions on the
-   * table's partition values. The evaluator returned by this function is inclusive and will build
-   * expressions with the following guarantee: if the original expression matches a row, then the
-   * projected expression will match that row's partition.
+   * <p>包容投影保证：若原表达式匹配某行，则投影表达式匹配该行所在分区。 每个谓词通过 {@link Transform#project(String, BoundPredicate)}
+   * 完成投影。
    *
-   * <p>Each predicate in the expression is projected using {@link Transform#project(String,
-   * BoundPredicate)}.
-   *
-   * @param spec a partition spec
-   * @param caseSensitive whether the Projection should consider case sensitivity on column names or
-   *     not.
-   * @return an inclusive projection evaluator for the partition spec
-   * @see Transform#project(String, BoundPredicate) Inclusive transform used for each predicate
+   * @param spec 分区规约
+   * @param caseSensitive 列名匹配是否区分大小写
+   * @return 该分区规约对应的包容投影器
+   * @see Transform#project(String, BoundPredicate) 每个谓词使用的包容投影方法
    */
   public static ProjectionEvaluator inclusive(PartitionSpec spec, boolean caseSensitive) {
     return new InclusiveProjection(spec, caseSensitive);
   }
 
   /**
-   * Creates a strict {@code ProjectionEvaluator} for the {@link PartitionSpec spec}, defaulting to
-   * case sensitive mode.
+   * 为指定 {@link PartitionSpec 分区规约} 创建一个 strict（严格）投影器，默认大小写敏感。
    *
-   * <p>An evaluator is used to project expressions for a table's data rows into expressions on the
-   * table's partition values. The evaluator returned by this function is strict and will build
-   * expressions with the following guarantee: if the projected expression matches a partition, then
-   * the original expression will match all rows in that partition.
+   * <p>严格投影保证：若投影表达式匹配某分区，则该分区内所有行都匹配原表达式。 每个谓词通过 {@link Transform#projectStrict(String,
+   * BoundPredicate)} 完成投影。
    *
-   * <p>Each predicate in the expression is projected using {@link Transform#projectStrict(String,
-   * BoundPredicate)}.
-   *
-   * @param spec a partition spec
-   * @return a strict projection evaluator for the partition spec
-   * @see Transform#projectStrict(String, BoundPredicate) Strict transform used for each predicate
+   * @param spec 分区规约
+   * @return 该分区规约对应的严格投影器
+   * @see Transform#projectStrict(String, BoundPredicate) 每个谓词使用的严格投影方法
    */
   public static ProjectionEvaluator strict(PartitionSpec spec) {
     return new StrictProjection(spec, true);
   }
 
   /**
-   * Creates a strict {@code ProjectionEvaluator} for the {@link PartitionSpec spec}.
+   * 为指定 {@link PartitionSpec 分区规约} 创建一个 strict（严格）投影器，可指定大小写敏感。
    *
-   * <p>An evaluator is used to project expressions for a table's data rows into expressions on the
-   * table's partition values. The evaluator returned by this function is strict and will build
-   * expressions with the following guarantee: if the projected expression matches a partition, then
-   * the original expression will match all rows in that partition.
+   * <p>严格投影保证：若投影表达式匹配某分区，则该分区内所有行都匹配原表达式。 每个谓词通过 {@link Transform#projectStrict(String,
+   * BoundPredicate)} 完成投影。
    *
-   * <p>Each predicate in the expression is projected using {@link Transform#projectStrict(String,
-   * BoundPredicate)}.
-   *
-   * @param spec a partition spec
-   * @param caseSensitive whether the Projection should consider case sensitivity on column names or
-   *     not.
-   * @return a strict projection evaluator for the partition spec
-   * @see Transform#projectStrict(String, BoundPredicate) Strict transform used for each predicate
+   * @param spec 分区规约
+   * @param caseSensitive 列名匹配是否区分大小写
+   * @return 该分区规约对应的严格投影器
+   * @see Transform#projectStrict(String, BoundPredicate) 每个谓词使用的严格投影方法
    */
   public static ProjectionEvaluator strict(PartitionSpec spec, boolean caseSensitive) {
     return new StrictProjection(spec, caseSensitive);
   }
 
+  /** 投影器公共基类：持有分区规约与大小写敏感标志，实现表达式树的遍历与谓词绑定公共逻辑。 */
   private static class BaseProjectionEvaluator extends ProjectionEvaluator {
     private final PartitionSpec spec;
     private final boolean caseSensitive;
@@ -141,6 +132,11 @@ public class Projections {
       this.caseSensitive = caseSensitive;
     }
 
+    /**
+     * 将行表达式投影为分区表达式。
+     *
+     * <p>逻辑：先用 {@link RewriteNot} 将表达式树中的 NOT 下推到叶子节点（保证投影默认值正确）， 再以本访问者遍历表达式树完成投影。
+     */
     @Override
     public Expression project(Expression expr) {
       // projections assume that there are no NOT nodes in the expression tree. to ensure that this
@@ -176,6 +172,7 @@ public class Projections {
       return Expressions.or(leftResult, rightResult);
     }
 
+    /** 处理未绑定谓词：先按 schema 绑定为绑定谓词，再交由 {@link #predicate(BoundPredicate)} 完成具体投影。 */
     @Override
     public <T> Expression predicate(UnboundPredicate<T> pred) {
       Expression bound = pred.bind(spec.schema().asStruct(), caseSensitive);
@@ -187,20 +184,29 @@ public class Projections {
       return bound;
     }
 
+    /** 返回当前分区规约。 */
     PartitionSpec spec() {
       return spec;
     }
 
+    /** 返回是否区分列名大小写。 */
     boolean isCaseSensitive() {
       return caseSensitive;
     }
   }
 
+  /** inclusive 投影实现：对每个分区字段调用 {@link Transform#project}，结果以 AND 组合。 */
   private static class InclusiveProjection extends BaseProjectionEvaluator {
     private InclusiveProjection(PartitionSpec spec, boolean caseSensitive) {
       super(spec, caseSensitive);
     }
 
+    /**
+     * inclusive 谓词投影。
+     *
+     * <p>逻辑：取出该谓词引用字段对应的所有分区字段；若无分区字段则返回 alwaysTrue（不裁剪）。 对每个分区字段调用其 transform 的 inclusive 投影，结果以
+     * AND 组合（更严格的约束不会漏掉匹配分区）。
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Expression predicate(BoundPredicate<T> pred) {
@@ -230,11 +236,18 @@ public class Projections {
     }
   }
 
+  /** strict 投影实现：对每个分区字段调用 {@link Transform#projectStrict}，结果以 OR 组合。 */
   private static class StrictProjection extends BaseProjectionEvaluator {
     private StrictProjection(PartitionSpec spec, boolean caseSensitive) {
       super(spec, caseSensitive);
     }
 
+    /**
+     * strict 谓词投影。
+     *
+     * <p>逻辑：取出该谓词引用字段对应的所有分区字段；若无分区字段则返回 alwaysFalse（无法确认匹配）。 对每个分区字段调用其 transform 的 strict 投影，结果以
+     * OR 组合（任一投影成立即确认分区匹配）。
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Expression predicate(BoundPredicate<T> pred) {

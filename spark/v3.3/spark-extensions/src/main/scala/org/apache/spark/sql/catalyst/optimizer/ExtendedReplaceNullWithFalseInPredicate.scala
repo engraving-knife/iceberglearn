@@ -47,10 +47,18 @@ import org.apache.spark.sql.types.BooleanType
 import org.apache.spark.util.Utils
 
 /**
- * A rule similar to ReplaceNullWithFalseInPredicate in Spark but applies to Iceberg row-level commands.
+ * Spark Catalyst 优化器规则。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 ExtendedReplaceNullWithFalseInPredicate。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object ExtendedReplaceNullWithFalseInPredicate extends Rule[LogicalPlan] {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan.transformWithPruning(
     _.containsAnyPattern(NULL_LITERAL, TRUE_OR_FALSE_LITERAL, INSET)) {
 
@@ -68,12 +76,8 @@ object ExtendedReplaceNullWithFalseInPredicate extends Rule[LogicalPlan] {
   }
 
   /**
-   * Recursively traverse the Boolean-type expression to replace
-   * `Literal(null, BooleanType)` with `FalseLiteral`, if possible.
-   *
-   * Note that `transformExpressionsDown` can not be used here as we must stop as soon as we hit
-   * an expression that is not [[CaseWhen]], [[If]], [[And]], [[Or]] or
-   * `Literal(null, BooleanType)`.
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
    */
   private def replaceNullWithFalse(e: Expression): Expression = e match {
     case Literal(null, BooleanType) =>
@@ -114,11 +118,16 @@ object ExtendedReplaceNullWithFalseInPredicate extends Rule[LogicalPlan] {
       }
   }
 
+  /** 判断是否nullliteral。 */
   private def isNullLiteral(e: Expression): Boolean = e match {
     case Literal(null, _) => true
     case _ => false
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def replaceNullWithFalse(mergeActions: Seq[MergeAction]): Seq[MergeAction] = {
     mergeActions.map {
       case u @ UpdateAction(Some(cond), _) => u.copy(condition = Some(replaceNullWithFalse(cond)))

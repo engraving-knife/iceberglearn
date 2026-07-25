@@ -44,6 +44,23 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 表元数据（{@link TableMetadata}）的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把整张表的元数据（schema、分区、快照、refs、统计、日志、属性等） 与 metadata.json 文件互转，是表元数据持久化的总入口。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>编解码器枚举：支持 NONE 与 GZIP 两种压缩，通过文件后缀选择。
+ *   <li>读写 InputFile/OutputFile：直接与 {@link FileIO} 集成，支持从文件流式读写。
+ *   <li>分章节解析：把 metadata 各部分（schema/specs/sort-orders/snapshots/refs/...）分派给对应子解析器。
+ *   <li>版本兼容：根据 format-version 字段适配不同元数据格式。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link TableOperations} 实现层（HadoopCatalog、REST 等）大量调用； 依赖各子解析器（{@link
+ * SchemaParser}、{@link SnapshotRefParser} 等）与 {@link JsonUtil}。
+ */
 public class TableMetadataParser {
 
   public enum Codec {
@@ -81,10 +98,12 @@ public class TableMetadataParser {
     }
   }
 
+  /** 私有构造：工具类禁止实例化。 */
   private TableMetadataParser() {}
 
   // visible for testing
   static final String FORMAT_VERSION = "format-version";
+
   static final String TABLE_UUID = "table-uuid";
   static final String LOCATION = "location";
   static final String LAST_SEQUENCE_NUMBER = "last-sequence-number";
@@ -110,10 +129,22 @@ public class TableMetadataParser {
   static final String METADATA_LOG = "metadata-log";
   static final String STATISTICS = "statistics";
 
+  /**
+   * 构造方法：初始化 overwrite 实例。
+   *
+   * @param metadata 参数
+   * @param outputFile 参数
+   */
   public static void overwrite(TableMetadata metadata, OutputFile outputFile) {
     internalWrite(metadata, outputFile, true);
   }
 
+  /**
+   * 构造方法：初始化 write 实例。
+   *
+   * @param metadata 参数
+   * @param outputFile 参数
+   */
   public static void write(TableMetadata metadata, OutputFile outputFile) {
     internalWrite(metadata, outputFile, false);
   }
@@ -133,19 +164,43 @@ public class TableMetadataParser {
     }
   }
 
+  /**
+   * 获取FileExtension。
+   *
+   * @param codecName 参数
+   * @return 返回值
+   */
   public static String getFileExtension(String codecName) {
     return getFileExtension(Codec.fromName(codecName));
   }
 
+  /**
+   * 获取FileExtension。
+   *
+   * @param codec 参数
+   * @return 返回值
+   */
   public static String getFileExtension(Codec codec) {
     return codec.extension + ".metadata.json";
   }
 
+  /**
+   * 获取OldFileExtension。
+   *
+   * @param codec 参数
+   * @return 返回值
+   */
   public static String getOldFileExtension(Codec codec) {
     // we have to be backward-compatible with .metadata.json.gz files
     return ".metadata.json" + codec.extension;
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param metadata 参数
+   * @return 返回值
+   */
   public static String toJson(TableMetadata metadata) {
     try (StringWriter writer = new StringWriter()) {
       JsonGenerator generator = JsonUtil.factory().createGenerator(writer);
@@ -157,6 +212,12 @@ public class TableMetadataParser {
     }
   }
 
+  /**
+   * 把对象写入 JSON 生成器。
+   *
+   * @param metadata 参数
+   * @param generator 参数
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public static void toJson(TableMetadata metadata, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
@@ -252,6 +313,12 @@ public class TableMetadataParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 把对象写入 JSON 生成器。
+   *
+   * @param refs 参数
+   * @param generator 参数
+   */
   private static void toJson(Map<String, SnapshotRef> refs, JsonGenerator generator)
       throws IOException {
     generator.writeObjectFieldStart(REFS);
@@ -262,10 +329,24 @@ public class TableMetadataParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 从输入流读取并解析对象。
+   *
+   * @param io 参数
+   * @param path 参数
+   * @return 返回值
+   */
   public static TableMetadata read(FileIO io, String path) {
     return read(io, io.newInputFile(path));
   }
 
+  /**
+   * 从输入流读取并解析对象。
+   *
+   * @param io 参数
+   * @param file 参数
+   * @return 返回值
+   */
   public static TableMetadata read(FileIO io, InputFile file) {
     Codec codec = Codec.fromFileName(file.location());
     try (InputStream is =
@@ -277,7 +358,9 @@ public class TableMetadataParser {
   }
 
   /**
-   * Read TableMetadata from a JSON string.
+   * 从 JSON 解析对象。
+   *
+   * <p>Read TableMetadata from a JSON string.
    *
    * <p>The TableMetadata's metadata file location will be unset.
    *
@@ -289,7 +372,9 @@ public class TableMetadataParser {
   }
 
   /**
-   * Read TableMetadata from a JSON string.
+   * 从 JSON 解析对象。
+   *
+   * <p>Read TableMetadata from a JSON string.
    *
    * @param metadataLocation metadata location for the returned {@link TableMetadata}
    * @param json a JSON string of table metadata
@@ -299,14 +384,34 @@ public class TableMetadataParser {
     return JsonUtil.parse(json, node -> TableMetadataParser.fromJson(metadataLocation, node));
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param file 参数
+   * @param node 参数
+   * @return 返回值
+   */
   public static TableMetadata fromJson(InputFile file, JsonNode node) {
     return fromJson(file.location(), node);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   public static TableMetadata fromJson(JsonNode node) {
     return fromJson((String) null, node);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param metadataLocation 参数
+   * @param node 参数
+   * @return 返回值
+   */
   @SuppressWarnings({"checkstyle:CyclomaticComplexity", "checkstyle:MethodLength"})
   public static TableMetadata fromJson(String metadataLocation, JsonNode node) {
     Preconditions.checkArgument(
@@ -548,6 +653,12 @@ public class TableMetadataParser {
     return refsBuilder.build();
   }
 
+  /**
+   * 从 JSON 节点解析统计文件列表。
+   *
+   * @param statisticsFilesList 参数
+   * @return {@code List<StatisticsFile>} 返回值
+   */
   private static List<StatisticsFile> statisticsFilesFromJson(JsonNode statisticsFilesList) {
     Preconditions.checkArgument(
         statisticsFilesList.isArray(),

@@ -20,32 +20,65 @@ package org.apache.iceberg.expressions;
 
 import java.io.ObjectStreamException;
 
-/** An {@link Expression expression} that is always false. */
+/**
+ * 恒假表达式：始终求值为 false 的常量节点，对应 {@link Operation#FALSE}。
+ *
+ * <p>所属模块：iceberg-api（表达式常量节点之一；与 {@link True} 配对）。
+ *
+ * <p>职责：作为表达式化简的终止节点，例如对必填字段做 isNull 时会被简化为 False。
+ *
+ * <p>设计意图：单例（{@link #INSTANCE}）+ 私有构造器，避免重复分配；通过 {@link #writeReplace()} 在序列化时替换为 {@link
+ * SerializationProxies.ConstantExpressionProxy}， 防止跨版本反序列化时出现类不兼容问题。
+ *
+ * <p>上下游关系：由 {@link Expressions#alwaysFalse()} 与绑定/化简逻辑产生；被各类 Evaluator 与 Visitor 视作短路终止节点。
+ */
 public class False implements Expression {
+  /** 全局唯一实例。 */
   static final False INSTANCE = new False();
 
   private False() {}
 
+  /** 返回 {@link Operation#FALSE}。 */
   @Override
   public Operation op() {
     return Operation.FALSE;
   }
 
+  /**
+   * 返回此表达式的否定形式（恒真）。
+   *
+   * @return {@link True#INSTANCE}
+   */
   @Override
   public Expression negate() {
     return True.INSTANCE;
   }
 
+  /**
+   * 判定等价：仅当对方也是 FALSE 操作时返回 true。
+   *
+   * @param other 另一表达式
+   * @return 对方 op 为 FALSE 时返回 true
+   */
   @Override
   public boolean isEquivalentTo(Expression other) {
     return other.op() == Operation.FALSE;
   }
 
+  /** 返回可读字符串 "false"。 */
   @Override
   public String toString() {
     return "false";
   }
 
+  /**
+   * 序列化替换钩子：以常量代理替代自身进行序列化。
+   *
+   * <p>设计要点：避免直接序列化单例类，跨版本兼容性更好。
+   *
+   * @return 持久化代理
+   * @throws ObjectStreamException 序列化协议异常
+   */
   Object writeReplace() throws ObjectStreamException {
     return new SerializationProxies.ConstantExpressionProxy(false);
   }

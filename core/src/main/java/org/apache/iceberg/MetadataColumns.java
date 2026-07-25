@@ -25,6 +25,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.NestedField;
 
+/**
+ * 元数据列定义：集中声明 Iceberg 表的隐藏列（_file、_pos、_deleted 等）及其字段 ID。
+ *
+ * <p>所属模块：iceberg-core，定义引擎层在扫描时可访问的元数据列。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>声明面向用户的元数据列：_file（文件路径）、_pos（行位置）、_deleted（是否删除）、 _spec_id（分区 spec ID）、_partition（分区值）。
+ *   <li>声明面向删除文件的内部列：file_path、pos、row、_change_type 等。
+ *   <li>提供判断某列名/ID 是否为元数据列的工具方法。
+ * </ul>
+ *
+ * <p>设计意图：元数据列 ID 从 {@code Integer.MAX_VALUE} 递减分配，避免与用户列 ID 冲突； 分区列类型依赖表的所有 spec，故通过 {@link
+ * #metadataColumn(Table, String)} 动态构建。 区分"元数据列"（1-100 区段）与"保留列"（101-200 区段）两段 ID 空间。
+ *
+ * <p>上下游关系：被扫描计划、引擎层（Spark/Flink）在投影元数据列时引用； {@link #isMetadataColumn(int)} 被 schema 处理逻辑用于排除元数据列。
+ */
 public class MetadataColumns {
 
   private MetadataColumns() {}
@@ -107,10 +125,18 @@ public class MetadataColumns {
           SPEC_ID.fieldId(),
           PARTITION_COLUMN_ID);
 
+  /** 返回所有元数据列的字段 ID 集合。 */
   public static Set<Integer> metadataFieldIds() {
     return META_IDS;
   }
 
+  /**
+   * 按名称获取元数据列定义；分区列类型依赖表的所有 spec 动态构建。
+   *
+   * @param table 表
+   * @param name 列名
+   * @return 元数据列定义，非元数据列返回 null
+   */
   public static NestedField metadataColumn(Table table, String name) {
     if (name.equals(PARTITION_COLUMN_NAME)) {
       return Types.NestedField.optional(
@@ -123,14 +149,17 @@ public class MetadataColumns {
     }
   }
 
+  /** 判断给定列名是否为元数据列。 */
   public static boolean isMetadataColumn(String name) {
     return name.equals(PARTITION_COLUMN_NAME) || META_COLUMNS.containsKey(name);
   }
 
+  /** 判断给定字段 ID 是否为元数据列。 */
   public static boolean isMetadataColumn(int id) {
     return META_IDS.contains(id);
   }
 
+  /** 判断给定列名是否非元数据列。 */
   public static boolean nonMetadataColumn(String name) {
     return !isMetadataColumn(name);
   }

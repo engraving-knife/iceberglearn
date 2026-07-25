@@ -23,6 +23,14 @@ import org.apache.spark.sql.connector.iceberg.write.RowLevelOperation.Command
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperationInfo
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
+/**
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 RowLevelOperationInfoImpl。
+ * <p>设计意图：实现类，提供具体行为。
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 case class RowLevelOperationInfoImpl(
     command: Command,
     options: CaseInsensitiveStringMap) extends RowLevelOperationInfo

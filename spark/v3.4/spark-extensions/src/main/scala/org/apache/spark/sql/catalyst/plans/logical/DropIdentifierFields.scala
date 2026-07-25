@@ -20,6 +20,12 @@
 package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：删除标识字段的逻辑计划节点，对应 ALTER TABLE ... DROP IDENTIFIER FIELDS 语句。
+ * <p>设计意图：封装标识字段删除语义。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 DropIdentifierFieldsExec 执行。
+ */
 
 case class DropIdentifierFields(
     table: Seq[String],
@@ -27,6 +33,7 @@ case class DropIdentifierFields(
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"DropIdentifierFields ${table.quoted} (${fields.quoted})"

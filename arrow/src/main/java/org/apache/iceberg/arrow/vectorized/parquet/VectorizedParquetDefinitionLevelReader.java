@@ -34,20 +34,54 @@ import org.apache.iceberg.parquet.ParquetUtil;
 import org.apache.iceberg.parquet.ValuesAsBytesReader;
 import org.apache.parquet.column.Dictionary;
 
+/**
+ * 文件级说明：结合 definition level 向量化读取 Parquet 列值并写入 Arrow 向量，处理空值与字典/普通编码。所属模块：iceberg-arrow 的 parquet
+ * 子包。继承 BaseVectorizedParquetValuesReader，被 VectorizedPageIterator 调用。设计意图：按 definition level
+ * 判定空值，RLE 模式批量拷贝、PACKED 模式逐值处理；NumericBaseReader 处理定宽数值，BaseReader 处理其他类型，子类实现
+ * nextVal/nextDictEncodedVal。
+ */
 public final class VectorizedParquetDefinitionLevelReader
     extends BaseVectorizedParquetValuesReader {
 
+  /**
+   * 构造 definition level 读取器（定宽，不读长度前缀）。
+   *
+   * @param bitWidth 位宽
+   * @param maxDefLevel 最大定义级别
+   * @param setArrowValidityVector 是否设置 Arrow 有效性向量
+   */
   public VectorizedParquetDefinitionLevelReader(
       int bitWidth, int maxDefLevel, boolean setArrowValidityVector) {
     super(bitWidth, maxDefLevel, setArrowValidityVector);
   }
 
+  /**
+   * 构造 definition level 读取器，可指定是否读取长度前缀。
+   *
+   * @param bitWidth 位宽
+   * @param maxDefLevel 最大定义级别
+   * @param readLength 是否读取长度前缀
+   * @param setArrowValidityVector 是否设置 Arrow 有效性向量
+   */
   public VectorizedParquetDefinitionLevelReader(
       int bitWidth, int maxDefLevel, boolean readLength, boolean setArrowValidityVector) {
     super(bitWidth, maxDefLevel, readLength, setArrowValidityVector);
   }
 
+  /** 定宽数值类型的批量读取骨架（Long/Integer/Float/Double），结合 definition level 处理空值。 */
   abstract class NumericBaseReader {
+    /**
+     * 读取一批定宽数值写入向量（普通编码）。
+     *
+     * <p>逻辑：按组循环；RLE 模式批量拷贝连续非空值，PACKED 模式逐值按 definition level 判定非空则调用 nextVal 写入并标记，否则置空。
+     *
+     * @param vector 目标向量
+     * @param startOffset 起始偏移
+     * @param typeWidth 类型宽度
+     * @param numValsToRead 待读值数
+     * @param nullabilityHolder 空值持有者
+     * @param valuesReader 原始值读取器
+     */
     public void nextBatch(
         final FieldVector vector,
         final int startOffset,
@@ -88,6 +122,20 @@ public final class VectorizedParquetDefinitionLevelReader
       }
     }
 
+    /**
+     * 读取一批字典编码定宽数值写入向量。
+     *
+     * <p>逻辑：按组循环；RLE 模式下当前值等于 maxDefLevel 时批量解码，否则批量置空； PACKED 模式逐值按 definition level 判定调用
+     * nextDictEncodedVal 或置空。
+     *
+     * @param vector 目标向量
+     * @param startOffset 起始偏移
+     * @param typeWidth 类型宽度
+     * @param numValsToRead 待读值数
+     * @param nullabilityHolder 空值持有者
+     * @param dictionaryEncodedValuesReader 字典解码读取器
+     * @param dict Parquet 字典
+     */
     public void nextDictEncodedBatch(
         final FieldVector vector,
         final int startOffset,
@@ -149,9 +197,26 @@ public final class VectorizedParquetDefinitionLevelReader
       }
     }
 
+    /**
+     * 由子类实现：从普通编码读取器读取一个值写入向量指定位置。
+     *
+     * @param vector 目标向量
+     * @param idx 写入位置（字节偏移）
+     * @param valuesReader 原始值读取器
+     * @param mode 当前解码模式
+     */
     protected abstract void nextVal(
         FieldVector vector, int idx, ValuesAsBytesReader valuesReader, Mode mode);
 
+    /**
+     * 由子类实现：将一个字典编码值解码后写入向量指定位置。
+     *
+     * @param vector 目标向量
+     * @param idx 写入位置
+     * @param dictionaryEncodedValuesReader 字典解码读取器
+     * @param dict Parquet 字典
+     * @param mode 当前解码模式
+     */
     protected abstract void nextDictEncodedVal(
         FieldVector vector,
         int idx,
@@ -163,6 +228,7 @@ public final class VectorizedParquetDefinitionLevelReader
         int typeWidth);
   }
 
+  /** long 值读取器。 */
   class LongReader extends NumericBaseReader {
     @Override
     protected void nextVal(
@@ -194,6 +260,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** double 值读取器。 */
   class DoubleReader extends NumericBaseReader {
     @Override
     protected void nextVal(
@@ -225,6 +292,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** float 值读取器。 */
   class FloatReader extends NumericBaseReader {
     @Override
     protected void nextVal(
@@ -256,6 +324,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** int 值读取器。 */
   class IntegerReader extends NumericBaseReader {
     @Override
     protected void nextVal(
@@ -287,7 +356,20 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 非定宽数值类型的批量读取骨架（时间戳/二进制/Decimal/布尔/字典 id 等），结合 definition level 处理空值。 */
   abstract class BaseReader {
+    /**
+     * 读取一批值写入向量（普通编码）。
+     *
+     * <p>逻辑：按组循环；RLE 模式按当前值是否等于 maxDefLevel 批量处理，PACKED 模式逐值 按 definition level 判定调用 nextVal 或置空。
+     *
+     * @param vector 目标向量
+     * @param startOffset 起始偏移
+     * @param typeWidth 类型宽度
+     * @param numValsToRead 待读值数
+     * @param nullabilityHolder 空值持有者
+     * @param valuesReader 原始值读取器
+     */
     public void nextBatch(
         final FieldVector vector,
         final int startOffset,
@@ -336,6 +418,20 @@ public final class VectorizedParquetDefinitionLevelReader
       }
     }
 
+    /**
+     * 读取一批字典编码值写入向量。
+     *
+     * <p>逻辑：按组循环；RLE 模式按当前值是否等于 maxDefLevel 批量解码或置空， PACKED 模式逐值按 definition level 判定调用
+     * nextDictEncodedVal 或置空。
+     *
+     * @param vector 目标向量
+     * @param startOffset 起始偏移
+     * @param typeWidth 类型宽度
+     * @param numValsToRead 待读值数
+     * @param nullabilityHolder 空值持有者
+     * @param dictionaryEncodedValuesReader 字典解码读取器
+     * @param dict Parquet 字典
+     */
     public void nextDictEncodedBatch(
         final FieldVector vector,
         final int startOffset,
@@ -397,6 +493,14 @@ public final class VectorizedParquetDefinitionLevelReader
       }
     }
 
+    /**
+     * 由子类实现：从普通编码读取器读取一个值写入向量指定位置。
+     *
+     * @param vector 目标向量
+     * @param idx 写入位置
+     * @param valuesReader 原始值读取器
+     * @param mode 当前解码模式
+     */
     protected abstract void nextVal(
         FieldVector vector,
         int idx,
@@ -404,6 +508,15 @@ public final class VectorizedParquetDefinitionLevelReader
         int typeWidth,
         byte[] byteArray);
 
+    /**
+     * 由子类实现：将一个字典编码值解码后写入向量指定位置。
+     *
+     * @param vector 目标向量
+     * @param idx 写入位置
+     * @param dictionaryEncodedValuesReader 字典解码读取器
+     * @param dict Parquet 字典
+     * @param mode 当前解码模式
+     */
     protected abstract void nextDictEncodedVal(
         FieldVector vector,
         int idx,
@@ -415,6 +528,7 @@ public final class VectorizedParquetDefinitionLevelReader
         Mode mode);
   }
 
+  /** 毫秒时间戳读取器，放大到微秒。 */
   class TimestampMillisReader extends BaseReader {
 
     @Override
@@ -449,6 +563,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** INT96 时间戳读取器。 */
   class TimestampInt96Reader extends BaseReader {
     @Override
     protected void nextVal(
@@ -494,6 +609,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 定宽二进制读取器。 */
   class FixedWidthBinaryReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -532,6 +648,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 定长二进制底层 Decimal 读取器。 */
   class FixedLengthDecimalReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -565,6 +682,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 定长二进制（如 UUID）读取器。 */
   class FixedSizeBinaryReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -600,6 +718,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 变宽类型（字符串/二进制）读取器。 */
   class VarWidthReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -645,6 +764,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** int 底层 Decimal 读取器。 */
   class IntBackedDecimalReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -676,6 +796,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** long 底层 Decimal 读取器。 */
   class LongBackedDecimalReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -707,6 +828,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 布尔值读取器。 */
   class BooleanReader extends BaseReader {
     @Override
     protected void nextVal(
@@ -732,6 +854,7 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 字典 id 读取器（IntVector）。 */
   class DictionaryIdReader extends BaseReader {
 
     @Override
@@ -764,6 +887,13 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /**
+   * 将单个位置标记为空，并按需清除 Arrow 有效性位。
+   *
+   * @param nullabilityHolder 空值持有者
+   * @param bufferIdx 位置
+   * @param validityBuffer 有效性缓冲区
+   */
   private void setNull(
       NullabilityHolder nullabilityHolder, int bufferIdx, ArrowBuf validityBuffer) {
     nullabilityHolder.setNull(bufferIdx);
@@ -772,6 +902,14 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /**
+   * 批量将多个位置标记为空，并按需清除 Arrow 有效性位。
+   *
+   * @param nullabilityHolder 空值持有者
+   * @param idx 起始位置
+   * @param numValues 数量
+   * @param validityBuffer 有效性缓冲区
+   */
   private void setNulls(
       NullabilityHolder nullabilityHolder, int idx, int numValues, ArrowBuf validityBuffer) {
     nullabilityHolder.setNulls(idx, numValues);
@@ -782,6 +920,16 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /**
+   * RLE 模式下批量写入连续值：当前值等于 maxDefLevel 时批量拷贝并标记非空，否则批量置空。
+   *
+   * @param typeWidth 类型宽度
+   * @param nullabilityHolder 空值持有者
+   * @param valuesReader 原始值读取器
+   * @param bufferIdx 起始位置
+   * @param vector 目标向量
+   * @param numValues 数量
+   */
   private void setNextNValuesInVector(
       int typeWidth,
       NullabilityHolder nullabilityHolder,
@@ -804,58 +952,72 @@ public final class VectorizedParquetDefinitionLevelReader
     }
   }
 
+  /** 创建 long 读取器。 */
   LongReader longReader() {
     return new LongReader();
   }
 
+  /** 创建 double 读取器。 */
   DoubleReader doubleReader() {
     return new DoubleReader();
   }
 
+  /** 创建 float 读取器。 */
   FloatReader floatReader() {
     return new FloatReader();
   }
 
+  /** 创建 int 读取器。 */
   IntegerReader integerReader() {
     return new IntegerReader();
   }
 
+  /** 创建毫秒时间戳读取器。 */
   TimestampMillisReader timestampMillisReader() {
     return new TimestampMillisReader();
   }
 
+  /** 创建 INT96 时间戳读取器。 */
   TimestampInt96Reader timestampInt96Reader() {
     return new TimestampInt96Reader();
   }
 
+  /** 创建定宽二进制读取器。 */
   FixedWidthBinaryReader fixedWidthBinaryReader() {
     return new FixedWidthBinaryReader();
   }
 
+  /** 创建定长 Decimal 读取器。 */
   FixedLengthDecimalReader fixedLengthDecimalReader() {
     return new FixedLengthDecimalReader();
   }
 
+  /** 创建定长二进制读取器。 */
   FixedSizeBinaryReader fixedSizeBinaryReader() {
     return new FixedSizeBinaryReader();
   }
 
+  /** 创建变宽类型读取器。 */
   VarWidthReader varWidthReader() {
     return new VarWidthReader();
   }
 
+  /** 创建 int 底层 Decimal 读取器。 */
   IntBackedDecimalReader intBackedDecimalReader() {
     return new IntBackedDecimalReader();
   }
 
+  /** 创建 long 底层 Decimal 读取器。 */
   LongBackedDecimalReader longBackedDecimalReader() {
     return new LongBackedDecimalReader();
   }
 
+  /** 创建布尔读取器。 */
   BooleanReader booleanReader() {
     return new BooleanReader();
   }
 
+  /** 创建字典 id 读取器。 */
   DictionaryIdReader dictionaryIdReader() {
     return new DictionaryIdReader();
   }

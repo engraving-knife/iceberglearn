@@ -43,6 +43,13 @@ import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * Flink 专用的文件写入器工厂，创建 ORC/Parquet/Avro 输出文件与写入器。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按格式构造 OutputFile 与对应的 Iceberg FileWriter。
+ *
+ * <p>设计意图：工厂模式，继承 BaseFileWriterFactory；被 TaskWriter 调用。
+ */
 class FlinkFileWriterFactory extends BaseFileWriterFactory<RowData> implements Serializable {
   private RowType dataFlinkType;
   private RowType equalityDeleteFlinkType;

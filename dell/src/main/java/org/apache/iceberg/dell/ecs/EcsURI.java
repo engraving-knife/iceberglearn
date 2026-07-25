@@ -24,7 +24,15 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 
-/** An immutable record class of ECS location */
+/**
+ * ECS（Dell EMC Elastic Cloud Storage）位置解析类，不可变值对象。
+ *
+ * <p>所属模块：iceberg-dell。职责：把 {@code ecs://bucket/name}、{@code s3://...} 等 URI 解析为 bucket 与 object
+ * name 两个分量，供 {@code ECSFileIO} 定位对象使用。
+ *
+ * <p>设计意图：作为不可变记录（Immutable Record），构造时即完成解析并缓存 bucket/name/location， 后续读取无开销；支持两类构造入口——完整 URI
+ * 字符串与分离的 bucket+name，统一产出规范化的 {@code ecs://} location。校验 scheme 白名单（ecs/s3/s3a/s3n）以尽早暴露非法路径。
+ */
 class EcsURI {
 
   private static final Set<String> VALID_SCHEME = ImmutableSet.of("ecs", "s3", "s3a", "s3n");
@@ -33,6 +41,13 @@ class EcsURI {
   private final String bucket;
   private final String name;
 
+  /**
+   * 根据完整 URI 字符串构造 {@link EcsURI}。
+   *
+   * <p>逻辑：用 {@link URI#create} 解析，校验 scheme 在白名单内，取 host 为 bucket、 path 去除前导斜杠为 name。
+   *
+   * @param location 完整 URI
+   */
   EcsURI(String location) {
     Preconditions.checkNotNull(location == null, "Location %s can not be null", location);
 
@@ -45,24 +60,28 @@ class EcsURI {
     this.name = uri.getPath().replaceAll("^/*", "");
   }
 
-  /** The leading slashes of name will be ignored. */
+  /**
+   * 根据 bucket 与 name 构造 {@link EcsURI}，并规范化为 {@code ecs://bucket/name} 形式。
+   *
+   * <p>name 的前导斜杠会被忽略。
+   */
   EcsURI(String bucket, String name) {
     this.bucket = bucket;
     this.name = name.replaceAll("^/*", "");
     this.location = String.format("ecs://%s/%s", bucket, name);
   }
 
-  /** Returns ECS bucket name. */
+  /** 返回 ECS bucket 名称。 */
   public String bucket() {
     return bucket;
   }
 
-  /** Returns ECS object name. */
+  /** 返回 ECS object name。 */
   public String name() {
     return name;
   }
 
-  /** Returns original location. */
+  /** 返回原始 location。 */
   public String location() {
     return location;
   }

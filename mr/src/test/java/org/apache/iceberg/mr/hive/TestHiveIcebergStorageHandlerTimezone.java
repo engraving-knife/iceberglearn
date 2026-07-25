@@ -51,6 +51,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestHiveIcebergStorageHandlerTimezone 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergStorageHandlerTimezone 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergStorageHandlerTimezone {
   private static final Optional<ThreadLocal<DateFormat>> dateFormat =
       Optional.ofNullable(
@@ -70,6 +77,7 @@ public class TestHiveIcebergStorageHandlerTimezone {
                   .buildStatic()
                   .get());
 
+  /** 辅助方法：parameters。 */
   @Parameters(name = "timezone={0}")
   public static Collection<Object[]> parameters() {
     return ImmutableList.of(
@@ -87,16 +95,19 @@ public class TestHiveIcebergStorageHandlerTimezone {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：beforeClass。 */
   @BeforeClass
   public static void beforeClass() {
     shell = HiveIcebergStorageHandlerTestUtils.shell();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterClass
   public static void afterClass() throws Exception {
     shell.stop();
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     TimeZone.setDefault(TimeZone.getTimeZone(timezoneString));
@@ -115,11 +126,17 @@ public class TestHiveIcebergStorageHandlerTimezone {
     HiveIcebergStorageHandlerTestUtils.init(shell, testTables, temp, "spark");
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws Exception {
     HiveIcebergStorageHandlerTestUtils.close(shell);
   }
 
+  /**
+   * 测试场景：Date Query。
+   *
+   * <p>验证该方法在 Date Query 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateQuery() throws IOException {
     Schema dateSchema = new Schema(optional(1, "d_date", Types.DateType.get()));
@@ -151,6 +168,11 @@ public class TestHiveIcebergStorageHandlerTimezone {
     Assert.assertEquals(0, result.size());
   }
 
+  /**
+   * 测试场景：Timestamp Query。
+   *
+   * <p>验证该方法在 Timestamp Query 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampQuery() throws IOException {
     Schema timestampSchema = new Schema(optional(1, "d_ts", Types.TimestampType.withoutZone()));

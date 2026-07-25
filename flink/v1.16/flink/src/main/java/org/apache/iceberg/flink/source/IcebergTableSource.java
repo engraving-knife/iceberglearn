@@ -52,6 +52,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /** Flink Iceberg table source. */
 @Internal
+/**
+ * Iceberg-Flink DynamicTableSource 实现，把 Iceberg 读取能力适配到 Flink Table API。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：包装 ScanContext，提供 DynamicTableSource 元数据与读取能力。
+ *
+ * <p>设计意图：适配器模式；被 FlinkDynamicTableFactory 创建。
+ */
 public class IcebergTableSource
     implements ScanTableSource,
         SupportsProjectionPushDown,

@@ -21,6 +21,12 @@ package org.apache.spark.sql.catalyst.util
 
 import org.apache.spark.sql.catalyst.ProjectingInternalRow
 
+/**
+ * 工具类的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 WriteDeltaProjections。
+ */
 case class WriteDeltaProjections(
     rowProjection: Option[ProjectingInternalRow],
     rowIdProjection: ProjectingInternalRow,

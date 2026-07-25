@@ -35,12 +35,22 @@ import org.apache.iceberg.flink.TestHelpers;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.StructLikeSet;
 
+/**
+ * 文件级说明：测试 TestFlinkInputFormatReaderDeletes 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkInputFormatReaderDeletes 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkInputFormatReaderDeletes extends TestFlinkReaderDeletesBase {
 
+  /** 辅助方法：TestFlinkInputFormatReaderDeletes，Flink Input Format Reader Deletes。 */
   public TestFlinkInputFormatReaderDeletes(FileFormat inputFormat) {
     super(inputFormat);
   }
 
+  /** 辅助方法：rowSet，row Set。 */
   @Override
   protected StructLikeSet rowSet(String tableName, Table testTable, String... columns)
       throws IOException {

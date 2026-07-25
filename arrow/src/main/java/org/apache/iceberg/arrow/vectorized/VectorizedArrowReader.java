@@ -54,9 +54,23 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
- * {@link VectorizedReader VectorReader(s)} that read in a batch of values into Arrow vectors. It
- * also takes care of allocating the right kind of Arrow vectors depending on the corresponding
- * Iceberg/Parquet data types.
+ * 文件级说明：将一列 Parquet 数据批量读入 Arrow 向量的向量化读取器。
+ *
+ * <p>所属模块：iceberg-arrow（向量化读取链路的单列读取核心）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>委托 {@link VectorizedColumnIterator} 逐页批量解码，按 Iceberg/Parquet 类型 分配对应 Arrow 向量并填充值。
+ *   <li>管理向量分配、字典编码判定、空值持有与行组信息设置。
+ *   <li>提供 Null/Position/Constant/Deleted 等元数据列的专用子类读取器。
+ * </ul>
+ *
+ * <p>设计意图：按 ReadType 枚举分发到对应 BatchReader，避免运行期反射；当 Parquet 回退 到普通编码时，即使存在字典也会提前解码，故向量是否字典编码以
+ * producesDictionaryEncodedVector 为准。内部子类以空对象方式表示不读文件的元数据列，统一读取接口。
+ *
+ * <p>上下游关系：实现 {@link VectorizedReader}，被 {@link BaseBatchReader}/{@link ArrowBatchReader} 按列持有；下游委托
+ * {@link VectorizedColumnIterator} 与 {@link ArrowSchemaUtil}。
  */
 public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
   public static final int DEFAULT_BATCH_SIZE = 5000;
@@ -81,6 +95,14 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
   // present in the vector may not necessarily be dictionary encoded.
   private Dictionary dictionary;
 
+  /**
+   * 构造列读取器。
+   *
+   * @param desc Parquet 列描述符
+   * @param icebergField Iceberg 字段定义
+   * @param ra Arrow 内存分配器
+   * @param setArrowValidityVector 是否设置 Arrow 有效性向量
+   */
   public VectorizedArrowReader(
       ColumnDescriptor desc,
       Types.NestedField icebergField,
@@ -92,10 +114,12 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     this.vectorizedColumnIterator = new VectorizedColumnIterator(desc, "", setArrowValidityVector);
   }
 
+  /** dummy 读取器的构造方法。 */
   private VectorizedArrowReader() {
     this(null);
   }
 
+  /** 元数据列读取器的构造方法（不实际读文件）。 */
   private VectorizedArrowReader(Types.NestedField icebergField) {
     this.icebergField = icebergField;
     this.batchSize = DEFAULT_BATCH_SIZE;
@@ -123,17 +147,33 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     DICTIONARY
   }
 
+  /** 返回 Iceberg 字段定义。 */
   protected Types.NestedField icebergField() {
     return icebergField;
   }
 
   @Override
+  /**
+   * 设置批大小，0 时使用默认值，并转发给列迭代器。
+   *
+   * @param batchSize 每批最大行数
+   */
   public void setBatchSize(int batchSize) {
     this.batchSize = (batchSize == 0) ? DEFAULT_BATCH_SIZE : batchSize;
     this.vectorizedColumnIterator.setBatchSize(batchSize);
   }
 
   @Override
+  /**
+   * 读取一批值并返回向量持有者。
+   *
+   * <p>逻辑：判定是否字典编码；需新建向量时（reuse 为空或编码/读取类型不匹配）分配向量 并新建空值持有者，否则复用向量并重置；按字典编码或 ReadType 选择对应
+   * BatchReader 写入；最后校验读取行数与预期一致，返回 VectorHolder。
+   *
+   * @param reuse 可复用的向量持有者
+   * @param numValsToRead 待读行数
+   * @return 含本批数据的向量持有者
+   */
   public VectorHolder read(VectorHolder reuse, int numValsToRead) {
     boolean dictEncoded = vectorizedColumnIterator.producesDictionaryEncodedVector();
     if (reuse == null
@@ -208,6 +248,13 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
         columnDescriptor, vec, dictEncoded, dictionary, nullabilityHolder, icebergField);
   }
 
+  /**
+   * 按是否字典编码分配 Arrow 向量。
+   *
+   * <p>逻辑：字典编码则分配 IntVector；否则转换为物理类型，按 Parquet 原始类型或类型名 分发到具体分配方法。
+   *
+   * @param dictionaryEncodedVector 是否分配字典编码向量
+   */
   private void allocateFieldVector(boolean dictionaryEncodedVector) {
     if (dictionaryEncodedVector) {
       allocateDictEncodedVector();
@@ -221,6 +268,15 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     }
   }
 
+  /**
+   * 根据 Parquet 底层类型返回用于分配 Arrow 向量的物理字段类型。
+   *
+   * <p>逻辑：Decimal 类型按底层 INT64/INT32/二进制分别映射为 Long/Integer/Fixed 类型， 其余保持原逻辑类型。
+   *
+   * @param desc Parquet 列描述符
+   * @param logicalType Iceberg 逻辑字段
+   * @return 物理字段类型
+   */
   private static Types.NestedField getPhysicalType(
       ColumnDescriptor desc, Types.NestedField logicalType) {
     PrimitiveType primitive = desc.getPrimitiveType();
@@ -246,6 +302,7 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     return physicalType;
   }
 
+  /** 分配存储字典 id 的 IntVector，并设置 typeWidth 与 ReadType.DICTIONARY。 */
   private void allocateDictEncodedVector() {
     Field field =
         new Field(
@@ -259,6 +316,12 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     this.readType = ReadType.DICTIONARY;
   }
 
+  /**
+   * 按 Parquet 原始类型（逻辑类型）分配 Arrow 向量并设置 ReadType/typeWidth。
+   *
+   * @param primitive Parquet 原始类型
+   * @param arrowField Arrow 字段定义
+   */
   private void allocateVectorBasedOnOriginalType(PrimitiveType primitive, Field arrowField) {
     switch (primitive.getOriginalType()) {
       case ENUM:
@@ -344,6 +407,12 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     }
   }
 
+  /**
+   * 按 Parquet 底层类型名分配 Arrow 向量并设置 ReadType/typeWidth。
+   *
+   * @param primitive Parquet 原始类型
+   * @param arrowField Arrow 字段定义
+   */
   private void allocateVectorBasedOnTypeName(PrimitiveType primitive, Field arrowField) {
     switch (primitive.getPrimitiveTypeName()) {
       case FIXED_LEN_BYTE_ARRAY:
@@ -430,6 +499,13 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
   }
 
   @Override
+  /**
+   * 设置当前行组的页存储与元数据，并转发给列迭代器。
+   *
+   * @param source 页读取存储
+   * @param metadata 列块元数据映射
+   * @param rowPosition 当前行组起始行位置
+   */
   public void setRowGroupInfo(
       PageReadStore source, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition) {
     ColumnChunkMetaData chunkMetaData = metadata.get(ColumnPath.get(columnDescriptor.getPath()));
@@ -440,6 +516,7 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
   }
 
   @Override
+  /** 关闭列读取器，释放列迭代器与向量资源。 */
   public void close() {
     if (vec != null) {
       vec.close();
@@ -447,43 +524,53 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
   }
 
   @Override
+  /** 返回读取器的字符串描述。 */
   public String toString() {
     return columnDescriptor.toString();
   }
 
+  /** 创建不读文件的 null 占位读取器。 */
   public static VectorizedArrowReader nulls() {
     return NullVectorReader.INSTANCE;
   }
 
+  /** 创建行位置列读取器（不设置有效性向量）。 */
   public static VectorizedArrowReader positions() {
     return new PositionVectorReader(false);
   }
 
+  /** 创建行位置列读取器（设置有效性向量）。 */
   public static VectorizedArrowReader positionsWithSetArrowValidityVector() {
     return new PositionVectorReader(true);
   }
 
+  /** null 占位读取器单例，read 返回 dummy 持有者，无实际读取。 */
   private static final class NullVectorReader extends VectorizedArrowReader {
     private static final NullVectorReader INSTANCE = new NullVectorReader();
 
     @Override
+    /** 返回 dummy 占位持有者。 */
     public VectorHolder read(VectorHolder reuse, int numValsToRead) {
       return VectorHolder.dummyHolder(numValsToRead);
     }
 
     @Override
+    /** 空实现：无行组信息需设置。 */
     public void setRowGroupInfo(
         PageReadStore source, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition) {}
 
     @Override
+    /** 返回 "NullReader"。 */
     public String toString() {
       return "NullReader";
     }
 
     @Override
+    /** 空实现。 */
     public void setBatchSize(int batchSize) {}
   }
 
+  /** 行位置列读取器：按行号生成连续 long 值写入 BigIntVector。 */
   private static final class PositionVectorReader extends VectorizedArrowReader {
     private static final Field ROW_POSITION_ARROW_FIELD =
         ArrowSchemaUtil.convert(MetadataColumns.ROW_POSITION);
@@ -498,6 +585,15 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     }
 
     @Override
+    /**
+     * 生成一批行位置值写入向量。
+     *
+     * <p>逻辑：复用或新建向量；将 rowStart 起的连续行号写入数据缓冲；按需设置有效性位； 推进 rowStart 并返回 PositionVectorHolder。
+     *
+     * @param reuse 可复用持有者
+     * @param numValsToRead 待读行数
+     * @return 行位置向量持有者
+     */
     public VectorHolder read(VectorHolder reuse, int numValsToRead) {
       FieldVector vec;
       if (reuse == null) {
@@ -525,6 +621,7 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
       return new VectorHolder.PositionVectorHolder(vec, MetadataColumns.ROW_POSITION, nulls);
     }
 
+    /** 分配指定容量的 BigIntVector。 */
     private static BigIntVector newVector(int valueCount) {
       BigIntVector vector =
           (BigIntVector) ROW_POSITION_ARROW_FIELD.createVector(ArrowAllocation.rootAllocator());
@@ -532,6 +629,7 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
       return vector;
     }
 
+    /** 创建全部非空的空值持有者。 */
     private static NullabilityHolder newNullabilityHolder(int size) {
       NullabilityHolder nullabilityHolder = new NullabilityHolder(size);
       nullabilityHolder.setNotNulls(0, size);
@@ -539,17 +637,24 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     }
 
     @Override
+    /** 记录当前行组起始行位置。 */
     public void setRowGroupInfo(
         PageReadStore source, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition) {
       this.rowStart = rowPosition;
     }
 
     @Override
+    /** 返回类名字符串。 */
     public String toString() {
       return getClass().toString();
     }
 
     @Override
+    /**
+     * 设置批大小，并按需重建空值持有者。
+     *
+     * @param batchSize 每批最大行数
+     */
     public void setBatchSize(int batchSize) {
       if (nulls == null || nulls.size() < batchSize) {
         this.nulls = newNullabilityHolder(batchSize);
@@ -558,73 +663,91 @@ public class VectorizedArrowReader implements VectorizedReader<VectorHolder> {
     }
 
     @Override
+    /** 空实现：向量不归读取器所有，不关闭。 */
     public void close() {
       // don't close vectors as they are not owned by readers
     }
   }
 
   /**
-   * A Dummy Vector Reader which doesn't actually read files, instead it returns a dummy
-   * VectorHolder which indicates the constant value which should be used for this column.
+   * 常量列读取器：不实际读文件，返回指示常量值的 dummy 持有者。
    *
-   * @param <T> The constant value to use
+   * @param <T> 常量值类型
    */
   public static class ConstantVectorReader<T> extends VectorizedArrowReader {
     private final T value;
 
     /** @deprecated since 1.4.0, will be removed in 1.5.0; use typed constant readers. */
     @Deprecated
+    /**
+     * 已废弃：构造无类型常量读取器。
+     *
+     * @deprecated since 1.4.0，将在 1.5.0 移除，请使用类型化构造方法
+     * @param value 常量值
+     */
     public ConstantVectorReader(T value) {
       this.value = value;
     }
 
+    /**
+     * 构造类型化常量读取器。
+     *
+     * @param icebergField Iceberg 字段定义
+     * @param value 常量值
+     */
     public ConstantVectorReader(Types.NestedField icebergField, T value) {
       super(icebergField);
       this.value = value;
     }
 
     @Override
+    /** 返回携带常量值的常量持有者。 */
     public VectorHolder read(VectorHolder reuse, int numValsToRead) {
       return VectorHolder.constantHolder(icebergField(), numValsToRead, value);
     }
 
     @Override
+    /** 空实现。 */
     public void setRowGroupInfo(
         PageReadStore source, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition) {}
 
     @Override
+    /** 返回常量读取器描述。 */
     public String toString() {
       return String.format("ConstantReader: %s", value);
     }
 
     @Override
+    /** 空实现。 */
     public void setBatchSize(int batchSize) {}
   }
 
-  /**
-   * A Dummy Vector Reader which doesn't actually read files. Instead, it returns a Deleted Vector
-   * Holder which indicates whether a given row is deleted.
-   */
+  /** 删除标记列读取器：不实际读文件，返回指示行是否删除的持有者。 */
   public static class DeletedVectorReader extends VectorizedArrowReader {
+    /** 构造删除标记列读取器，绑定 IS_DELETED 元数据列。 */
     public DeletedVectorReader() {
       super(MetadataColumns.IS_DELETED);
     }
 
     @Override
+    /** 返回删除标记向量持有者。 */
     public VectorHolder read(VectorHolder reuse, int numValsToRead) {
       return VectorHolder.deletedVectorHolder(numValsToRead);
     }
 
     @Override
+    /** 空实现。 */
     public void setRowGroupInfo(
         PageReadStore source, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition) {}
 
     @Override
+    /** 返回 "DeletedVectorReader"。 */
     public String toString() {
       return "DeletedVectorReader";
     }
 
     @Override
+    /** 空实现。 */
     public void setBatchSize(int batchSize) {}
   }
 }

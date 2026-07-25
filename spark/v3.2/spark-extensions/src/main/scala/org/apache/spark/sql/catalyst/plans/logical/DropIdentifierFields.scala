@@ -21,6 +21,13 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
 
+/**
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 DropIdentifierFields。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class DropIdentifierFields(
     table: Seq[String],
     fields: Seq[String]) extends LeafCommand {
@@ -28,6 +35,10 @@ case class DropIdentifierFields(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"DropIdentifierFields ${table.quoted} (${fields.quoted})"
   }

@@ -50,7 +50,23 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
-/** Flink Iceberg table source. */
+/**
+ * 文件级说明：Flink 表 API 中 Iceberg 表的 source 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 {@link ScanTableSource} 与投影、过滤、Limit 下推接口。
+ *   <li>根据配置选择使用 legacy {@link FlinkSource} 或 FLIP-27 {@link IcebergSource}。
+ *   <li>把 Flink 的过滤表达式转换为 Iceberg {@link Expression}。
+ * </ul>
+ *
+ * <p>设计意图：作为 Flink DynamicTableSource 的 Iceberg 适配器， 把表 schema、属性与下推信息聚合后委托给具体 source 实现。
+ *
+ * <p>上下游关系：上游为 Flink Table Planner（调用 apply* 方法）， 下游为 {@link FlinkSource} 或 {@link IcebergSource}。
+ */
 @Internal
 public class IcebergTableSource
     implements ScanTableSource,
@@ -68,6 +84,7 @@ public class IcebergTableSource
   private final boolean isLimitPushDown;
   private final ReadableConfig readableConfig;
 
+  /** 拷贝构造，用于 {@link #copy()}。 */
   private IcebergTableSource(IcebergTableSource toCopy) {
     this.loader = toCopy.loader;
     this.schema = toCopy.schema;
@@ -79,6 +96,7 @@ public class IcebergTableSource
     this.readableConfig = toCopy.readableConfig;
   }
 
+  /** 构造 IcebergTableSource，无投影、无 Limit、无过滤。 */
   public IcebergTableSource(
       TableLoader loader,
       TableSchema schema,
@@ -87,6 +105,7 @@ public class IcebergTableSource
     this(loader, schema, properties, null, false, null, ImmutableList.of(), readableConfig);
   }
 
+  /** 全参构造，仅供内部使用。 */
   private IcebergTableSource(
       TableLoader loader,
       TableSchema schema,
@@ -106,6 +125,11 @@ public class IcebergTableSource
     this.readableConfig = readableConfig;
   }
 
+  /**
+   * 应用投影下推，仅支持顶层字段投影。
+   *
+   * @param projectFields 投影字段索引数组
+   */
   @Override
   public void applyProjection(int[][] projectFields) {
     this.projectedFields = new int[projectFields.length];
@@ -116,6 +140,14 @@ public class IcebergTableSource
     }
   }
 
+  /**
+   * 创建 legacy {@link FlinkSource} 的 DataStream。
+   *
+   * <p>逻辑：用 builder 链式调用配置 env、loader、属性、投影、limit、过滤等。
+   *
+   * @param execEnv 流执行环境
+   * @return 产生 RowData 的 DataStream
+   */
   private DataStream<RowData> createDataStream(StreamExecutionEnvironment execEnv) {
     return FlinkSource.forRowData()
         .env(execEnv)
@@ -128,6 +160,14 @@ public class IcebergTableSource
         .build();
   }
 
+  /**
+   * 创建 FLIP-27 {@link IcebergSource} 的 DataStreamSource。
+   *
+   * <p>逻辑：按配置选择 split assigner 工厂，构造 IcebergSource 后通过 env.fromSource 注册。
+   *
+   * @param env 流执行环境
+   * @return DataStreamSource
+   */
   private DataStreamSource<RowData> createFLIP27Stream(StreamExecutionEnvironment env) {
     SplitAssignerType assignerType =
         readableConfig.get(FlinkConfigOptions.TABLE_EXEC_SPLIT_ASSIGNER_TYPE);
@@ -150,6 +190,7 @@ public class IcebergTableSource
     return stream;
   }
 
+  /** 返回应用投影后的 schema，未投影时返回原 schema。 */
   private TableSchema getProjectedSchema() {
     if (projectedFields == null) {
       return schema;
@@ -164,11 +205,20 @@ public class IcebergTableSource
     }
   }
 
+  /** 应用 Limit 下推。 */
   @Override
   public void applyLimit(long newLimit) {
     this.limit = newLimit;
   }
 
+  /**
+   * 应用过滤下推。
+   *
+   * <p>逻辑：把每个 Flink ResolvedExpression 尝试转为 Iceberg Expression， 接受转换成功的过滤，其余保留在 Flink 端执行。
+   *
+   * @param flinkFilters Flink 端的过滤表达式列表
+   * @return 接受/剩余的过滤结果
+   */
   @Override
   public Result applyFilters(List<ResolvedExpression> flinkFilters) {
     List<ResolvedExpression> acceptedFilters = Lists.newArrayList();
@@ -186,17 +236,27 @@ public class IcebergTableSource
     return Result.of(acceptedFilters, flinkFilters);
   }
 
+  /** 暂不支持嵌套投影。 */
   @Override
   public boolean supportsNestedProjection() {
-    // TODO: support nested projection
+    // TODO: 支持嵌套投影
     return false;
   }
 
+  /** 当前 source 仅支持 INSERT-only 的 changelog 模式。 */
   @Override
   public ChangelogMode getChangelogMode() {
     return ChangelogMode.insertOnly();
   }
 
+  /**
+   * 返回扫描运行时提供者。
+   *
+   * <p>逻辑：根据配置选择 FLIP-27 source 或 legacy source， 通过 {@link DataStreamScanProvider} 把数据流返回给 Flink。
+   *
+   * @param runtimeProviderContext 扫描上下文
+   * @return 扫描运行时提供者
+   */
   @Override
   public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
     return new DataStreamScanProvider() {
@@ -210,6 +270,7 @@ public class IcebergTableSource
         }
       }
 
+      /** 返回是否为有界源，由 {@link FlinkSource#isBounded} 判定。 */
       @Override
       public boolean isBounded() {
         return FlinkSource.isBounded(properties);
@@ -217,11 +278,13 @@ public class IcebergTableSource
     };
   }
 
+  /** 拷贝当前 source，用于 Flink planner 在执行计划生成时的复制。 */
   @Override
   public DynamicTableSource copy() {
     return new IcebergTableSource(this);
   }
 
+  /** 返回简短的摘要字符串。 */
   @Override
   public String asSummaryString() {
     return "Iceberg table source";

@@ -26,12 +26,20 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 
 // this node doesn't extend RepartitionOperation on purpose to keep this logic isolated
 // and ignore it in optimizer rules such as CollapseRepartition
+/**
+ * 所属模块：iceberg-spark v3.4
+ * <p>职责：感知顺序的合并逻辑计划节点，在合并分区时保持数据顺序。
+ * <p>设计意图：作为 Iceberg 写入分布优化中保序合并的节点，避免破坏写入排序要求。
+ * <p>上下游关系：由 SetWriteDistributionAndOrdering 等使用；由 OrderAwareCoalesceExec 执行。
+ */
 case class OrderAwareCoalesce(
     numPartitions: Int,
     coalescer: PartitionCoalescer,
     child: LogicalPlan) extends OrderPreservingUnaryNode {
+  /** 执行 output 相关操作。 */
 
   override def output: Seq[Attribute] = child.output
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: LogicalPlan): LogicalPlan = {
     copy(child = newChild)
@@ -39,6 +47,7 @@ case class OrderAwareCoalesce(
 }
 
 class OrderAwareCoalescer(val groupSize: Int) extends PartitionCoalescer with Serializable {
+  /** 执行 coalesce 相关操作。 */
 
   override def coalesce(maxPartitions: Int, parent: RDD[_]): Array[PartitionGroup] = {
     val partitionBins = parent.partitions.grouped(groupSize)

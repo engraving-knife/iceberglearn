@@ -25,6 +25,12 @@ import org.apache.spark.sql.catalyst.plans.logical.Assignment
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.util.CharVarcharUtils
 import org.apache.spark.sql.types.DataType
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：赋值表达式工具，提供赋值表达式的提取、对齐与重写辅助方法。
+ * <p>设计意图：集中放置赋值相关公共操作，供分析规则复用。
+ * <p>上下游关系：由 AlignRowLevelCommandAssignments / RewriteUpdateTable 等使用。
+ */
 
 object AssignmentUtils extends SQLConfHelper {
 
@@ -48,6 +54,7 @@ object AssignmentUtils extends SQLConfHelper {
         (attr.nullable || !value.nullable)
     }
   }
+  /** 转换为 AssignmentRef。 */
 
   def toAssignmentRef(expr: Expression): Seq[String] = expr match {
     case attr: AttributeReference =>
@@ -61,6 +68,7 @@ object AssignmentUtils extends SQLConfHelper {
     case other =>
       throw new AnalysisException(s"Cannot convert to a reference, unsupported expression: $other")
   }
+  /** 执行 handleCharVarcharLimits 相关操作。 */
 
   def handleCharVarcharLimits(assignment: Assignment): Assignment = {
     val key = assignment.key

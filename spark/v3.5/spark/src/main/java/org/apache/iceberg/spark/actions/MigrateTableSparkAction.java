@@ -44,9 +44,23 @@ import scala.Some;
 import scala.collection.JavaConverters;
 
 /**
- * Takes a Spark table in the source catalog and attempts to transform it into an Iceberg table in
- * the same location with the same identifier. Once complete the identifier which previously
- * referred to a non-Iceberg table will refer to the newly migrated Iceberg table.
+ * 基于 Spark 的表迁移 Action，将非 Iceberg 表（如 Hive/Parquet 表）就地迁移为 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将源 catalog 中的 Spark 表（非 Iceberg 表）转换为 Iceberg 表，保持相同的表标识符 和存储位置。
+ *   <li>通过重命名备份、暂存新表、导入数据、提交的流程保证迁移的原子性。
+ *   <li>迁移失败时自动回滚（恢复原表、放弃暂存），成功后可选删除备份表。
+ * </ul>
+ *
+ * <p>设计意图：迁移过程需要保证原表数据不丢失且操作可回滚。核心策略是将原表重命名 为备份名，在其原位置暂存创建新的 Iceberg 表，通过 SparkTableUtil 导入原表数据文件
+ * 的元数据，最后原子提交。使用 StagingTableCatalog 的两阶段提交保证一致性。
+ *
+ * <p>上下游关系：实现 Iceberg API 的 {@link MigrateTable} 接口；依赖 {@link SparkTableUtil#importSparkTable}
+ * 导入文件元数据；被 Spark 存储过程调用。
  */
 public class MigrateTableSparkAction extends BaseTableCreationSparkAction<MigrateTableSparkAction>
     implements MigrateTable {
@@ -68,46 +82,53 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     String backupName = sourceTableIdent.name() + BACKUP_SUFFIX;
     this.backupIdent = Identifier.of(sourceTableIdent.namespace(), backupName);
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected MigrateTableSparkAction self() {
     return this;
   }
-
+  /** 执行 destCatalog 相关操作。 */
   @Override
   protected StagingTableCatalog destCatalog() {
     return destCatalog;
   }
-
+  /** 执行 destTableIdent 相关操作。 */
   @Override
   protected Identifier destTableIdent() {
     return destTableIdent;
   }
-
+  /** 执行 tableProperties 相关操作。 */
   @Override
   public MigrateTableSparkAction tableProperties(Map<String, String> properties) {
     setProperties(properties);
     return this;
   }
-
+  /** 执行 tableProperty 相关操作。 */
   @Override
   public MigrateTableSparkAction tableProperty(String property, String value) {
     setProperty(property, value);
     return this;
   }
-
+  /** 执行 dropBackup 相关操作。 */
   @Override
   public MigrateTableSparkAction dropBackup() {
     this.dropBackup = true;
     return this;
   }
-
+  /** 执行 backupTableName 相关操作。 */
   @Override
   public MigrateTableSparkAction backupTableName(String tableName) {
     this.backupIdent = Identifier.of(sourceTableIdent().namespace(), tableName);
     return this;
   }
 
+  /**
+   * 执行表迁移操作。
+   *
+   * <p>逻辑：创建 JobGroupInfo 标识迁移任务，在 job group 上下文中执行 doExecute。
+   *
+   * @return 迁移结果，包含迁移的数据文件数
+   */
   @Override
   public MigrateTable.Result execute() {
     String desc = String.format("Migrating table %s", destTableIdent().toString());
@@ -115,6 +136,23 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     return withJobGroupInfo(info, this::doExecute);
   }
 
+  /**
+   * 实际执行迁移的内部方法。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>将源表重命名为备份名（暂停写操作，为新表腾出标识符）。
+   *   <li>暂存创建新的 Iceberg 表（StagedSparkTable）。
+   *   <li>确保新表有 name mapping（用于通过文件路径读取旧数据文件）。
+   *   <li>通过 SparkTableUtil.importSparkTable 将备份表的数据文件元数据导入新 Iceberg 表。
+   *   <li>提交暂存的变更（commitStagedChanges），使新表生效。
+   *   <li>若任何步骤抛异常，在 finally 中回滚：恢复源表、放弃暂存变更。
+   *   <li>成功且配置 dropBackup 时删除备份表。
+   * </ol>
+   *
+   * @return 迁移结果
+   */
   private MigrateTable.Result doExecute() {
     LOG.info("Starting the migration of {} to Iceberg", sourceTableIdent());
 
@@ -172,7 +210,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
         .migratedDataFilesCount(migratedDataFilesCount)
         .build();
   }
-
+  /** 执行 destTableProps 相关操作。 */
   @Override
   protected Map<String, String> destTableProps() {
     Map<String, String> properties = Maps.newHashMap();
@@ -193,7 +231,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
 
     return properties;
   }
-
+  /** 执行 checkSourceCatalog 相关操作。 */
   @Override
   protected TableCatalog checkSourceCatalog(CatalogPlugin catalog) {
     // currently the import code relies on being able to look up the table in the session catalog
@@ -206,6 +244,12 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     return (TableCatalog) catalog;
   }
 
+  /**
+   * 将源表重命名为备份表名，为新 Iceberg 表腾出原标识符。
+   *
+   * <p>逻辑：通过 destCatalog 的 renameTable 将源表重命名为备份名。若源表不存在 抛出 NoSuchTableException，若备份名已被占用抛出
+   * AlreadyExistsException。
+   */
   private void renameAndBackupSourceTable() {
     try {
       LOG.info("Renaming {} as {} for backup", sourceTableIdent(), backupIdent);
@@ -221,6 +265,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     }
   }
 
+  /** 迁移失败时恢复源表：将备份表重命名回原表名。仅记录错误不抛异常，避免掩盖原始失败原因。 */
   private void restoreSourceTable() {
     try {
       LOG.info("Restoring {} from {}", sourceTableIdent(), backupIdent);
@@ -239,6 +284,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     }
   }
 
+  /** 迁移成功后删除备份表，仅记录错误不抛异常以避免影响已完成的迁移结果。 */
   private void dropBackupTable() {
     try {
       destCatalog().dropTable(backupIdent);

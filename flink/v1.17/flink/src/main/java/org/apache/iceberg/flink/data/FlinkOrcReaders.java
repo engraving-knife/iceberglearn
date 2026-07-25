@@ -48,6 +48,24 @@ import org.apache.orc.storage.ql.exec.vector.MapColumnVector;
 import org.apache.orc.storage.ql.exec.vector.TimestampColumnVector;
 import org.apache.orc.storage.serde2.io.HiveDecimalWritable;
 
+/**
+ * 文件级说明：将 ORC 列向量解码为 Flink {@link RowData} 字段的读取器工厂集合。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 data 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供各类 Iceberg 原始类型到 Flink 类型的 ORC 读取器工厂方法。
+ *   <li>处理 struct/list/map 等复合类型的递归读取。
+ *   <li>把 ORC 的 {@code ColumnVector} 数据转换为 Flink 的 {@code StringData}/{@code DecimalData}/{@code
+ *       TimestampData} 等内部表示。
+ * </ul>
+ *
+ * <p>设计意图：作为静态工厂集合，集中管理 ORC 到 Flink 的类型映射， 供 {@code FlinkOrcReader} 在 schema 访问时按需调用。
+ *
+ * <p>上下游关系：上游为 {@code FlinkOrcReader}，下游为 ORC 的 {@code ColumnVector} 读取 API。
+ */
 class FlinkOrcReaders {
   private FlinkOrcReaders() {}
 

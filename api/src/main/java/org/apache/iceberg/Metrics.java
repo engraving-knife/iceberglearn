@@ -27,7 +27,23 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.ByteBuffers;
 
-/** Iceberg file format metrics. */
+/**
+ * Iceberg 文件格式的统计指标。
+ *
+ * <p>所属模块：iceberg-api（数据文件元数据层）。
+ *
+ * <p>职责：承载单个数据文件的列级统计信息，包括行数、各列字节数、值计数、null 计数、 NaN 计数、上下界等，用于查询规划时的谓词下推与文件裁剪。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>实现 {@link Serializable} 以支持在引擎中序列化传递（如 Spark 广播）。
+ *   <li>上下界以 {@link ByteBuffer} 形式存储（按 Iceberg Spec 附录 D 的单值序列化）， 避免在 metrics 层绑定具体类型；自定义 {@link
+ *       #writeObject}/{@link #readObject} 以处理 ByteBuffer 不可直接被 {@link ObjectOutputStream} 序列化的问题。
+ * </ul>
+ *
+ * <p>上下游关系：由文件写入器（parquet/orc/avro 模块）在写文件时收集并写入 manifest； 被扫描规划、查询优化等模块读取。
+ */
 public class Metrics implements Serializable {
 
   private Long rowCount = null;
@@ -38,8 +54,18 @@ public class Metrics implements Serializable {
   private Map<Integer, ByteBuffer> lowerBounds = null;
   private Map<Integer, ByteBuffer> upperBounds = null;
 
+  /** 默认构造器，所有字段为 null。 */
   public Metrics() {}
 
+  /**
+   * 构造不含上下界的指标。
+   *
+   * @param rowCount 文件记录数
+   * @param columnSizes 列 ID 到字节数的映射
+   * @param valueCounts 列 ID 到值总数的映射（含 null/NaN/重复）
+   * @param nullValueCounts 列 ID 到 null 值计数的映射
+   * @param nanValueCounts 列 ID 到 NaN 值计数的映射
+   */
   public Metrics(
       Long rowCount,
       Map<Integer, Long> columnSizes,
@@ -53,6 +79,17 @@ public class Metrics implements Serializable {
     this.nanValueCounts = nanValueCounts;
   }
 
+  /**
+   * 构造含上下界的完整指标。
+   *
+   * @param rowCount 文件记录数
+   * @param columnSizes 列 ID 到字节数的映射
+   * @param valueCounts 列 ID 到值总数的映射（含 null/NaN/重复）
+   * @param nullValueCounts 列 ID 到 null 值计数的映射
+   * @param nanValueCounts 列 ID 到 NaN 值计数的映射
+   * @param lowerBounds 列 ID 到下界的映射（ByteBuffer 编码）
+   * @param upperBounds 列 ID 到上界的映射（ByteBuffer 编码）
+   */
   public Metrics(
       Long rowCount,
       Map<Integer, Long> columnSizes,
@@ -71,57 +108,57 @@ public class Metrics implements Serializable {
   }
 
   /**
-   * Get the number of records (rows) in file.
+   * 返回文件中的记录（行）数。
    *
-   * @return the count of records (rows) in the file as a long
+   * @return 文件记录数
    */
   public Long recordCount() {
     return rowCount;
   }
 
   /**
-   * Get the number of bytes for all fields in a file.
+   * 返回各列在文件中的总字节数。
    *
-   * @return a Map of fieldId to the size in bytes
+   * @return 列 ID 到字节数的映射
    */
   public Map<Integer, Long> columnSizes() {
     return columnSizes;
   }
 
   /**
-   * Get the number of all values, including nulls, NaN and repeated.
+   * 返回各列的值总数（含 null、NaN 与重复值）。
    *
-   * @return a Map of fieldId to the number of all values including nulls, NaN and repeated
+   * @return 列 ID 到值总数的映射
    */
   public Map<Integer, Long> valueCounts() {
     return valueCounts;
   }
 
   /**
-   * Get the number of null values for all fields in a file.
+   * 返回各列的 null 值计数。
    *
-   * @return a Map of fieldId to the number of nulls
+   * @return 列 ID 到 null 值计数的映射
    */
   public Map<Integer, Long> nullValueCounts() {
     return nullValueCounts;
   }
 
   /**
-   * Get the number of NaN values for all float and double fields in a file.
+   * 返回各 float/double 列的 NaN 值计数。
    *
-   * @return a Map of fieldId to the number of NaN counts
+   * @return 列 ID 到 NaN 值计数的映射
    */
   public Map<Integer, Long> nanValueCounts() {
     return nanValueCounts;
   }
 
   /**
-   * Get the non-null lower bound values for all fields in a file.
+   * 返回各列的非 null 下界值。
    *
-   * <p>To convert the {@link ByteBuffer} back to a value, use {@link
-   * org.apache.iceberg.types.Conversions#fromByteBuffer}.
+   * <p>设计要点：值以 {@link ByteBuffer} 形式存储，按 Iceberg Spec 附录 D 单值序列化。 反序列化为具体值时使用 {@link
+   * org.apache.iceberg.types.Conversions#fromByteBuffer}。
    *
-   * @return a Map of fieldId to the lower bound value as a ByteBuffer
+   * @return 列 ID 到下界 ByteBuffer 的映射
    * @see <a href="https://iceberg.apache.org/spec/#appendix-d-single-value-serialization">Iceberg
    *     Spec - Appendix D: Single-value serialization</a>
    */
@@ -130,19 +167,22 @@ public class Metrics implements Serializable {
   }
 
   /**
-   * Get the non-null upper bound values for all fields in a file.
+   * 返回各列的非 null 上界值。
    *
-   * @return a Map of fieldId to the upper bound value as a ByteBuffer
+   * @return 列 ID 到上界 ByteBuffer 的映射
    */
   public Map<Integer, ByteBuffer> upperBounds() {
     return upperBounds;
   }
 
   /**
-   * Implemented the method to enable serialization of ByteBuffers.
+   * 自定义序列化：将 ByteBuffer Map 转换为可序列化的字节数组形式写入。
    *
-   * @param out The stream where to write
-   * @throws IOException On serialization error
+   * <p>设计意图：{@link ByteBuffer} 默认不可被 {@link ObjectOutputStream} 序列化， 故对 lowerBounds/upperBounds
+   * 单独处理，其余字段直接写出。
+   *
+   * @param out 输出流
+   * @throws IOException 序列化失败
    */
   private void writeObject(ObjectOutputStream out) throws IOException {
     out.writeObject(rowCount);
@@ -155,6 +195,15 @@ public class Metrics implements Serializable {
     writeByteBufferMap(out, upperBounds);
   }
 
+  /**
+   * 将 ByteBuffer Map 序列化写入输出流。
+   *
+   * <p>逻辑：null 时写入 -1；非 null 时先写入 size，再逐项写入 key 与值转换后的 byte[]。
+   *
+   * @param out 输出流
+   * @param byteBufferMap 待写入的 ByteBuffer Map
+   * @throws IOException 写入失败
+   */
   private static void writeByteBufferMap(
       ObjectOutputStream out, Map<Integer, ByteBuffer> byteBufferMap) throws IOException {
     if (byteBufferMap == null) {
@@ -173,11 +222,11 @@ public class Metrics implements Serializable {
   }
 
   /**
-   * Implemented the method to enable deserialization of ByteBuffers.
+   * 自定义反序列化：读取各字段并还原 ByteBuffer Map。
    *
-   * @param in The stream to read from
-   * @throws IOException On serialization error
-   * @throws ClassNotFoundException If the class is not found
+   * @param in 输入流
+   * @throws IOException 反序列化失败
+   * @throws ClassNotFoundException 类未找到
    */
   private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
     rowCount = (Long) in.readObject();
@@ -190,6 +239,16 @@ public class Metrics implements Serializable {
     upperBounds = readByteBufferMap(in);
   }
 
+  /**
+   * 从输入流反序列化为 ByteBuffer Map。
+   *
+   * <p>逻辑：先读 size，若为 -1 返回 null；否则按 size 循环读取 key 与 byte[]，将 byte[] 包装为 ByteBuffer 放入结果 Map。
+   *
+   * @param in 输入流
+   * @return 反序列化后的 ByteBuffer Map，可能为 null
+   * @throws IOException 读取失败
+   * @throws ClassNotFoundException 类未找到
+   */
   private static Map<Integer, ByteBuffer> readByteBufferMap(ObjectInputStream in)
       throws IOException, ClassNotFoundException {
     int size = in.readInt();

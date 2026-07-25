@@ -25,8 +25,24 @@ import java.util.Locale;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 快照引用（{@link SnapshotRef}）的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把分支/标签引用在 metadata.json 与对象间互转。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>字段可选写：minSnapshotsToKeep/maxSnapshotAgeMs/maxRefAgeMs 仅在非空时写出，减小元数据体积。
+ *   <li>类型小写：ref.type 用小写枚举名，便于 JSON 可读性。
+ *   <li>常量键名：所有 JSON 键以常量定义。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link TableMetadataParser} 在持久化 refs 时调用；依赖 {@link JsonUtil}。
+ */
 public class SnapshotRefParser {
 
+  /** 私有构造：工具类禁止实例化。 */
   private SnapshotRefParser() {}
 
   private static final String SNAPSHOT_ID = "snapshot-id";
@@ -35,14 +51,36 @@ public class SnapshotRefParser {
   private static final String MAX_SNAPSHOT_AGE_MS = "max-snapshot-age-ms";
   private static final String MAX_REF_AGE_MS = "max-ref-age-ms";
 
+  /**
+   * 把快照引用序列化为 JSON 字符串（紧凑形式）。
+   *
+   * @param ref 快照引用
+   * @return JSON 字符串
+   */
   public static String toJson(SnapshotRef ref) {
     return toJson(ref, false);
   }
 
+  /**
+   * 把快照引用序列化为 JSON 字符串，可选择是否美化输出。
+   *
+   * @param ref 快照引用
+   * @param pretty 是否美化输出
+   * @return JSON 字符串
+   */
   public static String toJson(SnapshotRef ref, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(ref, gen), pretty);
   }
 
+  /**
+   * 把快照引用写入 JSON 生成器。
+   *
+   * <p>字段策略：min-snapshots-to-keep/max-snapshot-age-ms/max-ref-age-ms 仅在非空时写出。
+   *
+   * @param ref 快照引用
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   public static void toJson(SnapshotRef ref, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
     generator.writeNumberField(SNAPSHOT_ID, ref.snapshotId());
@@ -59,12 +97,26 @@ public class SnapshotRefParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 从 JSON 字符串解析快照引用。
+   *
+   * @param json JSON 字符串
+   * @return 解析得到的 SnapshotRef
+   */
   public static SnapshotRef fromJson(String json) {
     Preconditions.checkArgument(
         json != null && !json.isEmpty(), "Cannot parse snapshot ref from invalid JSON: %s", json);
     return JsonUtil.parse(json, SnapshotRefParser::fromJson);
   }
 
+  /**
+   * 从 JSON 节点解析快照引用。
+   *
+   * <p>字段策略：snapshot-id 和 type 必填，其余可选字段为 null 时跳过。
+   *
+   * @param node JSON 节点
+   * @return 解析得到的 SnapshotRef
+   */
   public static SnapshotRef fromJson(JsonNode node) {
     Preconditions.checkArgument(
         node.isObject(), "Cannot parse snapshot reference from a non-object: %s", node);

@@ -47,6 +47,24 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：RowData 重写器，用于将读取的 RowData 重新写入 Iceberg 数据文件。
+ *
+ * <p>所属模块：iceberg-flink（source 子包），用于数据重写/Compaction 场景。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>读取 Iceberg 表的 CombinedScanTask，将 RowData 重新写入新的数据文件。
+ *   <li>支持分区表和非分区表的重写。
+ *   <li>收集重写结果（WriteResult）。
+ * </ul>
+ *
+ * <p>设计意图：用于 Iceberg 表的维护操作（如 Compaction、Rewrite Data Files）， 将读取的数据按新的分区/文件大小策略重新写入。
+ *
+ * <p>上下游关系：被 Flink 的 rewrite data files 操作调用； 内部使用 {@link RowDataFileScanTaskReader} 读取和 {@link
+ * TaskWriterFactory} 写入。
+ */
 public class RowDataRewriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(RowDataRewriter.class);

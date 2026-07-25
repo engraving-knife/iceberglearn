@@ -38,6 +38,14 @@ import org.apache.flink.table.types.logical.VarCharType;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDataStatisticsCoordinatorProvider 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestDataStatisticsCoordinatorProvider 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestDataStatisticsCoordinatorProvider {
   private static final OperatorID OPERATOR_ID = new OperatorID();
   private static final int NUM_SUBTASKS = 1;
@@ -47,6 +55,7 @@ public class TestDataStatisticsCoordinatorProvider {
   private TypeSerializer<DataStatistics<MapDataStatistics, Map<RowData, Long>>>
       statisticsSerializer;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     statisticsSerializer =
@@ -58,6 +67,11 @@ public class TestDataStatisticsCoordinatorProvider {
     receivingTasks = EventReceivingTasks.createForRunningTasks();
   }
 
+  /**
+   * 测试场景：Checkpoint And Reset。
+   *
+   * <p>验证该方法在 Checkpoint And Reset 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testCheckpointAndReset() throws Exception {
@@ -136,6 +150,7 @@ public class TestDataStatisticsCoordinatorProvider {
         .isEqualTo(checkpoint1GlobalDataStatistics.statistics());
   }
 
+  /** 辅助方法：waitForCheckpoint，wait For Checkpoint。 */
   private byte[] waitForCheckpoint(
       long checkpointId,
       DataStatisticsCoordinator<MapDataStatistics, Map<RowData, Long>> coordinator)

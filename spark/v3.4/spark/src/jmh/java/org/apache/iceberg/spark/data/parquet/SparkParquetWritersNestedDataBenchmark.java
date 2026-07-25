@@ -48,14 +48,12 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * A benchmark that evaluates the performance of writing nested Parquet data using Iceberg and Spark
- * Parquet writers.
+ * 文件级说明：SparkParquetWritersNestedDataBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.3: <code>
- *   ./gradlew -DsparkVersions=3.3 :iceberg-spark:iceberg-spark-3.3_2.12:jmh
- *       -PjmhIncludeRegex=SparkParquetWritersNestedDataBenchmark
- *       -PjmhOutputPath=benchmark/spark-parquet-writers-nested-data-benchmark-result.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.4）。职责：对 SparkParquet写入器嵌套数据 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 @Fork(1)
 @State(Scope.Benchmark)
@@ -78,6 +76,7 @@ public class SparkParquetWritersNestedDataBenchmark {
   private Iterable<InternalRow> rows;
   private File dataFile;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() throws IOException {
     rows = RandomData.generateSpark(SCHEMA, NUM_RECORDS, 0L);
@@ -85,6 +84,7 @@ public class SparkParquetWritersNestedDataBenchmark {
     dataFile.delete();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown(Level.Iteration)
   public void tearDownBenchmark() {
     if (dataFile != null) {
@@ -92,6 +92,11 @@ public class SparkParquetWritersNestedDataBenchmark {
     }
   }
 
+  /**
+   * 基准测试场景：写入使用Iceberg写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writeUsingIcebergWriter() throws IOException {
@@ -107,6 +112,11 @@ public class SparkParquetWritersNestedDataBenchmark {
     }
   }
 
+  /**
+   * 基准测试场景：写入使用Spark写入器。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void writeUsingSparkWriter() throws IOException {

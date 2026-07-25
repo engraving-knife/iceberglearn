@@ -40,6 +40,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.Tasks;
 
 @Internal
+/**
+ * Flink 分片规划器，把 Iceberg 表扫描结果切分为 FlinkInputSplit 列表。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：执行 Iceberg scan 并按并行度划分 FileScanTask。
+ *
+ * <p>设计意图：工具类；被 FlinkSource/IcebergSource 调用。
+ */
 public class FlinkSplitPlanner {
   private FlinkSplitPlanner() {}
 

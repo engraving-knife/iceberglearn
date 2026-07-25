@@ -30,6 +30,11 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.Pair;
 
+/**
+ * Iceberg Spark 集成相关组件的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ScanTaskSetManager。
+ */
 public class ScanTaskSetManager {
 
   private static final ScanTaskSetManager INSTANCE = new ScanTaskSetManager();
@@ -37,12 +42,15 @@ public class ScanTaskSetManager {
   private final Map<Pair<String, String>, List<? extends ScanTask>> tasksMap =
       Maps.newConcurrentMap();
 
+  /** 构造 ScanTaskSetManager 实例。 */
   private ScanTaskSetManager() {}
 
+  /** 执行该方法的具体逻辑。 */
   public static ScanTaskSetManager get() {
     return INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public <T extends ScanTask> void stageTasks(Table table, String setId, List<T> tasks) {
     Preconditions.checkArgument(
         tasks != null && tasks.size() > 0, "Cannot stage null or empty tasks");
@@ -50,18 +58,26 @@ public class ScanTaskSetManager {
     tasksMap.put(id, tasks);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   public <T extends ScanTask> List<T> fetchTasks(Table table, String setId) {
     Pair<String, String> id = toId(table, setId);
     return (List<T>) tasksMap.get(id);
   }
 
+  /** 移除元素或项。 */
   @SuppressWarnings("unchecked")
   public <T extends ScanTask> List<T> removeTasks(Table table, String setId) {
     Pair<String, String> id = toId(table, setId);
     return (List<T>) tasksMap.remove(id);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   public Set<String> fetchSetIds(Table table) {
     return tasksMap.keySet().stream()
         .filter(e -> e.first().equals(tableUUID(table)))
@@ -69,11 +85,13 @@ public class ScanTaskSetManager {
         .collect(Collectors.toSet());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private String tableUUID(Table table) {
     TableOperations ops = ((HasTableOperations) table).operations();
     return ops.current().uuid();
   }
 
+  /** 转换为id。 */
   private Pair<String, String> toId(Table table, String setId) {
     return Pair.of(tableUUID(table), setId);
   }

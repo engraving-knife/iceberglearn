@@ -21,6 +21,18 @@ package org.apache.iceberg.rest.requests;
 import org.apache.iceberg.rest.RESTRequest;
 import org.immutables.value.Value;
 
+/**
+ * 文件级说明：注册已有表的 REST 请求模型（Immutable 接口）。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 请求模型层）。
+ *
+ * <p>职责：封装待注册表的名称与 metadata location，用于将已存在元数据文件的表注册到 Catalog。
+ *
+ * <p>设计意图：使用 Immutables 框架（{@link Value.Immutable}）自动生成不可变实现与 Builder， 简化样板代码。validate()
+ * 默认空实现，因为字段类型已保证非 null。
+ *
+ * <p>上下游关系：服务端由 {@link org.apache.iceberg.rest.CatalogHandlers#registerTable} 处理。
+ */
 @Value.Immutable
 public interface RegisterTableRequest extends RESTRequest {
 

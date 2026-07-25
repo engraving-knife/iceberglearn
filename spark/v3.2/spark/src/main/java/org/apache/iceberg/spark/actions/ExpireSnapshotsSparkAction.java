@@ -47,19 +47,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An action that performs the same operation as {@link org.apache.iceberg.ExpireSnapshots} but uses
- * Spark to determine the delta in files between the pre and post-expiration table metadata. All of
- * the same restrictions of {@link org.apache.iceberg.ExpireSnapshots} also apply to this action.
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
  *
- * <p>This action first leverages {@link org.apache.iceberg.ExpireSnapshots} to expire snapshots and
- * then uses metadata tables to find files that can be safely deleted. This is done by anti-joining
- * two Datasets that contain all manifest and content files before and after the expiration. The
- * snapshot expiration will be fully committed before any deletes are issued.
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 ExpireSnapshotsSparkAction。
  *
- * <p>This operation performs a shuffle so the parallelism can be controlled through
- * 'spark.sql.shuffle.partitions'.
- *
- * <p>Deletes are still performed locally after retrieving the results from the Spark executors.
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
  */
 @SuppressWarnings("UnnecessaryAnonymousClass")
 public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsSparkAction>
@@ -90,29 +82,54 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         "Cannot expire snapshots: GC is disabled (deleting files may corrupt other tables)");
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected ExpireSnapshotsSparkAction self() {
     return this;
   }
 
+  /**
+   * 执行具体逻辑。
+   *
+   * @param executorService 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction executeDeleteWith(ExecutorService executorService) {
     this.deleteExecutorService = executorService;
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param snapshotId 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction expireSnapshotId(long snapshotId) {
     expiredSnapshotIds.add(snapshotId);
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param timestampMillis 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction expireOlderThan(long timestampMillis) {
     this.expireOlderThanValue = timestampMillis;
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param numSnapshots 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction retainLast(int numSnapshots) {
     Preconditions.checkArgument(
@@ -123,6 +140,12 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return this;
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @param newDeleteFunc 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction deleteWith(Consumer<String> newDeleteFunc) {
     this.deleteFunc = newDeleteFunc;
@@ -130,13 +153,9 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
   }
 
   /**
-   * Expires snapshots and commits the changes to the table, returning a Dataset of files to delete.
+   * 执行该方法的具体逻辑。
    *
-   * <p>This does not delete data files. To delete data files, run {@link #execute()}.
-   *
-   * <p>This may be called before or after {@link #execute()} to return the expired files.
-   *
-   * @return a Dataset of files that are no longer referenced by the table
+   * @return 结果对象
    */
   public Dataset<FileInfo> expireFiles() {
     if (expiredFileDS == null) {
@@ -175,12 +194,18 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return expiredFileDS;
   }
 
+  /**
+   * 执行具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshots.Result execute() {
     JobGroupInfo info = newJobGroupInfo("EXPIRE-SNAPSHOTS", jobDesc());
     return withJobGroupInfo(info, this::doExecute);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private String jobDesc() {
     List<String> options = Lists.newArrayList();
 
@@ -205,6 +230,7 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return String.format("Expiring snapshots (%s) in %s", COMMA_JOINER.join(options), table.name());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private ExpireSnapshots.Result doExecute() {
     if (streamResults()) {
       return deleteFiles(expireFiles().toLocalIterator());
@@ -213,14 +239,17 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean streamResults() {
     return PropertyUtil.propertyAsBoolean(options(), STREAM_RESULTS, STREAM_RESULTS_DEFAULT);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Dataset<FileInfo> fileDS(TableMetadata metadata) {
     return fileDS(metadata, null);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Dataset<FileInfo> fileDS(TableMetadata metadata, Set<Long> snapshotIds) {
     Table staticTable = newStaticTable(metadata, table.io());
     return contentFileDS(staticTable, snapshotIds)
@@ -229,6 +258,7 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         .union(statisticsFileDS(staticTable, snapshotIds));
   }
 
+  /** 查找并返回结果。 */
   private Set<Long> findExpiredSnapshotIds(
       TableMetadata originalMetadata, TableMetadata updatedMetadata) {
     Set<Long> retainedSnapshots =
@@ -239,6 +269,7 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         .collect(Collectors.toSet());
   }
 
+  /** 删除数据或文件。 */
   private ExpireSnapshots.Result deleteFiles(Iterator<FileInfo> files) {
     DeleteSummary summary;
     if (deleteFunc == null && table.io() instanceof SupportsBulkOperations) {

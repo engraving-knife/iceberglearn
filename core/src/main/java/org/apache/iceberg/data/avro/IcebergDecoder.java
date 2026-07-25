@@ -34,6 +34,26 @@ import org.apache.avro.message.SchemaStore;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.relocated.com.google.common.collect.MapMaker;
 
+/**
+ * Iceberg Avro 消息解码器：根据消息头中的 schema 指纹路由到对应写入 schema 的解码器。
+ *
+ * <p>所属模块：iceberg-core，data/avro 包内的单条消息解码实现。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>从消息头读取 Iceberg V1 头部标识与 schema 指纹（CRC-64-AVRO）。
+ *   <li>按指纹从已注册的 schema 集合或外部 {@link SchemaStore} 查找写入 schema， 路由到对应的 {@link RawDecoder} 执行实际解码。
+ *   <li>支持通过 {@link #addSchema} 预注册多个写入 schema。
+ * </ul>
+ *
+ * <p>设计意图：Avro 单条消息编码会在头部写入 schema 指纹，解码时需根据指纹找到对应写入 schema。 本类维护指纹到 RawDecoder 的映射，并使用 ThreadLocal
+ * 缓存头部读取缓冲区以避免重复分配。 当本地未命中指纹时可回退到外部 SchemaStore 查找。
+ *
+ * <p>上下游关系：使用 {@link RawDecoder} 执行实际解码；被需要解码 Iceberg Avro 单条消息的场景调用。
+ *
+ * @param <D> 解码结果的数据类型
+ */
 public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
   private static final ThreadLocal<byte[]> HEADER_BUFFER =
       ThreadLocal.withInitial(() -> new byte[10]);
@@ -50,40 +70,25 @@ public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
   private final Map<Long, RawDecoder<D>> decoders = new MapMaker().makeMap();
 
   /**
-   * Creates a new decoder that constructs datum instances described by an {@link
-   * org.apache.iceberg.Schema Iceberg schema}.
+   * 创建解码器（无外部 SchemaStore）。
    *
-   * <p>The {@code readSchema} is as used the expected schema (read schema). Datum instances created
-   * by this class will are described by the expected schema.
+   * <p>使用 readSchema 作为期望 schema，解码消息时按消息头指纹路由。除 readSchema 外， 可通过 {@link #addSchema} 预注册更多写入
+   * schema。
    *
-   * <p>The schema used to decode incoming buffers is determined by the schema fingerprint encoded
-   * in the message header. This class can decode messages that were encoded using the {@code
-   * readSchema} and other schemas that are added using {@link
-   * #addSchema(org.apache.iceberg.Schema)}.
-   *
-   * @param readSchema the schema used to construct datum instances
+   * @param readSchema 期望的读取 schema
    */
   public IcebergDecoder(org.apache.iceberg.Schema readSchema) {
     this(readSchema, null);
   }
 
   /**
-   * Creates a new decoder that constructs datum instances described by an {@link
-   * org.apache.iceberg.Schema Iceberg schema}.
+   * 创建解码器（带外部 SchemaStore）。
    *
-   * <p>The {@code readSchema} is as used the expected schema (read schema). Datum instances created
-   * by this class will are described by the expected schema.
+   * <p>除预注册的 schema 外，当消息头指纹在本地未命中时，可从外部 {@link SchemaStore} 查找写入 schema。 来自 store 的 Avro schema 须与
+   * Iceberg 兼容（含 id 属性且仅使用 Iceberg 类型）。
    *
-   * <p>The schema used to decode incoming buffers is determined by the schema fingerprint encoded
-   * in the message header. This class can decode messages that were encoded using the {@code
-   * readSchema} and other schemas that are added using {@link
-   * #addSchema(org.apache.iceberg.Schema)}.
-   *
-   * <p>Schemas may also be returned from an Avro {@link SchemaStore}. Avro Schemas from the store
-   * must be compatible with Iceberg and should contain id properties and use only Iceberg types.
-   *
-   * @param readSchema the {@link Schema} used to construct datum instances
-   * @param resolver a {@link SchemaStore} used to find schemas by fingerprint
+   * @param readSchema 期望的读取 schema
+   * @param resolver 用于按指纹查找 schema 的 SchemaStore
    */
   public IcebergDecoder(org.apache.iceberg.Schema readSchema, SchemaStore resolver) {
     this.readSchema = readSchema;
@@ -92,14 +97,23 @@ public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
   }
 
   /**
-   * Adds an {@link org.apache.iceberg.Schema Iceberg schema} that can be used to decode buffers.
+   * 注册一个 Iceberg schema 作为可解码的写入 schema。
    *
-   * @param writeSchema a schema to use when decoding buffers
+   * <p>逻辑：将 Iceberg schema 转为 Avro schema 后委托 {@link #addSchema(Schema)} 私有方法。
+   *
+   * @param writeSchema 注册的写入 schema
    */
   public void addSchema(org.apache.iceberg.Schema writeSchema) {
     addSchema(AvroSchemaUtil.convert(writeSchema, "table"));
   }
 
+  /**
+   * 注册一个 Avro 写入 schema 并创建对应的 RawDecoder。
+   *
+   * <p>逻辑：计算 schema 的 CRC-64-AVRO 指纹，以 readSchema 和写入 schema 创建 RawDecoder， 存入指纹到解码器的映射。
+   *
+   * @param writeSchema Avro 写入 schema
+   */
   private void addSchema(Schema writeSchema) {
     long fp = SchemaNormalization.parsingFingerprint64(writeSchema);
     RawDecoder decoder =
@@ -108,6 +122,16 @@ public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
     decoders.put(fp, decoder);
   }
 
+  /**
+   * 按指纹获取解码器。
+   *
+   * <p>逻辑：先从本地映射查找；若未命中且配置了外部 resolver，则从 SchemaStore 按指纹查找写入 schema， 注册后返回；若仍未找到则抛出
+   * MissingSchemaException。
+   *
+   * @param fp schema 指纹
+   * @return 对应的 RawDecoder
+   * @throws MissingSchemaException 若无法解析指纹对应的 schema
+   */
   private RawDecoder<D> getDecoder(long fp) {
     RawDecoder<D> decoder = decoders.get(fp);
     if (decoder != null) {
@@ -125,6 +149,18 @@ public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
     throw new MissingSchemaException("Cannot resolve schema for fingerprint: " + fp);
   }
 
+  /**
+   * 从输入流解码一条消息。
+   *
+   * <p>逻辑：读取 10 字节头部（2 字节 V1 标识 + 8 字节指纹）；校验 V1 头部标识； 从头部提取指纹并路由到对应 RawDecoder
+   * 执行解码；UncheckedIOException 包装为 AvroRuntimeException。
+   *
+   * @param stream 输入流
+   * @param reuse 可复用的对象
+   * @return 解码后的数据对象
+   * @throws IOException 读取头部或解码时发生 IO 异常
+   * @throws BadHeaderException 头部标识不匹配或字节不足
+   */
   @Override
   public D decode(InputStream stream, D reuse) throws IOException {
     byte[] header = HEADER_BUFFER.get();
@@ -151,12 +187,14 @@ public class IcebergDecoder<D> extends MessageDecoder.BaseDecoder<D> {
   }
 
   /**
-   * Reads a buffer from a stream, making multiple read calls if necessary.
+   * 从流中完整读取指定长度的缓冲区，必要时多次调用 read。
    *
-   * @param stream an InputStream to read from
-   * @param bytes a buffer
-   * @return true if the buffer is complete, false otherwise (stream ended)
-   * @throws IOException if there is an error while reading
+   * <p>逻辑：循环调用 stream.read 直到填满缓冲区或流结束；返回是否读满。
+   *
+   * @param stream 输入流
+   * @param bytes 目标缓冲区
+   * @return 若缓冲区填满返回 true，流提前结束返回 false
+   * @throws IOException 读取时发生 IO 异常
    */
   @SuppressWarnings("checkstyle:InnerAssignment")
   private boolean readFully(InputStream stream, byte[] bytes) throws IOException {

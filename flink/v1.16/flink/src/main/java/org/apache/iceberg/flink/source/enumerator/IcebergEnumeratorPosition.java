@@ -21,6 +21,13 @@ package org.apache.iceberg.flink.source.enumerator;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 import org.apache.iceberg.relocated.com.google.common.base.Objects;
 
+/**
+ * Iceberg enumerator 位置，记录已枚举到的快照 ID。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装快照位置以支持增量续读。
+ *
+ * <p>设计意图：值对象；被 enumerator 序列化与 checkpoint。
+ */
 class IcebergEnumeratorPosition {
   private final Long snapshotId;
   // Track snapshot timestamp mainly for info logging

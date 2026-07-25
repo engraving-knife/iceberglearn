@@ -22,7 +22,28 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
 
-/** Utils for traversing {@link Expression expressions}. */
+/**
+ * 表达式遍历工具：提供访问者（Visitor）抽象与多种遍历策略，用于在表达式树上做求值、投影、重写等。
+ *
+ * <p>所属模块：iceberg-api（表达式体系的核心基础设施，所有求值器/投影器/重写器均基于本类的 访问者与 {@link #visit} 方法实现）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义多种访问者基类：{@link ExpressionVisitor}（通用）、{@link BoundExpressionVisitor}
+ *       （按引用细分的已绑定访问者）、{@link BoundVisitor}（按 term 细分的已绑定访问者）、 {@link
+ *       CustomOrderExpressionVisitor}（支持自定义遍历顺序）。
+ *   <li>提供遍历入口 {@link #visit(Expression, ExpressionVisitor)}（后序全量）、 {@link
+ *       #visitEvaluator}（带短路的后序）、{@link #visit(Expression, CustomOrderExpressionVisitor)}
+ *       （懒求值顺序可控）。
+ * </ul>
+ *
+ * <p>设计意图：采用访问者模式把“树结构”与“在树上的操作”解耦——节点类（And/Or/Not/Predicate） 只负责持结构，具体语义由访问者实现；多种访问者基类适配不同场景（如
+ * MetricsEval 需要引用、 Residual 需要引用、Evaluator 用 term）。后序遍历保证子节点结果先于父节点产出，便于聚合。
+ *
+ * <p>上下游关系：被 {@link Evaluator}、{@link InclusiveMetricsEvaluator}、{@link ResidualEvaluator}、 {@link
+ * Projections}、{@link RewriteNot} 等广泛使用。
+ */
 public class ExpressionVisitors {
 
   private ExpressionVisitors() {}
@@ -65,6 +86,15 @@ public class ExpressionVisitors {
     }
   }
 
+  /**
+   * 按引用细分的已绑定访问者：把已绑定谓词进一步分发到 isNull/lt/eq/in 等具体方法， 且仅处理 term 为 {@link BoundReference} 的情况。
+   *
+   * <p>设计意图：文件指标求值（{@link InclusiveMetricsEvaluator}）、残差求值 （{@link
+   * ResidualEvaluator}）都直接基于字段引用工作，故提供此细粒度访问者； 非 reference 的 term（如变换）经 {@link #handleNonReference}
+   * 处理（默认抛异常）。
+   *
+   * @param <R> 返回类型
+   */
   public abstract static class BoundExpressionVisitor<R> extends ExpressionVisitor<R> {
     public <T> R isNull(BoundReference<T> ref) {
       return null;
@@ -207,6 +237,15 @@ public class ExpressionVisitors {
     }
   }
 
+  /**
+   * 按 term 细分的已绑定访问者：与 {@link BoundExpressionVisitor} 类似，但把具体方法参数 从 {@link BoundReference} 放宽为
+   * {@link Bound}（任意已绑定 term）。
+   *
+   * <p>设计意图：行级求值（{@link Evaluator}）需要对任意 term（含变换）求值，故用本访问者； {@link #predicate(BoundPredicate)}
+   * 默认实现按谓词子类型分发到 lt/eq/in 等方法。
+   *
+   * @param <R> 返回类型
+   */
   public abstract static class BoundVisitor<R> extends ExpressionVisitor<R> {
     public <T> R isNull(Bound<T> expr) {
       return null;
@@ -329,15 +368,15 @@ public class ExpressionVisitors {
   }
 
   /**
-   * Traverses the given {@link Expression expression} with a {@link ExpressionVisitor visitor}.
+   * 用 {@link ExpressionVisitor} 后序（postfix）全量遍历表达式树。
    *
-   * <p>The visitor will be called to handle each node in the expression tree in postfix order.
-   * Result values produced by child nodes are passed when parent nodes are handled.
+   * <p>逻辑：按节点类型分发——Predicate/Aggregate 调对应 predicate/aggregate； TRUE/FALSE/NOT/AND/OR 分别调
+   * alwaysTrue/alwaysFalse/not/and/or，且 AND/OR 会递归 先遍历子节点再把子结果传给父回调。
    *
-   * @param expr an expression to traverse
-   * @param visitor a visitor that will be called to handle each node in the expression tree
-   * @param <R> the return type produced by the expression visitor
-   * @return the value returned by the visitor for the root expression node
+   * @param expr 待遍历表达式
+   * @param visitor 访问者
+   * @param <R> 返回类型
+   * @return 根节点的访问结果
    */
   public static <R> R visit(Expression expr, ExpressionVisitor<R> visitor) {
     if (expr instanceof Predicate) {
@@ -374,15 +413,14 @@ public class ExpressionVisitors {
   }
 
   /**
-   * Traverses the given {@link Expression expression} with a {@link ExpressionVisitor visitor}.
+   * 带短路的后序遍历（专用于 Boolean 求值）：仅遍历决定结果所必需的节点。
    *
-   * <p>The visitor will be called to handle only nodes required for determining result in the
-   * expression tree in postfix order. Result values produced by child nodes are passed when parent
-   * nodes are handled.
+   * <p>逻辑：与 {@link #visit(Expression, ExpressionVisitor)} 类似，但 AND 左子树为 false 时 直接返回
+   * alwaysFalse（短路），OR 左子树为 true 时直接返回 alwaysTrue（短路）， 避免不必要的右子树求值。不支持 Aggregate。
    *
-   * @param expr an expression to traverse
-   * @param visitor a visitor that will be called to handle each node in the expression tree
-   * @return the value returned by the visitor for the root expression node
+   * @param expr 待遍历表达式
+   * @param visitor 访问者
+   * @return 根节点的布尔结果
    */
   public static Boolean visitEvaluator(Expression expr, ExpressionVisitor<Boolean> visitor) {
     if (expr instanceof Predicate) {
@@ -420,6 +458,14 @@ public class ExpressionVisitors {
     }
   }
 
+  /**
+   * 自定义顺序访问者：通过 {@link Supplier} 懒求值子节点结果，由访问者决定遍历顺序。
+   *
+   * <p>设计意图：某些场景（如残差求值中先评估 strict 投影再评估 inclusive）需要控制子树遍历 顺序与是否遍历，本访问者把子结果包装为 Supplier，访问者按需 get
+   * 才触发递归。
+   *
+   * @param <R> 返回类型
+   */
   public abstract static class CustomOrderExpressionVisitor<R> {
     public R alwaysTrue() {
       return null;
@@ -558,22 +604,25 @@ public class ExpressionVisitors {
   }
 
   /**
-   * Traverses the given {@link Expression expression} with a {@link CustomOrderExpressionVisitor
-   * visitor}.
+   * 用 {@link CustomOrderExpressionVisitor} 遍历，把每个非叶子节点的子结果以 {@link Supplier} 传入，由访问者决定何时触发子树遍历。
    *
-   * <p>This passes a {@link Supplier} to each non-leaf {@link CustomOrderExpressionVisitor visitor}
-   * method. The supplier returns the result of traversing child expressions. Getting the result of
-   * the supplier allows traversing the expression in the desired order.
+   * <p>逻辑：委托 {@link #visitExpr} 构造根节点的 Supplier 并 get 取结果。
    *
-   * @param expr an expression to traverse
-   * @param visitor a visitor that will be called to handle each node in the expression tree
-   * @param <R> the return type produced by the expression visitor
-   * @return the value returned by the visitor for the root expression node
+   * @param expr 待遍历表达式
+   * @param visitor 自定义顺序访问者
+   * @param <R> 返回类型
+   * @return 根节点的访问结果
    */
   public static <R> R visit(Expression expr, CustomOrderExpressionVisitor<R> visitor) {
     return visitExpr(expr, visitor).get();
   }
 
+  /**
+   * 递归构造各节点的懒求值 Supplier（自定义顺序遍历的核心）。
+   *
+   * <p>逻辑：Predicate 返回调用 visitor.predicate 的 Supplier；TRUE/FALSE/NOT/AND/OR 返回 对应回调的 Supplier，子节点以
+   * Supplier 形式传入（不立即求值）。
+   */
   private static <R> Supplier<R> visitExpr(
       Expression expr, CustomOrderExpressionVisitor<R> visitor) {
     if (expr instanceof Predicate) {

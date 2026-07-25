@@ -55,6 +55,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceFailover 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestIcebergSourceFailover 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceFailover {
 
   private static final int PARALLELISM = 4;
@@ -81,6 +88,7 @@ public class TestIcebergSourceFailover {
       new HadoopTableResource(
           TEMPORARY_FOLDER, TestFixtures.DATABASE, TestFixtures.SINK_TABLE, schema());
 
+  /** 辅助方法：sourceBuilder，source Builder。 */
   protected IcebergSource.Builder<RowData> sourceBuilder() {
     Configuration config = new Configuration();
     config.setInteger(FlinkConfigOptions.SOURCE_READER_FETCH_BATCH_RECORD_COUNT, 128);
@@ -90,29 +98,47 @@ public class TestIcebergSourceFailover {
         .flinkConfig(config);
   }
 
+  /** 辅助方法：schema，schema。 */
   protected Schema schema() {
     return TestFixtures.SCHEMA;
   }
 
+  /** 辅助方法：generateRecords，generate Records。 */
   protected List<Record> generateRecords(int numRecords, long seed) {
     return RandomGenericData.generate(schema(), numRecords, seed);
   }
 
+  /** 辅助方法：assertRecords，assert Records。 */
   protected void assertRecords(
       Table table, List<Record> expectedRecords, Duration interval, int maxCount) throws Exception {
     SimpleDataUtil.assertTableRecords(table, expectedRecords, interval, maxCount);
   }
 
+  /**
+   * 测试场景：Bounded With Task Manager Failover。
+   *
+   * <p>验证该方法在 Bounded With Task Manager Failover 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedWithTaskManagerFailover() throws Exception {
     testBoundedIcebergSource(FailoverType.TM);
   }
 
+  /**
+   * 测试场景：Bounded With Job Manager Failover。
+   *
+   * <p>验证该方法在 Bounded With Job Manager Failover 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedWithJobManagerFailover() throws Exception {
     testBoundedIcebergSource(FailoverType.JM);
   }
 
+  /**
+   * 测试场景：Bounded Iceberg Source。
+   *
+   * <p>验证该方法在 Bounded Iceberg Source 条件下的行为是否符合预期。
+   */
   private void testBoundedIcebergSource(FailoverType failoverType) throws Exception {
     List<Record> expectedRecords = Lists.newArrayList();
     GenericAppenderHelper dataAppender =
@@ -159,16 +185,31 @@ public class TestIcebergSourceFailover {
     assertRecords(sinkTableResource.table(), expectedRecords, Duration.ofMillis(10), 12000);
   }
 
+  /**
+   * 测试场景：Continuous With Task Manager Failover。
+   *
+   * <p>验证该方法在 Continuous With Task Manager Failover 条件下的行为是否符合预期。
+   */
   @Test
   public void testContinuousWithTaskManagerFailover() throws Exception {
     testContinuousIcebergSource(FailoverType.TM);
   }
 
+  /**
+   * 测试场景：Continuous With Job Manager Failover。
+   *
+   * <p>验证该方法在 Continuous With Job Manager Failover 条件下的行为是否符合预期。
+   */
   @Test
   public void testContinuousWithJobManagerFailover() throws Exception {
     testContinuousIcebergSource(FailoverType.JM);
   }
 
+  /**
+   * 测试场景：Continuous Iceberg Source。
+   *
+   * <p>验证该方法在 Continuous Iceberg Source 条件下的行为是否符合预期。
+   */
   private void testContinuousIcebergSource(FailoverType failoverType) throws Exception {
     GenericAppenderHelper dataAppender =
         new GenericAppenderHelper(
@@ -232,6 +273,7 @@ public class TestIcebergSourceFailover {
     JM
   }
 
+  /** 辅助方法：triggerFailover，trigger Failover。 */
   private static void triggerFailover(
       FailoverType type, JobID jobId, Runnable afterFailAction, MiniCluster miniCluster)
       throws Exception {
@@ -248,6 +290,7 @@ public class TestIcebergSourceFailover {
     }
   }
 
+  /** 辅助方法：triggerJobManagerFailover，trigger Job Manager Failover。 */
   private static void triggerJobManagerFailover(
       JobID jobId, Runnable afterFailAction, MiniCluster miniCluster) throws Exception {
     HaLeadershipControl haLeadershipControl = miniCluster.getHaLeadershipControl().get();
@@ -256,6 +299,7 @@ public class TestIcebergSourceFailover {
     haLeadershipControl.grantJobMasterLeadership(jobId).get();
   }
 
+  /** 辅助方法：restartTaskManager，restart Task Manager。 */
   private static void restartTaskManager(Runnable afterFailAction, MiniCluster miniCluster)
       throws Exception {
     miniCluster.terminateTaskManager(0).get();
@@ -269,6 +313,7 @@ public class TestIcebergSourceFailover {
     private static CompletableFuture<Void> fail;
     private static CompletableFuture<Void> continueProcessing;
 
+    /** 辅助方法：wrapWithFailureAfter，wrap With Failure After。 */
     private static <T> DataStream<T> wrapWithFailureAfter(DataStream<T> stream, int failAfter) {
 
       records = new AtomicInteger();
@@ -286,10 +331,12 @@ public class TestIcebergSourceFailover {
           });
     }
 
+    /** 辅助方法：waitToFail，wait To Fail。 */
     private static void waitToFail() throws ExecutionException, InterruptedException {
       fail.get();
     }
 
+    /** 辅助方法：continueProcessing，continue Processing。 */
     private static void continueProcessing() {
       continueProcessing.complete(null);
     }

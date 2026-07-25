@@ -27,6 +27,13 @@ import org.apache.spark.sql.catalyst.plans.logical.BranchOptions
 import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
 
+/**
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 CreateOrReplaceBranchExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class CreateOrReplaceBranchExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -40,6 +47,10 @@ case class CreateOrReplaceBranchExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -51,6 +62,7 @@ case class CreateOrReplaceBranchExec(
         val manageSnapshots = iceberg.table().manageSnapshots()
         val refExists = null != iceberg.table().refs().get(branch)
 
+        /** 执行该方法的具体逻辑。 */
         def safeCreateBranch(): Unit = {
           if (snapshotId == null) {
             manageSnapshots.createBranch(branch)
@@ -94,6 +106,10 @@ case class CreateOrReplaceBranchExec(
     Nil
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"CreateOrReplace branch: $branch for table: ${ident.quoted}"
   }

@@ -40,6 +40,15 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：位置删除读取器，读取 position-delete 文件以支持向量化删除过滤。
+ *
+ * <p>设计意图：基于行式读取器读取删除文件中的删除位置集合。
+ *
+ * <p>上下游关系：由 SparkPositionDeletesRewrite 等使用。
+ */
 class PositionDeletesRowReader extends BaseRowReader<PositionDeletesScanTask>
     implements PartitionReader<InternalRow> {
 
@@ -66,12 +75,12 @@ class PositionDeletesRowReader extends BaseRowReader<PositionDeletesScanTask>
     int numSplits = taskGroup.tasks().size();
     LOG.debug("Reading {} position delete file split(s) for table {}", numSplits, table.name());
   }
-
+  /** 执行 referencedFiles 相关操作。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(PositionDeletesScanTask task) {
     return Stream.of(task.file());
   }
-
+  /** 打开资源。 */
   @Override
   protected CloseableIterator<InternalRow> open(PositionDeletesScanTask task) {
     String filePath = task.file().path().toString();
@@ -100,7 +109,7 @@ class PositionDeletesRowReader extends BaseRowReader<PositionDeletesScanTask>
             idToConstant)
         .iterator();
   }
-
+  /** 执行 nonConstantFieldIds 相关操作。 */
   private Set<Integer> nonConstantFieldIds(Map<Integer, ?> idToConstant) {
     Set<Integer> fields = expectedSchema().idToName().keySet();
     return fields.stream()

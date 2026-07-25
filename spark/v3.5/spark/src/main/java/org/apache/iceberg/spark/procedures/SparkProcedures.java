@@ -25,18 +25,39 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 
+/**
+ * Iceberg Spark 存储过程注册表。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），procedures 子包。
+ *
+ * <p>职责：维护 Iceberg 暴露给 Spark CALL 语句的存储过程名 -> builder 供应者映射， 提供 {@link #newBuilder(String)}
+ * 按名称（大小写不敏感）创建过程 builder。
+ *
+ * <p>设计意图：用不可变 Map 静态注册所有过程，过程名小写化以匹配 Spark 大小写不敏感行为； 每个 builder supplier 每次返回新实例，保证过程无状态可重入。
+ *
+ * <p>上下游关系：被 Iceberg Spark catalog 调用以加载过程；上游是各 *Procedure 实现的 builder， 下游是 Spark CALL 语句执行。
+ */
 public class SparkProcedures {
 
   private static final Map<String, Supplier<ProcedureBuilder>> BUILDERS = initProcedureBuilders();
 
   private SparkProcedures() {}
 
+  /**
+   * 按名称创建过程 builder。
+   *
+   * <p>逻辑：name 转小写后查表，命中返回新 builder 实例，未命中返回 null。
+   *
+   * @param name 过程名（大小写不敏感）
+   * @return ProcedureBuilder 或 null
+   */
   public static ProcedureBuilder newBuilder(String name) {
     // procedure resolution is case insensitive to match the existing Spark behavior for functions
     Supplier<ProcedureBuilder> builderSupplier = BUILDERS.get(name.toLowerCase(Locale.ROOT));
     return builderSupplier != null ? builderSupplier.get() : null;
   }
 
+  /** 初始化所有内置过程的 builder 映射（rollback/cherrypick/rewrite/migrate/snapshot 等）。 */
   private static Map<String, Supplier<ProcedureBuilder>> initProcedureBuilders() {
     ImmutableMap.Builder<String, Supplier<ProcedureBuilder>> mapBuilder = ImmutableMap.builder();
     mapBuilder.put("rollback_to_snapshot", RollbackToSnapshotProcedure::builder);
@@ -59,6 +80,11 @@ public class SparkProcedures {
     return mapBuilder.build();
   }
 
+  /**
+   * 过程 builder 接口：设置 catalog 并构造过程实例。
+   *
+   * <p>设计意图：把过程构造与 catalog 注入解耦，由基类 Builder 统一处理 catalog。
+   */
   public interface ProcedureBuilder {
     ProcedureBuilder withTableCatalog(TableCatalog tableCatalog);
 

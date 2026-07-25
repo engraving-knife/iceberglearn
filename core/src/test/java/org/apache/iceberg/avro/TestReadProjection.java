@@ -35,12 +35,26 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：TestReadProjection，用于验证 Read Projection 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Read Projection 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class TestReadProjection {
+  /** 辅助方法：write and read。 */
   protected abstract Record writeAndRead(
       String desc, Schema writeSchema, Schema readSchema, Record record) throws IOException;
 
   @TempDir Path temp;
 
+  /**
+   * 测试场景：full projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFullProjection() throws Exception {
     Schema schema =
@@ -61,6 +75,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(cmp).as("Should contain the correct data value").isEqualTo(0);
   }
 
+  /**
+   * 测试场景：reordered full projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReorderedFullProjection() throws Exception {
     Schema schema =
@@ -84,6 +103,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(projected.get(1)).as("Should contain the correct 1 value").isEqualTo(34L);
   }
 
+  /**
+   * 测试场景：reordered projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReorderedProjection() throws Exception {
     Schema schema =
@@ -109,6 +133,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(projected.get(2)).as("Should contain the correct 2 value").isNull();
   }
 
+  /**
+   * 测试场景：empty projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyProjection() throws Exception {
     Schema schema =
@@ -128,6 +157,11 @@ public abstract class TestReadProjection {
         .isInstanceOf(ArrayIndexOutOfBoundsException.class);
   }
 
+  /**
+   * 测试场景：basic projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicProjection() throws Exception {
     Schema writeSchema =
@@ -156,6 +190,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(cmp).as("Should contain the correct data value").isEqualTo(0);
   }
 
+  /**
+   * 测试场景：rename。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRename() throws Exception {
     Schema writeSchema =
@@ -181,6 +220,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(cmp).as("Should contain the correct data/renamed value").isEqualTo(0);
   }
 
+  /**
+   * 测试场景：nested struct projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNestedStructProjection() throws Exception {
     Schema writeSchema =
@@ -254,6 +298,11 @@ public abstract class TestReadProjection {
         .isCloseTo(-1.539054f, Assertions.within(0.000001f));
   }
 
+  /**
+   * 测试场景：map projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapProjection() throws IOException {
     Schema writeSchema =
@@ -300,6 +349,7 @@ public abstract class TestReadProjection {
         .isEqualTo(properties);
   }
 
+  /** 辅助方法：to string map。 */
   private Map<String, ?> toStringMap(Map<?, ?> map) {
     Map<String, Object> stringMap = Maps.newHashMap();
     for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -312,6 +362,11 @@ public abstract class TestReadProjection {
     return stringMap;
   }
 
+  /**
+   * 测试场景：map of structs projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMapOfStructsProjection() throws IOException {
     Schema writeSchema =
@@ -432,6 +487,11 @@ public abstract class TestReadProjection {
     assertEmptyAvroField(projectedL2, "long");
   }
 
+  /**
+   * 测试场景：list projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListProjection() throws IOException {
     Schema writeSchema =
@@ -469,6 +529,11 @@ public abstract class TestReadProjection {
         .isEqualTo(values);
   }
 
+  /**
+   * 测试场景：list of structs projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testListOfStructsProjection() throws IOException {
@@ -561,6 +626,11 @@ public abstract class TestReadProjection {
     Assertions.assertThat(projectedP2.get("z")).as("Should project null z").isNull();
   }
 
+  /**
+   * 测试场景：empty struct projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyStructProjection() throws Exception {
     Schema writeSchema =
@@ -596,6 +666,11 @@ public abstract class TestReadProjection {
     assertEmptyAvroField(result, "long");
   }
 
+  /**
+   * 测试场景：empty struct required projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyStructRequiredProjection() throws Exception {
     Schema writeSchema =
@@ -629,6 +704,11 @@ public abstract class TestReadProjection {
     assertEmptyAvroField(result, "long");
   }
 
+  /**
+   * 测试场景：required empty struct in required struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRequiredEmptyStructInRequiredStruct() throws Exception {
     Schema writeSchema =
@@ -676,6 +756,11 @@ public abstract class TestReadProjection {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：empty nested struct projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyNestedStructProjection() throws Exception {
     Schema writeSchema =
@@ -727,6 +812,11 @@ public abstract class TestReadProjection {
     assertEmptyAvroField(innerResult, "lon");
   }
 
+  /**
+   * 测试场景：empty nested struct required projection。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyNestedStructRequiredProjection() throws Exception {
     Schema writeSchema =
@@ -776,6 +866,7 @@ public abstract class TestReadProjection {
     assertEmptyAvroField(innerResult, "lon");
   }
 
+  /** 辅助方法：assert empty avro field。 */
   private void assertEmptyAvroField(GenericRecord record, String field) {
     Assertions.assertThatThrownBy(() -> record.get(field))
         .isInstanceOf(AvroRuntimeException.class)

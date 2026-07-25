@@ -18,6 +18,13 @@
  */
 package org.apache.iceberg.flink.source.split;
 
+/**
+ * Iceberg Source 分片状态枚举，表示分片生命周期阶段。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定义 ASSIGNED/RECORDS_FINISHED/FINISHED 等状态。
+ *
+ * <p>设计意图：枚举；被 IcebergSourceSplitState 使用。
+ */
 public enum IcebergSourceSplitStatus {
   UNASSIGNED,
   ASSIGNED,

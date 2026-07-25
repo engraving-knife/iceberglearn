@@ -32,8 +32,23 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplitStatus;
 import org.apache.iceberg.flink.source.split.SerializableComparator;
 
 /**
- * Since all methods are called in the source coordinator thread by enumerator, there is no need for
- * locking.
+ * 文件级说明：默认的 split 分配器实现。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/assigner 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>维护待分配的 split 队列（可按 comparator 排序）。
+ *   <li>响应 enumerator 的 add/clear 请求，并为 reader 请求提供 split。
+ *   <li>跟踪已分配但未完成的 split，回收失败的 split。
+ * </ul>
+ *
+ * <p>设计意图：所有方法都在 source coordinator 线程中由 enumerator 调用， 无需加锁；通过 {@link CompletableFuture} 通知等待
+ * split 的 reader。
+ *
+ * <p>上下游关系：上游为 {@link org.apache.iceberg.flink.source.enumerator.AbstractIcebergEnumerator} 添加
+ * split，下游为 reader 通过 {@code SplitRequestEvent} 请求 split。
  */
 @Internal
 public class DefaultSplitAssigner implements SplitAssigner {

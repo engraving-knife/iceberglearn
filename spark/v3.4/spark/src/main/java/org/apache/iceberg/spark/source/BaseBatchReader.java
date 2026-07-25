@@ -37,6 +37,15 @@ import org.apache.iceberg.spark.data.vectorized.VectorizedSparkParquetReaders;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：批式读取器基类，提供按 InputPartition 读取数据文件并输出列式/行式批的公共骨架。
+ *
+ * <p>设计意图：在 BaseReader 之上增加批式读取的分区与工厂管理。
+ *
+ * <p>上下游关系：被 BatchDataReader / ChangelogRowReader 等继承。
+ */
 abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBatch, T> {
   private final int batchSize;
 
@@ -50,7 +59,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
     super(table, taskGroup, tableSchema, expectedSchema, caseSensitive);
     this.batchSize = batchSize;
   }
-
+  /** 创建 BatchIterable 实例。 */
   protected CloseableIterable<ColumnarBatch> newBatchIterable(
       InputFile inputFile,
       FileFormat format,
@@ -71,7 +80,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
             "Format: " + format + " not supported for batched reads");
     }
   }
-
+  /** 创建 ParquetIterable 实例。 */
   private CloseableIterable<ColumnarBatch> newParquetIterable(
       InputFile inputFile,
       long start,
@@ -99,7 +108,7 @@ abstract class BaseBatchReader<T extends ScanTask> extends BaseReader<ColumnarBa
         .withNameMapping(nameMapping())
         .build();
   }
-
+  /** 创建 OrcIterable 实例。 */
   private CloseableIterable<ColumnarBatch> newOrcIterable(
       InputFile inputFile,
       long start,

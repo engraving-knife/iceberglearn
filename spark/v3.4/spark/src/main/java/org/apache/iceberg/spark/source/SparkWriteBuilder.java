@@ -44,6 +44,15 @@ import org.apache.spark.sql.connector.write.streaming.StreamingWrite;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Spark 写入构建器，处理写入选项、分布与排序要求并产出 SparkWrite。
+ *
+ * <p>设计意图：实现 WriteBuilder，按分布模式与覆盖语义配置写入。
+ *
+ * <p>上下游关系：由 SparkTable.newWriteBuilder 创建。
+ */
 class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, SupportsOverwrite {
   private final SparkSession spark;
   private final Table table;
@@ -69,7 +78,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     this.overwriteMode = writeConf.overwriteMode();
     this.rewrittenFileSetId = writeConf.rewrittenFileSetId();
   }
-
+  /** 执行 overwriteFiles 相关操作。 */
   public WriteBuilder overwriteFiles(Scan scan, Command command, IsolationLevel isolationLevel) {
     Preconditions.checkState(!overwriteByFilter, "Cannot overwrite individual files and by filter");
     Preconditions.checkState(
@@ -83,7 +92,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     this.copyOnWriteIsolationLevel = isolationLevel;
     return this;
   }
-
+  /** 执行 overwriteDynamicPartitions 相关操作。 */
   @Override
   public WriteBuilder overwriteDynamicPartitions() {
     Preconditions.checkState(
@@ -95,7 +104,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     this.overwriteDynamic = true;
     return this;
   }
-
+  /** 执行 overwrite 相关操作。 */
   @Override
   public WriteBuilder overwrite(Filter[] filters) {
     Preconditions.checkState(
@@ -113,7 +122,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     }
     return this;
   }
-
+  /** 构建目标对象。 */
   @Override
   public Write build() {
     // Validate
@@ -125,7 +134,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
 
     return new SparkWrite(
         spark, table, writeConf, writeInfo, appId, writeSchema, dsSchema, writeRequirements()) {
-
+      /** 转换为 Batch。 */
       @Override
       public BatchWrite toBatch() {
         if (rewrittenFileSetId != null) {
@@ -140,7 +149,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
           return asBatchAppend();
         }
       }
-
+      /** 转换为 Streaming。 */
       @Override
       public StreamingWrite toStreaming() {
         Preconditions.checkState(
@@ -160,7 +169,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
       }
     };
   }
-
+  /** 执行 writeRequirements 相关操作。 */
   private SparkWriteRequirements writeRequirements() {
     if (overwriteFiles) {
       return writeConf.copyOnWriteRequirements(copyOnWriteCommand);
@@ -168,7 +177,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
       return writeConf.writeRequirements();
     }
   }
-
+  /** 执行 validateOrMergeWriteSchema 相关操作。 */
   private static Schema validateOrMergeWriteSchema(
       Table table, StructType dsSchema, SparkWriteConf writeConf) {
     Schema writeSchema;

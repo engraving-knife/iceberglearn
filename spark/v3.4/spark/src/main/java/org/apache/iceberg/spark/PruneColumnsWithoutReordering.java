@@ -47,6 +47,15 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampNTZType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：无重排的列裁剪访问器，按 Spark 请求的列子集投影 Iceberg Schema 但保持原始列顺序。
+ *
+ * <p>设计意图：用于读取时只反序列化所需列，同时保证不改变投影后字段的物理顺序。
+ *
+ * <p>上下游关系：被 SparkScanBuilder / 各 Reader 在列裁剪场景调用。
+ */
 public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final StructType requestedType;
   private final Set<Integer> filterRefs;
@@ -56,7 +65,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     this.requestedType = requestedType;
     this.filterRefs = filterRefs;
   }
-
+  /** 返回 Schema。 */
   @Override
   public Type schema(Schema schema, Supplier<Type> structResult) {
     this.current = requestedType;
@@ -66,7 +75,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
       this.current = null;
     }
   }
-
+  /** 执行 struct 相关操作。 */
   @Override
   public Type struct(Types.StructType struct, Iterable<Type> fieldResults) {
     Preconditions.checkNotNull(
@@ -104,7 +113,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
 
     return struct;
   }
-
+  /** 执行 field 相关操作。 */
   @Override
   public Type field(Types.NestedField field, Supplier<Type> fieldResult) {
     Preconditions.checkArgument(current instanceof StructType, "Not a struct: %s", current);
@@ -137,7 +146,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
       this.current = requestedStruct;
     }
   }
-
+  /** 执行 list 相关操作。 */
   @Override
   public Type list(Types.ListType list, Supplier<Type> elementResult) {
     Preconditions.checkArgument(current instanceof ArrayType, "Not an array: %s", current);
@@ -165,7 +174,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
       this.current = requestedArray;
     }
   }
-
+  /** 执行 map 相关操作。 */
   @Override
   public Type map(Types.MapType map, Supplier<Type> keyResult, Supplier<Type> valueResult) {
     Preconditions.checkArgument(current instanceof MapType, "Not a map: %s", current);
@@ -192,7 +201,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
       this.current = requestedMap;
     }
   }
-
+  /** 执行 primitive 相关操作。 */
   @Override
   public Type primitive(Type.PrimitiveType primitive) {
     Set<Class<? extends DataType>> expectedType = TYPES.get(primitive.typeId());

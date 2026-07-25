@@ -36,6 +36,13 @@ import org.apache.spark.sql.types.StructType;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestChangelogIterator 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 变更日志迭代器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestChangelogIterator extends SparkTestHelperBase {
   private static final String DELETE = ChangelogOperation.DELETE.name();
   private static final String INSERT = ChangelogOperation.INSERT.name();
@@ -70,6 +77,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     UPDATED
   }
 
+  /** 测试迭代器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIterator() {
     List<Object[]> permutations = Lists.newArrayList();
@@ -85,6 +93,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     }
   }
 
+  /** 校验。 */
   private void validate(Object[] permutation) {
     List<Row> rows = Lists.newArrayList();
     List<Object[]> expectedRows = Lists.newArrayList();
@@ -99,6 +108,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     assertEquals("Rows should match", expectedRows, rowsToJava(result));
   }
 
+  /** 到original行。 */
   private List<Row> toOriginalRows(RowType rowType, int index) {
     switch (rowType) {
       case DELETED:
@@ -120,6 +130,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     }
   }
 
+  /** 到期望行。 */
   private List<Object[]> toExpectedRows(RowType rowType, int order) {
     switch (rowType) {
       case DELETED:
@@ -141,6 +152,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     }
   }
 
+  /** 辅助方法：permute。 */
   private void permute(List<RowType> arr, int start, List<Object[]> pm) {
     for (int i = start; i < arr.size(); i++) {
       Collections.swap(arr, i, start);
@@ -152,6 +164,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     }
   }
 
+  /** 测试行带空值值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRowsWithNullValue() {
     final List<Row> rowsWithNull =
@@ -183,6 +196,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
         rowsToJava(result));
   }
 
+  /** 测试updated行带duplication场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdatedRowsWithDuplication() {
     List<Row> rowsWithDuplication =
@@ -220,6 +234,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
         rowsToJava(Lists.newArrayList(iterator1)));
   }
 
+  /** 测试carry行移除带duplicates场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCarryRowsRemoveWithDuplicates() {
     // assume rows are sorted by id and change type
@@ -250,6 +265,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     validateIterators(rowsWithDuplication, expectedRows);
   }
 
+  /** 测试carry行移除less插入行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCarryRowsRemoveLessInsertRows() {
     // less insert rows than delete rows
@@ -268,6 +284,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     validateIterators(rowsWithDuplication, expectedRows);
   }
 
+  /** 测试carry行移除more插入行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCarryRowsRemoveMoreInsertRows() {
     List<Row> rowsWithDuplication =
@@ -290,6 +307,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     validateIterators(rowsWithDuplication, expectedRows);
   }
 
+  /** 测试carry行移除no插入行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCarryRowsRemoveNoInsertRows() {
     // no insert row
@@ -307,6 +325,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     validateIterators(rowsWithDuplication, expectedRows);
   }
 
+  /** 校验迭代器。 */
   private void validateIterators(List<Row> rowsWithDuplication, List<Object[]> expectedRows) {
     Iterator<Row> iterator =
         ChangelogIterator.removeCarryovers(rowsWithDuplication.iterator(), SCHEMA);
@@ -320,6 +339,7 @@ public class TestChangelogIterator extends SparkTestHelperBase {
     assertEquals("Rows should match.", expectedRows, rowsToJava(result));
   }
 
+  /** 测试移除netcarryovers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveNetCarryovers() {
     List<Row> rowsWithDuplication =

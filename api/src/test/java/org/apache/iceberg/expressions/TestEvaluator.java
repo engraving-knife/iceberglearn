@@ -53,6 +53,13 @@ import org.apache.iceberg.types.Types.StructType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestEvaluator 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestEvaluator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEvaluator {
   private static final StructType STRUCT =
       StructType.of(
@@ -87,6 +94,11 @@ public class TestEvaluator {
                       Types.StructType.of(
                           Types.NestedField.required(23, "f", Types.FloatType.get()))))));
 
+  /**
+   * 测试场景：Less Than。
+   *
+   * <p>验证该方法在 Less Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThan() {
     Evaluator evaluator = new Evaluator(STRUCT, lessThan("x", 7));
@@ -116,6 +128,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Less Than Or Equal。
+   *
+   * <p>验证该方法在 Less Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThanOrEqual() {
     Evaluator evaluator = new Evaluator(STRUCT, lessThanOrEqual("x", 7));
@@ -158,6 +175,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Greater Than。
+   *
+   * <p>验证该方法在 Greater Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testGreaterThan() {
     Evaluator evaluator = new Evaluator(STRUCT, greaterThan("x", 7));
@@ -198,6 +220,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Greater Than Or Equal。
+   *
+   * <p>验证该方法在 Greater Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testGreaterThanOrEqual() {
     Evaluator evaluator = new Evaluator(STRUCT, greaterThanOrEqual("x", 7));
@@ -238,6 +265,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Equal。
+   *
+   * <p>验证该方法在 Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqual() {
     assertThat(equal("x", 5).literals().size()).isEqualTo(1);
@@ -269,6 +301,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Not Equal。
+   *
+   * <p>验证该方法在 Not Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotEqual() {
     assertThat(notEqual("x", 5).literals().size()).isEqualTo(1);
@@ -300,6 +337,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Starts With。
+   *
+   * <p>验证该方法在 Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStartsWith() {
     StructType struct = StructType.of(required(24, "s", Types.StringType.get()));
@@ -324,6 +366,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Not Starts With。
+   *
+   * <p>验证该方法在 Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotStartsWith() {
     StructType struct = StructType.of(required(24, "s", Types.StringType.get()));
@@ -348,18 +395,33 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Always True。
+   *
+   * <p>验证该方法在 Always True 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlwaysTrue() {
     Evaluator evaluator = new Evaluator(STRUCT, alwaysTrue());
     assertThat(evaluator.eval(TestHelpers.Row.of())).as("always true").isTrue();
   }
 
+  /**
+   * 测试场景：Always False。
+   *
+   * <p>验证该方法在 Always False 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlwaysFalse() {
     Evaluator evaluator = new Evaluator(STRUCT, alwaysFalse());
     assertThat(evaluator.eval(TestHelpers.Row.of())).as("always false").isFalse();
   }
 
+  /**
+   * 测试场景：Is Null。
+   *
+   * <p>验证该方法在 Is Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNull() {
     Evaluator evaluator = new Evaluator(STRUCT, isNull("z"));
@@ -379,6 +441,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Not Null。
+   *
+   * <p>验证该方法在 Not Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNull() {
     Evaluator evaluator = new Evaluator(STRUCT, notNull("z"));
@@ -398,6 +465,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Is Nan。
+   *
+   * <p>验证该方法在 Is Nan 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNan() {
     Evaluator evaluator = new Evaluator(STRUCT, isNaN("y"));
@@ -418,6 +490,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     Evaluator evaluator = new Evaluator(STRUCT, notNaN("y"));
@@ -438,6 +515,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     Evaluator evaluator = new Evaluator(STRUCT, and(equal("x", 7), notNull("z")));
@@ -486,6 +568,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     Evaluator evaluator = new Evaluator(STRUCT, or(equal("x", 7), notNull("z")));
@@ -530,6 +617,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     Evaluator evaluator = new Evaluator(STRUCT, not(equal("x", 7)));
@@ -559,6 +651,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Case Insensitive Not。
+   *
+   * <p>验证该方法在 Case Insensitive Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveNot() {
     Evaluator evaluator = new Evaluator(STRUCT, not(equal("X", 7)), false);
@@ -588,6 +685,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Case Sensitive Not。
+   *
+   * <p>验证该方法在 Case Sensitive Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveNot() {
     Assertions.assertThatThrownBy(() -> new Evaluator(STRUCT, not(equal("X", 7)), true))
@@ -595,6 +697,11 @@ public class TestEvaluator {
         .hasMessageContaining("Cannot find field 'X' in struct");
   }
 
+  /**
+   * 测试场景：Char Seq Value。
+   *
+   * <p>验证该方法在 Char Seq Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testCharSeqValue() {
     StructType struct = StructType.of(required(34, "s", Types.StringType.get()));
@@ -607,6 +714,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：In。
+   *
+   * <p>验证该方法在 In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIn() {
     assertThat(in("s", 7, 8, 9).literals()).hasSize(3);
@@ -676,6 +788,11 @@ public class TestEvaluator {
         .isFalse();
   }
 
+  /**
+   * 测试场景：In Exceptions。
+   *
+   * <p>验证该方法在 In Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInExceptions() {
     Assertions.assertThatThrownBy(() -> in("x", (Literal) null))
@@ -708,6 +825,11 @@ public class TestEvaluator {
         .hasMessageContaining("Invalid value for conversion to type int");
   }
 
+  /**
+   * 测试场景：Not In。
+   *
+   * <p>验证该方法在 Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotIn() {
     assertThat(notIn("s", 7, 8, 9).literals()).hasSize(3);
@@ -779,6 +901,11 @@ public class TestEvaluator {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Not In Exceptions。
+   *
+   * <p>验证该方法在 Not In Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInExceptions() {
     Assertions.assertThatThrownBy(() -> notIn("x", (Literal) null))

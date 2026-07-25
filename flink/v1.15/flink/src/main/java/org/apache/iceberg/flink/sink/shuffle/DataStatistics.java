@@ -29,6 +29,13 @@ import org.apache.flink.table.data.RowData;
  * (sketching) can be used.
  */
 @Internal
+/**
+ * 数据统计接口，在写入侧收集分布数据以支持 sink shuffle 优化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定义统计收集、合并、序列化接口，用于 range shuffle。
+ *
+ * <p>设计意图：策略模式接口；被 DataStatisticsOperator 调用。
+ */
 interface DataStatistics<D extends DataStatistics, S> {
 
   /**

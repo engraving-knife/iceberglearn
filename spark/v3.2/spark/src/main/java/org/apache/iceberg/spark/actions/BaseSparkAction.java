@@ -78,6 +78,15 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseSparkAction。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 abstract class BaseSparkAction<ThisT> {
 
   protected static final String MANIFEST = "Manifest";
@@ -100,35 +109,54 @@ abstract class BaseSparkAction<ThisT> {
   private final JavaSparkContext sparkContext;
   private final Map<String, String> options = Maps.newHashMap();
 
+  /** 构造 BaseSparkAction 实例。 */
   protected BaseSparkAction(SparkSession spark) {
     this.spark = spark;
     this.sparkContext = JavaSparkContext.fromSparkContext(spark.sparkContext());
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkSession spark() {
     return spark;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected JavaSparkContext sparkContext() {
     return sparkContext;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract ThisT self();
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param name 参数
+   * @param value 参数
+   * @return 结果对象
+   */
   public ThisT option(String name, String value) {
     options.put(name, value);
     return self();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param newOptions 参数
+   * @return 结果对象
+   */
   public ThisT options(Map<String, String> newOptions) {
     options.putAll(newOptions);
     return self();
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Map<String, String> options() {
     return options;
   }
 
+  /** 返回带新设置的副本。 */
   protected <T> T withJobGroupInfo(JobGroupInfo info, Supplier<T> supplier) {
     SparkContext context = spark().sparkContext();
     JobGroupInfo previousInfo = JobGroupUtils.getJobGroupInfo(context);
@@ -140,20 +168,25 @@ abstract class BaseSparkAction<ThisT> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected JobGroupInfo newJobGroupInfo(String groupId, String desc) {
     return new JobGroupInfo(groupId + "-" + JOB_COUNTER.incrementAndGet(), desc, false);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Table newStaticTable(TableMetadata metadata, FileIO io) {
     String metadataFileLocation = metadata.metadataFileLocation();
     StaticTableOperations ops = new StaticTableOperations(metadataFileLocation, io);
+    /** 执行该方法的具体逻辑。 */
     return new BaseTable(ops, metadataFileLocation);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> contentFileDS(Table table) {
     return contentFileDS(table, null);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> contentFileDS(Table table, Set<Long> snapshotIds) {
     Table serializableTable = SerializableTableWithSize.copyOf(table);
     Broadcast<Table> tableBroadcast = sparkContext.broadcast(serializableTable);
@@ -174,16 +207,19 @@ abstract class BaseSparkAction<ThisT> {
     return manifestBeanDS.flatMap(new ReadManifest(tableBroadcast), FileInfo.ENCODER);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> manifestDS(Table table) {
     return manifestDS(table, null);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> manifestDS(Table table, Set<Long> snapshotIds) {
     return manifestDF(table, snapshotIds)
         .select(col("path"), lit(MANIFEST).as("type"))
         .as(FileInfo.ENCODER);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Dataset<Row> manifestDF(Table table, Set<Long> snapshotIds) {
     Dataset<Row> manifestDF = loadMetadataTable(table, ALL_MANIFESTS);
     if (snapshotIds != null) {
@@ -194,15 +230,18 @@ abstract class BaseSparkAction<ThisT> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> manifestListDS(Table table) {
     return manifestListDS(table, null);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> manifestListDS(Table table, Set<Long> snapshotIds) {
     List<String> manifestLists = ReachableFileUtil.manifestListLocations(table, snapshotIds);
     return toFileInfoDS(manifestLists, MANIFEST_LIST);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> statisticsFileDS(Table table, Set<Long> snapshotIds) {
     Predicate<StatisticsFile> predicate;
     if (snapshotIds == null) {
@@ -215,14 +254,17 @@ abstract class BaseSparkAction<ThisT> {
     return toFileInfoDS(statisticsFiles, STATISTICS_FILES);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> otherMetadataFileDS(Table table) {
     return otherMetadataFileDS(table, false /* include all reachable old metadata locations */);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<FileInfo> allReachableOtherMetadataFileDS(Table table) {
     return otherMetadataFileDS(table, true /* include all reachable old metadata locations */);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Dataset<FileInfo> otherMetadataFileDS(Table table, boolean recursive) {
     List<String> otherMetadataFiles = Lists.newArrayList();
     otherMetadataFiles.addAll(ReachableFileUtil.metadataFileLocations(table, recursive));
@@ -231,23 +273,18 @@ abstract class BaseSparkAction<ThisT> {
     return toFileInfoDS(otherMetadataFiles, OTHERS);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<Row> loadMetadataTable(Table table, MetadataTableType type) {
     return SparkTableUtil.loadMetadataTable(spark, table, type);
   }
 
+  /** 转换为fileinfods。 */
   private Dataset<FileInfo> toFileInfoDS(List<String> paths, String type) {
     List<FileInfo> fileInfoList = Lists.transform(paths, path -> new FileInfo(path, type));
     return spark.createDataset(fileInfoList, FileInfo.ENCODER);
   }
 
-  /**
-   * Deletes files and keeps track of how many files were removed for each file type.
-   *
-   * @param executorService an executor service to use for parallel deletes
-   * @param deleteFunc a delete func
-   * @param files an iterator of Spark rows of the structure (path: String, type: String)
-   * @return stats on which files were deleted
-   */
+  /** 删除数据或文件。 */
   protected DeleteSummary deleteFiles(
       ExecutorService executorService, Consumer<String> deleteFunc, Iterator<FileInfo> files) {
 
@@ -275,6 +312,7 @@ abstract class BaseSparkAction<ThisT> {
     return summary;
   }
 
+  /** 删除数据或文件。 */
   protected DeleteSummary deleteFiles(SupportsBulkOperations io, Iterator<FileInfo> files) {
     DeleteSummary summary = new DeleteSummary();
     Iterator<List<FileInfo>> fileGroups = Iterators.partition(files, DELETE_GROUP_SIZE);
@@ -286,6 +324,7 @@ abstract class BaseSparkAction<ThisT> {
     return summary;
   }
 
+  /** 删除数据或文件。 */
   private static void deleteFileGroup(
       List<FileInfo> fileGroup, SupportsBulkOperations io, DeleteSummary summary) {
 
@@ -306,6 +345,13 @@ abstract class BaseSparkAction<ThisT> {
     }
   }
 
+  /**
+   * 基于 Spark 执行的 Iceberg 表维护动作，实现 DELETE 行级操作。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 DeleteSummary。
+   *
+   * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+   */
   static class DeleteSummary {
     private final AtomicLong dataFilesCount = new AtomicLong(0L);
     private final AtomicLong positionDeleteFilesCount = new AtomicLong(0L);
@@ -315,6 +361,12 @@ abstract class BaseSparkAction<ThisT> {
     private final AtomicLong statisticsFilesCount = new AtomicLong(0L);
     private final AtomicLong otherFilesCount = new AtomicLong(0L);
 
+    /**
+     * 删除数据或文件。
+     *
+     * @param type 参数
+     * @param numFiles 参数
+     */
     public void deletedFiles(String type, int numFiles) {
       if (FileContent.DATA.name().equalsIgnoreCase(type)) {
         dataFilesCount.addAndGet(numFiles);
@@ -342,6 +394,12 @@ abstract class BaseSparkAction<ThisT> {
       }
     }
 
+    /**
+     * 删除数据或文件。
+     *
+     * @param path 参数
+     * @param type 参数
+     */
     public void deletedFile(String path, String type) {
       if (FileContent.DATA.name().equalsIgnoreCase(type)) {
         dataFilesCount.incrementAndGet();
@@ -376,34 +434,74 @@ abstract class BaseSparkAction<ThisT> {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long dataFilesCount() {
       return dataFilesCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long positionDeleteFilesCount() {
       return positionDeleteFilesCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long equalityDeleteFilesCount() {
       return equalityDeleteFilesCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long manifestsCount() {
       return manifestsCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long manifestListsCount() {
       return manifestListsCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long statisticsFilesCount() {
       return statisticsFilesCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long otherFilesCount() {
       return otherFilesCount.get();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     public long totalFilesCount() {
       return dataFilesCount()
           + positionDeleteFilesCount()
@@ -415,6 +513,13 @@ abstract class BaseSparkAction<ThisT> {
     }
   }
 
+  /**
+   * 基于 Spark 执行的 Iceberg 表维护动作。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ReadManifest。
+   *
+   * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+   */
   private static class ReadManifest implements FlatMapFunction<ManifestFileBean, FileInfo> {
     private final Broadcast<Table> table;
 
@@ -422,11 +527,23 @@ abstract class BaseSparkAction<ThisT> {
       this.table = table;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param manifest 参数
+     * @return 结果对象
+     */
     @Override
     public Iterator<FileInfo> call(ManifestFileBean manifest) {
       return new ClosingIterator<>(entries(manifest));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param manifest 参数
+     * @return 结果对象
+     */
     public CloseableIterator<FileInfo> entries(ManifestFileBean manifest) {
       ManifestContent content = manifest.content();
       FileIO io = table.getValue().io();
@@ -447,7 +564,9 @@ abstract class BaseSparkAction<ThisT> {
       }
     }
 
+    /** 转换为fileinfo。 */
     static FileInfo toFileInfo(ContentFile<?> file) {
+      /** 执行该方法的具体逻辑。 */
       return new FileInfo(file.path().toString(), file.content().toString());
     }
   }

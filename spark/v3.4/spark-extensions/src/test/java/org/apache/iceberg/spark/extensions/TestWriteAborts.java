@@ -44,8 +44,16 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestWriteAborts 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 写中止 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestWriteAborts extends SparkExtensionsTestBase {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -76,15 +84,18 @@ public class TestWriteAborts extends SparkExtensionsTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试写中止。 */
   public TestWriteAborts(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试批追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBatchAppend() throws Exception {
     String dataLocation = temp.newFolder().toString();

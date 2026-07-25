@@ -30,10 +30,18 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestLoadHiveCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestLoadHiveCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestLoadHiveCatalog {
 
   private static TestHiveMetastore metastore;
 
+  /** 辅助方法：startMetastore。 */
   @BeforeAll
   public static void startMetastore() throws Exception {
     HiveConf hiveConf = new HiveConf(TestLoadHiveCatalog.class);
@@ -41,6 +49,7 @@ public class TestLoadHiveCatalog {
     metastore.start(hiveConf);
   }
 
+  /** 辅助方法：stopMetastore。 */
   @AfterAll
   public static void stopMetastore() throws Exception {
     if (metastore != null) {
@@ -49,6 +58,11 @@ public class TestLoadHiveCatalog {
     }
   }
 
+  /**
+   * 测试场景：Custom Cache Keys。
+   *
+   * <p>验证该方法在 Custom Cache Keys 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomCacheKeys() throws Exception {
     HiveCatalog hiveCatalog1 =

@@ -34,9 +34,31 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 将 Iceberg {@link InputFile}/{@link OutputFile} 适配为 Hadoop {@link FileSystem} 的工具类。
+ *
+ * <p>所属模块：iceberg-orc。ORC 的 Reader/Writer API 需要 Hadoop FileSystem， 而 Iceberg 抽象 IO 为
+ * InputFile/OutputFile，本类在两者之间架桥。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link InputFileSystem}：包装 InputFile 为只读 FileSystem，支持 open()。
+ *   <li>{@link OutputFileSystem}：包装 OutputFile 为只写 FileSystem，支持 create()。
+ * </ul>
+ *
+ * <p>设计意图：NullFileSystem 把所有不需要的方法抛 UnsupportedOperationException， 仅覆写实际用到的 open/create，避免实现完整的
+ * FileSystem 接口。ORC 读写仅通过 这两个方法访问文件，故此最小适配即可满足需求。
+ *
+ * <p>上下游关系：被 {@link ORC} 的读写入口内部使用。
+ */
 class FileIOFSUtil {
   private FileIOFSUtil() {}
 
+  /**
+   * 空实现 FileSystem：所有方法抛 UnsupportedOperationException， 作为 InputFileSystem/OutputFileSystem
+   * 的基类，仅覆写需要的方法。
+   */
   private static class NullFileSystem extends FileSystem {
 
     @Override
@@ -109,6 +131,12 @@ class FileIOFSUtil {
     }
   }
 
+  /**
+   * 只读 FileSystem 适配器：把 {@link InputFile} 包装为 Hadoop FileSystem。
+   *
+   * <p>设计要点：open() 校验路径与 inputFile.location() 一致后，用 {@link HadoopStreams#wrap} 把 Iceberg 输入流转为
+   * Hadoop FSDataInputStream。
+   */
   static class InputFileSystem extends NullFileSystem {
     private final InputFile inputFile;
     private final Path inputPath;
@@ -131,6 +159,12 @@ class FileIOFSUtil {
     }
   }
 
+  /**
+   * 只写 FileSystem 适配器：把 {@link OutputFile} 包装为 Hadoop FileSystem。
+   *
+   * <p>设计要点：create() 校验路径一致后，按 overwrite 选择 createOrOverwrite()/create()， 包装为 FSDataOutputStream
+   * 返回。
+   */
   static class OutputFileSystem extends NullFileSystem {
     private final OutputFile outputFile;
     private final Path outPath;

@@ -41,6 +41,7 @@ import org.assertj.core.api.ThrowableAssert;
 @Deprecated
 public class AssertHelpers {
 
+  /** 辅助方法：AssertHelpers。 */
   private AssertHelpers() {}
 
   /**

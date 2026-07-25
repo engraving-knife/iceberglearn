@@ -62,10 +62,18 @@ import org.apache.spark.sql.connector.expressions.IdentityTransform
 import org.apache.spark.sql.connector.expressions.LiteralValue
 import org.apache.spark.sql.connector.expressions.Transform
 import scala.jdk.CollectionConverters._
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：Iceberg SQL 扩展 AST 构建器，将扩展语法的解析树转换为 Spark 逻辑计划节点。
+ * <p>设计意图：继承 Spark AstBuilder，访问 ANTLR 解析树节点并构造对应逻辑计划。
+ * <p>上下游关系：由 IcebergSparkSqlExtensionsParser 调用。
+ */
 
 class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergSqlExtensionsBaseVisitor[AnyRef] {
+  /** 转换为 Buffer。 */
 
   private def toBuffer[T](list: java.util.List[T]): scala.collection.mutable.Buffer[T] = list.asScala
+  /** 转换为 Seq。 */
   private def toSeq[T](list: java.util.List[T]): Seq[T] = toBuffer(list).toSeq
 
   /**
@@ -241,6 +249,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
 
     SetWriteDistributionAndOrdering(tableName, distributionMode, ordering)
   }
+  /** 转换为 DistributionAndOrderingSpec。 */
 
   private def toDistributionAndOrderingSpec(
       writeSpec: WriteSpecContext): (WriteDistributionSpecContext, WriteOrderingSpecContext) = {
@@ -308,6 +317,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   override def visitMultipartIdentifier(ctx: MultipartIdentifierContext): Seq[String] = withOrigin(ctx) {
     toSeq(ctx.parts).map(_.getText)
   }
+  /** 执行 visitSingleOrder 相关操作。 */
 
   override def visitSingleOrder(ctx: SingleOrderContext): Seq[(Term, SortDirection, NullOrder)] = withOrigin(ctx) {
     toSeq(ctx.order.fields).map(typedVisit[(Term, SortDirection, NullOrder)])
@@ -329,14 +339,17 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     val expr = typedVisit[Expression](ctx.expression)
     NamedArgument(name, expr)
   }
+  /** 执行 visitSingleStatement 相关操作。 */
 
   override def visitSingleStatement(ctx: SingleStatementContext): LogicalPlan = withOrigin(ctx) {
     visit(ctx.statement).asInstanceOf[LogicalPlan]
   }
+  /** 执行 visitConstant 相关操作。 */
 
   def visitConstant(ctx: ConstantContext): Literal = {
     delegate.parseExpression(ctx.getText).asInstanceOf[Literal]
   }
+  /** 执行 visitExpression 相关操作。 */
 
   override def visitExpression(ctx: ExpressionContext): Expression = {
     // reconstruct the SQL string and parse it using the main Spark parser
@@ -346,6 +359,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     val sqlString = reconstructSqlString(ctx)
     delegate.parseExpression(sqlString)
   }
+  /** 执行 reconstructSqlString 相关操作。 */
 
   private def reconstructSqlString(ctx: ParserRuleContext): String = {
     toBuffer(ctx.children).map {
@@ -353,6 +367,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
       case t: TerminalNode => t.getText
     }.mkString(" ")
   }
+  /** 执行 typedVisit 相关操作。 */
 
   private def typedVisit[T](ctx: ParseTree): T = {
     ctx.accept(this).asInstanceOf[T]

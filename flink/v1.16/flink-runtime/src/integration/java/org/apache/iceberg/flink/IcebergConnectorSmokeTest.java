@@ -20,8 +20,16 @@ package org.apache.iceberg.flink;
 
 import java.util.Map;
 
+/**
+ * 文件级说明：IcebergConnectorSmokeTest 集成测试。
+ *
+ * <p>所属模块：iceberg-flink（v1.16）。职责：验证 Iceberg连接器冒烟 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class IcebergConnectorSmokeTest extends TestIcebergConnector {
 
+  /** 构造方法：IcebergConnectorSmokeTest。 */
   public IcebergConnectorSmokeTest(
       String catalogName, Map<String, String> properties, boolean isStreaming) {
     super(catalogName, properties, isStreaming);

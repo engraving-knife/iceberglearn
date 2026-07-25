@@ -52,6 +52,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestOrcDataWriter 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestOrcDataWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOrcDataWriter {
   private static final Schema SCHEMA =
       new Schema(
@@ -63,6 +70,7 @@ public class TestOrcDataWriter {
 
   @TempDir private File temp;
 
+  /** 辅助方法：createRecords。 */
   @BeforeEach
   public void createRecords() {
     GenericRecord record = GenericRecord.create(SCHEMA);
@@ -77,10 +85,12 @@ public class TestOrcDataWriter {
     this.records = builder.build();
   }
 
+  /** 辅助方法：stripeOffsetsFromReader。 */
   private List<Long> stripeOffsetsFromReader(DataFile dataFile) throws IOException {
     return stripeOffsetsFromReader(dataFile, OrcFile.readerOptions(new Configuration()));
   }
 
+  /** 辅助方法：stripeOffsetsFromReader。 */
   private List<Long> stripeOffsetsFromReader(DataFile dataFile, OrcFile.ReaderOptions options)
       throws IOException {
     return OrcFile.createReader(new Path(dataFile.path().toString()), options).getStripes().stream()
@@ -88,6 +98,11 @@ public class TestOrcDataWriter {
         .collect(Collectors.toList());
   }
 
+  /**
+   * 测试场景：Data Writer。
+   *
+   * <p>验证该方法在 Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataWriter() throws IOException {
     OutputFile file = Files.localOutput(temp);
@@ -130,6 +145,11 @@ public class TestOrcDataWriter {
     Assertions.assertThat(writtenRecords).as("Written records should match").isEqualTo(records);
   }
 
+  /**
+   * 测试场景：Using File IO。
+   *
+   * <p>验证该方法在 Using File IO 条件下的行为是否符合预期。
+   */
   @Test
   public void testUsingFileIO() throws IOException {
     // When files other than HadoopInputFile and HadoopOutputFile are supplied the location
@@ -188,25 +208,30 @@ public class TestOrcDataWriter {
   private static class ProxyInputFile implements InputFile {
     private final InputFile inputFile;
 
+    /** 辅助方法：ProxyInputFile。 */
     private ProxyInputFile(InputFile inputFile) {
       this.inputFile = inputFile;
     }
 
+    /** 辅助方法：getLength。 */
     @Override
     public long getLength() {
       return inputFile.getLength();
     }
 
+    /** 辅助方法：newStream。 */
     @Override
     public SeekableInputStream newStream() {
       return inputFile.newStream();
     }
 
+    /** 辅助方法：location。 */
     @Override
     public String location() {
       return "dummy://" + inputFile.location();
     }
 
+    /** 辅助方法：exists。 */
     @Override
     public boolean exists() {
       return inputFile.exists();
@@ -216,25 +241,30 @@ public class TestOrcDataWriter {
   private static class ProxyOutputFile implements OutputFile {
     private final OutputFile outputFile;
 
+    /** 辅助方法：ProxyOutputFile。 */
     private ProxyOutputFile(OutputFile outputFile) {
       this.outputFile = outputFile;
     }
 
+    /** 辅助方法：create。 */
     @Override
     public PositionOutputStream create() {
       return outputFile.create();
     }
 
+    /** 辅助方法：createOrOverwrite。 */
     @Override
     public PositionOutputStream createOrOverwrite() {
       return outputFile.createOrOverwrite();
     }
 
+    /** 辅助方法：location。 */
     @Override
     public String location() {
       return "dummy://" + outputFile.location();
     }
 
+    /** 辅助方法：toInputFile。 */
     @Override
     public InputFile toInputFile() {
       return new ProxyInputFile(outputFile.toInputFile());

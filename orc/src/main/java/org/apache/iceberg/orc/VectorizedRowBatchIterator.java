@@ -27,9 +27,21 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 
 /**
- * An adaptor so that the ORC RecordReader can be used as an Iterator. Because the same
- * VectorizedRowBatch is reused on each call to next, it gets changed when hasNext or next is
- * called.
+ * ORC {@link RecordReader} 到 {@link CloseableIterator} 的适配器。
+ *
+ * <p>所属模块：iceberg-orc。把 ORC 的 nextBatch 逐批读取封装为迭代器接口， 供 {@link OrcIterable} 使用。
+ *
+ * <p>职责：每次 next() 返回一个 (VectorizedRowBatch, batch 在文件中的行偏移) 对。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>延迟推进（lazy advance）：hasNext 时才调 nextBatch 读取下一批，next 时标记已消费， 避免提前读取。
+ *   <li>VectorizedRowBatch 复用：ORC 在每次 nextBatch 时复用同一个 batch 对象， 调用方需在下次 next 前消费完当前 batch。
+ *   <li>batchOffsetInFile 记录当前 batch 起始的行号（getRowNumber）， 供 RowPositionReader 计算行绝对位置。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link OrcIterable#iterator()} 创建和使用。
  */
 public class VectorizedRowBatchIterator
     implements CloseableIterator<Pair<VectorizedRowBatch, Long>> {
@@ -39,6 +51,14 @@ public class VectorizedRowBatchIterator
   private boolean advanced = false;
   private long batchOffsetInFile = 0;
 
+  /**
+   * 构造迭代器。
+   *
+   * @param fileLocation 文件路径（用于错误信息）
+   * @param schema ORC 读取 schema
+   * @param rows ORC RecordReader
+   * @param recordsPerBatch 每批最大行数
+   */
   VectorizedRowBatchIterator(
       String fileLocation, TypeDescription schema, RecordReader rows, int recordsPerBatch) {
     this.fileLocation = fileLocation;
@@ -51,6 +71,13 @@ public class VectorizedRowBatchIterator
     rows.close();
   }
 
+  /**
+   * 延迟读取下一批数据。
+   *
+   * <p>逻辑：若尚未推进（advanced=false），记录当前行号作为 batch 偏移， 调 nextBatch 读取数据，标记 advanced=true。已推进时直接返回。
+   *
+   * @throws RuntimeIOException 读取失败
+   */
   private void advance() {
     if (!advanced) {
       try {

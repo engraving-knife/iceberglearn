@@ -29,8 +29,21 @@ import org.apache.iceberg.util.JsonUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：TestSingleValueParser，用于验证 Single Value Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Single Value Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestSingleValueParser {
 
+  /**
+   * 测试场景：valid defaults。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidDefaults() throws IOException {
     Object[][] typesWithDefaults =
@@ -110,6 +123,11 @@ public class TestSingleValueParser {
     }
   }
 
+  /**
+   * 测试场景：invalid fixed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidFixed() {
     Type expectedType = Types.FixedType.ofLength(2);
@@ -121,6 +139,11 @@ public class TestSingleValueParser {
     Assert.assertTrue(exception.getMessage().startsWith("Cannot parse default fixed[2] value"));
   }
 
+  /**
+   * 测试场景：invalid uuid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidUUID() {
     Type expectedType = Types.UUIDType.get();
@@ -132,6 +155,11 @@ public class TestSingleValueParser {
     Assert.assertTrue(exception.getMessage().startsWith("Cannot parse default as a uuid value"));
   }
 
+  /**
+   * 测试场景：invalid map。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidMap() {
     Type expectedType =
@@ -145,6 +173,11 @@ public class TestSingleValueParser {
         exception.getMessage().startsWith("Cannot parse default as a map<int, string> value"));
   }
 
+  /**
+   * 测试场景：invalid decimal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidDecimal() {
     Type expectedType = Types.DecimalType.of(5, 2);
@@ -157,6 +190,11 @@ public class TestSingleValueParser {
         exception.getMessage().startsWith("Cannot parse default as a decimal(5, 2) value"));
   }
 
+  /**
+   * 测试场景：invalid timestamptz。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidTimestamptz() {
     Type expectedType = Types.TimestampType.withZone();
@@ -175,6 +213,7 @@ public class TestSingleValueParser {
     return SingleValueParser.toJson(type, javaDefaultValue);
   }
 
+  /** 辅助方法：json string equals。 */
   private static void jsonStringEquals(String s1, String s2) throws IOException {
     Assert.assertEquals(JsonUtil.mapper().readTree(s1), JsonUtil.mapper().readTree(s2));
   }

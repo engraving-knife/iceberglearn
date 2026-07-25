@@ -24,8 +24,20 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * 文件级说明：测试 TestCloseableGroup 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestCloseableGroup 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestCloseableGroup {
 
+  /**
+   * 测试场景：call Close To All Closeables。
+   *
+   * <p>验证该方法在 call Close To All Closeables 条件下的行为是否符合预期。
+   */
   @Test
   public void callCloseToAllCloseables() throws IOException {
     Closeable closeable1 = Mockito.mock(Closeable.class);
@@ -43,6 +55,11 @@ public class TestCloseableGroup {
     Mockito.verify(closeable3).close();
   }
 
+  /**
+   * 测试场景：call Close Handles Auto Closeable。
+   *
+   * <p>验证该方法在 call Close Handles Auto Closeable 条件下的行为是否符合预期。
+   */
   @Test
   public void callCloseHandlesAutoCloseable() throws Exception {
     Closeable closeable1 = Mockito.mock(Closeable.class);
@@ -57,6 +74,11 @@ public class TestCloseableGroup {
     Mockito.verify(closeable2).close();
   }
 
+  /**
+   * 测试场景：suppress Exception If Set Suppress Is True。
+   *
+   * <p>验证该方法在 suppress Exception If Set Suppress Is True 条件下的行为是否符合预期。
+   */
   @Test
   public void suppressExceptionIfSetSuppressIsTrue() throws Exception {
     Closeable closeable1 = Mockito.mock(Closeable.class);
@@ -77,6 +99,11 @@ public class TestCloseableGroup {
     Mockito.verify(closeable3).close();
   }
 
+  /**
+   * 测试场景：not Suppress Exception If Set Suppress Is False。
+   *
+   * <p>验证该方法在 not Suppress Exception If Set Suppress Is False 条件下的行为是否符合预期。
+   */
   @Test
   public void notSuppressExceptionIfSetSuppressIsFalse() throws Exception {
     IOException ioException = new IOException("e1");
@@ -97,6 +124,11 @@ public class TestCloseableGroup {
     Mockito.verifyNoInteractions(closeable3);
   }
 
+  /**
+   * 测试场景：not Suppress Exception If Set Suppress Is False For Auto Closeable。
+   *
+   * <p>验证该方法在 not Suppress Exception If Set Suppress Is False For Auto Closeable 条件下的行为是否符合预期。
+   */
   @Test
   public void notSuppressExceptionIfSetSuppressIsFalseForAutoCloseable() throws Exception {
     IOException ioException = new IOException("e1");
@@ -117,6 +149,11 @@ public class TestCloseableGroup {
     Mockito.verifyNoInteractions(closeable3);
   }
 
+  /**
+   * 测试场景：wrap Auto Closeable Failures With Runtime Exception。
+   *
+   * <p>验证该方法在 wrap Auto Closeable Failures With Runtime Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void wrapAutoCloseableFailuresWithRuntimeException() throws Exception {
     Exception generalException = new Exception("e");
@@ -131,6 +168,11 @@ public class TestCloseableGroup {
         .hasRootCause(generalException);
   }
 
+  /**
+   * 测试场景：not Wrap Runtime Exception。
+   *
+   * <p>验证该方法在 not Wrap Runtime Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void notWrapRuntimeException() throws Exception {
     RuntimeException runtimeException = new RuntimeException("e2");
@@ -144,6 +186,11 @@ public class TestCloseableGroup {
     Assertions.assertThatThrownBy(closeableGroup::close).isEqualTo(runtimeException);
   }
 
+  /**
+   * 测试场景：not Wrap Runtime Exception From Auto Closeable。
+   *
+   * <p>验证该方法在 not Wrap Runtime Exception From Auto Closeable 条件下的行为是否符合预期。
+   */
   @Test
   public void notWrapRuntimeExceptionFromAutoCloseable() throws Exception {
     RuntimeException runtimeException = new RuntimeException("e2");

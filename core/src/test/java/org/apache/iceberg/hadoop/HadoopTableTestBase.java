@@ -51,6 +51,14 @@ import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：HadoopTableTestBase，用于验证 Hadoop Table 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Hadoop Table 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class HadoopTableTestBase {
   // Schema passed to create tables
   static final Schema SCHEMA =
@@ -120,6 +128,7 @@ public class HadoopTableTestBase {
   File versionHintFile = null;
   Table table = null;
 
+  /** 辅助方法：setup table。 */
   @BeforeEach
   public void setupTable() throws Exception {
     this.tableLocation = tableDir.toURI().toString();
@@ -182,10 +191,12 @@ public class HadoopTableTestBase {
     }
   }
 
+  /** 辅助方法：hadoop catalog。 */
   protected HadoopCatalog hadoopCatalog() throws IOException {
     return hadoopCatalog(Collections.emptyMap());
   }
 
+  /** 辅助方法：hadoop catalog。 */
   protected HadoopCatalog hadoopCatalog(Map<String, String> catalogProperties) throws IOException {
     HadoopCatalog hadoopCatalog = new HadoopCatalog();
     hadoopCatalog.setConf(new Configuration());

@@ -20,6 +20,19 @@ package org.apache.iceberg.spark;
 
 import org.apache.iceberg.DeleteFile;
 
+/**
+ * 位置删除文件重写协调器（单例）。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：作为 {@link BaseFileRewriteCoordinator} 的具体实现，协调 Spark 端 position delete
+ * 文件的重写任务，跟踪每个表对应的已重写文件集合。
+ *
+ * <p>设计意图：单例模式保证整个 driver 内对同一表的协调状态唯一，避免并发重写冲突。
+ *
+ * <p>上下游关系：被 {@code RewritePositionDeleteFilesProcedure} / Spark action 调用； 泛型参数为 {@link
+ * DeleteFile}。
+ */
 public class PositionDeletesRewriteCoordinator extends BaseFileRewriteCoordinator<DeleteFile> {
 
   private static final PositionDeletesRewriteCoordinator INSTANCE =
@@ -27,6 +40,7 @@ public class PositionDeletesRewriteCoordinator extends BaseFileRewriteCoordinato
 
   private PositionDeletesRewriteCoordinator() {}
 
+  /** 返回单例实例。 */
   public static PositionDeletesRewriteCoordinator get() {
     return INSTANCE;
   }

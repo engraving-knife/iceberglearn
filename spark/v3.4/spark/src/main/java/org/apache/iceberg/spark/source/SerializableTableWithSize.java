@@ -24,9 +24,13 @@ import org.apache.iceberg.Table;
 import org.apache.spark.util.KnownSizeEstimation;
 
 /**
- * This class provides a serializable table with a known size estimate. Spark calls its
- * SizeEstimator class when broadcasting variables and this can be an expensive operation, so
- * providing a known size estimate allows that operation to be skipped.
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：可序列化且带大小的表包装器，在 Driver 端估算表大小并将表序列化分发到 Executor。
+ *
+ * <p>设计意图：实现 Spark Serializable，缓存表大小以支持 Spark 的估算接口。
+ *
+ * <p>上下游关系：由 SparkScan 在构建 InputPartition 时使用。
  */
 public class SerializableTableWithSize extends SerializableTable implements KnownSizeEstimation {
 
@@ -35,12 +39,12 @@ public class SerializableTableWithSize extends SerializableTable implements Know
   protected SerializableTableWithSize(Table table) {
     super(table);
   }
-
+  /** 执行 estimatedSize 相关操作。 */
   @Override
   public long estimatedSize() {
     return SIZE_ESTIMATE;
   }
-
+  /** 执行 copyOf 相关操作。 */
   public static Table copyOf(Table table) {
     if (table instanceof BaseMetadataTable) {
       return new SerializableMetadataTableWithSize((BaseMetadataTable) table);
@@ -55,7 +59,7 @@ public class SerializableTableWithSize extends SerializableTable implements Know
     protected SerializableMetadataTableWithSize(BaseMetadataTable metadataTable) {
       super(metadataTable);
     }
-
+    /** 执行 estimatedSize 相关操作。 */
     @Override
     public long estimatedSize() {
       return SIZE_ESTIMATE;

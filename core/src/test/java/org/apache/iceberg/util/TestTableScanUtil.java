@@ -53,8 +53,17 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * 测试类：TestTableScanUtil，用于验证 Table Scan Util 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Table Scan Util 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestTableScanUtil {
 
+  /** 辅助方法：tasks with data and delete sizes。 */
   private List<FileScanTask> tasksWithDataAndDeleteSizes(List<Pair<Long, Long[]>> sizePairs) {
     return sizePairs.stream()
         .map(
@@ -68,12 +77,14 @@ public class TestTableScanUtil {
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：data file with size。 */
   private DataFile dataFileWithSize(long size) {
     DataFile mockFile = Mockito.mock(DataFile.class);
     Mockito.when(mockFile.fileSizeInBytes()).thenReturn(size);
     return mockFile;
   }
 
+  /** 辅助方法：delete files with sizes。 */
   private DeleteFile[] deleteFilesWithSizes(long... sizes) {
     return Arrays.stream(sizes)
         .mapToObj(
@@ -85,6 +96,11 @@ public class TestTableScanUtil {
         .toArray(DeleteFile[]::new);
   }
 
+  /**
+   * 测试场景：plan task with delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPlanTaskWithDeleteFiles() {
     List<FileScanTask> testFiles =
@@ -116,6 +132,11 @@ public class TestTableScanUtil {
     }
   }
 
+  /**
+   * 测试场景：task group planning。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTaskGroupPlanning() {
     List<ParentTask> tasks =
@@ -133,6 +154,11 @@ public class TestTableScanUtil {
     assertThat(taskGroups).as("Must have 3 task groups").hasSize(3);
   }
 
+  /**
+   * 测试场景：task group planning corrupted offset。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTaskGroupPlanningCorruptedOffset() {
     DataFile dataFile =
@@ -172,6 +198,11 @@ public class TestTableScanUtil {
     Assertions.assertThat(taskCount).isEqualTo(10);
   }
 
+  /**
+   * 测试场景：task merging。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTaskMerging() {
     List<ParentTask> tasks =
@@ -201,6 +232,11 @@ public class TestTableScanUtil {
   private static final StructLike PARTITION1 = new TestStructLike(100, "a");
   private static final StructLike PARTITION2 = new TestStructLike(200, "b");
 
+  /**
+   * 测试场景：task group planning by partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTaskGroupPlanningByPartition() {
     // When all files belong to the same partition, we should combine them together as long as the
@@ -286,6 +322,11 @@ public class TestTableScanUtil {
         .hasMessageStartingWith("Cannot find field");
   }
 
+  /**
+   * 测试场景：adaptive split size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAdaptiveSplitSize() {
     long scanSize = 500L * 1024 * 1024 * 1024; // 500 GB
@@ -300,6 +341,7 @@ public class TestTableScanUtil {
     assertThat(adjusted2).isEqualTo(scanSize / parallelism);
   }
 
+  /** 辅助方法：task with partition。 */
   private PartitionScanTask taskWithPartition(
       PartitionSpec spec, StructLike partition, long sizeBytes) {
     PartitionScanTask task = Mockito.mock(PartitionScanTask.class);
@@ -317,16 +359,19 @@ public class TestTableScanUtil {
       this.values = values;
     }
 
+    /** 辅助方法：size。 */
     @Override
     public int size() {
       return values.length;
     }
 
+    /** 辅助方法：get。 */
     @Override
     public <T> T get(int pos, Class<T> javaClass) {
       return javaClass.cast(values[pos]);
     }
 
+    /** 辅助方法：set。 */
     @Override
     public <T> void set(int pos, T value) {
       throw new UnsupportedOperationException("set is not supported");
@@ -343,22 +388,26 @@ public class TestTableScanUtil {
       this.sizeBytes = sizeBytes;
     }
 
+    /** 辅助方法：split。 */
     @Override
     public Iterable<ChildTask1> split(long targetSplitSize) {
       return ImmutableList.of(new ChildTask1(sizeBytes / 2), new ChildTask1(sizeBytes / 2));
     }
 
+    /** 辅助方法：can merge。 */
     @Override
     public boolean canMerge(ScanTask other) {
       return other instanceof ChildTask1;
     }
 
+    /** 辅助方法：merge。 */
     @Override
     public ChildTask1 merge(ScanTask other) {
       ChildTask1 that = (ChildTask1) other;
       return new ChildTask1(sizeBytes + that.sizeBytes);
     }
 
+    /** 辅助方法：size bytes。 */
     @Override
     public long sizeBytes() {
       return sizeBytes;
@@ -372,11 +421,13 @@ public class TestTableScanUtil {
       this.sizeBytes = sizeBytes;
     }
 
+    /** 辅助方法：split。 */
     @Override
     public Iterable<ChildTask2> split(long targetSplitSize) {
       return ImmutableList.of(new ChildTask2(sizeBytes / 2), new ChildTask2(sizeBytes / 2));
     }
 
+    /** 辅助方法：size bytes。 */
     @Override
     public long sizeBytes() {
       return sizeBytes;
@@ -390,17 +441,20 @@ public class TestTableScanUtil {
       this.sizeBytes = sizeBytes;
     }
 
+    /** 辅助方法：can merge。 */
     @Override
     public boolean canMerge(ScanTask other) {
       return other instanceof ChildTask3;
     }
 
+    /** 辅助方法：merge。 */
     @Override
     public ChildTask3 merge(ScanTask other) {
       ChildTask3 that = (ChildTask3) other;
       return new ChildTask3(sizeBytes + that.sizeBytes);
     }
 
+    /** 辅助方法：size bytes。 */
     @Override
     public long sizeBytes() {
       return sizeBytes;

@@ -48,16 +48,25 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestStreamScanSql 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestStreamScanSql 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestStreamScanSql extends FlinkCatalogTestBase {
   private static final String TABLE = "test_table";
   private static final FileFormat FORMAT = FileFormat.PARQUET;
 
   private TableEnvironment tEnv;
 
+  /** 辅助方法：TestStreamScanSql，Stream Scan Sql。 */
   public TestStreamScanSql(String catalogName, Namespace baseNamespace) {
     super(catalogName, baseNamespace);
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
@@ -84,6 +93,7 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     return tEnv;
   }
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -93,6 +103,7 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     sql("USE %s", DATABASE);
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -101,6 +112,7 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /** 辅助方法：insertRows，insert Rows。 */
   private void insertRows(String partition, Table table, Row... rows) throws IOException {
     GenericAppenderHelper appender = new GenericAppenderHelper(table, FORMAT, TEMPORARY_FOLDER);
 
@@ -121,10 +133,12 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     }
   }
 
+  /** 辅助方法：insertRows，insert Rows。 */
   private void insertRows(Table table, Row... rows) throws IOException {
     insertRows(null, table, rows);
   }
 
+  /** 辅助方法：assertRows，assert Rows。 */
   private void assertRows(List<Row> expectedRows, Iterator<Row> iterator) {
     for (Row expectedRow : expectedRows) {
       Assert.assertTrue("Should have more records", iterator.hasNext());
@@ -140,6 +154,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Un Partitioned Table。
+   *
+   * <p>验证该方法在 Un Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnPartitionedTable() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR)", TABLE);
@@ -160,6 +179,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     result.getJobClient().ifPresent(JobClient::cancel);
   }
 
+  /**
+   * 测试场景：Partitioned Table。
+   *
+   * <p>验证该方法在 Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTable() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR) PARTITIONED BY (dt)", TABLE);
@@ -187,6 +211,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     result.getJobClient().ifPresent(JobClient::cancel);
   }
 
+  /**
+   * 测试场景：Consume From Beginning。
+   *
+   * <p>验证该方法在 Consume From Beginning 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFromBeginning() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR)", TABLE);
@@ -212,6 +241,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     result.getJobClient().ifPresent(JobClient::cancel);
   }
 
+  /**
+   * 测试场景：Consume Files With Branch。
+   *
+   * <p>验证该方法在 Consume Files With Branch 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFilesWithBranch() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR)", TABLE);
@@ -230,6 +264,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
                 TABLE));
   }
 
+  /**
+   * 测试场景：Consume From Start Snapshot Id。
+   *
+   * <p>验证该方法在 Consume From Start Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFromStartSnapshotId() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR)", TABLE);
@@ -268,6 +307,11 @@ public class TestStreamScanSql extends FlinkCatalogTestBase {
     result.getJobClient().ifPresent(JobClient::cancel);
   }
 
+  /**
+   * 测试场景：Consume From Start Tag。
+   *
+   * <p>验证该方法在 Consume From Start Tag 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFromStartTag() throws Exception {
     sql("CREATE TABLE %s (id INT, data VARCHAR, dt VARCHAR)", TABLE);

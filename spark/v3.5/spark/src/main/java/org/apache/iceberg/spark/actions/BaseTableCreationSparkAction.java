@@ -49,6 +49,26 @@ import org.apache.spark.sql.connector.catalog.V1Table;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 基于 Spark 的"建表型"动作基类。
+ *
+ * <p>所属模块：iceberg-spark（Spark 运行时集成模块）；本类位于 actions 子包，为 snapshot/migrate 等把外部表转换为 Iceberg
+ * 表的动作提供公共能力。抽象泛型 ThisT 供子类链式调用返回自身类型。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>加载并校验源表（须为 v1 表，且 provider 属于 parquet/avro/orc/hive）。
+ *   <li>在目标 Iceberg Catalog 中暂存创建（stageCreate）目标表，并提供目标表属性、标识等抽象接口。
+ *   <li>辅助：确保 NameMapping 存在、计算元数据目录位置等。
+ * </ul>
+ *
+ * <p>设计意图：将源表加载/校验、目标 Catalog 校验、暂存建表等通用流程上提，子类只需实现 与具体动作相关的目录与属性差异，避免重复代码。使用 StagingTableCatalog
+ * 实现原子建表。
+ *
+ * <p>上下游关系：继承 {@link BaseSparkAction}；被 {@link SnapshotTableSparkAction}、 {@link
+ * MigrateTableSparkAction} 等继承；依赖 {@link SparkCatalog}/{@link SparkSessionCatalog}。
+ */
 abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT> {
   private static final Set<String> ALLOWED_SOURCES =
       ImmutableSet.of("parquet", "avro", "orc", "hive");
@@ -67,6 +87,12 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
   // Optional Parameters for destination
   private final Map<String, String> additionalProperties = Maps.newHashMap();
 
+  /**
+   * 构造并初始化源表信息。
+   *
+   * <p>逻辑：校验源 Catalog，加载源表并强转为 V1Table（否则报错），调用 {@link #validateSourceTable} 校验 provider 与
+   * location，最终记录源表存储位置。
+   */
   BaseTableCreationSparkAction(
       SparkSession spark, CatalogPlugin sourceCatalog, Identifier sourceTableIdent) {
     super(spark);
@@ -89,42 +115,58 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
         CatalogUtils.URIToString(sourceCatalogTable.storage().locationUri().get());
   }
 
+  /** 校验源 Catalog 类型是否可用，由子类实现。 */
   protected abstract TableCatalog checkSourceCatalog(CatalogPlugin catalog);
 
+  /** 返回目标暂存建表 Catalog，由子类实现。 */
   protected abstract StagingTableCatalog destCatalog();
 
+  /** 返回目标表标识，由子类实现。 */
   protected abstract Identifier destTableIdent();
 
+  /** 返回目标表属性，由子类实现。 */
   protected abstract Map<String, String> destTableProps();
 
+  /** 返回源表存储位置。 */
   protected String sourceTableLocation() {
     return sourceTableLocation;
   }
 
+  /** 返回源表的 Spark v1 CatalogTable。 */
   protected CatalogTable v1SourceTable() {
     return sourceCatalogTable;
   }
 
+  /** 返回源 Catalog。 */
   protected TableCatalog sourceCatalog() {
     return sourceCatalog;
   }
 
+  /** 返回源表标识。 */
   protected Identifier sourceTableIdent() {
     return sourceTableIdent;
   }
 
+  /** 批量追加目标表附加属性。 */
   protected void setProperties(Map<String, String> properties) {
     additionalProperties.putAll(properties);
   }
 
+  /** 追加单个目标表附加属性。 */
   protected void setProperty(String key, String value) {
     additionalProperties.put(key, value);
   }
 
+  /** 返回已设置的附加属性。 */
   protected Map<String, String> additionalProperties() {
     return additionalProperties;
   }
 
+  /**
+   * 校验源表可用性。
+   *
+   * <p>逻辑：要求 provider 属于允许集合（parquet/avro/orc/hive），且源表必须显式指定存储位置。
+   */
   private void validateSourceTable() {
     String sourceTableProvider = sourceCatalogTable.provider().get().toLowerCase(Locale.ROOT);
     Preconditions.checkArgument(
@@ -136,6 +178,10 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
         "Cannot create an Iceberg table from a source without an explicit location");
   }
 
+  /**
+   * 校验目标 Catalog 必须是 Iceberg Catalog（{@link SparkCatalog} 或 {@link SparkSessionCatalog}）， 并以 {@link
+   * StagingTableCatalog} 形式返回。
+   */
   protected StagingTableCatalog checkDestinationCatalog(CatalogPlugin catalog) {
     Preconditions.checkArgument(
         catalog instanceof SparkSessionCatalog || catalog instanceof SparkCatalog,
@@ -149,6 +195,13 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     return (StagingTableCatalog) catalog;
   }
 
+  /**
+   * 在目标 Catalog 中暂存创建目标表。
+   *
+   * <p>逻辑：使用源表 schema 与分区变换、目标属性调用 stageCreate；命名空间不存在或表已存在时 转换为对应 Iceberg 异常抛出。
+   *
+   * @return 暂存的 {@link StagedSparkTable}
+   */
   protected StagedSparkTable stageDestTable() {
     try {
       Map<String, String> props = destTableProps();
@@ -165,6 +218,12 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     }
   }
 
+  /**
+   * 确保目标表配置了默认 NameMapping。
+   *
+   * <p>逻辑：若表属性未包含 {@link TableProperties#DEFAULT_NAME_MAPPING}，则基于当前 schema 生成 NameMapping
+   * 并写入表属性后提交，便于无 schema 信息的文件能匹配字段。
+   */
   protected void ensureNameMappingPresent(Table table) {
     if (!table.properties().containsKey(TableProperties.DEFAULT_NAME_MAPPING)) {
       NameMapping nameMapping = MappingUtil.create(table.schema());
@@ -173,6 +232,7 @@ abstract class BaseTableCreationSparkAction<ThisT> extends BaseSparkAction<ThisT
     }
   }
 
+  /** 计算目标表元数据目录位置：优先取表属性中的写入元数据位置，否则用表 location + "/metadata"。 */
   protected String getMetadataLocation(Table table) {
     String defaultValue =
         LocationUtil.stripTrailingSlash(table.location()) + "/" + ICEBERG_METADATA_FOLDER;

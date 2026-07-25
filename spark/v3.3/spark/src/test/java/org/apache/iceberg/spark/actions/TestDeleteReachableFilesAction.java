@@ -57,6 +57,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestDeleteReachableFilesAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 删除reachable文件动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDeleteReachableFilesAction extends SparkTestBase {
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
   private static final Schema SCHEMA =
@@ -117,6 +124,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
 
   private Table table;
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     File tableDir = temp.newFolder();
@@ -125,6 +133,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     spark.conf().set("spark.sql.shuffle.partitions", SHUFFLE_PARTITIONS);
   }
 
+  /** 检查移除文件结果。 */
   private void checkRemoveFilesResults(
       long expectedDatafiles,
       long expectedPosDeleteFiles,
@@ -159,6 +168,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
         results.deletedOtherFilesCount());
   }
 
+  /** 数据文件cleanup带并行任务。 */
   @Test
   public void dataFilesCleanupWithParallelTasks() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -208,6 +218,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(4L, 0, 0, 6L, 4L, 6, result);
   }
 
+  /** 测试带expiringdanglingstage提交场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWithExpiringDanglingStageCommit() {
     table.location();
@@ -226,6 +237,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(3L, 0, 0, 3L, 3L, 5, result);
   }
 
+  /** 测试移除文件动作上空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveFileActionOnEmptyTable() {
     DeleteReachableFiles.Result result =
@@ -234,6 +246,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(0, 0, 0, 0, 0, 2, result);
   }
 
+  /** 测试移除文件动作带reduced版本表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveFilesActionWithReducedVersionsTable() {
     table.updateProperties().set(TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "2").commit();
@@ -254,6 +267,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(4, 0, 0, 5, 5, 8, result);
   }
 
+  /** 测试移除文件动作场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveFilesAction() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -265,6 +279,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(2, 0, 0, 2, 2, 4, baseRemoveFilesSparkAction.execute());
   }
 
+  /** 测试位置删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPositionDeleteFiles() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -278,6 +293,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(2, 1, 0, 3, 3, 5, baseRemoveFilesSparkAction.execute());
   }
 
+  /** 测试等值删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEqualityDeleteFiles() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -291,6 +307,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(2, 0, 1, 3, 3, 5, baseRemoveFilesSparkAction.execute());
   }
 
+  /** 测试移除文件动作带默认io场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveFilesActionWithDefaultIO() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -304,6 +321,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(2, 0, 0, 2, 2, 4, baseRemoveFilesSparkAction.execute());
   }
 
+  /** 测试uselocal迭代器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUseLocalIterator() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -336,6 +354,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
         });
   }
 
+  /** 测试ignore元数据文件非found场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIgnoreMetadataFilesNotFound() {
     table.updateProperties().set(TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1").commit();
@@ -358,6 +377,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
     checkRemoveFilesResults(1, 0, 0, 1, 1, 4, res);
   }
 
+  /** 测试空iothrowsexception场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyIOThrowsException() {
     DeleteReachableFiles baseRemoveFilesSparkAction =
@@ -369,6 +389,7 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
         baseRemoveFilesSparkAction::execute);
   }
 
+  /** 测试移除文件动作当garbagecollectiondisabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveFilesActionWhenGarbageCollectionDisabled() {
     table.updateProperties().set(TableProperties.GC_ENABLED, "false").commit();
@@ -380,10 +401,12 @@ public class TestDeleteReachableFilesAction extends SparkTestBase {
         () -> sparkActions().deleteReachableFiles(metadataLocation(table)).execute());
   }
 
+  /** 元数据路径。 */
   private String metadataLocation(Table tbl) {
     return ((HasTableOperations) tbl).operations().current().metadataFileLocation();
   }
 
+  /** Spark动作。 */
   private ActionsProvider sparkActions() {
     return SparkActions.get();
   }

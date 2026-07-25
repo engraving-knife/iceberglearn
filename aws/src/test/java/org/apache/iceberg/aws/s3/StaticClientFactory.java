@@ -25,29 +25,41 @@ import software.amazon.awssdk.services.glue.GlueClient;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * 文件级说明：测试 StaticClientFactory 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 StaticClientFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 class StaticClientFactory implements AwsClientFactory {
   static S3Client client;
 
+  /** 辅助方法：s3。 */
   @Override
   public S3Client s3() {
     return client;
   }
 
+  /** 辅助方法：glue。 */
   @Override
   public GlueClient glue() {
     return null;
   }
 
+  /** 辅助方法：kms。 */
   @Override
   public KmsClient kms() {
     return null;
   }
 
+  /** 辅助方法：dynamo。 */
   @Override
   public DynamoDbClient dynamo() {
     return null;
   }
 
+  /** 辅助方法：initialize。 */
   @Override
   public void initialize(Map<String, String> properties) {}
 }

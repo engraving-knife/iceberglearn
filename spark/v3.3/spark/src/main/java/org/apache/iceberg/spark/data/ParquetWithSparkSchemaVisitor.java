@@ -37,13 +37,25 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Visitor for traversing a Parquet type with a companion Spark type.
+ * Iceberg 与 Spark 数据格式之间的读写转换组件。
  *
- * @param <T> the Java class returned by the visitor
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ParquetWithSparkSchemaVisitor。
+ *
+ * <p>设计意图：访问者模式，按类型分派处理逻辑。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 public class ParquetWithSparkSchemaVisitor<T> {
   private final Deque<String> fieldNames = Lists.newLinkedList();
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sType 参数
+   * @param type 参数
+   * @param visitor 参数
+   * @return 结果对象
+   */
   public static <T> T visit(DataType sType, Type type, ParquetWithSparkSchemaVisitor<T> visitor) {
     Preconditions.checkArgument(sType != null, "Invalid DataType: null");
     if (type instanceof MessageType) {
@@ -169,6 +181,7 @@ public class ParquetWithSparkSchemaVisitor<T> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static <T> T visitField(
       StructField sField, Type field, ParquetWithSparkSchemaVisitor<T> visitor) {
     visitor.fieldNames.push(field.getName());
@@ -179,6 +192,7 @@ public class ParquetWithSparkSchemaVisitor<T> {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static <T> List<T> visitFields(
       StructType struct, GroupType group, ParquetWithSparkSchemaVisitor<T> visitor) {
     StructField[] sFields = struct.fields();
@@ -199,30 +213,72 @@ public class ParquetWithSparkSchemaVisitor<T> {
     return results;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sStruct 参数
+   * @param message 参数
+   * @param fields 参数
+   * @return 结果对象
+   */
   public T message(StructType sStruct, MessageType message, List<T> fields) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sStruct 参数
+   * @param struct 参数
+   * @param fields 参数
+   * @return 结果对象
+   */
   public T struct(StructType sStruct, GroupType struct, List<T> fields) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sArray 参数
+   * @param array 参数
+   * @param element 参数
+   * @return 结果对象
+   */
   public T list(ArrayType sArray, GroupType array, T element) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sMap 参数
+   * @param map 参数
+   * @param key 参数
+   * @param value 参数
+   * @return 结果对象
+   */
   public T map(MapType sMap, GroupType map, T key, T value) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param sPrimitive 参数
+   * @param primitive 参数
+   * @return 结果对象
+   */
   public T primitive(DataType sPrimitive, PrimitiveType primitive) {
     return null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected String[] currentPath() {
     return Lists.newArrayList(fieldNames.descendingIterator()).toArray(new String[0]);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected String[] path(String name) {
     List<String> list = Lists.newArrayList(fieldNames.descendingIterator());
     list.add(name);

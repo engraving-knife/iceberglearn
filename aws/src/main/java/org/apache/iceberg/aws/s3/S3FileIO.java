@@ -67,11 +67,24 @@ import software.amazon.awssdk.services.s3.model.Tag;
 import software.amazon.awssdk.services.s3.model.Tagging;
 
 /**
- * FileIO implementation backed by S3.
+ * 基于 AWS S3 的 {@link DelegateFileIO} 实现。
  *
- * <p>Locations used must follow the conventions for S3 URIs (e.g. s3://bucket/path...). URIs with
- * schemes s3a, s3n, https are also treated as s3 file paths. Using this FileIO with other schemes
- * will result in {@link org.apache.iceberg.exceptions.ValidationException}.
+ * <p>所属模块：iceberg-aws。职责：为 Iceberg 提供面向 S3 对象存储的文件读写能力，实现 {@link InputFile}/{@link OutputFile}
+ * 的输入输出流、批量删除、目录列举与对象标签管理； 同时实现 {@link CredentialSupplier} 暴露 AWS 凭证供下游签名使用。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>位置须遵循 S3 URI 约定（如 {@code s3://bucket/path...}）；s3a、s3n、https scheme 同样视为 S3 路径，其他 scheme 将抛
+ *       {@link org.apache.iceberg.exceptions.ValidationException}。
+ *   <li>采用 {@code DelegateFileIO} 而非旧版 {@code FileIO}，支持 {@code delete(List)} 批量删除、 {@code
+ *       listDirectories}/{@code getFileInfo} 等丰富操作，适配现代对象存储 API。
+ *   <li>客户端（{@link S3Client}）通过 {@link AwsClientFactory} 反射加载，支持跨区、access point、 路径风格等多种 S3
+ *       兼容部署；删除操作走线程池并发以提升大表过期清理性能。
+ * </ul>
+ *
+ * <p>上下游：向上被 {@code core} 的 {@code TableOperations}/{@code Catalog} 通过 {@code FileIO}
+ * 接口调用读写元数据与数据文件；向下依赖 AWS SDK v2 的 S3Client。
  */
 public class S3FileIO implements CredentialSupplier, DelegateFileIO {
   private static final Logger LOG = LoggerFactory.getLogger(S3FileIO.class);
@@ -89,30 +102,30 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
   private transient StackTraceElement[] createStack;
 
   /**
-   * No-arg constructor to load the FileIO dynamically.
+   * 无参构造，用于动态加载 FileIO。
    *
-   * <p>All fields are initialized by calling {@link S3FileIO#initialize(Map)} later.
+   * <p>所有字段在后续调用 {@link #initialize(Map)} 时初始化。
    */
   public S3FileIO() {}
 
   /**
-   * Constructor with custom s3 supplier and S3FileIO properties.
+   * 使用自定义 S3 客户端供应者构造 FileIO。
    *
-   * <p>Calling {@link S3FileIO#initialize(Map)} will overwrite information set in this constructor.
+   * <p>调用 {@link #initialize(Map)} 会覆盖本构造方法设置的 s3 供应者。
    *
-   * @param s3 s3 supplier
+   * @param s3 S3 客户端供应者
    */
   public S3FileIO(SerializableSupplier<S3Client> s3) {
     this(s3, new S3FileIOProperties());
   }
 
   /**
-   * Constructor with custom s3 supplier and S3FileIO properties.
+   * 使用自定义 S3 客户端供应者与属性构造 FileIO，并记录创建栈用于资源泄漏排查。
    *
-   * <p>Calling {@link S3FileIO#initialize(Map)} will overwrite information set in this constructor.
+   * <p>调用 {@link #initialize(Map)} 会覆盖本构造方法设置的信息。
    *
-   * @param s3 s3 supplier
-   * @param s3FileIOProperties S3 FileIO properties
+   * @param s3 S3 客户端供应者
+   * @param s3FileIOProperties S3 FileIO 属性
    */
   public S3FileIO(SerializableSupplier<S3Client> s3, S3FileIOProperties s3FileIOProperties) {
     this.s3 = s3;
@@ -120,21 +133,29 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     this.createStack = Thread.currentThread().getStackTrace();
   }
 
+  /** 创建指定路径的 S3 输入文件（长度未知，读取时探测）。 */
   @Override
   public InputFile newInputFile(String path) {
     return S3InputFile.fromLocation(path, client(), s3FileIOProperties, metrics);
   }
 
+  /** 创建指定路径与已知长度的 S3 输入文件。 */
   @Override
   public InputFile newInputFile(String path, long length) {
     return S3InputFile.fromLocation(path, length, client(), s3FileIOProperties, metrics);
   }
 
+  /** 创建指定路径的 S3 输出文件。 */
   @Override
   public OutputFile newOutputFile(String path) {
     return S3OutputFile.fromLocation(path, client(), s3FileIOProperties, metrics);
   }
 
+  /**
+   * 删除单个文件：若配置了删除标签则先打标签，再根据是否启用删除执行实际删除。
+   *
+   * <p>逻辑：先按 deleteTags 给对象打删除标签（失败仅告警）；若未启用删除则直接返回； 否则构造 DeleteObjectRequest 调用 S3 删除对象。
+   */
   @Override
   public void deleteFile(String path) {
     if (s3FileIOProperties.deleteTags() != null && !s3FileIOProperties.deleteTags().isEmpty()) {
@@ -162,12 +183,12 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
   }
 
   /**
-   * Deletes the given paths in a batched manner.
+   * 批量删除多个路径。
    *
-   * <p>The paths are grouped by bucket, and deletion is triggered when we either reach the
-   * configured batch size or have a final remainder batch for each bucket.
+   * <p>逻辑：先按 deleteTags 给所有对象打删除标签（并发，失败仅告警）；若启用删除，则按 bucket 分组，达到 deleteBatchSize
+   * 即提交线程池并发删除，剩余批次最后删除；收集失败项， 若有失败则抛出 {@link BulkDeletionFailureException}。
    *
-   * @param paths paths to delete
+   * @param paths 待删除路径集合
    */
   @Override
   public void deleteFiles(Iterable<String> paths) throws BulkDeletionFailureException {
@@ -236,6 +257,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     }
   }
 
+  /** 给指定对象追加删除标签：先读取已有标签，合并 deleteTags 后写回。 */
   private void tagFileToDelete(String path, Set<Tag> deleteTags) throws S3Exception {
     S3URI location = new S3URI(path, s3FileIOProperties.bucketToAccessPointMapping());
     String bucket = location.bucket();
@@ -260,6 +282,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     client().putObjectTagging(putObjectTaggingRequest);
   }
 
+  /** 删除单个 bucket 内的一批对象，返回删除失败的 key 路径列表。 */
   private List<String> deleteBatch(String bucket, Collection<String> keysToDelete) {
     List<ObjectIdentifier> objectIds =
         keysToDelete.stream()
@@ -289,6 +312,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     return failures;
   }
 
+  /** 列举指定前缀下的所有对象，返回其 location、大小与最后修改时间的惰性迭代器。 */
   @Override
   public Iterable<FileInfo> listPrefix(String prefix) {
     S3URI s3uri = new S3URI(prefix, s3FileIOProperties.bucketToAccessPointMapping());
@@ -308,18 +332,18 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
   }
 
   /**
-   * This method provides a "best-effort" to delete all objects under the given prefix.
+   * 尽力删除指定前缀下所有对象。
    *
-   * <p>Bulk delete operations are used and no reattempt is made for deletes if they fail, but will
-   * log any individual objects that are not deleted as part of the bulk operation.
+   * <p>采用批量删除，失败不重试，但会记录未删除的对象。先列举前缀下所有对象再批量删除。
    *
-   * @param prefix prefix to delete
+   * @param prefix 待删除前缀
    */
   @Override
   public void deletePrefix(String prefix) {
     deleteFiles(() -> Streams.stream(listPrefix(prefix)).map(FileInfo::location).iterator());
   }
 
+  /** 返回 S3 客户端，采用双重检查锁懒加载。 */
   public S3Client client() {
     if (client == null) {
       synchronized (this) {
@@ -331,6 +355,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     return client;
   }
 
+  /** 返回删除用的线程池，采用双重检查锁懒加载，全类共享。 */
   private ExecutorService executorService() {
     if (executorService == null) {
       synchronized (S3FileIO.class) {
@@ -345,11 +370,16 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     return executorService;
   }
 
+  /** 返回 AWS 凭证字符串（可能为 null）。 */
   @Override
   public String getCredential() {
     return credential;
   }
 
+  /**
+   * 初始化 FileIO：保存属性，构造 S3FileIOProperties，记录创建栈； 若未外部提供 s3 供应者则通过 {@link
+   * S3FileIOAwsClientFactories} 反射加载客户端工厂， 并按需预加载客户端；最后初始化指标。
+   */
   @Override
   public void initialize(Map<String, String> props) {
     this.properties = SerializableMap.copyOf(props);
@@ -379,6 +409,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     initMetrics(properties);
   }
 
+  /** 初始化指标上下文：若 Hadoop 可用则加载 HadoopMetricsContext，否则回退到 null 指标。 */
   @SuppressWarnings("CatchBlockLogException")
   private void initMetrics(Map<String, String> props) {
     // Report Hadoop metrics if Hadoop is available
@@ -396,6 +427,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     }
   }
 
+  /** 关闭资源：通过 CAS 保证并发只关闭一次，关闭 S3 客户端。 */
   @Override
   public void close() {
     // handles concurrent calls to close()
@@ -406,6 +438,7 @@ public class S3FileIO implements CredentialSupplier, DelegateFileIO {
     }
   }
 
+  /** 终结器兜底：若未被显式关闭则在此关闭资源，并告警提示可能存在资源泄漏。 */
   @SuppressWarnings("checkstyle:NoFinalizer")
   @Override
   protected void finalize() throws Throwable {

@@ -38,7 +38,11 @@ import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
-/** An internal table catalog that is capable of loading tables from a cache. */
+/**
+ * Iceberg Spark 集成相关组件，实现 Spark 目录服务以加载和管理 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkCachedTableCatalog。
+ */
 public class SparkCachedTableCatalog implements TableCatalog {
 
   private static final String CLASS_NAME = SparkCachedTableCatalog.class.getName();
@@ -50,22 +54,48 @@ public class SparkCachedTableCatalog implements TableCatalog {
 
   private String name = null;
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param namespace 参数
+   * @return 结果对象
+   */
   @Override
   public Identifier[] listTables(String[] namespace) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support listing tables");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @return 结果对象
+   */
   @Override
   public SparkTable loadTable(Identifier ident) throws NoSuchTableException {
     Pair<Table, Long> table = load(ident);
     return new SparkTable(table.first(), table.second(), false /* refresh eagerly */);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   */
   @Override
   public void invalidateTable(Identifier ident) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support table invalidation");
   }
 
+  /**
+   * 创建并返回新实例。
+   *
+   * @param ident 参数
+   * @param schema 参数
+   * @param partitions 参数
+   * @param properties 参数
+   * @return 结果对象
+   */
   @Override
   public SparkTable createTable(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
@@ -73,36 +103,73 @@ public class SparkCachedTableCatalog implements TableCatalog {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support creating tables");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @param changes 参数
+   * @return 结果对象
+   */
   @Override
   public SparkTable alterTable(Identifier ident, TableChange... changes) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support altering tables");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @return 结果对象
+   */
   @Override
   public boolean dropTable(Identifier ident) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support dropping tables");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @return 结果对象
+   */
   @Override
   public boolean purgeTable(Identifier ident) throws UnsupportedOperationException {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support purging tables");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param oldIdent 参数
+   * @param newIdent 参数
+   */
   @Override
   public void renameTable(Identifier oldIdent, Identifier newIdent) {
     throw new UnsupportedOperationException(CLASS_NAME + " does not support renaming tables");
   }
 
+  /**
+   * 执行初始化。
+   *
+   * @param catalogName 参数
+   * @param options 参数
+   */
   @Override
   public void initialize(String catalogName, CaseInsensitiveStringMap options) {
     this.name = catalogName;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return name;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Pair<Table, Long> load(Identifier ident) throws NoSuchTableException {
     Preconditions.checkArgument(
         ident.namespace().length == 0, CLASS_NAME + " does not support namespaces");
@@ -134,6 +201,7 @@ public class SparkCachedTableCatalog implements TableCatalog {
     Table table = TABLE_CACHE.get(key);
 
     if (table == null) {
+      /** 执行该方法的具体逻辑。 */
       throw new NoSuchTableException(ident);
     }
 
@@ -146,6 +214,7 @@ public class SparkCachedTableCatalog implements TableCatalog {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Pair<String, List<String>> parseIdent(Identifier ident) {
     int hashIndex = ident.name().lastIndexOf('#');
     if (hashIndex != -1 && !ident.name().endsWith("#")) {

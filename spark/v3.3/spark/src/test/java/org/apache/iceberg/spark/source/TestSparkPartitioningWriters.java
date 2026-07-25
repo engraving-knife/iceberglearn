@@ -31,12 +31,22 @@ import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 文件级说明：测试 TestSparkPartitioningWriters 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkpartitioning写入器
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkPartitioningWriters extends TestPartitioningWriters<InternalRow> {
 
+  /** 测试Sparkpartitioning写入器。 */
   public TestSparkPartitioningWriters(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 新建写入器factory。 */
   @Override
   protected FileWriterFactory<InternalRow> newWriterFactory(
       Schema dataSchema,
@@ -53,6 +63,7 @@ public class TestSparkPartitioningWriters extends TestPartitioningWriters<Intern
         .build();
   }
 
+  /** 到行。 */
   @Override
   protected InternalRow toRow(Integer id, String data) {
     InternalRow row = new GenericInternalRow(2);
@@ -61,6 +72,7 @@ public class TestSparkPartitioningWriters extends TestPartitioningWriters<Intern
     return row;
   }
 
+  /** 到集合。 */
   @Override
   protected StructLikeSet toSet(Iterable<InternalRow> rows) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());

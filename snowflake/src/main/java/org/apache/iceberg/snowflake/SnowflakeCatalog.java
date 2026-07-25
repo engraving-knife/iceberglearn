@@ -44,6 +44,21 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Snowflake 的 Iceberg Catalog 实现。
+ *
+ * <p>所属模块：iceberg-snowflake。职责：通过 Snowflake JDBC 连接查询 Snowflake 中管理的 Iceberg 表元数据，把 Iceberg 的
+ * catalog 操作（列举表/命名空间、加载表元数据等）映射为对 Snowflake 的元数据查询；表数据文件的实际读写由 {@link FileIO} 负责。
+ *
+ * <p>设计意图：继承 {@link BaseMetastoreCatalog} 复用模板，仅实现 {@code newTableOps} 等少量抽象方法； 通过 {@link
+ * SnowflakeClient} 封装与 Snowflake 的网络通信；每次 {@code newTableOps} 创建独立的 FileIO 实例（因部分 FileIO 如 S3FileIO
+ * 会绑定单一 bucket）。当前为只读 catalog，dropTable/ renameTable/createNamespace 等写操作均抛 {@link
+ * UnsupportedOperationException}。通过 {@code Configurable} 注入 Hadoop 配置，{@code CloseableGroup}
+ * 统一管理资源关闭。
+ *
+ * <p>上下游关系：向上被引擎（Spark/Flink 等）通过 {@code Catalog} 接口调用；向下依赖 {@link SnowflakeClient}（默认 {@link
+ * JdbcSnowflakeClient}）与 {@link FileIO}。
+ */
 public class SnowflakeCatalog extends BaseMetastoreCatalog
     implements Closeable, SupportsNamespaces, Configurable<Object> {
   private static final String DEFAULT_CATALOG_NAME = "snowflake_catalog";
@@ -56,7 +71,7 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
   private static final String APP_IDENTIFIER = "iceberg-snowflake-catalog";
   // Specifies the max length of unique id for each catalog initialized session.
   private static final int UNIQUE_ID_LENGTH = 20;
-  // Injectable factory for testing purposes.
+  /** FileIO 工厂，可注入以便测试替换。默认实现委托 {@link CatalogUtil#loadFileIO} 按 impl 类名加载。 */
   static class FileIOFactory {
     public FileIO newFileIO(String impl, Map<String, String> properties, Object hadoopConf) {
       return CatalogUtil.loadFileIO(impl, properties, hadoopConf);
@@ -72,8 +87,16 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
   private FileIOFactory fileIOFactory;
   private SnowflakeClient snowflakeClient;
 
+  /** 无参构造，用于动态加载 Catalog，字段由 {@link #initialize} 初始化。 */
   public SnowflakeCatalog() {}
 
+  /**
+   * 列出指定命名空间（schema 级别）下的所有 Iceberg 表。
+   *
+   * @param namespace 命名空间，必须解析到 SCHEMA 级别
+   * @return 表标识符列表
+   * @throws IllegalArgumentException namespace 未解析到 SCHEMA 级别
+   */
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     SnowflakeIdentifier scope = NamespaceHelpers.toSnowflakeIdentifier(namespace);
@@ -90,18 +113,27 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
         .collect(Collectors.toList());
   }
 
+  /** 当前不支持删除表，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public boolean dropTable(TableIdentifier identifier, boolean purge) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support dropTable");
   }
 
+  /** 当前不支持重命名表，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public void renameTable(TableIdentifier from, TableIdentifier to) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support renameTable");
   }
 
+  /**
+   * 根据配置初始化 Catalog：校验 JDBC URI、加载 Snowflake JDBC 驱动、生成唯一应用标识符， 创建 JDBC 连接池后委托 {@link
+   * #initialize(String, SnowflakeClient, FileIOFactory, Map)} 完成初始化。
+   *
+   * @param name Catalog 名称，为 null 时默认 "snowflake_catalog"
+   * @param properties Catalog 配置，必须包含 JDBC 连接 URI
+   */
   @Override
   public void initialize(String name, Map<String, String> properties) {
     String uri = properties.get(CatalogProperties.URI);
@@ -135,13 +167,12 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
   }
 
   /**
-   * Initialize using caller-supplied SnowflakeClient and FileIO.
+   * 使用调用方提供的 {@link SnowflakeClient} 与 {@link FileIOFactory} 初始化 Catalog 的替代入口， 主要用于测试注入。
    *
-   * @param name The name of the catalog, defaults to "snowflake_catalog"
-   * @param snowflakeClient The client encapsulating network communication with Snowflake
-   * @param fileIOFactory The {@link FileIOFactory} to use to instantiate a new FileIO for each new
-   *     table operation
-   * @param properties The catalog options to use and propagate to dependencies
+   * @param name Catalog 名称，为 null 时默认 "snowflake_catalog"
+   * @param snowflakeClient 封装与 Snowflake 网络通信的客户端
+   * @param fileIOFactory 用于为每个表操作创建 FileIO 的工厂
+   * @param properties Catalog 配置选项
    */
   @SuppressWarnings("checkstyle:HiddenField")
   void initialize(
@@ -160,6 +191,7 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
     closeableGroup.setSuppressCloseFailure(true);
   }
 
+  /** 关闭 Catalog 及其持有的 snowflakeClient 等资源。 */
   @Override
   public void close() throws IOException {
     if (null != closeableGroup) {
@@ -167,12 +199,20 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /** 当前不支持创建命名空间，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public void createNamespace(Namespace namespace, Map<String, String> metadata) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support createNamespace");
   }
 
+  /**
+   * 列出指定命名空间下的子命名空间：ROOT 级别列出所有 database，DATABASE 级别列出其下所有 schema。
+   *
+   * @param namespace 命名空间，必须解析到 ROOT 或 DATABASE 级别
+   * @return 子命名空间列表
+   * @throws IllegalArgumentException namespace 未解析到 ROOT 或 DATABASE 级别
+   */
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) {
     SnowflakeIdentifier scope = NamespaceHelpers.toSnowflakeIdentifier(namespace);
@@ -194,6 +234,14 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
     return results.stream().map(NamespaceHelpers::toIcebergNamespace).collect(Collectors.toList());
   }
 
+  /**
+   * 加载命名空间元数据：检查 database 或 schema 是否存在，存在则返回空映射（Snowflake 不暴露额外属性）。
+   *
+   * @param namespace 命名空间，必须解析到 DATABASE 或 SCHEMA 级别
+   * @return 空映射（当前不返回任何属性）
+   * @throws NoSuchNamespaceException 命名空间不存在
+   * @throws IllegalArgumentException namespace 未解析到 DATABASE 或 SCHEMA 级别
+   */
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
@@ -220,24 +268,36 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /** 当前不支持删除命名空间，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public boolean dropNamespace(Namespace namespace) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support dropNamespace");
   }
 
+  /** 当前不支持设置命名空间属性，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support setProperties");
   }
 
+  /** 当前不支持移除命名空间属性，抛出 {@link UnsupportedOperationException}。 */
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support removeProperties");
   }
 
+  /**
+   * 为指定表标识符构造 {@link SnowflakeTableOperations}。
+   *
+   * <p>逻辑：按配置选择 FileIO 实现（默认 ResolvingFileIO），每次创建独立 FileIO 实例 （因 S3FileIO 等会绑定单一 bucket），注册到
+   * closeableGroup 统一关闭，最后构造 {@link SnowflakeTableOperations}。
+   *
+   * @param tableIdentifier 表标识符
+   * @return 该表的 {@link TableOperations}
+   */
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
     String fileIOImpl = DEFAULT_FILE_IO_IMPL;
@@ -256,12 +316,14 @@ public class SnowflakeCatalog extends BaseMetastoreCatalog
     return new SnowflakeTableOperations(snowflakeClient, fileIO, catalogName, tableIdentifier);
   }
 
+  /** 当前不支持默认仓库路径，抛出 {@link UnsupportedOperationException}（表 location 由 Snowflake 管理）。 */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
     throw new UnsupportedOperationException(
         "SnowflakeCatalog does not currently support defaultWarehouseLocation");
   }
 
+  /** 注入 Hadoop 配置（实现 {@link Configurable}），供 FileIO 加载时使用。 */
   @Override
   public void setConf(Object conf) {
     this.conf = conf;

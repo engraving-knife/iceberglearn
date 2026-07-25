@@ -78,6 +78,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergFilesCommitter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestIcebergFilesCommitter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergFilesCommitter extends TableTestBase {
   private static final Configuration CONF = new Configuration();
@@ -87,6 +94,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
   private final FileFormat format;
   private final String branch;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "FileFormat = {0}, FormatVersion = {1}, branch = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -99,12 +107,14 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     };
   }
 
+  /** 辅助方法：TestIcebergFilesCommitter，Iceberg Files Committer。 */
   public TestIcebergFilesCommitter(String format, int formatVersion, String branch) {
     super(formatVersion);
     this.format = FileFormat.fromString(format);
     this.branch = branch;
   }
 
+  /** 辅助方法：setupTable，setup Table。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -125,6 +135,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
         .commit();
   }
 
+  /**
+   * 测试场景：Commit Txn Without Data Files。
+   *
+   * <p>验证该方法在 Commit Txn Without Data Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testCommitTxnWithoutDataFiles() throws Exception {
     long checkpointId = 0;
@@ -156,6 +171,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Max Continuous Empty Commits。
+   *
+   * <p>验证该方法在 Max Continuous Empty Commits 条件下的行为是否符合预期。
+   */
   @Test
   public void testMaxContinuousEmptyCommits() throws Exception {
     table.updateProperties().set(MAX_CONTINUOUS_EMPTY_COMMITS, "3").commit();
@@ -178,10 +198,16 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /** 辅助方法：of，of。 */
   private WriteResult of(DataFile dataFile) {
     return WriteResult.builder().addDataFiles(dataFile).build();
   }
 
+  /**
+   * 测试场景：Commit Txn。
+   *
+   * <p>验证该方法在 Commit Txn 条件下的行为是否符合预期。
+   */
   @Test
   public void testCommitTxn() throws Exception {
     // Test with 3 continues checkpoints:
@@ -225,6 +251,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Ordered Events Between Checkpoints。
+   *
+   * <p>验证该方法在 Ordered Events Between Checkpoints 条件下的行为是否符合预期。
+   */
   @Test
   public void testOrderedEventsBetweenCheckpoints() throws Exception {
     // It's possible that two checkpoints happen in the following orders:
@@ -278,6 +309,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Disordered Events Between Checkpoints。
+   *
+   * <p>验证该方法在 Disordered Events Between Checkpoints 条件下的行为是否符合预期。
+   */
   @Test
   public void testDisorderedEventsBetweenCheckpoints() throws Exception {
     // It's possible that the two checkpoints happen in the following orders:
@@ -331,6 +367,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Recovery From Valid Snapshot。
+   *
+   * <p>验证该方法在 Recovery From Valid Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testRecoveryFromValidSnapshot() throws Exception {
     long checkpointId = 0;
@@ -392,6 +433,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Recovery From Snapshot Without Completed Notification。
+   *
+   * <p>验证该方法在 Recovery From Snapshot Without Completed Notification 条件下的行为是否符合预期。
+   */
   @Test
   public void testRecoveryFromSnapshotWithoutCompletedNotification() throws Exception {
     // We've two steps in checkpoint: 1. snapshotState(ckp); 2. notifyCheckpointComplete(ckp). It's
@@ -490,6 +536,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Start Another Job To Write Same Table。
+   *
+   * <p>验证该方法在 Start Another Job To Write Same Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testStartAnotherJobToWriteSameTable() throws Exception {
     long checkpointId = 0;
@@ -557,6 +608,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Multiple Jobs Write Same Table。
+   *
+   * <p>验证该方法在 Multiple Jobs Write Same Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleJobsWriteSameTable() throws Exception {
     long timestamp = 0;
@@ -595,6 +651,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Multiple Sinks Recovery From Valid Snapshot。
+   *
+   * <p>验证该方法在 Multiple Sinks Recovery From Valid Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleSinksRecoveryFromValidSnapshot() throws Exception {
     long checkpointId = 0;
@@ -693,6 +754,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Bounded Stream。
+   *
+   * <p>验证该方法在 Bounded Stream 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedStream() throws Exception {
     JobID jobId = new JobID();
@@ -722,6 +788,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Flink Manifests。
+   *
+   * <p>验证该方法在 Flink Manifests 条件下的行为是否符合预期。
+   */
   @Test
   public void testFlinkManifests() throws Exception {
     long timestamp = 0;
@@ -766,6 +837,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Delete Files。
+   *
+   * <p>验证该方法在 Delete Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFiles() throws Exception {
     Assume.assumeFalse("Only support equality-delete in format v2.", formatVersion < 2);
@@ -835,6 +911,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Commit Two Checkpoints In Single Txn。
+   *
+   * <p>验证该方法在 Commit Two Checkpoints In Single Txn 条件下的行为是否符合预期。
+   */
   @Test
   public void testCommitTwoCheckpointsInSingleTxn() throws Exception {
     Assume.assumeFalse("Only support equality-delete in format v2.", formatVersion < 2);
@@ -888,6 +969,11 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Spec Evolution。
+   *
+   * <p>验证该方法在 Spec Evolution 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecEvolution() throws Exception {
     long timestamp = 0;
@@ -982,6 +1068,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     }
   }
 
+  /** 辅助方法：getStagingManifestSpecId，get Staging Manifest Spec Id。 */
   private int getStagingManifestSpecId(OperatorStateStore operatorStateStore, long checkPointId)
       throws Exception {
     ListState<SortedMap<Long, byte[]>> checkpointsState =
@@ -994,12 +1081,14 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     return deltaManifests.dataManifest().partitionSpecId();
   }
 
+  /** 辅助方法：writeEqDeleteFile，write Eq Delete File。 */
   private DeleteFile writeEqDeleteFile(
       FileAppenderFactory<RowData> appenderFactory, String filename, List<RowData> deletes)
       throws IOException {
     return SimpleDataUtil.writeEqDeleteFile(table, format, filename, appenderFactory, deletes);
   }
 
+  /** 辅助方法：writePosDeleteFile，write Pos Delete File。 */
   private DeleteFile writePosDeleteFile(
       FileAppenderFactory<RowData> appenderFactory,
       String filename,
@@ -1008,6 +1097,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     return SimpleDataUtil.writePosDeleteFile(table, format, filename, appenderFactory, positions);
   }
 
+  /** 辅助方法：createDeletableAppenderFactory，create Deletable Appender Factory。 */
   private FileAppenderFactory<RowData> createDeletableAppenderFactory() {
     int[] equalityFieldIds =
         new int[] {
@@ -1024,6 +1114,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
         null);
   }
 
+  /** 辅助方法：createTestingManifestFile，create Testing Manifest File。 */
   private ManifestFile createTestingManifestFile(Path manifestPath) {
     return new GenericManifestFile(
         manifestPath.toAbsolutePath().toString(),
@@ -1043,6 +1134,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
         null);
   }
 
+  /** 辅助方法：assertFlinkManifests，assert Flink Manifests。 */
   private List<Path> assertFlinkManifests(int expectedCount) throws IOException {
     List<Path> manifests =
         Files.list(flinkManifestFolder.toPath())
@@ -1055,6 +1147,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     return manifests;
   }
 
+  /** 辅助方法：writeDataFile，write Data File。 */
   private DataFile writeDataFile(String filename, List<RowData> rows) throws IOException {
     return SimpleDataUtil.writeFile(
         table,
@@ -1066,6 +1159,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
         rows);
   }
 
+  /** 辅助方法：writeDataFile，write Data File。 */
   private DataFile writeDataFile(
       String filename, List<RowData> rows, PartitionSpec spec, StructLike partition)
       throws IOException {
@@ -1080,6 +1174,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
         partition);
   }
 
+  /** 辅助方法：assertMaxCommittedCheckpointId，assert Max Committed Checkpoint Id。 */
   private void assertMaxCommittedCheckpointId(JobID jobID, OperatorID operatorID, long expectedId) {
     table.refresh();
     long actualId =
@@ -1088,17 +1183,20 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     Assert.assertEquals(expectedId, actualId);
   }
 
+  /** 辅助方法：assertSnapshotSize，assert Snapshot Size。 */
   private void assertSnapshotSize(int expectedSnapshotSize) {
     table.refresh();
     Assert.assertEquals(expectedSnapshotSize, Lists.newArrayList(table.snapshots()).size());
   }
 
+  /** 辅助方法：createStreamSink，create Stream Sink。 */
   private OneInputStreamOperatorTestHarness<WriteResult, Void> createStreamSink(JobID jobID)
       throws Exception {
     TestOperatorFactory factory = TestOperatorFactory.of(table.location(), branch, table.spec());
     return new OneInputStreamOperatorTestHarness<>(factory, createEnvironment(jobID));
   }
 
+  /** 辅助方法：createEnvironment，create Environment。 */
   private static MockEnvironment createEnvironment(JobID jobID) {
     return new MockEnvironmentBuilder()
         .setTaskName("test task")
@@ -1118,16 +1216,19 @@ public class TestIcebergFilesCommitter extends TableTestBase {
     private final String branch;
     private final PartitionSpec spec;
 
+    /** 辅助方法：TestOperatorFactory，Operator Factory。 */
     private TestOperatorFactory(String tablePath, String branch, PartitionSpec spec) {
       this.tablePath = tablePath;
       this.branch = branch;
       this.spec = spec;
     }
 
+    /** 辅助方法：of，of。 */
     private static TestOperatorFactory of(String tablePath, String branch, PartitionSpec spec) {
       return new TestOperatorFactory(tablePath, branch, spec);
     }
 
+    /** 辅助方法：createStreamOperator，create Stream Operator。 */
     @Override
     @SuppressWarnings("unchecked")
     public <T extends StreamOperator<Void>> T createStreamOperator(
@@ -1144,6 +1245,7 @@ public class TestIcebergFilesCommitter extends TableTestBase {
       return (T) committer;
     }
 
+    /** 辅助方法：getStreamOperatorClass，get Stream Operator Class。 */
     @Override
     public Class<? extends StreamOperator> getStreamOperatorClass(ClassLoader classLoader) {
       return IcebergFilesCommitter.class;

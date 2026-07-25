@@ -28,13 +28,36 @@ import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
 
 /**
- * DataStatisticsUtil is the utility to serialize and deserialize {@link DataStatistics} and {@link
- * AggregatedStatistics}
+ * 文件级说明：数据统计的序列化/反序列化工具类。
+ *
+ * <p>所属模块：iceberg-flink（sink/shuffle 子包），提供 {@link DataStatistics} 和 {@link AggregatedStatistics}
+ * 的序列化与反序列化方法。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>序列化/反序列化 {@link DataStatistics}（使用 Flink TypeSerializer）。
+ *   <li>序列化/反序列化 {@link AggregatedStatistics}（含 checkpointId + 统计数据）。
+ *   <li>序列化/反序列化 {@link DataStatisticsEvent}（OperatorEvent 载荷）。
+ * </ul>
+ *
+ * <p>设计意图：统一封装序列化逻辑，供 {@link DataStatisticsOperator} 和 {@link DataStatisticsCoordinator}
+ * 在事件传输时使用。使用 Flink 的 DataOutputSerializer/DataInputDeserializer 做高效序列化。
+ *
+ * <p>上下游关系：被 {@link DataStatisticsOperator}、{@link DataStatisticsCoordinator} 和 {@link
+ * DataStatisticsEvent} 调用。
  */
 class DataStatisticsUtil {
 
   private DataStatisticsUtil() {}
 
+  /**
+   * 序列化 {@link DataStatistics} 为字节数组。
+   *
+   * @param dataStatistics 数据统计
+   * @param statisticsSerializer 序列化器
+   * @return 序列化后的字节数组
+   */
   static <D extends DataStatistics<D, S>, S> byte[] serializeDataStatistics(
       DataStatistics<D, S> dataStatistics,
       TypeSerializer<DataStatistics<D, S>> statisticsSerializer) {
@@ -48,6 +71,13 @@ class DataStatisticsUtil {
   }
 
   @SuppressWarnings("unchecked")
+  /**
+   * 反序列化字节数组为 {@link DataStatistics}。
+   *
+   * @param bytes 字节数组
+   * @param statisticsSerializer 序列化器
+   * @return 反序列化后的数据统计
+   */
   static <D extends DataStatistics<D, S>, S> D deserializeDataStatistics(
       byte[] bytes, TypeSerializer<DataStatistics<D, S>> statisticsSerializer) {
     DataInputDeserializer input = new DataInputDeserializer(bytes, 0, bytes.length);
@@ -58,6 +88,14 @@ class DataStatisticsUtil {
     }
   }
 
+  /**
+   * 序列化 {@link AggregatedStatistics} 为字节数组（含 checkpointId + 统计数据）。
+   *
+   * @param aggregatedStatistics 聚合统计
+   * @param statisticsSerializer 序列化器
+   * @return 序列化后的字节数组
+   * @throws IOException 序列化失败时抛出
+   */
   static <D extends DataStatistics<D, S>, S> byte[] serializeAggregatedStatistics(
       AggregatedStatistics<D, S> aggregatedStatistics,
       TypeSerializer<DataStatistics<D, S>> statisticsSerializer)

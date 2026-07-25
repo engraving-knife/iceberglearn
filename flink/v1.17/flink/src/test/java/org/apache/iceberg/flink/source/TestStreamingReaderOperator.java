@@ -52,6 +52,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestStreamingReaderOperator 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestStreamingReaderOperator 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestStreamingReaderOperator extends TableTestBase {
 
@@ -61,15 +69,18 @@ public class TestStreamingReaderOperator extends TableTestBase {
           Types.NestedField.required(2, "data", Types.StringType.get()));
   private static final FileFormat DEFAULT_FORMAT = FileFormat.PARQUET;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "FormatVersion={0}")
   public static Iterable<Object[]> parameters() {
     return ImmutableList.of(new Object[] {1}, new Object[] {2});
   }
 
+  /** 辅助方法：TestStreamingReaderOperator，Streaming Reader Operator。 */
   public TestStreamingReaderOperator(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setupTable，setup Table。 */
   @Before
   @Override
   public void setupTable() throws IOException {
@@ -81,6 +92,11 @@ public class TestStreamingReaderOperator extends TableTestBase {
     table = create(SCHEMA, PartitionSpec.unpartitioned());
   }
 
+  /**
+   * 测试场景：Process All Records。
+   *
+   * <p>验证该方法在 Process All Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testProcessAllRecords() throws Exception {
     List<List<Record>> expectedRecords = generateRecordsAndCommitTxn(10);
@@ -109,6 +125,11 @@ public class TestStreamingReaderOperator extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Trigger Checkpoint。
+   *
+   * <p>验证该方法在 Trigger Checkpoint 条件下的行为是否符合预期。
+   */
   @Test
   public void testTriggerCheckpoint() throws Exception {
     // Received emitted splits: split1, split2, split3, checkpoint request is triggered when reading
@@ -150,6 +171,11 @@ public class TestStreamingReaderOperator extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Checkpoint Restore。
+   *
+   * <p>验证该方法在 Checkpoint Restore 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointRestore() throws Exception {
     List<List<Record>> expectedRecords = generateRecordsAndCommitTxn(15);
@@ -208,6 +234,7 @@ public class TestStreamingReaderOperator extends TableTestBase {
     }
   }
 
+  /** 辅助方法：readOutputValues，read Output Values。 */
   private List<Row> readOutputValues(
       OneInputStreamOperatorTestHarness<FlinkInputSplit, RowData> harness) {
     List<Row> results = Lists.newArrayList();
@@ -217,6 +244,7 @@ public class TestStreamingReaderOperator extends TableTestBase {
     return results;
   }
 
+  /** 辅助方法：generateRecordsAndCommitTxn，generate Records And Commit Txn。 */
   private List<List<Record>> generateRecordsAndCommitTxn(int commitTimes) throws IOException {
     List<List<Record>> expectedRecords = Lists.newArrayList();
     for (int i = 0; i < commitTimes; i++) {
@@ -229,11 +257,13 @@ public class TestStreamingReaderOperator extends TableTestBase {
     return expectedRecords;
   }
 
+  /** 辅助方法：writeRecords，write Records。 */
   private void writeRecords(List<Record> records) throws IOException {
     GenericAppenderHelper appender = new GenericAppenderHelper(table, DEFAULT_FORMAT, temp);
     appender.appendToTable(records);
   }
 
+  /** 辅助方法：generateSplits，generate Splits。 */
   private List<FlinkInputSplit> generateSplits() {
     List<FlinkInputSplit> inputSplits = Lists.newArrayList();
 
@@ -260,6 +290,7 @@ public class TestStreamingReaderOperator extends TableTestBase {
     return inputSplits;
   }
 
+  /** 辅助方法：createReader，create Reader。 */
   private OneInputStreamOperatorTestHarness<FlinkInputSplit, RowData> createReader()
       throws Exception {
     // This input format is used to opening the emitted split.
@@ -277,6 +308,7 @@ public class TestStreamingReaderOperator extends TableTestBase {
     return harness;
   }
 
+  /** 辅助方法：createLocalMailbox，create Local Mailbox。 */
   private SteppingMailboxProcessor createLocalMailbox(
       OneInputStreamOperatorTestHarness<FlinkInputSplit, RowData> harness) {
     return new SteppingMailboxProcessor(

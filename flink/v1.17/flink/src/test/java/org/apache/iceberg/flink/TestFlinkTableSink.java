@@ -56,6 +56,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkTableSink 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkTableSink 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFlinkTableSink extends FlinkCatalogTestBase {
 
@@ -75,6 +82,7 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
 
   @Parameterized.Parameters(
       name = "catalogName={0}, baseNamespace={1}, format={2}, isStreaming={3}")
+  /** 辅助方法：parameters，parameters。 */
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
     for (FileFormat format :
@@ -90,6 +98,7 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     return parameters;
   }
 
+  /** 辅助方法：TestFlinkTableSink，Flink Table Sink。 */
   public TestFlinkTableSink(
       String catalogName, Namespace baseNamespace, FileFormat format, Boolean isStreamingJob) {
     super(catalogName, baseNamespace);
@@ -97,6 +106,7 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     this.isStreamingJob = isStreamingJob;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
@@ -120,6 +130,7 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     return tEnv;
   }
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -133,6 +144,7 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     icebergTable = validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, TABLE_NAME));
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -142,6 +154,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Insert From Source Table。
+   *
+   * <p>验证该方法在 Insert From Source Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertFromSourceTable() throws Exception {
     // Register the rows into a temporary table.
@@ -169,6 +186,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
             SimpleDataUtil.createRecord(null, "bar")));
   }
 
+  /**
+   * 测试场景：Overwrite Table。
+   *
+   * <p>验证该方法在 Overwrite Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testOverwriteTable() throws Exception {
     Assume.assumeFalse(
@@ -183,6 +205,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
         icebergTable, Lists.newArrayList(SimpleDataUtil.createRecord(2, "b")));
   }
 
+  /**
+   * 测试场景：Write Parallelism。
+   *
+   * <p>验证该方法在 Write Parallelism 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteParallelism() throws Exception {
     List<Row> dataSet =
@@ -218,6 +245,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
                     input.getParallelism()));
   }
 
+  /**
+   * 测试场景：Replace Partitions。
+   *
+   * <p>验证该方法在 Replace Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testReplacePartitions() throws Exception {
     Assume.assumeFalse(
@@ -265,6 +297,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Insert Into Partition。
+   *
+   * <p>验证该方法在 Insert Into Partition 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertIntoPartition() throws Exception {
     String tableName = "test_insert_into_partition";
@@ -305,6 +342,11 @@ public class TestFlinkTableSink extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Hash Distribute Mode。
+   *
+   * <p>验证该方法在 Hash Distribute Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testHashDistributeMode() throws Exception {
     String tableName = "test_hash_distribution_mode";

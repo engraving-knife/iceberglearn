@@ -26,6 +26,13 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.transforms.PartitionSpecVisitor;
 
+/**
+ * Bucket 分区工具类，计算桶分区的辅助方法。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：提供根据分桶列与桶数计算桶 ID 的工具方法。
+ *
+ * <p>设计意图：工具类 + 静态方法；被 BucketPartitioner 调用。
+ */
 final class BucketPartitionerUtil {
   static final String BAD_NUMBER_OF_BUCKETS_ERROR_MESSAGE =
       "Invalid number of buckets: %s (must be 1)";

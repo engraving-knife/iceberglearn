@@ -49,10 +49,22 @@ import org.apache.iceberg.types.Types.StructType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestPredicateBinding 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestPredicateBinding 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestPredicateBinding {
   private static final List<Expression.Operation> COMPARISONS =
       Arrays.asList(LT, LT_EQ, GT, GT_EQ, EQ, NOT_EQ);
 
+  /**
+   * 测试场景：Multiple Fields。
+   *
+   * <p>验证该方法在 Multiple Fields 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleFields() {
     StructType struct =
@@ -74,6 +86,11 @@ public class TestPredicateBinding {
         .isEqualTo(6);
   }
 
+  /**
+   * 测试场景：Missing Field。
+   *
+   * <p>验证该方法在 Missing Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingField() {
     StructType struct = StructType.of(required(13, "x", Types.IntegerType.get()));
@@ -84,6 +101,11 @@ public class TestPredicateBinding {
         .hasMessageContaining("Cannot find field 'missing' in struct:");
   }
 
+  /**
+   * 测试场景：Comparison Predicate Binding。
+   *
+   * <p>验证该方法在 Comparison Predicate Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testComparisonPredicateBinding() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -103,6 +125,11 @@ public class TestPredicateBinding {
     }
   }
 
+  /**
+   * 测试场景：Predicate Binding For String Prefix Comparisons。
+   *
+   * <p>验证该方法在 Predicate Binding For String Prefix Comparisons 条件下的行为是否符合预期。
+   */
   @Test
   public void testPredicateBindingForStringPrefixComparisons() {
     StructType struct = StructType.of(required(17, "x", Types.StringType.get()));
@@ -122,6 +149,11 @@ public class TestPredicateBinding {
     }
   }
 
+  /**
+   * 测试场景：Literal Conversion。
+   *
+   * <p>验证该方法在 Literal Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLiteralConversion() {
     StructType struct = StructType.of(required(15, "d", Types.DecimalType.of(9, 2)));
@@ -140,6 +172,11 @@ public class TestPredicateBinding {
     }
   }
 
+  /**
+   * 测试场景：Invalid Conversions。
+   *
+   * <p>验证该方法在 Invalid Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidConversions() {
     StructType struct = StructType.of(required(16, "f", Types.FloatType.get()));
@@ -153,6 +190,11 @@ public class TestPredicateBinding {
     }
   }
 
+  /**
+   * 测试场景：Long To Integer Conversion。
+   *
+   * <p>验证该方法在 Long To Integer Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongToIntegerConversion() {
     StructType struct = StructType.of(required(17, "i", Types.IntegerType.get()));
@@ -235,6 +277,11 @@ public class TestPredicateBinding {
         .isEqualTo(Integer.MIN_VALUE);
   }
 
+  /**
+   * 测试场景：Double To Float Conversion。
+   *
+   * <p>验证该方法在 Double To Float Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleToFloatConversion() {
     StructType struct = StructType.of(required(18, "f", Types.FloatType.get()));
@@ -319,6 +366,11 @@ public class TestPredicateBinding {
         .isEqualTo(-Float.MAX_VALUE);
   }
 
+  /**
+   * 测试场景：Is Null。
+   *
+   * <p>验证该方法在 Is Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNull() {
     StructType optional = StructType.of(optional(19, "s", Types.StringType.get()));
@@ -336,6 +388,11 @@ public class TestPredicateBinding {
         .isEqualTo(Expressions.alwaysFalse());
   }
 
+  /**
+   * 测试场景：Not Null。
+   *
+   * <p>验证该方法在 Not Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNull() {
     StructType optional = StructType.of(optional(21, "s", Types.StringType.get()));
@@ -353,6 +410,11 @@ public class TestPredicateBinding {
         .isEqualTo(Expressions.alwaysTrue());
   }
 
+  /**
+   * 测试场景：Is Na N。
+   *
+   * <p>验证该方法在 Is Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaN() {
     // double
@@ -382,6 +444,11 @@ public class TestPredicateBinding {
         .hasMessage("IsNaN cannot be used with a non-floating-point column");
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     // double
@@ -411,6 +478,11 @@ public class TestPredicateBinding {
         .hasMessage("NotNaN cannot be used with a non-floating-point column");
   }
 
+  /**
+   * 测试场景：In Predicate Binding。
+   *
+   * <p>验证该方法在 In Predicate Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testInPredicateBinding() {
     StructType struct =
@@ -435,6 +507,11 @@ public class TestPredicateBinding {
         .isEqualTo(new Integer[] {6, 7, 11});
   }
 
+  /**
+   * 测试场景：In Predicate Binding Conversion。
+   *
+   * <p>验证该方法在 In Predicate Binding Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testInPredicateBindingConversion() {
     StructType struct = StructType.of(required(15, "d", Types.DecimalType.of(9, 2)));
@@ -455,6 +532,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should not change the IN operation").isEqualTo(IN);
   }
 
+  /**
+   * 测试场景：In To Eq Predicate。
+   *
+   * <p>验证该方法在 In To Eq Predicate 条件下的行为是否符合预期。
+   */
   @Test
   public void testInToEqPredicate() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -477,6 +559,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should change the operation from IN to EQ").isEqualTo(EQ);
   }
 
+  /**
+   * 测试场景：In Predicate Binding Conversion To Eq。
+   *
+   * <p>验证该方法在 In Predicate Binding Conversion To Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testInPredicateBindingConversionToEq() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -497,6 +584,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should change the IN operation to EQ").isEqualTo(EQ);
   }
 
+  /**
+   * 测试场景：In Predicate Binding Conversion Dedup To Eq。
+   *
+   * <p>验证该方法在 In Predicate Binding Conversion Dedup To Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testInPredicateBindingConversionDedupToEq() {
     StructType struct = StructType.of(required(15, "d", Types.DecimalType.of(9, 2)));
@@ -513,6 +605,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should change the IN operation to EQ").isEqualTo(EQ);
   }
 
+  /**
+   * 测试场景：In Predicate Binding Conversion To Expression。
+   *
+   * <p>验证该方法在 In Predicate Binding Conversion To Expression 条件下的行为是否符合预期。
+   */
   @Test
   public void testInPredicateBindingConversionToExpression() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -528,6 +625,11 @@ public class TestPredicateBinding {
         .isEqualTo(Expressions.alwaysFalse());
   }
 
+  /**
+   * 测试场景：Not In Predicate Binding。
+   *
+   * <p>验证该方法在 Not In Predicate Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInPredicateBinding() {
     StructType struct =
@@ -552,6 +654,11 @@ public class TestPredicateBinding {
         .isEqualTo(new Integer[] {6, 7, 11});
   }
 
+  /**
+   * 测试场景：Not In Predicate Binding Conversion。
+   *
+   * <p>验证该方法在 Not In Predicate Binding Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInPredicateBindingConversion() {
     StructType struct = StructType.of(required(15, "d", Types.DecimalType.of(9, 2)));
@@ -572,6 +679,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should not change the NOT_IN operation").isEqualTo(NOT_IN);
   }
 
+  /**
+   * 测试场景：Not In To Not Eq Predicate。
+   *
+   * <p>验证该方法在 Not In To Not Eq Predicate 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInToNotEqPredicate() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -598,6 +710,11 @@ public class TestPredicateBinding {
         .isEqualTo(NOT_EQ);
   }
 
+  /**
+   * 测试场景：Not In Predicate Binding Conversion To Not Eq。
+   *
+   * <p>验证该方法在 Not In Predicate Binding Conversion To Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInPredicateBindingConversionToNotEq() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));
@@ -618,6 +735,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should change the NOT_IN operation to NOT_EQ").isEqualTo(NOT_EQ);
   }
 
+  /**
+   * 测试场景：Not In Predicate Binding Conversion Dedup To Not Eq。
+   *
+   * <p>验证该方法在 Not In Predicate Binding Conversion Dedup To Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInPredicateBindingConversionDedupToNotEq() {
     StructType struct = StructType.of(required(15, "d", Types.DecimalType.of(9, 2)));
@@ -634,6 +756,11 @@ public class TestPredicateBinding {
     assertThat(bound.op()).as("Should change the NOT_IN operation to NOT_EQ").isEqualTo(NOT_EQ);
   }
 
+  /**
+   * 测试场景：Not In Predicate Binding Conversion To Expression。
+   *
+   * <p>验证该方法在 Not In Predicate Binding Conversion To Expression 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotInPredicateBindingConversionToExpression() {
     StructType struct = StructType.of(required(14, "x", Types.IntegerType.get()));

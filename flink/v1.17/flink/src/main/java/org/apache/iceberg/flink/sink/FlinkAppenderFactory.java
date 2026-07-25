@@ -48,6 +48,25 @@ import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 文件级说明：Flink RowData 的文件 Appender 工厂实现。
+ *
+ * <p>所属模块：iceberg-flink（sink 子包），实现 Iceberg 的 {@link FileAppenderFactory} 接口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>创建数据文件 writer（支持 Avro/ORC/Parquet 三种格式）。
+ *   <li>创建 equality delete writer（用于 UPSERT/CDC 场景的等值删除）。
+ *   <li>创建 position delete writer（用于按位置删除）。
+ * </ul>
+ *
+ * <p>设计意图：通过 switch(format) 分发到不同格式的 writer 构建逻辑， 每种格式委托对应的 Flink writer（{@link
+ * FlinkAvroWriter}/{@link FlinkOrcWriter}/{@link FlinkParquetWriters}）。 delete schema 的 Flink
+ * 类型懒加载转换，避免不必要的转换开销。
+ *
+ * <p>上下游关系：被 {@link TaskWriterFactory} 用于创建底层文件写入器； 内部委托 {@link FlinkSchemaUtil} 做 schema 转换。
+ */
 public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Serializable {
   private final Schema schema;
   private final RowType flinkSchema;
@@ -61,6 +80,18 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
   private RowType eqDeleteFlinkSchema = null;
   private RowType posDeleteFlinkSchema = null;
 
+  /**
+   * 构造方法。
+   *
+   * @param table Iceberg 表
+   * @param schema 表 schema
+   * @param flinkSchema Flink 行类型
+   * @param props 表属性
+   * @param spec 分区规范
+   * @param equalityFieldIds equality 字段 id 数组
+   * @param eqDeleteRowSchema equality delete 行 schema
+   * @param posDeleteRowSchema position delete 行 schema
+   */
   public FlinkAppenderFactory(
       Table table,
       Schema schema,
@@ -81,6 +112,7 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
     this.posDeleteRowSchema = posDeleteRowSchema;
   }
 
+  /** 懒加载 equality delete 的 Flink RowType。 */
   private RowType lazyEqDeleteFlinkSchema() {
     if (eqDeleteFlinkSchema == null) {
       Preconditions.checkNotNull(eqDeleteRowSchema, "Equality delete row schema shouldn't be null");
@@ -89,6 +121,7 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
     return eqDeleteFlinkSchema;
   }
 
+  /** 懒加载 position delete 的 Flink RowType。 */
   private RowType lazyPosDeleteFlinkSchema() {
     if (posDeleteFlinkSchema == null) {
       Preconditions.checkNotNull(posDeleteRowSchema, "Pos-delete row schema shouldn't be null");
@@ -97,6 +130,15 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
     return this.posDeleteFlinkSchema;
   }
 
+  /**
+   * 创建数据文件 appender。
+   *
+   * <p>逻辑：按 format 分发到 Avro/ORC/Parquet 的 write 链，设置 schema、metrics、属性等， 委托对应的 Flink writer 构建函数。
+   *
+   * @param outputFile 输出文件
+   * @param format 文件格式
+   * @return 文件 appender
+   */
   @Override
   public FileAppender<RowData> newAppender(OutputFile outputFile, FileFormat format) {
     MetricsConfig metricsConfig = MetricsConfig.forTable(table);
@@ -138,6 +180,14 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
     }
   }
 
+  /**
+   * 创建数据 writer（包装 appender + 分区信息 + 加密元数据）。
+   *
+   * @param file 加密输出文件
+   * @param format 文件格式
+   * @param partition 分区值
+   * @return DataWriter 实例
+   */
   @Override
   public DataWriter<RowData> newDataWriter(
       EncryptedOutputFile file, FileFormat format, StructLike partition) {
@@ -150,6 +200,17 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
         file.keyMetadata());
   }
 
+  /**
+   * 创建 equality delete writer。
+   *
+   * <p>逻辑：校验 equalityFieldIds 非空 → 按 format 分发到 Avro/ORC/Parquet 的 writeDeletes 链， 设置 equality
+   * field ids、delete schema、分区等，构建 equality delete writer。
+   *
+   * @param outputFile 加密输出文件
+   * @param format 文件格式
+   * @param partition 分区值
+   * @return EqualityDeleteWriter 实例
+   */
   @Override
   public EqualityDeleteWriter<RowData> newEqDeleteWriter(
       EncryptedOutputFile outputFile, FileFormat format, StructLike partition) {
@@ -213,6 +274,17 @@ public class FlinkAppenderFactory implements FileAppenderFactory<RowData>, Seria
     }
   }
 
+  /**
+   * 创建 position delete writer。
+   *
+   * <p>逻辑：按 format 分发到 Avro/ORC/Parquet 的 writeDeletes 链，设置 position delete schema、 分区等。ORC 和
+   * Parquet 额外处理 path 转换（转为 StringData）。
+   *
+   * @param outputFile 加密输出文件
+   * @param format 文件格式
+   * @param partition 分区值
+   * @return PositionDeleteWriter 实例
+   */
   @Override
   public PositionDeleteWriter<RowData> newPosDeleteWriter(
       EncryptedOutputFile outputFile, FileFormat format, StructLike partition) {

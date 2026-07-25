@@ -31,8 +31,20 @@ import org.apache.spark.sql.connector.write.RowLevelOperation
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.types.StructType
 
+/**
+ * Spark Catalyst 分析阶段的规则或检查的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：特质 RewriteRowLevelIcebergCommand。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+ */
 trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   protected def buildWriteDeltaProjections(
       plan: LogicalPlan,
       rowAttrs: Seq[Attribute],
@@ -57,6 +69,10 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
   }
 
   // the projection is done by name, ignoring expr IDs
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def newLazyProjection(
       plan: LogicalPlan,
       projectedAttrs: Seq[Attribute]): ProjectingInternalRow = {
@@ -66,6 +82,10 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
     ProjectingInternalRow(schema, projectedOrdinals)
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   protected def resolveRowIdAttrs(
       relation: DataSourceV2Relation,
       operation: RowLevelOperation): Seq[AttributeReference] = {

@@ -22,13 +22,36 @@ import java.io.Serializable;
 import org.apache.iceberg.relocated.com.google.common.base.Objects;
 import org.apache.iceberg.transforms.Transform;
 
-/** Represents a single field in a {@link PartitionSpec}. */
+/**
+ * 表示 {@link PartitionSpec} 中的单个分区字段。
+ *
+ * <p>所属模块：iceberg-api（分区抽象层）。
+ *
+ * <p>职责：把一个源 schema 字段通过 {@link Transform} 映射为一个分区字段，记录其来源字段 ID、 分区字段 ID、名称与所用变换。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>分区字段 ID 在表的所有 partition spec 中全局唯一，从 1000 起分配，便于跨 spec 引用。
+ *   <li>{@link #equals(Object)} 中对 transform 的比较使用其字符串形式而非引用，以兼容 不同实例但语义相同的 transform。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link PartitionSpec} 持有；被扫描规划、分区值计算、文件写入等模块使用。
+ */
 public class PartitionField implements Serializable {
   private final int sourceId;
   private final int fieldId;
   private final String name;
   private final Transform<?, ?> transform;
 
+  /**
+   * 构造分区字段。
+   *
+   * @param sourceId 源 schema 字段 ID
+   * @param fieldId 分区字段 ID（全表唯一）
+   * @param name 分区字段名
+   * @param transform 由源值生成分区值的变换
+   */
   PartitionField(int sourceId, int fieldId, String name, Transform<?, ?> transform) {
     this.sourceId = sourceId;
     this.fieldId = fieldId;
@@ -36,22 +59,22 @@ public class PartitionField implements Serializable {
     this.transform = transform;
   }
 
-  /** Returns the field id of the source field in the {@link PartitionSpec spec's} table schema. */
+  /** 返回本分区字段在表 schema 中对应的源字段 ID。 */
   public int sourceId() {
     return sourceId;
   }
 
-  /** Returns the partition field id across all the table metadata's partition specs. */
+  /** 返回分区字段 ID（在表所有 partition spec 中全局唯一）。 */
   public int fieldId() {
     return fieldId;
   }
 
-  /** Returns the name of this partition field. */
+  /** 返回分区字段名。 */
   public String name() {
     return name;
   }
 
-  /** Returns the transform used to produce partition values from source values. */
+  /** 返回由源值生成分区值所使用的 {@link Transform}。 */
   public Transform<?, ?> transform() {
     return transform;
   }
@@ -61,6 +84,11 @@ public class PartitionField implements Serializable {
     return fieldId + ": " + name + ": " + transform + "(" + sourceId + ")";
   }
 
+  /**
+   * 相等性判断：sourceId、fieldId、name 相等且 transform 的字符串形式相等。
+   *
+   * <p>设计要点：transform 比较使用 toString 而非引用相等，以使不同实例但语义相同的 transform 也被认为相等。
+   */
   @Override
   public boolean equals(Object other) {
     if (this == other) {

@@ -25,6 +25,15 @@ import org.apache.spark.sql.connector.read.Scan;
 import org.apache.spark.sql.connector.read.ScanBuilder;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：暂存扫描构建器，构建 SparkStagedScan。
+ *
+ * <p>设计意图：实现 ScanBuilder，面向分阶段写入的暂存数据。
+ *
+ * <p>上下游关系：由 StagedSparkTable 使用。
+ */
 class SparkStagedScanBuilder implements ScanBuilder {
 
   private final SparkSession spark;
@@ -36,7 +45,7 @@ class SparkStagedScanBuilder implements ScanBuilder {
     this.table = table;
     this.readConf = new SparkReadConf(spark, table, options);
   }
-
+  /** 构建目标对象。 */
   @Override
   public Scan build() {
     return new SparkStagedScan(spark, table, readConf);

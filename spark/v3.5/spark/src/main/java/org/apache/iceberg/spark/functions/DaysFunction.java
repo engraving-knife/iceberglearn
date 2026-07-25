@@ -29,12 +29,31 @@ import org.apache.spark.sql.types.TimestampNTZType;
 import org.apache.spark.sql.types.TimestampType;
 
 /**
- * A Spark function implementation for the Iceberg day transform.
+ * Iceberg day 变换的 Spark 函数实现。
  *
- * <p>Example usage: {@code SELECT system.days('source_col')}.
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），functions 子包。
+ *
+ * <p>职责：把 date/timestamp 列转换为按天分区的日期值（自 1970-01-01 起的天数）， 对应 Iceberg 的 day transform，用于分区计算。
+ *
+ * <p>设计意图：作为未绑定函数（{@link UnaryUnboundFunction}），在 bind 阶段根据输入类型 返回对应的
+ * BoundFunction（Date/Timestamp/TimestampNTZ），各自提供 magic method 用于 Spark codegen。 Spark 与 Iceberg 内部
+ * date 表示一致，date 分支直接透传；timestamp 用 {@link DateTimeUtil#microsToDays} 转换。
+ *
+ * <p>上下游关系：由 {@link SparkFunctions} 注册并通过 system 命名空间暴露；被 Spark SQL 调用。
+ *
+ * <p>示例：{@code SELECT system.days('source_col')}
  */
 public class DaysFunction extends UnaryUnboundFunction {
 
+  /**
+   * 根据输入类型绑定具体实现。
+   *
+   * <p>逻辑：DateType -> DateToDaysFunction，TimestampType -> TimestampToDaysFunction， TimestampNTZType
+   * -> TimestampNtzToDaysFunction，其余抛出 UnsupportedOperationException。
+   *
+   * @param valueType 输入列类型
+   * @return 对应的 BoundFunction
+   */
   @Override
   protected BoundFunction doBind(DataType valueType) {
     if (valueType instanceof DateType) {
@@ -49,6 +68,7 @@ public class DaysFunction extends UnaryUnboundFunction {
     }
   }
 
+  /** 返回函数描述，含用法说明。 */
   @Override
   public String description() {
     return name()
@@ -56,40 +76,49 @@ public class DaysFunction extends UnaryUnboundFunction {
         + "  col :: source column (must be date or timestamp)";
   }
 
+  /** 返回函数名 "days"。 */
   @Override
   public String name() {
     return "days";
   }
 
+  /** days 函数的抽象基类，统一 name 与 resultType（DateType）。 */
   private abstract static class BaseToDaysFunction implements ScalarFunction<Integer> {
+    /** 返回名称。 */
     @Override
     public String name() {
       return "days";
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.DateType;
     }
   }
 
+  /**
+   * date -> days 的绑定实现。
+   *
+   * <p>设计要点：Spark 与 Iceberg 内部 date 表示一致，invoke 直接透传；提供 magic method {@link #invoke(int)} 供 Spark
+   * codegen 内联调用。
+   */
   // Spark and Iceberg internal representations of dates match so no transformation is required
   public static class DateToDaysFunction extends BaseToDaysFunction {
     // magic method used in codegen
     public static int invoke(int days) {
       return days;
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.DateType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.days(date)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -97,22 +126,23 @@ public class DaysFunction extends UnaryUnboundFunction {
     }
   }
 
+  /** timestamp(带时区) -> days 的绑定实现，用 {@link DateTimeUtil#microsToDays} 转换。 */
   public static class TimestampToDaysFunction extends BaseToDaysFunction {
     // magic method used in codegen
     public static int invoke(long micros) {
       return DateTimeUtil.microsToDays(micros);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.days(timestamp)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -120,22 +150,23 @@ public class DaysFunction extends UnaryUnboundFunction {
     }
   }
 
+  /** timestamp_ntz(无时区) -> days 的绑定实现，同样用 {@link DateTimeUtil#microsToDays} 转换。 */
   public static class TimestampNtzToDaysFunction extends BaseToDaysFunction {
     // magic method used in codegen
     public static int invoke(long micros) {
       return DateTimeUtil.microsToDays(micros);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampNTZType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.days(timestamp_ntz)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen

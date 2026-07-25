@@ -22,13 +22,29 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * 表示 ALTER TABLE ... SET IDENTIFIER FIELDS 语句的逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions（Spark v3.5 扩展模块），位于 Spark Catalyst 逻辑计划层。
+ *
+ * <p>职责：记录要为指定 Iceberg 表设置的标识字段（identifier fields）名称列表，
+ * 作为该 DDL 解析后的逻辑命令叶子节点。
+ *
+ * <p>设计意图：把"设置标识字段"建模为无输出的 LeafCommand，由执行层调用 Iceberg
+ * {@code updateSchema().setIdentifierFields(...)} 提交变更。Set 为覆盖式语义。
+ *
+ * @param table 目标表的多段标识符
+ * @param fields 要设置为标识字段的字段名列表
+ */
 case class SetIdentifierFields(
     table: Seq[String],
     fields: Seq[String]) extends LeafCommand {
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
+  /** 该命令不产生输出行。 */
   override lazy val output: Seq[Attribute] = Nil
 
+  /** 简要字符串表示，显示目标表与字段列表。 */
   override def simpleString(maxFields: Int): String = {
     s"SetIdentifierFields ${table.quoted} (${fields.quoted})"
   }

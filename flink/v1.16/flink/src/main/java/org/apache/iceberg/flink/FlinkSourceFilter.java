@@ -26,6 +26,15 @@ import org.apache.iceberg.expressions.Evaluator;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.types.Types;
 
+/**
+ * Flink FilterFunction 实现，用 Iceberg {@link Evaluator} 在运行时对 RowData 求值过滤表达式。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把 Flink {@link RowData} 包装为 Iceberg 内部表示， 然后调用 {@link
+ * Evaluator#eval} 判断记录是否满足给定表达式。
+ *
+ * <p>设计意图：适配器模式——把 Iceberg Evaluator 适配为 Flink FilterFunction。 上下游：被 Flink legacy source
+ * 算子调用，向用户提供行级过滤能力。
+ */
 public class FlinkSourceFilter implements FilterFunction<RowData> {
 
   private final RowType rowType;
@@ -33,12 +42,14 @@ public class FlinkSourceFilter implements FilterFunction<RowData> {
   private final Types.StructType struct;
   private volatile RowDataWrapper wrapper;
 
+  /** 构造过滤器，按 schema 创建 Iceberg Evaluator。 */
   public FlinkSourceFilter(Schema schema, Expression expr, boolean caseSensitive) {
     this.rowType = FlinkSchemaUtil.convert(schema);
     this.struct = schema.asStruct();
     this.evaluator = new Evaluator(struct, expr, caseSensitive);
   }
 
+  /** 包装 RowData 后调用 Iceberg Evaluator 判断是否保留该行。 */
   @Override
   public boolean filter(RowData value) {
     if (wrapper == null) {

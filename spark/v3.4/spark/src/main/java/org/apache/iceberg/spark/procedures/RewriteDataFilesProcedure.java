@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SortOrder;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.RewriteDataFiles;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.NamedReference;
@@ -42,9 +41,13 @@ import org.apache.spark.sql.types.StructType;
 import scala.runtime.BoxedUnit;
 
 /**
- * A procedure that rewrites datafiles in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * @see org.apache.iceberg.spark.actions.SparkActions#rewriteDataFiles(Table)
+ * <p>职责：重写数据文件的存储过程，按策略合并/排序重组数据文件。
+ *
+ * <p>设计意图：委托 RewriteDataFilesSparkAction 执行，支持 BIN_PACK/SORT/ZORDER 策略。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class RewriteDataFilesProcedure extends BaseProcedure {
 
@@ -69,9 +72,10 @@ class RewriteDataFilesProcedure extends BaseProcedure {
             new StructField(
                 "failed_data_files_count", DataTypes.IntegerType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new Builder<RewriteDataFilesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RewriteDataFilesProcedure doBuild() {
         return new RewriteDataFilesProcedure(tableCatalog());
@@ -82,17 +86,17 @@ class RewriteDataFilesProcedure extends BaseProcedure {
   private RewriteDataFilesProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -122,7 +126,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
           return toOutputRows(result);
         });
   }
-
+  /** 执行 checkAndApplyFilter 相关操作。 */
   private RewriteDataFiles checkAndApplyFilter(
       RewriteDataFiles action, String where, Identifier ident) {
     if (where != null) {
@@ -131,7 +135,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
     }
     return action;
   }
-
+  /** 执行 checkAndApplyOptions 相关操作。 */
   private RewriteDataFiles checkAndApplyOptions(InternalRow args, RewriteDataFiles action) {
     Map<String, String> options = Maps.newHashMap();
     args.getMap(3)
@@ -144,7 +148,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
             });
     return action.options(options);
   }
-
+  /** 执行 checkAndApplyStrategy 相关操作。 */
   private RewriteDataFiles checkAndApplyStrategy(
       RewriteDataFiles action, String strategy, String sortOrderString, Schema schema) {
     List<Zorder> zOrderTerms = Lists.newArrayList();
@@ -195,7 +199,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
           "unsupported strategy: " + strategy + ". Only binpack or sort is supported");
     }
   }
-
+  /** 执行 buildSortOrder 相关操作。 */
   private SortOrder buildSortOrder(
       List<ExtendedParser.RawOrderField> rawOrderFields, Schema schema) {
     SortOrder.Builder builder = SortOrder.builderFor(schema);
@@ -203,7 +207,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
         rawField -> builder.sortBy(rawField.term(), rawField.direction(), rawField.nullOrder()));
     return builder.build();
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(RewriteDataFiles.Result result) {
     int rewrittenDataFilesCount = result.rewrittenDataFilesCount();
     long rewrittenBytesCount = result.rewrittenBytesCount();
@@ -218,7 +222,7 @@ class RewriteDataFilesProcedure extends BaseProcedure {
             failedDataFilesCount);
     return new InternalRow[] {row};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RewriteDataFilesProcedure";

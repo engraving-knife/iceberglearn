@@ -49,6 +49,13 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * 文件级说明：测试 AliyunOSSMockLocalStore 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 AliyunOSSMockLocalStore 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class AliyunOSSMockLocalStore {
   private static final Logger LOG = LoggerFactory.getLogger(AliyunOSSMockLocalStore.class);
 
@@ -59,6 +66,7 @@ public class AliyunOSSMockLocalStore {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
+  /** 辅助方法：AliyunOSSMockLocalStore。 */
   public AliyunOSSMockLocalStore(
       @Value("${" + AliyunOSSMockApp.PROP_ROOT_DIR + ":}") String rootDir) {
     Preconditions.checkNotNull(rootDir, "Root directory cannot be null");
@@ -93,6 +101,7 @@ public class AliyunOSSMockLocalStore {
     return new String(Hex.encodeHex(md.digest())).toUpperCase(Locale.ROOT);
   }
 
+  /** 辅助方法：inputStreamToFile。 */
   private static void inputStreamToFile(InputStream inputStream, File targetFile)
       throws IOException {
     try (OutputStream outputStream = new FileOutputStream(targetFile)) {
@@ -191,6 +200,7 @@ public class AliyunOSSMockLocalStore {
     return objectMapper.readValue(metaFile, ObjectMetadata.class);
   }
 
+  /** 辅助方法：findBucketsByFilter。 */
   private List<Bucket> findBucketsByFilter(final DirectoryStream.Filter<Path> filter) {
     List<Bucket> buckets = Lists.newArrayList();
 

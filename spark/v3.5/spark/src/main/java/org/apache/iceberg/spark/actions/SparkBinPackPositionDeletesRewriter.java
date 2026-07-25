@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import org.apache.iceberg.DataFilesTable;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataTableUtils;
@@ -51,6 +50,25 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.internal.SQLConf;
 
+/**
+ * 基于 Spark 的位置删除文件（Position Delete）Bin-Pack 重写器。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层）。
+ *
+ * <p>职责：将一组过小或过多的位置删除文件按目标大小（bin-pack）合并重写为更少、 更大的文件，以减少后续读取时的文件打开开销。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link SizeBasedPositionDeletesRewriter} 复用基于大小的文件分组逻辑。
+ *   <li>使用 Spark 的分布式读写在 executor 上并行执行合并：通过 ScanTaskSetManager 暂存待重写的扫描任务，通过
+ *       PositionDeletesRewriteCoordinator 收集重写产生的新文件。
+ *   <li>禁用 AQE（自适应查询执行）以避免 Spark 改变写出分区数，保证每个 split 精确对应一个输出文件。
+ * </ul>
+ *
+ * <p>上下游关系：被 RewritePositionDeleteFilesSparkAction 调用；依赖 Spark 读/写 Iceberg
+ * 数据源、ScanTaskSetManager、PositionDeletesRewriteCoordinator。
+ */
 class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewriter {
 
   private final SparkSession spark;
@@ -65,12 +83,28 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
     this.spark = spark.cloneSession();
     this.spark.conf().set(SQLConf.ADAPTIVE_EXECUTION_ENABLED().key(), false);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "BIN-PACK";
   }
 
+  /**
+   * 重写一组位置删除文件。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>生成唯一 groupId，创建 POSITION_DELETES 元数据表实例并加入 tableCache。
+   *   <li>通过 taskSetManager 暂存待重写的扫描任务组。
+   *   <li>调用 doRewrite 执行实际的 Spark 读写合并。
+   *   <li>从 coordinator 获取重写后产生的新文件集合。
+   *   <li>在 finally 中清理所有暂存状态（tableCache、taskSetManager、coordinator）。
+   * </ol>
+   *
+   * @param group 待重写的位置删除扫描任务列表
+   * @return 重写后产生的新删除文件集合
+   */
   @Override
   public Set<DeleteFile> rewrite(List<PositionDeletesScanTask> group) {
     String groupId = UUID.randomUUID().toString();
@@ -89,6 +123,21 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
     }
   }
 
+  /**
+   * 通过 Spark 读写执行实际的 bin-pack 合并。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>校验 group 非空，提取分区类型与分区值（同组所有删除文件属于同一分区）。
+   *   <li>通过 Spark 读取暂存的删除文件（SCAN_TASK_SET_ID = groupId）， 按 splitSize 切分使每个 split 对应一个输出文件。
+   *   <li>与 DataFiles 元数据表做 leftsemi join，过滤掉已无效的删除文件 （引用的数据文件可能已被删除）。
+   *   <li>按 file_path、pos 排序后写出为新的 Iceberg 删除文件。
+   * </ol>
+   *
+   * @param groupId 任务组唯一标识
+   * @param group 待重写的位置删除扫描任务列表
+   */
   protected void doRewrite(String groupId, List<PositionDeletesScanTask> group) {
     // all position deletes are of the same partition, because they are in same file group
     Preconditions.checkArgument(group.size() > 0, "Empty group");
@@ -121,7 +170,15 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
         .save(groupId);
   }
 
-  /** Returns entries of {@link DataFilesTable} of specified partition */
+  /**
+   * 返回指定分区下的 DataFiles 元数据表条目，用于与位置删除文件做 join 过滤。
+   *
+   * <p>逻辑：根据分区类型构造分区列的等值过滤条件（使用 eqNullSafe 处理 null）， 从 DataFiles 元数据表中筛选出该分区的数据文件。无分区字段时返回全部。
+   *
+   * @param partitionType 分区类型
+   * @param partition 分区值
+   * @return 该分区的数据文件 Dataset
+   */
   private Dataset<Row> dataFiles(Types.StructType partitionType, StructLike partition) {
     List<Types.NestedField> fields = partitionType.fields();
     Optional<Column> condition =

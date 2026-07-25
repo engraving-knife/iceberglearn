@@ -62,6 +62,13 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+/**
+ * 文件级说明：测试 TestHiveIcebergOutputCommitter 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergOutputCommitter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergOutputCommitter {
   private static final long TARGET_FILE_SIZE = 128 * 1024 * 1024;
   private static final int RECORD_NUM = 5;
@@ -82,6 +89,11 @@ public class TestHiveIcebergOutputCommitter {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：Needs Task Commit。
+   *
+   * <p>验证该方法在 Needs Task Commit 条件下的行为是否符合预期。
+   */
   @Test
   public void testNeedsTaskCommit() {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -105,6 +117,11 @@ public class TestHiveIcebergOutputCommitter {
         committer.needsTaskCommit(new TaskAttemptContextImpl(mapReduceJobConf, REDUCE_TASK_ID)));
   }
 
+  /**
+   * 测试场景：Successful Unpartitioned Write。
+   *
+   * <p>验证该方法在 Successful Unpartitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testSuccessfulUnpartitionedWrite() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -118,6 +135,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Successful Partitioned Write。
+   *
+   * <p>验证该方法在 Successful Partitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testSuccessfulPartitionedWrite() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -130,6 +152,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Successful Multiple Tasks Unpartitioned Write。
+   *
+   * <p>验证该方法在 Successful Multiple Tasks Unpartitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testSuccessfulMultipleTasksUnpartitionedWrite() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -142,6 +169,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Successful Multiple Tasks Partitioned Write。
+   *
+   * <p>验证该方法在 Successful Multiple Tasks Partitioned Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testSuccessfulMultipleTasksPartitionedWrite() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -154,6 +186,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Retry Task。
+   *
+   * <p>验证该方法在 Retry Task 条件下的行为是否符合预期。
+   */
   @Test
   public void testRetryTask() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -178,6 +215,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, expected, 0);
   }
 
+  /**
+   * 测试场景：Abort Job。
+   *
+   * <p>验证该方法在 Abort Job 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbortJob() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -190,6 +232,11 @@ public class TestHiveIcebergOutputCommitter {
     HiveIcebergTestUtils.validateData(table, Collections.emptyList(), 0);
   }
 
+  /**
+   * 测试场景：writer Is Closed After Task Commit Failure。
+   *
+   * <p>验证该方法在 writer Is Closed After Task Commit Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void writerIsClosedAfterTaskCommitFailure() throws IOException {
     HiveIcebergOutputCommitter committer = new HiveIcebergOutputCommitter();
@@ -219,6 +266,7 @@ public class TestHiveIcebergOutputCommitter {
     Assert.assertNull(getWriters(capturedId));
   }
 
+  /** 辅助方法：table。 */
   private Table table(String location, boolean partitioned) {
     HadoopTables tables = new HadoopTables();
 
@@ -229,6 +277,7 @@ public class TestHiveIcebergOutputCommitter {
         location);
   }
 
+  /** 辅助方法：jobConf。 */
   private JobConf jobConf(Table table, int taskNum) {
     JobConf conf = new JobConf();
     conf.setNumMapTasks(taskNum);
@@ -330,6 +379,7 @@ public class TestHiveIcebergOutputCommitter {
     return expected;
   }
 
+  /** 辅助方法：writeRecords。 */
   private List<Record> writeRecords(
       String name,
       int taskNum,

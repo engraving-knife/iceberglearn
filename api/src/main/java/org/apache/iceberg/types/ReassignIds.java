@@ -24,6 +24,22 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 重分配 ID 访问者：按源 schema 的字段名/位置重分配目标 schema 的字段 ID。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#reassignIds} 和 {@link TypeUtil#reassignOrRefreshIds} 使用）。
+ *
+ * <p>职责：前序遍历目标 schema，同步追踪源 schema 的对应类型，按字段名匹配复制源 schema 的 ID； 源 schema 中找不到的字段用 assignId 分配新
+ * ID（若提供）或抛异常。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>使用 sourceType 字段同步追踪源 schema 的当前位置，与目标 schema 的遍历保持同步。
+ *   <li>支持大小写敏感/不敏感的名称匹配。
+ *   <li>field 方法在进入子字段前切换 sourceType 到对应子类型，退出后恢复。
+ * </ul>
+ */
 class ReassignIds extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final Schema sourceSchema;
   private final TypeUtil.NextID assignId;

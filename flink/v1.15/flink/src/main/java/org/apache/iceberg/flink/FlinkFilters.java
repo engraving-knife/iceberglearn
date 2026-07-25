@@ -41,11 +41,22 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.NaNUtil;
 
+/**
+ * 把 Flink Table API 的表达式（ResolvedExpression）转换为 Iceberg 的 {@link Expression}。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：识别 Flink 内置的等于/不等于/大于/小于/IS NULL/ AND/OR/NOT/LIKE 等谓词，并翻译为 Iceberg
+ * 等价表达式，供扫描时下推过滤使用。
+ *
+ * <p>设计意图：访问者 + 模式匹配；BETWEEN、IN 等已由 Flink 自动展开为基本谓词组合， 此处不再处理。上下游：被 {@link
+ * FlinkDynamicTableFactory} 或 source planner 调用； 向下产出 Iceberg {@link Expression} 供 scan 使用。
+ */
 public class FlinkFilters {
   private FlinkFilters() {}
 
+  /** 匹配 LIKE 中 "前缀%" 形式的模式，用于转换为 STARTS_WITH。 */
   private static final Pattern STARTS_WITH_PATTERN = Pattern.compile("([^%]+)%");
 
+  /** Flink 函数定义到 Iceberg 表达式操作的映射表。 */
   private static final Map<FunctionDefinition, Operation> FILTERS =
       ImmutableMap.<FunctionDefinition, Operation>builder()
           .put(BuiltInFunctionDefinitions.EQUALS, Operation.EQ)
@@ -63,14 +74,13 @@ public class FlinkFilters {
           .buildOrThrow();
 
   /**
-   * Convert flink expression to iceberg expression.
+   * 将 Flink 表达式转换为 Iceberg 表达式。
    *
-   * <p>the BETWEEN, NOT_BETWEEN, IN expression will be converted by flink automatically. the
-   * BETWEEN will be converted to (GT_EQ AND LT_EQ), the NOT_BETWEEN will be converted to (LT_EQ OR
-   * GT_EQ), the IN will be converted to OR, so we do not add the conversion here
+   * <p>逻辑：仅处理 CallExpression，按操作类型分别翻译。BETWEEN/NOT_BETWEEN/IN 已被 Flink 自动展开为基本谓词组合（如 BETWEEN 转为
+   * GT_EQ AND LT_EQ），所以本方法不直接处理。
    *
-   * @param flinkExpression the flink expression
-   * @return the iceberg expression
+   * @param flinkExpression Flink 表达式
+   * @return 转换成功返回 Iceberg 表达式，否则返回 Optional.empty()
    */
   public static Optional<Expression> convert(
       org.apache.flink.table.expressions.Expression flinkExpression) {
@@ -147,6 +157,7 @@ public class FlinkFilters {
     return Optional.empty();
   }
 
+  /** 取 CallExpression 的唯一子节点并按指定类型返回，否则返回空。 */
   private static <T extends ResolvedExpression> Optional<T> onlyChildAs(
       CallExpression call, Class<T> expectedChildClass) {
     List<ResolvedExpression> children = call.getResolvedChildren();
@@ -162,6 +173,7 @@ public class FlinkFilters {
     return Optional.of(expectedChildClass.cast(child));
   }
 
+  /** 把形如 "前缀%" 的 LIKE 模式转换为 Iceberg 的 startsWith 表达式。 */
   private static Optional<Expression> convertLike(CallExpression call) {
     List<ResolvedExpression> args = call.getResolvedChildren();
     if (args.size() != 2) {
@@ -193,6 +205,7 @@ public class FlinkFilters {
     return Optional.empty();
   }
 
+  /** 转换 AND/OR 逻辑表达式：递归转换左右子表达式后用给定函数组合。 */
   private static Optional<Expression> convertLogicExpression(
       BiFunction<Expression, Expression, Expression> function, CallExpression call) {
     List<ResolvedExpression> args = call.getResolvedChildren();
@@ -209,6 +222,7 @@ public class FlinkFilters {
     return Optional.empty();
   }
 
+  /** 将 Flink 字面量转换为 Iceberg 期望的内部表示（时间类型转为微秒/天）。 */
   private static Optional<Object> convertLiteral(ValueLiteralExpression expression) {
     Optional<?> value =
         expression.getValueAs(
@@ -229,11 +243,17 @@ public class FlinkFilters {
         });
   }
 
+  /** 字段与字面量二元谓词转换，正反顺序使用同一函数。 */
   private static Optional<Expression> convertFieldAndLiteral(
       BiFunction<String, Object, Expression> expr, CallExpression call) {
     return convertFieldAndLiteral(expr, expr, call);
   }
 
+  /**
+   * 字段与字面量二元谓词转换，支持字段在左/在右两种顺序，分别用 convertLR/convertRL。
+   *
+   * <p>逻辑：若左为字段、右为字面量，用 convertLR；反之用 convertRL；其他情况返回空。
+   */
   private static Optional<Expression> convertFieldAndLiteral(
       BiFunction<String, Object, Expression> convertLR,
       BiFunction<String, Object, Expression> convertRL,

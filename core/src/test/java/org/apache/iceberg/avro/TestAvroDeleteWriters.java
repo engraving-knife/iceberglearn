@@ -49,6 +49,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：TestAvroDeleteWriters，用于验证 Avro Delete Writers 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Avro Delete Writers 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestAvroDeleteWriters {
   private static final Schema SCHEMA =
       new Schema(
@@ -59,6 +67,7 @@ public class TestAvroDeleteWriters {
 
   @TempDir Path temp;
 
+  /** 辅助方法：create delete records。 */
   @BeforeEach
   public void createDeleteRecords() {
     GenericRecord record = GenericRecord.create(SCHEMA);
@@ -73,6 +82,11 @@ public class TestAvroDeleteWriters {
     this.records = builder.build();
   }
 
+  /**
+   * 测试场景：equality delete writer。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEqualityDeleteWriter() throws IOException {
     OutputFile out = new InMemoryOutputFile();
@@ -109,6 +123,11 @@ public class TestAvroDeleteWriters {
     assertThat(deletedRecords).as("Deleted records should match expected").isEqualTo(records);
   }
 
+  /**
+   * 测试场景：position delete writer。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeleteWriter() throws IOException {
     Schema deleteSchema =
@@ -168,6 +187,11 @@ public class TestAvroDeleteWriters {
         .isEqualTo(expectedDeleteRecords);
   }
 
+  /**
+   * 测试场景：position delete writer with empty row。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeleteWriterWithEmptyRow() throws IOException {
     File deleteFile = temp.toFile();

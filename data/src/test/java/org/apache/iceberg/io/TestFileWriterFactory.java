@@ -58,7 +58,15 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestFileWriterFactory 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestFileWriterFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}, Partitioned={1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -81,6 +89,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
   private StructLike partition = null;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：TestFileWriterFactory。 */
   public TestFileWriterFactory(FileFormat fileFormat, boolean partitioned) {
     super(TABLE_FORMAT_VERSION);
     this.fileFormat = fileFormat;
@@ -90,12 +99,15 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
             toRow(1, "aaa"), toRow(2, "aaa"), toRow(3, "aaa"), toRow(4, "aaa"), toRow(5, "aaa"));
   }
 
+  /** 辅助方法：toSet。 */
   protected abstract StructLikeSet toSet(Iterable<T> records);
 
+  /** 辅助方法：format。 */
   protected FileFormat format() {
     return fileFormat;
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws Exception {
@@ -115,6 +127,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     this.fileFactory = OutputFileFactory.builderFor(table, 1, 1).format(fileFormat).build();
   }
 
+  /**
+   * 测试场景：Data Writer。
+   *
+   * <p>验证该方法在 Data Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataWriter() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -126,6 +143,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(dataRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Equality Delete Writer。
+   *
+   * <p>验证该方法在 Equality Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeleteWriter() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -160,6 +182,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Equality Delete Writer With Multiple Specs。
+   *
+   * <p>验证该方法在 Equality Delete Writer With Multiple Specs 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityDeleteWriterWithMultipleSpecs() throws IOException {
     Assume.assumeFalse("Table must start unpartitioned", partitioned);
@@ -212,6 +239,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Position Delete Writer。
+   *
+   * <p>验证该方法在 Position Delete Writer 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteWriter() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -273,6 +305,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Position Delete Writer With Row。
+   *
+   * <p>验证该方法在 Position Delete Writer With Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteWriterWithRow() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema(), table.schema());
@@ -348,6 +385,11 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Position Delete Writer Multiple Data Files。
+   *
+   * <p>验证该方法在 Position Delete Writer Multiple Data Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteWriterMultipleDataFiles() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -404,6 +446,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /** 辅助方法：writeData。 */
   private DataFile writeData(
       FileWriterFactory<T> writerFactory, List<T> rows, PartitionSpec spec, StructLike partitionKey)
       throws IOException {
@@ -420,6 +463,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     return writer.toDataFile();
   }
 
+  /** 辅助方法：writeEqualityDeletes。 */
   private DeleteFile writeEqualityDeletes(
       FileWriterFactory<T> writerFactory,
       List<T> deletes,
@@ -438,6 +482,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     return writer.toDeleteFile();
   }
 
+  /** 辅助方法：writePositionDeletes。 */
   private Pair<DeleteFile, CharSequenceSet> writePositionDeletes(
       FileWriterFactory<T> writerFactory,
       List<PositionDelete<T>> deletes,
@@ -459,6 +504,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     return Pair.of(writer.toDeleteFile(), writer.referencedDataFiles());
   }
 
+  /** 辅助方法：readFile。 */
   private List<Record> readFile(Schema schema, InputFile inputFile) throws IOException {
     switch (fileFormat) {
       case PARQUET:
@@ -494,6 +540,7 @@ public abstract class TestFileWriterFactory<T> extends WriterTestBase<T> {
     }
   }
 
+  /** 辅助方法：newOutputFile。 */
   private EncryptedOutputFile newOutputFile(PartitionSpec spec, StructLike partitionKey) {
     return fileFactory.newOutputFile(spec, partitionKey);
   }

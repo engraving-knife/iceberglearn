@@ -31,13 +31,19 @@ import org.apache.spark.sql.catalyst.plans.logical.UpdateIcebergTable
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
- * A rule that aligns assignments in UPDATE and MERGE operations.
+ * Spark Catalyst 分析阶段的规则或检查。
  *
- * Note that this rule must be run before rewriting row-level commands.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 AlignRowLevelCommandAssignments。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object AlignRowLevelCommandAssignments
   extends Rule[LogicalPlan] with AssignmentAlignmentSupport {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case u: UpdateIcebergTable if u.resolved && !u.aligned =>
       u.copy(assignments = alignAssignments(u.table, u.assignments))
@@ -87,6 +93,10 @@ object AlignRowLevelCommandAssignments
       m.copy(matchedActions = alignedMatchedActions, notMatchedActions = alignedNotMatchedActions)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def alignInsertActionAssignments(
       targetTable: LogicalPlan,
       assignmentMap: Map[String, Assignment]): Seq[Assignment] = {

@@ -61,6 +61,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDataStatisticsOperator 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestDataStatisticsOperator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestDataStatisticsOperator {
   private final RowType rowType = RowType.of(new VarCharType());
   private final TypeSerializer<RowData> rowSerializer = new RowDataSerializer(rowType);
@@ -78,6 +85,7 @@ public class TestDataStatisticsOperator {
       statisticsSerializer = MapDataStatisticsSerializer.fromKeySerializer(rowSerializer);
   private DataStatisticsOperator<MapDataStatistics, Map<RowData, Long>> operator;
 
+  /** 辅助方法：getTestingEnvironment，get Testing Environment。 */
   private Environment getTestingEnvironment() {
     return new StreamMockEnvironment(
         new Configuration(),
@@ -89,6 +97,7 @@ public class TestDataStatisticsOperator {
         new TestTaskStateManager());
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws Exception {
     this.operator = createOperator();
@@ -99,12 +108,14 @@ public class TestDataStatisticsOperator {
         new MockOutput<>(Lists.newArrayList()));
   }
 
+  /** 辅助方法：createOperator，create Operator。 */
   private DataStatisticsOperator<MapDataStatistics, Map<RowData, Long>> createOperator() {
     MockOperatorEventGateway mockGateway = new MockOperatorEventGateway();
     KeySelector<RowData, RowData> keySelector =
         new KeySelector<RowData, RowData>() {
           private static final long serialVersionUID = 7662520075515707428L;
 
+          /** 辅助方法：getKey，get Key。 */
           @Override
           public RowData getKey(RowData value) {
             return value;
@@ -115,11 +126,17 @@ public class TestDataStatisticsOperator {
         "testOperator", keySelector, mockGateway, statisticsSerializer);
   }
 
+  /** 辅助方法：clean，clean。 */
   @After
   public void clean() throws Exception {
     operator.close();
   }
 
+  /**
+   * 测试场景：Process Element。
+   *
+   * <p>验证该方法在 Process Element 条件下的行为是否符合预期。
+   */
   @Test
   public void testProcessElement() throws Exception {
     try (OneInputStreamOperatorTestHarness<
@@ -141,6 +158,11 @@ public class TestDataStatisticsOperator {
     }
   }
 
+  /**
+   * 测试场景：Operator Output。
+   *
+   * <p>验证该方法在 Operator Output 条件下的行为是否符合预期。
+   */
   @Test
   public void testOperatorOutput() throws Exception {
     try (OneInputStreamOperatorTestHarness<
@@ -161,6 +183,11 @@ public class TestDataStatisticsOperator {
     }
   }
 
+  /**
+   * 测试场景：Restore State。
+   *
+   * <p>验证该方法在 Restore State 条件下的行为是否符合预期。
+   */
   @Test
   public void testRestoreState() throws Exception {
     OperatorSubtaskState snapshot;
@@ -198,6 +225,7 @@ public class TestDataStatisticsOperator {
     }
   }
 
+  /** 辅助方法：getStateContext，get State Context。 */
   private StateInitializationContext getStateContext() throws Exception {
     MockEnvironment env = new MockEnvironmentBuilder().build();
     AbstractStateBackend abstractStateBackend = new HashMapStateBackend();

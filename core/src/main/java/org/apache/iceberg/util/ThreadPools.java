@@ -28,8 +28,24 @@ import org.apache.iceberg.SystemConfigs;
 import org.apache.iceberg.relocated.com.google.common.util.concurrent.MoreExecutors;
 import org.apache.iceberg.relocated.com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+/**
+ * Iceberg 内部线程池工具。
+ *
+ * <p>所属模块：iceberg-core（util 子包）。职责：提供全局 worker 线程池与按需创建命名线程池的能力， 用于并行读取 manifest、并行规划扫描等。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>单例 worker 池：进程级共享，大小由 {@link SystemConfigs#WORKER_THREAD_POOL_SIZE} 决定。
+ *   <li>命名线程工厂：通过 {@link ThreadFactoryBuilder} 给线程命名，便于排查。
+ *   <li>调度池支持：提供 {@link ScheduledExecutorService} 用于定时/延迟任务。
+ * </ul>
+ *
+ * <p>上下游关系：被 core 扫描/写入路径在需要并行时调用；上游可由系统属性配置池大小。
+ */
 public class ThreadPools {
 
+  /** 私有构造：工具类禁止实例化。 */
   private ThreadPools() {}
 
   /**
@@ -45,24 +61,33 @@ public class ThreadPools {
   private static final ExecutorService WORKER_POOL = newWorkerPool("iceberg-worker-pool");
 
   /**
-   * Return an {@link ExecutorService} that uses the "worker" thread-pool.
+   * 返回全局共享的 worker 线程池。
    *
-   * <p>The size of the worker pool limits the number of tasks concurrently reading manifests in the
-   * base table implementation across all concurrent planning operations.
+   * <p>池大小由系统属性 {@code iceberg.worker.num-threads} 控制，限制并发读取 manifest 的任务数。
    *
-   * <p>The size of this thread-pool is controlled by the Java system property {@code
-   * iceberg.worker.num-threads}.
-   *
-   * @return an {@link ExecutorService} that uses the worker pool
+   * @return 全局 worker 线程池
    */
   public static ExecutorService getWorkerPool() {
     return WORKER_POOL;
   }
 
+  /**
+   * 创建一个新的 worker 线程池，使用默认池大小。
+   *
+   * @param namePrefix 线程名前缀
+   * @return 新的线程池（退出时自动关闭）
+   */
   public static ExecutorService newWorkerPool(String namePrefix) {
     return newWorkerPool(namePrefix, WORKER_THREAD_POOL_SIZE);
   }
 
+  /**
+   * 创建一个新的固定大小 worker 线程池，线程为守护线程。
+   *
+   * @param namePrefix 线程名前缀
+   * @param poolSize 池大小
+   * @return 新的线程池（JVM 退出时自动关闭）
+   */
   public static ExecutorService newWorkerPool(String namePrefix, int poolSize) {
     return MoreExecutors.getExitingExecutorService(
         (ThreadPoolExecutor)
@@ -70,18 +95,22 @@ public class ThreadPools {
   }
 
   /**
-   * Create a new {@link ScheduledExecutorService} with the given name and pool size.
+   * 创建一个新的调度线程池，线程为守护线程。
    *
-   * <p>Threads used by this service will be daemon threads.
-   *
-   * @param namePrefix a base name for threads in the executor service's thread pool
-   * @param poolSize max number of threads to use
-   * @return an executor service
+   * @param namePrefix 线程名前缀
+   * @param poolSize 池大小
+   * @return 新的调度线程池
    */
   public static ScheduledExecutorService newScheduledPool(String namePrefix, int poolSize) {
     return new ScheduledThreadPoolExecutor(poolSize, newDaemonThreadFactory(namePrefix));
   }
 
+  /**
+   * 创建守护线程工厂，线程名格式为 {@code namePrefix-%d}。
+   *
+   * @param namePrefix 线程名前缀
+   * @return 守护线程工厂
+   */
   private static ThreadFactory newDaemonThreadFactory(String namePrefix) {
     return new ThreadFactoryBuilder().setDaemon(true).setNameFormat(namePrefix + "-%d").build();
   }

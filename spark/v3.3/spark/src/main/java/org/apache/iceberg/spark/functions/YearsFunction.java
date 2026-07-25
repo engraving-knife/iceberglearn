@@ -28,17 +28,22 @@ import org.apache.spark.sql.types.DateType;
 import org.apache.spark.sql.types.TimestampType;
 
 /**
- * A Spark function implementation for the Iceberg year transform.
+ * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
  *
- * <p>Example usage: {@code SELECT system.years('source_col')}.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 YearsFunction。
+ *
+ * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
  */
 public class YearsFunction extends UnaryUnboundFunction {
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected BoundFunction doBind(DataType valueType) {
     if (valueType instanceof DateType) {
+      /** 执行该方法的具体逻辑。 */
       return new DateToYearsFunction();
     } else if (valueType instanceof TimestampType) {
+      /** 执行该方法的具体逻辑。 */
       return new TimestampToYearsFunction();
     } else {
       throw new UnsupportedOperationException(
@@ -46,6 +51,11 @@ public class YearsFunction extends UnaryUnboundFunction {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return name()
@@ -53,39 +63,87 @@ public class YearsFunction extends UnaryUnboundFunction {
         + "  col :: source column (must be date or timestamp)";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "years";
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BaseToYearsFunction。
+   *
+   * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   private abstract static class BaseToYearsFunction implements ScalarFunction<Integer> {
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public String name() {
       return "years";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DateToYearsFunction。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class DateToYearsFunction extends BaseToYearsFunction {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(int days) {
       return DateTimeUtil.daysToYears(days);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.DateType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.years(date)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -93,22 +151,46 @@ public class YearsFunction extends UnaryUnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 TimestampToYearsFunction。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class TimestampToYearsFunction extends BaseToYearsFunction {
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(long micros) {
       return DateTimeUtil.microsToYears(micros);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.years(timestamp)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen

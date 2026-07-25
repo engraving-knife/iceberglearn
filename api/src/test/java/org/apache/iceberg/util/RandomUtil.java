@@ -25,14 +25,24 @@ import java.util.Random;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：测试 RandomUtil 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 RandomUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class RandomUtil {
 
+  /** 辅助方法：RandomUtil。 */
   private RandomUtil() {}
 
+  /** 辅助方法：negate。 */
   private static boolean negate(int num) {
     return num % 2 == 1;
   }
 
+  /** 辅助方法：generatePrimitive。 */
   @SuppressWarnings("RandomModInteger")
   public static Object generatePrimitive(Type.PrimitiveType primitive, Random random) {
     int choice = random.nextInt(20);
@@ -150,6 +160,7 @@ public class RandomUtil {
     }
   }
 
+  /** 辅助方法：generateDictionaryEncodablePrimitive。 */
   public static Object generateDictionaryEncodablePrimitive(
       Type.PrimitiveType primitive, Random random) {
     int value = random.nextInt(3);
@@ -199,6 +210,7 @@ public class RandomUtil {
   private static final String CHARS =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.!?";
 
+  /** 辅助方法：randomString。 */
   private static String randomString(Random random) {
     int length = random.nextInt(50);
     byte[] buffer = new byte[length];
@@ -212,6 +224,7 @@ public class RandomUtil {
 
   private static final String DIGITS = "0123456789";
 
+  /** 辅助方法：randomUnscaled。 */
   private static BigInteger randomUnscaled(int precision, Random random) {
     int length = random.nextInt(precision);
     if (length == 0) {

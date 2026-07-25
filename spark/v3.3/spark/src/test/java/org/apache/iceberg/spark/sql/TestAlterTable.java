@@ -34,25 +34,36 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestAlterTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 修改表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAlterTable extends SparkCatalogTestBase {
   private final TableIdentifier renamedIdent =
       TableIdentifier.of(Namespace.of("default"), "table2");
 
+  /** 测试修改表。 */
   public TestAlterTable(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS %s2", tableName);
   }
 
+  /** 测试添加列非空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumnNotNull() {
     AssertHelpers.assertThrows(
@@ -62,6 +73,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         () -> sql("ALTER TABLE %s ADD COLUMN c3 INT NOT NULL", tableName));
   }
 
+  /** 测试添加列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumn() {
     sql(
@@ -104,6 +116,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试添加列带数组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumnWithArray() {
     sql("ALTER TABLE %s ADD COLUMN data2 array<struct<a:INT,b:INT,c:int>>", tableName);
@@ -129,6 +142,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试添加列带映射场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumnWithMap() {
     sql("ALTER TABLE %s ADD COLUMN data2 map<struct<x:INT>, struct<a:INT,b:INT>>", tableName);
@@ -163,6 +177,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         () -> sql("ALTER TABLE %s ADD COLUMN data2.key.y int", tableName));
   }
 
+  /** 测试删除列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropColumn() {
     sql("ALTER TABLE %s DROP COLUMN data", tableName);
@@ -176,6 +191,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试重命名列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRenameColumn() {
     sql("ALTER TABLE %s RENAME COLUMN id TO row_id", tableName);
@@ -191,6 +207,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试修改列comment场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnComment() {
     sql("ALTER TABLE %s ALTER COLUMN id COMMENT 'Record id'", tableName);
@@ -206,6 +223,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试修改列类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnType() {
     sql("ALTER TABLE %s ADD COLUMN count int", tableName);
@@ -223,6 +241,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试修改列删除非空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnDropNotNull() {
     sql("ALTER TABLE %s ALTER COLUMN id DROP NOT NULL", tableName);
@@ -238,6 +257,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试修改列集合非空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnSetNotNull() {
     // no-op changes are allowed
@@ -260,6 +280,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         () -> sql("ALTER TABLE %s ALTER COLUMN data SET NOT NULL", tableName));
   }
 
+  /** 测试修改列位置后场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnPositionAfter() {
     sql("ALTER TABLE %s ADD COLUMN count int", tableName);
@@ -277,6 +298,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试修改列位置第一个场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterColumnPositionFirst() {
     sql("ALTER TABLE %s ADD COLUMN count int", tableName);
@@ -294,6 +316,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
         validationCatalog.loadTable(tableIdent).schema().asStruct());
   }
 
+  /** 测试表重命名场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTableRename() {
     Assume.assumeFalse(
@@ -308,6 +331,7 @@ public class TestAlterTable extends SparkCatalogTestBase {
     Assert.assertTrue("New name should exist", validationCatalog.tableExists(renamedIdent));
   }
 
+  /** 测试集合表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetTableProperties() {
     sql("ALTER TABLE %s SET TBLPROPERTIES ('prop'='value')", tableName);

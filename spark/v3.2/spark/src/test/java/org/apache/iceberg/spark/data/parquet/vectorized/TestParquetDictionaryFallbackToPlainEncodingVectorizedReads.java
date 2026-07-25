@@ -32,15 +32,25 @@ import org.apache.iceberg.spark.data.RandomData;
 import org.junit.Ignore;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestParquetDictionaryFallbackToPlainEncodingVectorizedReads 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下
+ * Parquetdictionaryfallback到plainencoding向量化读 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestParquetDictionaryFallbackToPlainEncodingVectorizedReads
     extends TestParquetVectorizedReads {
   private static final int NUM_ROWS = 1_000_000;
 
+  /** 获取num行。 */
   @Override
   protected int getNumRows() {
     return NUM_ROWS;
   }
 
+  /** 生成数据。 */
   @Override
   Iterable<GenericData.Record> generateData(
       Schema schema,
@@ -53,6 +63,7 @@ public class TestParquetDictionaryFallbackToPlainEncodingVectorizedReads
     return transform == IDENTITY ? data : Iterables.transform(data, transform);
   }
 
+  /** 获取Parquet写入器。 */
   @Override
   FileAppender<GenericData.Record> getParquetWriter(Schema schema, File testFile)
       throws IOException {
@@ -66,10 +77,12 @@ public class TestParquetDictionaryFallbackToPlainEncodingVectorizedReads
   @Test
   @Override
   @Ignore // Fallback encoding not triggered when data is mostly null
+  /** 测试mostly空值用于可选字段场景：验证该方法在对应输入下的行为与断言结果。 */
   public void testMostlyNullsForOptionalFields() {}
 
   @Test
   @Override
   @Ignore // Ignored since this code path is already tested in TestParquetVectorizedReads
+  /** 测试向量化读带新建containers场景：验证该方法在对应输入下的行为与断言结果。 */
   public void testVectorizedReadsWithNewContainers() throws IOException {}
 }

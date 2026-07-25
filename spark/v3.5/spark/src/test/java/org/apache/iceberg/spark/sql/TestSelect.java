@@ -41,11 +41,19 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSelect 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Select 在 Spark 引擎下的行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSelect extends SparkCatalogTestBase {
   private int scanEventCount = 0;
   private ScanEvent lastScanEvent = null;
   private String binaryTableName = tableName("binary_table");
 
+  /** 测试select。 */
   public TestSelect(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
 
@@ -58,6 +66,7 @@ public class TestSelect extends SparkCatalogTestBase {
         ScanEvent.class);
   }
 
+  /** 创建表。 */
   @Before
   public void createTables() {
     sql("CREATE TABLE %s (id bigint, data string, float float) USING iceberg", tableName);
@@ -67,12 +76,14 @@ public class TestSelect extends SparkCatalogTestBase {
     this.lastScanEvent = null;
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS %s", binaryTableName);
   }
 
+  /** 测试 testSelect 场景：验证 Select 相关操作的行为与结果。 */
   @Test
   public void testSelect() {
     List<Object[]> expected =
@@ -81,6 +92,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Should return all expected rows", expected, sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试select重写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSelectRewrite() {
     List<Object[]> expected = ImmutableList.of(row(3L, "c", Float.NaN));
@@ -97,6 +109,7 @@ public class TestSelect extends SparkCatalogTestBase {
         Spark3Util.describe(lastScanEvent.filter()));
   }
 
+  /** 测试投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testProjection() {
     List<Object[]> expected = ImmutableList.of(row(1L), row(2L), row(3L));
@@ -112,6 +125,7 @@ public class TestSelect extends SparkCatalogTestBase {
         lastScanEvent.projection().asStruct());
   }
 
+  /** 测试表达式下推场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpressionPushdown() {
     List<Object[]> expected = ImmutableList.of(row("b"));
@@ -132,6 +146,7 @@ public class TestSelect extends SparkCatalogTestBase {
         lastScanEvent.projection().asStruct());
   }
 
+  /** 测试元数据表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataTables() {
     Assume.assumeFalse(
@@ -144,6 +159,7 @@ public class TestSelect extends SparkCatalogTestBase {
         sql("SELECT * FROM %s.snapshots", tableName));
   }
 
+  /** 测试快照在表name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotInTableName() {
     Assume.assumeFalse(
@@ -173,6 +189,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at specific ID " + snapshotId, expected, fromDF);
   }
 
+  /** 测试时间戳在表name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampInTableName() {
     Assume.assumeFalse(
@@ -203,6 +220,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at timestamp " + timestamp, expected, fromDF);
   }
 
+  /** 测试版本作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testVersionAsOf() {
     // get the snapshot ID of the last write and get the current row set as expected
@@ -233,6 +251,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at specific ID " + snapshotId, expected, fromDF);
   }
 
+  /** 测试标签reference作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTagReferenceAsOf() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -257,6 +276,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at specific tag reference name", expected, fromDF);
   }
 
+  /** 测试use快照id用于标签reference作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUseSnapshotIdForTagReferenceAsOf() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -282,6 +302,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at specific tag reference name", actual, travelWithLongResult);
   }
 
+  /** 测试分支reference作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBranchReferenceAsOf() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -311,6 +332,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at specific branch reference name", expected, fromDF);
   }
 
+  /** 测试unknownreference作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnknownReferenceAsOf() {
     Assertions.assertThatThrownBy(
@@ -319,6 +341,7 @@ public class TestSelect extends SparkCatalogTestBase {
         .isInstanceOf(ValidationException.class);
   }
 
+  /** 测试时间戳作为的场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampAsOf() {
     long snapshotTs = validationCatalog.loadTable(tableIdent).currentSnapshot().timestampMillis();
@@ -366,6 +389,7 @@ public class TestSelect extends SparkCatalogTestBase {
     assertEquals("Snapshot at timestamp " + timestamp, expected, fromDF);
   }
 
+  /** 测试invalid时间旅行based上both作为的与表标识符场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidTimeTravelBasedOnBothAsOfAndTableIdentifier() {
     // get the snapshot ID of the last write
@@ -421,6 +445,7 @@ public class TestSelect extends SparkCatalogTestBase {
         .hasMessage("Cannot do time-travel based on both table identifier and AS OF");
   }
 
+  /** 测试specify快照与时间戳场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSpecifySnapshotAndTimestamp() {
     // get the snapshot ID of the last write
@@ -449,6 +474,7 @@ public class TestSelect extends SparkCatalogTestBase {
                 snapshotId, timestamp));
   }
 
+  /** 测试二进制在过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinaryInFilter() {
     sql("CREATE TABLE %s (id bigint, binary binary) USING iceberg", binaryTableName);
@@ -461,6 +487,7 @@ public class TestSelect extends SparkCatalogTestBase {
         sql("SELECT id, binary FROM %s where binary > X'11'", binaryTableName));
   }
 
+  /** 测试复合类型过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testComplexTypeFilter() {
     String complexTypeTableName = tableName("complex_table");

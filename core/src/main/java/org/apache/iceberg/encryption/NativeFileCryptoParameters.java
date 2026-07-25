@@ -22,9 +22,18 @@ import java.nio.ByteBuffer;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * Barebone encryption parameters, one object per content file. Carries the file encryption key
- * (later, will be extended with column keys and AAD prefix). Applicable only to formats with native
- * encryption support (Parquet and ORC).
+ * 文件级说明：原生加密文件参数（每个内容文件一个）。
+ *
+ * <p>所属模块：iceberg-core（加密包），承载传递给原生支持加密的文件格式（Parquet/ORC）读写器所需的 加密参数。
+ *
+ * <p>职责：携带文件加密密钥（{@code fileKey}）与加密算法（{@link EncryptionAlgorithm}）， 供格式读写器在原生加密时使用（后续可扩展列密钥与 AAD
+ * 前缀）。
+ *
+ * <p>设计意图：仅适用于具备原生加密能力的格式（Parquet/ORC），把密钥等信息从 Iceberg 密钥管理模块 传递给格式读写器，使加密逻辑由格式自身实现而非 Iceberg
+ * 流式包装。采用 Builder 模式构造， 校验密钥非空。
+ *
+ * <p>上下游关系：由加密管理器构造，通过 {@link NativelyEncryptedFile#setNativeCryptoParameters} 注入到实现了该接口的
+ * InputFile/OutputFile。
  */
 public class NativeFileCryptoParameters {
   private ByteBuffer fileKey;
@@ -38,15 +47,16 @@ public class NativeFileCryptoParameters {
   }
 
   /**
-   * Creates the builder.
+   * 创建构建器。
    *
-   * @param fileKey per-file encryption key. For example, used as "footer key" DEK in Parquet
-   *     encryption.
+   * @param fileKey 单文件加密密钥，例如 Parquet 加密中作为“footer key”的 DEK
+   * @return 新的 {@link Builder}
    */
   public static Builder create(ByteBuffer fileKey) {
     return new Builder(fileKey);
   }
 
+  /** 构建器：链式设置加密算法并构造 {@link NativeFileCryptoParameters}。 */
   public static class Builder {
     private ByteBuffer fileKey;
     private EncryptionAlgorithm fileEncryptionAlgorithm;
@@ -55,20 +65,24 @@ public class NativeFileCryptoParameters {
       this.fileKey = fileKey;
     }
 
+    /** 设置文件加密算法。 */
     public Builder encryptionAlgorithm(EncryptionAlgorithm encryptionAlgorithm) {
       this.fileEncryptionAlgorithm = encryptionAlgorithm;
       return this;
     }
 
+    /** 构造并返回 {@link NativeFileCryptoParameters} 实例。 */
     public NativeFileCryptoParameters build() {
       return new NativeFileCryptoParameters(fileKey, fileEncryptionAlgorithm);
     }
   }
 
+  /** 返回文件加密密钥。 */
   public ByteBuffer fileKey() {
     return fileKey;
   }
 
+  /** 返回文件加密算法。 */
   public EncryptionAlgorithm encryptionAlgorithm() {
     return fileEncryptionAlgorithm;
   }

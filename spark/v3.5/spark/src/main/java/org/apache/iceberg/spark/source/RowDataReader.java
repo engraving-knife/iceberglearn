@@ -40,11 +40,26 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Spark 行式分区读取器：逐行读取 Iceberg 数据文件并应用删除过滤。
+ *
+ * <p>所属模块：iceberg-spark（source 子包，Spark 数据源行式读取执行层）。
+ *
+ * <p>职责：实现 {@link PartitionReader}，遍历文件扫描任务，打开数据文件并应用位置/等值删除过滤， 产出 Spark {@link
+ * InternalRow}；同时上报分片数与删除数指标。
+ *
+ * <p>设计意图：通过 {@link SparkDeleteFilter} 在读取时应用删除文件，先求得 requiredSchema 再读取，避免读取不必要的列；设置 Spark {@link
+ * InputFileBlockHolder} 以支持 SQL 中 {@code filename()} 等函数。数据任务（DataTask）直接转为行迭代，不读文件。
+ *
+ * <p>上下游关系：继承 {@link BaseRowReader}，由 {@link SparkRowReaderFactory} 创建， 消费 {@link
+ * SparkInputPartition} 中的任务。
+ */
 class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionReader<InternalRow> {
   private static final Logger LOG = LoggerFactory.getLogger(RowDataReader.class);
 
   private final long numSplits;
 
+  /** 从输入分区构造行读取器，按分支解析表 schema。 */
   RowDataReader(SparkInputPartition partition) {
     this(
         partition.table(),
@@ -67,6 +82,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     LOG.debug("Reading {} file split(s) for table {}", numSplits, table.name());
   }
 
+  /** 返回当前任务的分片数与已应用删除数指标。 */
   @Override
   public CustomTaskMetric[] currentMetricsValues() {
     return new CustomTaskMetric[] {
@@ -74,11 +90,20 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     };
   }
 
+  /** 返回任务引用的数据文件与删除文件流，用于指标统计。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(FileScanTask task) {
     return Stream.concat(Stream.of(task.file()), task.deletes().stream());
   }
 
+  /**
+   * 打开单个文件扫描任务，返回过滤后的行迭代器。
+   *
+   * <p>逻辑：构造删除过滤器，求 requiredSchema 与常量列映射；设置 Spark 当前文件块信息 以支持 filename()；读取数据并经删除过滤器过滤后返回迭代器。
+   *
+   * @param task 文件扫描任务
+   * @return 行迭代器
+   */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     String filePath = task.file().path().toString();
@@ -95,6 +120,11 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     return deleteFilter.filter(open(task, requiredSchema, idToConstant)).iterator();
   }
 
+  /**
+   * 按任务类型打开数据：数据任务直接转为行迭代，文件任务通过 {@link #newIterable} 读取。
+   *
+   * @throws NullPointerException 当找不到任务对应的输入文件时抛出
+   */
   protected CloseableIterable<InternalRow> open(
       FileScanTask task, Schema readSchema, Map<Integer, ?> idToConstant) {
     if (task.isDataTask()) {
@@ -114,6 +144,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     }
   }
 
+  /** 将数据任务的行转为 Spark 内部行可迭代对象。 */
   private CloseableIterable<InternalRow> newDataIterable(DataTask task, Schema readSchema) {
     StructInternalRow row = new StructInternalRow(readSchema.asStruct());
     return CloseableIterable.transform(task.asDataTask().rows(), row::setStruct);

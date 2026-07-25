@@ -44,6 +44,15 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 RowDataRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class RowDataRewriter implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RowDataRewriter.class);
@@ -53,6 +62,7 @@ public class RowDataRewriter implements Serializable {
   private final FileFormat format;
   private final boolean caseSensitive;
 
+  /** 构造 RowDataRewriter 实例。 */
   public RowDataRewriter(
       Broadcast<Table> tableBroadcast, PartitionSpec spec, boolean caseSensitive) {
     this.tableBroadcast = tableBroadcast;
@@ -68,12 +78,19 @@ public class RowDataRewriter implements Serializable {
     this.format = FileFormat.fromString(formatString);
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param taskRDD 参数
+   * @return 结果对象
+   */
   public List<DataFile> rewriteDataForTasks(JavaRDD<CombinedScanTask> taskRDD) {
     JavaRDD<List<DataFile>> dataFilesRDD = taskRDD.map(this::rewriteDataForTask);
 
     return dataFilesRDD.collect().stream().flatMap(Collection::stream).collect(Collectors.toList());
   }
 
+  /** 重写计划或文件。 */
   private List<DataFile> rewriteDataForTask(CombinedScanTask task) throws Exception {
     TaskContext context = TaskContext.get();
     int partitionId = context.partitionId();
@@ -172,6 +189,7 @@ public class RowDataRewriter implements Serializable {
       if (originalThrowable instanceof Exception) {
         throw originalThrowable;
       } else {
+        /** 执行该方法的具体逻辑。 */
         throw new RuntimeException(originalThrowable);
       }
     }

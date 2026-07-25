@@ -26,6 +26,15 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.rest.RESTResponse;
 
+/**
+ * 文件级说明：列出命名空间的 REST 响应模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：封装命名空间列表，支持分页（通过 next-page-token）。
+ *
+ * <p>设计意图：实现 Iterable 便于直接遍历；使用 Builder 模式保证不可变性。
+ */
 public class ListNamespacesResponse implements RESTResponse {
 
   private List<Namespace> namespaces;

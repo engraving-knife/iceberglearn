@@ -30,8 +30,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.arrow.vector.NullCheckingForGet;
-import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.types.Types.MinorType;
 import org.apache.iceberg.CombinedScanTask;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.FileScanTask;
@@ -54,7 +52,6 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.Type.TypeID;
-import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ExceptionUtil;
 import org.apache.iceberg.util.TableScanUtil;
 import org.apache.parquet.schema.MessageType;
@@ -62,41 +59,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Vectorized reader that returns an iterator of {@link ColumnarBatch}. See {@link
- * #open(CloseableIterable)} ()} to learn about the behavior of the iterator.
+ * 文件级说明：向量化读取 Iceberg 表数据并以 {@link ColumnarBatch} 迭代输出的读取器。
  *
- * <p>The following Iceberg data types are supported and have been tested:
+ * <p>所属模块：iceberg-arrow（Iceberg 读取链路与 Arrow 列式内存的桥接，位于扫描执行层）。
  *
- * <ul>
- *   <li>Iceberg: {@link Types.BooleanType}, Arrow: {@link MinorType#BIT}
- *   <li>Iceberg: {@link Types.IntegerType}, Arrow: {@link MinorType#INT}
- *   <li>Iceberg: {@link Types.LongType}, Arrow: {@link MinorType#BIGINT}
- *   <li>Iceberg: {@link Types.FloatType}, Arrow: {@link MinorType#FLOAT4}
- *   <li>Iceberg: {@link Types.DoubleType}, Arrow: {@link MinorType#FLOAT8}
- *   <li>Iceberg: {@link Types.StringType}, Arrow: {@link MinorType#VARCHAR}
- *   <li>Iceberg: {@link Types.TimestampType} (both with and without timezone), Arrow: {@link
- *       MinorType#TIMEMICRO}
- *   <li>Iceberg: {@link Types.BinaryType}, Arrow: {@link MinorType#VARBINARY}
- *   <li>Iceberg: {@link Types.DateType}, Arrow: {@link MinorType#DATEDAY}
- *   <li>Iceberg: {@link Types.TimeType}, Arrow: {@link MinorType#TIMEMICRO}
- *   <li>Iceberg: {@link Types.UUIDType}, Arrow: {@link MinorType#FIXEDSIZEBINARY}(16)
- * </ul>
- *
- * <p>Features that don't work in this implementation:
+ * <p>职责：
  *
  * <ul>
- *   <li>Type promotion: In case of type promotion, the Arrow vector corresponding to the data type
- *       in the parquet file is returned instead of the data type in the latest schema. See
- *       https://github.com/apache/iceberg/issues/2483.
- *   <li>Columns with constant values are physically encoded as a dictionary. The Arrow vector type
- *       is int32 instead of the type as per the schema. See
- *       https://github.com/apache/iceberg/issues/2484.
- *   <li>Data types: {@link Types.ListType}, {@link Types.MapType}, {@link Types.StructType}, {@link
- *       Types.FixedType} and {@link Types.DecimalType} See
- *       https://github.com/apache/iceberg/issues/2485 and
- *       https://github.com/apache/iceberg/issues/2486.
- *   <li>Delete files are not supported. See https://github.com/apache/iceberg/issues/2487.
+ *   <li>接收 {@link CombinedScanTask}，逐文件以 Parquet 向量化方式读取，产出 {@link ColumnarBatch} 的 {@link
+ *       CloseableIterator}。
+ *   <li>管理读取所需的 {@link FileIO}、加密解密、名称映射、批大小与容器复用等配置。
+ *   <li>对支持的类型（见 {@link #SUPPORTED_TYPES}）进行校验，对 delete 文件、空投影、 不支持类型抛出 {@link
+ *       UnsupportedOperationException}。
  * </ul>
+ *
+ * <p>设计意图：继承 {@link CloseableGroup} 统一管理多个可关闭资源（迭代器、文件句柄）； 内部委托 {@link
+ * VectorizedCombinedScanIterator} 完成实际的逐文件迭代与解密，使读取器 本身保持轻量。reuseContainers 选项允许在迭代中复用 Arrow
+ * 向量以减少内存分配。
+ *
+ * <p>当前已知限制：类型提升未对齐最新 Schema、常量列以字典编码返回 int32、 List/Map/Struct/Fixed/Decimal 与 delete 文件暂不支持。
+ *
+ * <p>上下游关系：上游为 Iceberg 的 {@link TableScan} 任务规划；下游被 Spark/Flink 等引擎 集成调用以获取列式批次。
  */
 public class ArrowReader extends CloseableGroup {
   private static final Logger LOG = LoggerFactory.getLogger(ArrowReader.class);
@@ -123,17 +106,12 @@ public class ArrowReader extends CloseableGroup {
   private final boolean reuseContainers;
 
   /**
-   * Create a new instance of the reader.
+   * 构造读取器实例。
    *
-   * @param scan the table scan object.
-   * @param batchSize the maximum number of rows per Arrow batch.
-   * @param reuseContainers whether to reuse Arrow vectors when iterating through the data. If set
-   *     to {@code false}, every {@link Iterator#next()} call creates new instances of Arrow
-   *     vectors. If set to {@code true}, the Arrow vectors in the previous {@link Iterator#next()}
-   *     may be reused for the data returned in the current {@link Iterator#next()}. This option
-   *     avoids allocating memory again and again. Irrespective of the value of {@code
-   *     reuseContainers}, the Arrow vectors in the previous {@link Iterator#next()} call are closed
-   *     before creating new instances if the current {@link Iterator#next()}.
+   * @param scan 表扫描对象，提供 schema、io、加密管理
+   * @param batchSize 每个 Arrow 批次的最大行数
+   * @param reuseContainers 是否复用 Arrow 向量；为 false 时每次迭代新建向量，为 true 时
+   *     上一批向量可能被下一批复用以避免重复分配；无论取值，新建前都会关闭上一批向量
    */
   public ArrowReader(TableScan scan, int batchSize, boolean reuseContainers) {
     this.schema = scan.schema();
@@ -145,30 +123,17 @@ public class ArrowReader extends CloseableGroup {
   }
 
   /**
-   * Returns a new iterator of {@link ColumnarBatch} objects.
+   * 返回 {@link ColumnarBatch} 的新迭代器。
    *
-   * <p>Note that the reader owns the {@link ColumnarBatch} objects and takes care of closing them.
-   * The caller should not hold onto a {@link ColumnarBatch} or try to close them.
+   * <p>读取器拥有 {@link ColumnarBatch} 的生命周期并负责关闭，调用方不应持有或关闭它们。
    *
-   * <p>If {@code reuseContainers} is {@code false}, the Arrow vectors in the previous {@link
-   * ColumnarBatch} are closed before returning the next {@link ColumnarBatch} object. This implies
-   * that the caller should either use the {@link ColumnarBatch} or transfer the ownership of {@link
-   * ColumnarBatch} before getting the next {@link ColumnarBatch}.
+   * <p>reuseContainers 为 false 时，上一批 Arrow 向量在返回下一批前被关闭；为 true 时， 上一批向量可能被下一批复用，调用方需在使用或深拷贝后再获取下一批。
    *
-   * <p>If {@code reuseContainers} is {@code true}, the Arrow vectors in the previous {@link
-   * ColumnarBatch} may be reused for the next {@link ColumnarBatch}. This implies that the caller
-   * should either use the {@link ColumnarBatch} or deep copy the {@link ColumnarBatch} before
-   * getting the next {@link ColumnarBatch}.
+   * <p>仅当以下条件全部满足时可用：至少查询一列、无 delete 文件、查询类型受支持 （见 {@link #SUPPORTED_TYPES}），否则抛出 {@link
+   * UnsupportedOperationException}。
    *
-   * <p>This method works for only when the following conditions are true:
-   *
-   * <ol>
-   *   <li>At least one column is queried,
-   *   <li>There are no delete files, and
-   *   <li>Supported data types are queried (see {@link #SUPPORTED_TYPES}).
-   * </ol>
-   *
-   * When any of these conditions fail, an {@link UnsupportedOperationException} is thrown.
+   * @param tasks 合并后的文件扫描任务集合
+   * @return 列式批次的可关闭迭代器
    */
   public CloseableIterator<ColumnarBatch> open(CloseableIterable<CombinedScanTask> tasks) {
     CloseableIterator<ColumnarBatch> itr =
@@ -179,13 +144,19 @@ public class ArrowReader extends CloseableGroup {
   }
 
   @Override
+  /**
+   * 关闭读取器及其持有的数据文件资源。
+   *
+   * @throws IOException 关闭时发生 IO 异常
+   */
   public void close() throws IOException {
     super.close(); // close data files
   }
 
   /**
-   * Reads the data file and returns an iterator of {@link VectorSchemaRoot}. Only Parquet data file
-   * format is supported.
+   * 内部迭代器：逐文件解密并以 Parquet 向量化方式产出 {@link ColumnarBatch}。
+   *
+   * <p>职责：展平 {@link CombinedScanTask} 为文件任务，校验 delete/空投影/不支持类型， 批量解密输入文件以减少密钥服务器 RPC，并维护当前文件的子迭代器。
    */
   private static final class VectorizedCombinedScanIterator
       implements CloseableIterator<ColumnarBatch> {
@@ -201,24 +172,18 @@ public class ArrowReader extends CloseableGroup {
     private FileScanTask currentTask;
 
     /**
-     * Create a new instance.
+     * 构造内部迭代器。
      *
-     * @param tasks Combined file scan tasks.
-     * @param expectedSchema Read schema. The returned data will have this schema.
-     * @param nameMapping Mapping from external schema names to Iceberg type IDs.
-     * @param io File I/O.
-     * @param encryptionManager Encryption manager.
-     * @param caseSensitive If {@code true}, column names are case sensitive. If {@code false},
-     *     column names are not case sensitive.
-     * @param batchSize Batch size in number of rows. Each Arrow batch contains a maximum of {@code
-     *     batchSize} rows.
-     * @param reuseContainers If set to {@code false}, every {@link Iterator#next()} call creates
-     *     new instances of Arrow vectors. If set to {@code true}, the Arrow vectors in the previous
-     *     {@link Iterator#next()} may be reused for the data returned in the current {@link
-     *     Iterator#next()}. This option avoids allocating memory again and again. Irrespective of
-     *     the value of {@code reuseContainers}, the Arrow vectors in the previous {@link
-     *     Iterator#next()} call are closed before creating new instances if the current {@link
-     *     Iterator#next()}.
+     * <p>逻辑：展平任务为文件列表；若任一文件含 delete 则抛异常；若投影列为空则抛异常； 计算不支持类型集合，非空则抛异常；收集各文件密钥并批量解密得到 InputFile 映射。
+     *
+     * @param tasks 合并后的文件扫描任务集合
+     * @param expectedSchema 读取 schema，返回数据将具有此 schema
+     * @param nameMapping 外部 schema 名到 Iceberg 类型 ID 的映射
+     * @param io 文件 IO
+     * @param encryptionManager 加密管理器
+     * @param caseSensitive 列名是否大小写敏感
+     * @param batchSize 批大小（行数）
+     * @param reuseContainers 是否复用 Arrow 向量
      */
     VectorizedCombinedScanIterator(
         CloseableIterable<CombinedScanTask> tasks,
@@ -285,6 +250,13 @@ public class ArrowReader extends CloseableGroup {
     }
 
     @Override
+    /**
+     * 是否还有下一个批次。
+     *
+     * <p>逻辑：循环判断当前子迭代器是否有数据，若无则关闭它并打开下一个文件任务； 所有任务耗尽则返回 false。发生异常时记录文件位置并抛出。
+     *
+     * @return 是否还有批次
+     */
     public boolean hasNext() {
       try {
         while (true) {
@@ -309,6 +281,12 @@ public class ArrowReader extends CloseableGroup {
     }
 
     @Override
+    /**
+     * 返回下一个批次。
+     *
+     * @return 下一个 {@link ColumnarBatch}
+     * @throws NoSuchElementException 若没有更多批次
+     */
     public ColumnarBatch next() {
       if (hasNext()) {
         return currentIterator.next();
@@ -317,6 +295,16 @@ public class ArrowReader extends CloseableGroup {
       }
     }
 
+    /**
+     * 打开单个文件任务并返回其批次迭代器。
+     *
+     * <p>逻辑：仅支持 Parquet 格式；使用 {@link Parquet#read} 构建读取器，设置投影、分片、 批大小、过滤谓词、大小写敏感等，并通过 {@link
+     * #buildReader} 创建列式批读取器函数。
+     *
+     * @param task 文件扫描任务
+     * @return 该文件的列式批次迭代器
+     * @throws UnsupportedOperationException 若文件格式非 Parquet
+     */
     CloseableIterator<ColumnarBatch> open(FileScanTask task) {
       CloseableIterable<ColumnarBatch> iter;
       InputFile location = getInputFile(task);
@@ -352,6 +340,11 @@ public class ArrowReader extends CloseableGroup {
     }
 
     @Override
+    /**
+     * 关闭当前子迭代器并排空剩余任务迭代器，确保资源释放。
+     *
+     * @throws IOException 关闭时发生 IO 异常
+     */
     public void close() throws IOException {
       // close the current iterator
       this.currentIterator.close();
@@ -362,17 +355,27 @@ public class ArrowReader extends CloseableGroup {
       }
     }
 
+    /**
+     * 根据文件任务获取已解密的 {@link InputFile}。
+     *
+     * @param task 文件扫描任务
+     * @return 解密后的输入文件
+     */
     private InputFile getInputFile(FileScanTask task) {
       Preconditions.checkArgument(!task.isDataTask(), "Invalid task type");
       return inputFiles.get(task.file().path().toString());
     }
 
     /**
-     * Build the {@link ArrowBatchReader} for the expected schema and file schema.
+     * 根据预期 schema 与文件 schema 构建 {@link ArrowBatchReader}。
      *
-     * @param expectedSchema Expected schema of the data returned.
-     * @param fileSchema Schema of the data file.
-     * @param setArrowValidityVector Indicates whether to set the validity vector in Arrow vectors.
+     * <p>逻辑：通过 {@link TypeWithSchemaVisitor} 访问预期 schema 与 Parquet 文件 schema， 以 {@link
+     * VectorizedReaderBuilder} 构造列读取器，最终包装为 {@link ArrowBatchReader}。
+     *
+     * @param expectedSchema 预期返回数据的 schema
+     * @param fileSchema 数据文件的 Parquet schema
+     * @param setArrowValidityVector 是否设置 Arrow 向量的有效性（validity）向量
+     * @return 构建好的 {@link ArrowBatchReader}
      */
     private static ArrowBatchReader buildReader(
         Schema expectedSchema, MessageType fileSchema, boolean setArrowValidityVector) {

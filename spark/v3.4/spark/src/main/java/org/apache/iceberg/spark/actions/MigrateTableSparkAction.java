@@ -44,9 +44,13 @@ import scala.Some;
 import scala.collection.JavaConverters;
 
 /**
- * Takes a Spark table in the source catalog and attempts to transform it into an Iceberg table in
- * the same location with the same identifier. Once complete the identifier which previously
- * referred to a non-Iceberg table will refer to the newly migrated Iceberg table.
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：迁移表的 Spark 动作，将已有的非 Iceberg 表（如 Parquet/ORC）就地迁移为 Iceberg 表。
+ *
+ * <p>设计意图：通过列举原表文件并以 Iceberg 元数据注册，实现无数据拷贝的就地迁移。
+ *
+ * <p>上下游关系：由 SparkActions 创建；继承 BaseTableCreationSparkAction。
  */
 public class MigrateTableSparkAction extends BaseTableCreationSparkAction<MigrateTableSparkAction>
     implements MigrateTable {
@@ -68,53 +72,53 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     String backupName = sourceTableIdent.name() + BACKUP_SUFFIX;
     this.backupIdent = Identifier.of(sourceTableIdent.namespace(), backupName);
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected MigrateTableSparkAction self() {
     return this;
   }
-
+  /** 执行 destCatalog 相关操作。 */
   @Override
   protected StagingTableCatalog destCatalog() {
     return destCatalog;
   }
-
+  /** 执行 destTableIdent 相关操作。 */
   @Override
   protected Identifier destTableIdent() {
     return destTableIdent;
   }
-
+  /** 执行 tableProperties 相关操作。 */
   @Override
   public MigrateTableSparkAction tableProperties(Map<String, String> properties) {
     setProperties(properties);
     return this;
   }
-
+  /** 执行 tableProperty 相关操作。 */
   @Override
   public MigrateTableSparkAction tableProperty(String property, String value) {
     setProperty(property, value);
     return this;
   }
-
+  /** 执行 dropBackup 相关操作。 */
   @Override
   public MigrateTableSparkAction dropBackup() {
     this.dropBackup = true;
     return this;
   }
-
+  /** 执行 backupTableName 相关操作。 */
   @Override
   public MigrateTableSparkAction backupTableName(String tableName) {
     this.backupIdent = Identifier.of(sourceTableIdent().namespace(), tableName);
     return this;
   }
-
+  /** 执行动作并返回结果。 */
   @Override
   public MigrateTable.Result execute() {
     String desc = String.format("Migrating table %s", destTableIdent().toString());
     JobGroupInfo info = newJobGroupInfo("MIGRATE-TABLE", desc);
     return withJobGroupInfo(info, this::doExecute);
   }
-
+  /** 执行 doExecute 相关操作。 */
   private MigrateTable.Result doExecute() {
     LOG.info("Starting the migration of {} to Iceberg", sourceTableIdent());
 
@@ -172,7 +176,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
         .migratedDataFilesCount(migratedDataFilesCount)
         .build();
   }
-
+  /** 执行 destTableProps 相关操作。 */
   @Override
   protected Map<String, String> destTableProps() {
     Map<String, String> properties = Maps.newHashMap();
@@ -193,7 +197,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
 
     return properties;
   }
-
+  /** 执行 checkSourceCatalog 相关操作。 */
   @Override
   protected TableCatalog checkSourceCatalog(CatalogPlugin catalog) {
     // currently the import code relies on being able to look up the table in the session catalog
@@ -205,7 +209,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
 
     return (TableCatalog) catalog;
   }
-
+  /** 执行 renameAndBackupSourceTable 相关操作。 */
   private void renameAndBackupSourceTable() {
     try {
       LOG.info("Renaming {} as {} for backup", sourceTableIdent(), backupIdent);
@@ -220,7 +224,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
           sourceTableIdent(), backupIdent);
     }
   }
-
+  /** 执行 restoreSourceTable 相关操作。 */
   private void restoreSourceTable() {
     try {
       LOG.info("Restoring {} from {}", sourceTableIdent(), backupIdent);
@@ -238,7 +242,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
           e);
     }
   }
-
+  /** 执行 dropBackupTable 相关操作。 */
   private void dropBackupTable() {
     try {
       destCatalog().dropTable(backupIdent);

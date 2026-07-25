@@ -42,6 +42,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkReaderDeletesBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkReaderDeletesBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class TestFlinkReaderDeletesBase extends DeleteReadTests {
 
@@ -55,6 +62,7 @@ public abstract class TestFlinkReaderDeletesBase extends DeleteReadTests {
 
   protected final FileFormat format;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "fileFormat={0}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -68,6 +76,7 @@ public abstract class TestFlinkReaderDeletesBase extends DeleteReadTests {
     this.format = fileFormat;
   }
 
+  /** 辅助方法：startMetastore，start Metastore。 */
   @BeforeClass
   public static void startMetastore() {
     metastore = new TestHiveMetastore();
@@ -79,12 +88,14 @@ public abstract class TestFlinkReaderDeletesBase extends DeleteReadTests {
                 HiveCatalog.class.getName(), "hive", ImmutableMap.of(), hiveConf);
   }
 
+  /** 辅助方法：stopMetastore，stop Metastore。 */
   @AfterClass
   public static void stopMetastore() throws Exception {
     metastore.stop();
     catalog = null;
   }
 
+  /** 辅助方法：createTable，create Table。 */
   @Override
   protected Table createTable(String name, Schema schema, PartitionSpec spec) {
     Map<String, String> props = Maps.newHashMap();
@@ -98,11 +109,13 @@ public abstract class TestFlinkReaderDeletesBase extends DeleteReadTests {
     return table;
   }
 
+  /** 辅助方法：dropTable，drop Table。 */
   @Override
   protected void dropTable(String name) {
     catalog.dropTable(TableIdentifier.of(databaseName, name));
   }
 
+  /** 辅助方法：expectPruned，expect Pruned。 */
   @Override
   protected boolean expectPruned() {
     return false;

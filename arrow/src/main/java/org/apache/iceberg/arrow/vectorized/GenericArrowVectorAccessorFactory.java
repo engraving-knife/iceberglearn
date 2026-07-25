@@ -52,25 +52,30 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
- * This class is creates typed {@link ArrowVectorAccessor} from {@link VectorHolder}. It provides a
- * generic implementation for following Arrow types:
+ * 文件级说明：根据 {@link VectorHolder} 构造类型化的 {@link ArrowVectorAccessor} 的通用工厂。
+ *
+ * <p>所属模块：iceberg-arrow（向量化读取链路中向量值访问器的构造中枢）。
+ *
+ * <p>职责：
  *
  * <ul>
- *   <li>Decimal type can be deserialized to a type that supports decimal, e.g. BigDecimal or
- *       Spark's Decimal.
- *   <li>UTF8 String type can deserialized to a Java String or Spark's UTF8String.
- *   <li>List type: the child elements of a list can be deserialized to Spark's ColumnarArray or
- *       similar type.
- *   <li>Struct type: the child elements of a struct can be deserialized to a Spark's
- *       ArrowColumnVector or similar type.
+ *   <li>依据向量是否字典编码，分发到字典访问器或普通访问器。
+ *   <li>覆盖各类 Arrow 向量类型（布尔、整型、长整型、浮点、双精度、Decimal、字符串、 二进制、日期、时间戳、时间、定长二进制、List、Struct），通过内部访问器子类
+ *       实现按行读取。
+ *   <li>通过可注入的 Decimal/String/Array/Struct 工厂适配不同引擎的类型表示 （如 Spark 的 UTF8String/Decimal、Hive 的
+ *       HiveDecimal）。
  * </ul>
  *
- * @param <DecimalT> A concrete type that can represent a decimal.
- * @param <Utf8StringT> A concrete type that can represent a UTF8 string.
- * @param <ArrayT> A concrete type that can represent an array value in a list vector, e.g. Spark's
- *     ColumnarArray.
- * @param <ChildVectorT> A concrete type that can represent a child vector in a struct, e.g. Spark's
- *     ArrowColumnVector.
+ * <p>设计意图：采用工厂 + 模板方法模式，把“读取向量值”与“目标类型表示”解耦。基类 {@link ArrowVectorAccessor} 定义接口，本工厂按 Parquet
+ * 原始类型/逻辑类型选择具体子类； Decimal/String 等类型的具体产出形态由工厂接口注入，避免与引擎类型硬绑定。字典编码访问器 对字符串/Decimal 做了缓存以减少重复解码开销。
+ *
+ * <p>上下游关系：上游被 {@link ArrowVectorAccessors}（默认实现）及各引擎集成子类调用； 下游产出 {@link ArrowVectorAccessor} 供
+ * {@link ColumnVector}、{@link DictEncodedArrowConverter} 使用。
+ *
+ * @param <DecimalT> Decimal 的具体表示类型
+ * @param <Utf8StringT> UTF8 字符串的具体表示类型
+ * @param <ArrayT> 数组的具体表示类型（如 Spark 的 ColumnarArray）
+ * @param <ChildVectorT> 子列向量的具体表示类型（如 Spark 的 ArrowColumnVector）
  */
 public class GenericArrowVectorAccessorFactory<
     DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable> {
@@ -81,9 +86,14 @@ public class GenericArrowVectorAccessorFactory<
   private final Supplier<ArrayFactory<ChildVectorT, ArrayT>> arrayFactorySupplier;
 
   /**
-   * The constructor is parameterized using the decimal, string, struct and array factories. If a
-   * specific type is not supported, the factory supplier can raise an {@link
-   * UnsupportedOperationException}.
+   * 构造工厂实例，注入 Decimal/String/Struct/Array 四种工厂的供应商。
+   *
+   * <p>若某类型不支持，对应供应商可抛出 {@link UnsupportedOperationException}。
+   *
+   * @param decimalFactorySupplier Decimal 工厂供应商
+   * @param stringFactorySupplier 字符串工厂供应商
+   * @param structChildFactorySupplier 结构体子列工厂供应商
+   * @param arrayFactorySupplier 数组工厂供应商
    */
   protected GenericArrowVectorAccessorFactory(
       Supplier<DecimalFactory<DecimalT>> decimalFactorySupplier,
@@ -96,6 +106,15 @@ public class GenericArrowVectorAccessorFactory<
     this.arrayFactorySupplier = arrayFactorySupplier;
   }
 
+  /**
+   * 根据向量持有者构造对应的访问器。
+   *
+   * <p>逻辑：若向量字典编码则委托 {@link #getDictionaryVectorAccessor}，否则委托 {@link #getPlainVectorAccessor}。desc
+   * 为 null（常量/位置向量持有者）时 primitive 视为 null。
+   *
+   * @param holder 向量持有者
+   * @return 类型合适的 {@link ArrowVectorAccessor}
+   */
   public ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> getVectorAccessor(
       VectorHolder holder) {
     Dictionary dictionary = holder.dictionary();
@@ -111,6 +130,18 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /**
+   * 为字典编码向量构造访问器。
+   *
+   * <p>逻辑：校验字典 id 必须存储在 {@link IntVector} 中；按 Parquet 逻辑类型（原始类型） 分发到字符串/long/Decimal
+   * 等字典访问器；若无逻辑类型则按原始类型名（BINARY/FLOAT/INT64/ INT96/DOUBLE）分发。INT96 兼容旧版 Impala/Spark 的时间戳写入。
+   *
+   * @param dictionary Parquet 字典
+   * @param desc 列描述符
+   * @param vector 存储字典 id 的向量
+   * @param primitive Parquet 原始类型
+   * @return 字典访问器
+   */
   private ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT>
       getDictionaryVectorAccessor(
           Dictionary dictionary,
@@ -174,6 +205,17 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /**
+   * 为非字典编码向量构造访问器。
+   *
+   * <p>逻辑：按 Arrow 向量具体类型（BitVector/IntVector/BigIntVector/Float4Vector/...） 分发到对应访问器；对
+   * Int/Long/FixedSizeBinary 还会判断是否为 Decimal 底层存储并选择 对应的 Decimal 访问器。不支持则抛出 {@link
+   * UnsupportedOperationException}。
+   *
+   * @param vector Arrow 向量
+   * @param primitive Parquet 原始类型（用于判断 Decimal）
+   * @return 普通访问器
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   private ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> getPlainVectorAccessor(
       FieldVector vector, PrimitiveType primitive) {
@@ -224,10 +266,17 @@ public class GenericArrowVectorAccessorFactory<
     throw new UnsupportedOperationException("Unsupported vector: " + vector.getClass());
   }
 
+  /**
+   * 判断 Parquet 原始类型是否为 Decimal 逻辑类型。
+   *
+   * @param primitive Parquet 原始类型
+   * @return 为 Decimal 返回 true
+   */
   private static boolean isDecimal(PrimitiveType primitive) {
     return primitive != null && OriginalType.DECIMAL.equals(primitive.getOriginalType());
   }
 
+  /** 包装 {@link BitVector} 的布尔值访问器。 */
   private static class BooleanAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -244,6 +293,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link IntVector} 的整型访问器，支持以 int 表示的 Decimal。 */
   private static class IntAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -266,6 +316,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link BigIntVector} 的长整型访问器。 */
   private static class LongAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -283,6 +334,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码 long 值的访问器。 */
   private static class DictionaryLongAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -301,6 +353,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link Float4Vector} 的单精度浮点访问器。 */
   private static class FloatAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -323,6 +376,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码 float 值的访问器。 */
   private static class DictionaryFloatAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -346,6 +400,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link Float8Vector} 的双精度浮点访问器。 */
   private static class DoubleAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -363,6 +418,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码 double 值的访问器。 */
   private static class DictionaryDoubleAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -381,6 +437,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link VarCharVector} 的 UTF8 字符串访问器。 */
   private static class StringAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -400,6 +457,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码字符串的访问器，带按字典 id 的结果缓存。 */
   private static class DictionaryStringAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -428,6 +486,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link VarBinaryVector} 的二进制访问器。 */
   private static class BinaryAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -445,6 +504,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码二进制值的访问器。 */
   private static class DictionaryBinaryAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -463,6 +523,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 基于字典解码 INT96 时间戳的访问器（兼容旧版 Impala/Spark）。 */
   private static class DictionaryTimestampInt96Accessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -486,6 +547,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link DateDayVector} 的日期访问器。 */
   private static class DateAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -503,6 +565,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link TimeStampMicroTZVector} 的带时区时间戳访问器。 */
   private static class TimestampMicroTzAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -520,6 +583,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link TimeStampMicroVector} 的无时区时间戳访问器。 */
   private static class TimestampMicroAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -537,6 +601,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link TimeMicroVector} 的时间访问器。 */
   private static class TimeMicroAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -554,6 +619,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link FixedSizeBinaryVector} 的访问器（UUID/固定二进制）。 */
   private static class FixedSizeBinaryAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -587,6 +653,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link ListVector} 的数组访问器。 */
   private static class ArrayAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -608,6 +675,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link StructVector} 的结构体访问器。 */
   private static class StructAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -621,6 +689,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 包装 {@link DecimalVector} 的 Decimal 访问器。 */
   private static class DecimalAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -644,6 +713,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 以 int 底层存储的 Decimal 访问器。 */
   private static class IntBackedDecimalAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -663,6 +733,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 以 long 底层存储的 Decimal 访问器。 */
   private static class LongBackedDecimalAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -682,6 +753,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 以定长二进制底层存储的 Decimal 访问器。 */
   private static class FixedSizeBinaryBackedDecimalAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -706,6 +778,7 @@ public class GenericArrowVectorAccessorFactory<
   }
 
   @SuppressWarnings("checkstyle:VisibilityModifier")
+  /** 基于字典解码 Decimal 的抽象访问器，带按字典 id 的缓存。 */
   private abstract static class DictionaryDecimalAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends ArrowVectorAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -735,6 +808,7 @@ public class GenericArrowVectorAccessorFactory<
     protected abstract DecimalT decode(int dictId, int precision, int scale);
   }
 
+  /** 字典解码、二进制底层的 Decimal 访问器。 */
   private static class DictionaryDecimalBinaryAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends DictionaryDecimalAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -753,6 +827,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 字典解码、long 底层的 Decimal 访问器。 */
   private static class DictionaryDecimalLongAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends DictionaryDecimalAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -768,6 +843,7 @@ public class GenericArrowVectorAccessorFactory<
     }
   }
 
+  /** 字典解码、int 底层的 Decimal 访问器。 */
   private static class DictionaryDecimalIntAccessor<
           DecimalT, Utf8StringT, ArrayT, ChildVectorT extends AutoCloseable>
       extends DictionaryDecimalAccessor<DecimalT, Utf8StringT, ArrayT, ChildVectorT> {
@@ -784,9 +860,9 @@ public class GenericArrowVectorAccessorFactory<
   }
 
   /**
-   * Create a decimal value of type {@code DecimalT} from arrow vector value.
+   * Decimal 工厂接口：将 Arrow 向量值转换为 {@code DecimalT} 类型的 Decimal。
    *
-   * @param <DecimalT> A concrete type that can represent a decimal, e.g, Spark's Decimal.
+   * @param <DecimalT> Decimal 的具体表示类型
    */
   protected interface DecimalFactory<DecimalT> {
     /** Class of concrete decimal type. */
@@ -800,9 +876,9 @@ public class GenericArrowVectorAccessorFactory<
   }
 
   /**
-   * Create a UTF8 String value of type {@code Utf8StringT} from arrow vector value.
+   * UTF8 字符串工厂接口：将 Arrow 向量值转换为 {@code Utf8StringT} 类型的字符串。
    *
-   * @param <Utf8StringT> A concrete type that can represent a UTF8 string.
+   * @param <Utf8StringT> UTF8 字符串的具体表示类型
    */
   protected interface StringFactory<Utf8StringT> {
     /** Class of concrete UTF8 String type. */
@@ -827,12 +903,10 @@ public class GenericArrowVectorAccessorFactory<
   }
 
   /**
-   * Create an array value of type {@code ArrayT} from arrow vector value.
+   * 数组工厂接口：将 List 向量转换为 {@code ArrayT} 类型的数组。
    *
-   * @param <ArrayT> A concrete type that can represent an array value in a list vector, e.g.
-   *     Spark's ColumnarArray.
-   * @param <ChildVectorT> A concrete type that can represent a child vector in a struct, e.g.
-   *     Spark's ArrowColumnVector.
+   * @param <ChildVectorT> 子列向量的具体表示类型
+   * @param <ArrayT> 数值数组的具体表示类型
    */
   protected interface ArrayFactory<ChildVectorT, ArrayT> {
     /** Create a child vector of type {@code ChildVectorT} from the arrow child vector. */
@@ -843,10 +917,9 @@ public class GenericArrowVectorAccessorFactory<
   }
 
   /**
-   * Create a struct child vector of type {@code ChildVectorT} from arrow vector value.
+   * 结构体子列工厂接口：将 Struct 子向量转换为 {@code ChildVectorT} 类型。
    *
-   * @param <ChildVectorT> A concrete type that can represent a child vector in a struct, e.g.
-   *     Spark's ArrowColumnVector.
+   * @param <ChildVectorT> 子列向量的具体表示类型
    */
   protected interface StructChildFactory<ChildVectorT> {
     /** Class of concrete child vector type. */
@@ -859,11 +932,26 @@ public class GenericArrowVectorAccessorFactory<
     ChildVectorT of(ValueVector childVector);
   }
 
+  /**
+   * 返回按长度创建泛型数组的 {@link IntFunction}。
+   *
+   * @param genericClass 元素类型
+   * @param <T> 元素类型
+   * @return 数组构造函数
+   */
   private static <T> IntFunction<T[]> genericArray(Class<T> genericClass) {
     return length -> genericArray(genericClass, length);
   }
 
   @SuppressWarnings("unchecked")
+  /**
+   * 通过反射创建指定长度的泛型数组。
+   *
+   * @param genericClass 元素类型
+   * @param length 数组长度
+   * @param <T> 元素类型
+   * @return 新建的泛型数组
+   */
   private static <T> T[] genericArray(Class<T> genericClass, int length) {
     return (T[]) Array.newInstance(genericClass, length);
   }

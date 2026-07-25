@@ -50,10 +50,14 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * A Spark catalog that can also load non-Iceberg tables.
+ * 所属模块：iceberg-spark v3.4
  *
- * @param <T> CatalogPlugin class to avoid casting to TableCatalog, FunctionCatalog and
- *     SupportsNamespaces.
+ * <p>职责：Iceberg 的 Spark SessionCatalog 包装器，将 Spark 内置 session catalog 委托给 Iceberg catalog 以支持
+ * Iceberg 表。
+ *
+ * <p>设计意图：采用委托模式代理原有 session catalog，同时注入 Iceberg 函数与扩展。
+ *
+ * <p>上下游关系：被 SparkSession 在配置 catalog 时注册；依赖 SparkCatalog。
  */
 public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & SupportsNamespaces>
     extends BaseCatalog implements CatalogExtension {
@@ -82,7 +86,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     newCatalog.initialize(name, options);
     return newCatalog;
   }
-
+  /** 执行 defaultNamespace 相关操作。 */
   @Override
   public String[] defaultNamespace() {
     return DEFAULT_NAMESPACE;
@@ -97,30 +101,30 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
   public String[][] listNamespaces(String[] namespace) throws NoSuchNamespaceException {
     return getSessionCatalog().listNamespaces(namespace);
   }
-
+  /** 执行 namespaceExists 相关操作。 */
   @Override
   public boolean namespaceExists(String[] namespace) {
     return getSessionCatalog().namespaceExists(namespace);
   }
-
+  /** 执行 loadNamespaceMetadata 相关操作。 */
   @Override
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
     return getSessionCatalog().loadNamespaceMetadata(namespace);
   }
-
+  /** 执行 createNamespace 相关操作。 */
   @Override
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
     getSessionCatalog().createNamespace(namespace, metadata);
   }
-
+  /** 执行 alterNamespace 相关操作。 */
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
     getSessionCatalog().alterNamespace(namespace, changes);
   }
-
+  /** 执行 dropNamespace 相关操作。 */
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException, NonEmptyNamespaceException {
@@ -159,7 +163,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       return getSessionCatalog().loadTable(ident, timestamp);
     }
   }
-
+  /** 执行 invalidateTable 相关操作。 */
   @Override
   public void invalidateTable(Identifier ident) {
     // We do not need to check whether the table exists and whether
@@ -167,7 +171,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     icebergCatalog.invalidateTable(ident);
     getSessionCatalog().invalidateTable(ident);
   }
-
+  /** 执行 createTable 相关操作。 */
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
@@ -180,7 +184,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       return getSessionCatalog().createTable(ident, schema, partitions, properties);
     }
   }
-
+  /** 执行 stageCreate 相关操作。 */
   @Override
   public StagedTable stageCreate(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
@@ -201,7 +205,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     Table table = catalog.createTable(ident, schema, partitions, properties);
     return new RollbackStagedTable(catalog, ident, table);
   }
-
+  /** 执行 stageReplace 相关操作。 */
   @Override
   public StagedTable stageReplace(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
@@ -233,7 +237,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       return stageReplace(ident, schema, partitions, properties);
     }
   }
-
+  /** 执行 stageCreateOrReplace 相关操作。 */
   @Override
   public StagedTable stageCreateOrReplace(
       Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
@@ -272,7 +276,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       return getSessionCatalog().alterTable(ident, changes);
     }
   }
-
+  /** 执行 dropTable 相关操作。 */
   @Override
   public boolean dropTable(Identifier ident) {
     // no need to check table existence to determine which catalog to use. if a table doesn't exist
@@ -280,7 +284,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     // required to return false.
     return icebergCatalog.dropTable(ident) || getSessionCatalog().dropTable(ident);
   }
-
+  /** 执行 purgeTable 相关操作。 */
   @Override
   public boolean purgeTable(Identifier ident) {
     // no need to check table existence to determine which catalog to use. if a table doesn't exist
@@ -288,7 +292,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     // required to return false.
     return icebergCatalog.purgeTable(ident) || getSessionCatalog().purgeTable(ident);
   }
-
+  /** 执行 renameTable 相关操作。 */
   @Override
   public void renameTable(Identifier from, Identifier to)
       throws NoSuchTableException, TableAlreadyExistsException {
@@ -301,7 +305,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       getSessionCatalog().renameTable(from, to);
     }
   }
-
+  /** 执行 initialize 相关操作。 */
   @Override
   public final void initialize(String name, CaseInsensitiveStringMap options) {
     if (options.containsKey(CatalogUtil.ICEBERG_CATALOG_TYPE)
@@ -321,7 +325,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
     this.createAvroAsIceberg = options.getBoolean("avro-enabled", createAvroAsIceberg);
     this.createOrcAsIceberg = options.getBoolean("orc-enabled", createOrcAsIceberg);
   }
-
+  /** 执行 validateHmsUri 相关操作。 */
   private void validateHmsUri(String catalogHmsUri) {
     if (catalogHmsUri == null) {
       return;
@@ -339,7 +343,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
         envHmsUri,
         catalogHmsUri);
   }
-
+  /** 设置 DelegateCatalog 属性。 */
   @Override
   @SuppressWarnings("unchecked")
   public void setDelegateCatalog(CatalogPlugin sparkSessionCatalog) {
@@ -351,12 +355,12 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
       throw new IllegalArgumentException("Invalid session catalog: " + sparkSessionCatalog);
     }
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return catalogName;
   }
-
+  /** 执行 useIceberg 相关操作。 */
   private boolean useIceberg(String provider) {
     if (provider == null || "iceberg".equalsIgnoreCase(provider)) {
       return true;
@@ -370,7 +374,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
 
     return false;
   }
-
+  /** 返回 SessionCatalog 属性。 */
   private T getSessionCatalog() {
     Preconditions.checkNotNull(
         sessionCatalog,
@@ -378,7 +382,7 @@ public class SparkSessionCatalog<T extends TableCatalog & FunctionCatalog & Supp
             + "Please make sure your are replacing Spark's default catalog, named 'spark_catalog'.");
     return sessionCatalog;
   }
-
+  /** 执行 icebergCatalog 相关操作。 */
   @Override
   public Catalog icebergCatalog() {
     Preconditions.checkArgument(

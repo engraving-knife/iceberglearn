@@ -52,6 +52,15 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkWriteBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, SupportsOverwrite {
   private static final Logger LOG = LoggerFactory.getLogger(SparkWriteBuilder.class);
   private static final SortOrder[] NO_ORDERING = new SortOrder[0];
@@ -85,6 +94,14 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     this.useTableDistributionAndOrdering = writeConf.useTableDistributionAndOrdering();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param scan 参数
+   * @param command 参数
+   * @param isolationLevel 参数
+   * @return 结果对象
+   */
   public WriteBuilder overwriteFiles(Scan scan, Command command, IsolationLevel isolationLevel) {
     Preconditions.checkState(!overwriteByFilter, "Cannot overwrite individual files and by filter");
     Preconditions.checkState(
@@ -99,6 +116,11 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public WriteBuilder overwriteDynamicPartitions() {
     Preconditions.checkState(
@@ -111,6 +133,12 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param filters 参数
+   * @return 结果对象
+   */
   @Override
   public WriteBuilder overwrite(Filter[] filters) {
     Preconditions.checkState(
@@ -129,6 +157,11 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     return this;
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public Write build() {
     // Validate
@@ -161,9 +194,15 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
       ordering = NO_ORDERING;
     }
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkWrite(
         spark, table, writeConf, writeInfo, appId, writeSchema, dsSchema, distribution, ordering) {
 
+      /**
+       * 转换为batch。
+       *
+       * @return 结果对象
+       */
       @Override
       public BatchWrite toBatch() {
         if (rewrittenFileSetId != null) {
@@ -179,6 +218,11 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
         }
       }
 
+      /**
+       * 转换为streaming。
+       *
+       * @return 结果对象
+       */
       @Override
       public StreamingWrite toStreaming() {
         Preconditions.checkState(
@@ -199,6 +243,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     };
   }
 
+  /** 构造并返回目标对象。 */
   private Distribution buildRequiredDistribution() {
     if (overwriteFiles) {
       DistributionMode distributionMode = copyOnWriteDistributionMode();
@@ -210,6 +255,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private DistributionMode copyOnWriteDistributionMode() {
     switch (copyOnWriteCommand) {
       case DELETE:
@@ -223,6 +269,7 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     }
   }
 
+  /** 构造并返回目标对象。 */
   private SortOrder[] buildRequiredOrdering(Distribution requiredDistribution) {
     if (overwriteFiles) {
       return SparkDistributionAndOrderingUtil.buildCopyOnWriteOrdering(
@@ -232,10 +279,12 @@ class SparkWriteBuilder implements WriteBuilder, SupportsDynamicOverwrite, Suppo
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean allIdentityTransforms(PartitionSpec spec) {
     return spec.fields().stream().allMatch(field -> field.transform().isIdentity());
   }
 
+  /** 校验前置条件或参数。 */
   private static Schema validateOrMergeWriteSchema(
       Table table, StructType dsSchema, SparkWriteConf writeConf) {
     Schema writeSchema;

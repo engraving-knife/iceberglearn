@@ -36,6 +36,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
  * @param <T> is the output data type returned by this iterator.
  */
 @Internal
+/**
+ * 数据迭代器，把 FileScanTask 流式转换为记录迭代器。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：管理当前文件读取器，按 task 顺序产出记录并维护行位置。
+ *
+ * <p>设计意图：迭代器模式；被读取算子/batcher 调用。
+ */
 public class DataIterator<T> implements CloseableIterator<T> {
 
   private final FileScanTaskReader<T> fileScanTaskReader;

@@ -44,13 +44,11 @@ import org.apache.spark.sql.types.TimestampType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A Spark function implementation for the Iceberg bucket transform.
+ * Iceberg 内置函数在 Spark 中的实现，注册为 Spark SQL 函数。
  *
- * <p>Example usage: {@code SELECT system.bucket(128, 'abc')}, which returns the bucket 122.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketFunction。
  *
- * <p>Note that for performance reasons, the given input number of buckets is not validated in the
- * implementations used in code-gen. The number of buckets must be positive to give meaningful
- * results.
+ * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
  */
 public class BucketFunction implements UnboundFunction {
 
@@ -60,6 +58,12 @@ public class BucketFunction implements UnboundFunction {
   private static final Set<DataType> SUPPORTED_NUM_BUCKETS_TYPES =
       ImmutableSet.of(DataTypes.ByteType, DataTypes.ShortType, DataTypes.IntegerType);
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param inputType 参数
+   * @return 结果对象
+   */
   @Override
   public BoundFunction bind(StructType inputType) {
     if (inputType.size() != 2) {
@@ -77,20 +81,27 @@ public class BucketFunction implements UnboundFunction {
 
     DataType type = valueField.dataType();
     if (type instanceof DateType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketInt(type);
     } else if (type instanceof ByteType
         || type instanceof ShortType
         || type instanceof IntegerType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketInt(DataTypes.IntegerType);
     } else if (type instanceof LongType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketLong(type);
     } else if (type instanceof TimestampType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketLong(type);
     } else if (type instanceof DecimalType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketDecimal(type);
     } else if (type instanceof StringType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketString();
     } else if (type instanceof BinaryType) {
+      /** 执行该方法的具体逻辑。 */
       return new BucketBinary();
     } else {
       throw new UnsupportedOperationException(
@@ -98,6 +109,11 @@ public class BucketFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return name()
@@ -106,21 +122,44 @@ public class BucketFunction implements UnboundFunction {
         + "  col :: column to bucket (must be a date, integer, long, timestamp, decimal, string, or binary)";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "bucket";
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketBase。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public abstract static class BucketBase implements ScalarFunction<Integer> {
+    /** 执行核心逻辑。 */
     public static int apply(int numBuckets, int hashedValue) {
       return (hashedValue & Integer.MAX_VALUE) % numBuckets;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public String name() {
       return "bucket";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
@@ -128,33 +167,59 @@ public class BucketFunction implements UnboundFunction {
   }
 
   // Used for both int and date - tinyint and smallint are upcasted to int by Spark.
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketInt。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class BucketInt extends BucketBase {
     private final DataType sqlType;
 
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(int numBuckets, int value) {
       return apply(numBuckets, hash(value));
     }
 
     // Visible for testing
+    /** 执行该方法的具体逻辑。 */
     public static int hash(int value) {
       return BucketUtil.hash(value);
     }
 
+    /** 构造 BucketInt 实例。 */
     public BucketInt(DataType sqlType) {
       this.sqlType = sqlType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return String.format("iceberg.bucket(%s)", sqlType.catalogString());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in the code-generated versions.
@@ -167,33 +232,59 @@ public class BucketFunction implements UnboundFunction {
   }
 
   // Used for both BigInt and Timestamp
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketLong。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class BucketLong extends BucketBase {
     private final DataType sqlType;
 
     // magic function for usage with codegen - needs to be static
+    /** 执行该方法的具体逻辑。 */
     public static int invoke(int numBuckets, long value) {
       return apply(numBuckets, hash(value));
     }
 
     // Visible for testing
+    /** 执行该方法的具体逻辑。 */
     public static int hash(long value) {
       return BucketUtil.hash(value);
     }
 
+    /** 构造 BucketLong 实例。 */
     public BucketLong(DataType sqlType) {
       this.sqlType = sqlType;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return String.format("iceberg.bucket(%s)", sqlType.catalogString());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -204,8 +295,16 @@ public class BucketFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketString。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class BucketString extends BucketBase {
     // magic function for usage with codegen
+    /** 执行该方法的具体逻辑。 */
     public static Integer invoke(int numBuckets, UTF8String value) {
       if (value == null) {
         return null;
@@ -216,20 +315,37 @@ public class BucketFunction implements UnboundFunction {
     }
 
     // Visible for testing
+    /** 执行该方法的具体逻辑。 */
     public static int hash(String value) {
       return BucketUtil.hash(value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.StringType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(string)";
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -240,7 +356,15 @@ public class BucketFunction implements UnboundFunction {
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketBinary。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class BucketBinary extends BucketBase {
+    /** 执行该方法的具体逻辑。 */
     public static Integer invoke(int numBuckets, byte[] value) {
       if (value == null) {
         return null;
@@ -250,15 +374,27 @@ public class BucketFunction implements UnboundFunction {
     }
 
     // Visible for testing
+    /** 执行该方法的具体逻辑。 */
     public static int hash(ByteBuffer value) {
       return BucketUtil.hash(value);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.BinaryType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -268,18 +404,31 @@ public class BucketFunction implements UnboundFunction {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(binary)";
     }
   }
 
+  /**
+   * Iceberg 内置函数在 Spark 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 BucketDecimal。
+   *
+   * <p>上下游：由 SparkCatalog 注册为函数，被 Spark SQL 表达式调用。
+   */
   public static class BucketDecimal extends BucketBase {
     private final DataType sqlType;
     private final int precision;
     private final int scale;
 
     // magic method used in codegen
+    /** 执行该方法的具体逻辑。 */
     public static Integer invoke(int numBuckets, Decimal value) {
       if (value == null) {
         return null;
@@ -289,21 +438,34 @@ public class BucketFunction implements UnboundFunction {
     }
 
     // Visible for testing
+    /** 执行该方法的具体逻辑。 */
     public static int hash(BigDecimal value) {
       return BucketUtil.hash(value);
     }
 
+    /** 构造 BucketDecimal 实例。 */
     public BucketDecimal(DataType sqlType) {
       this.sqlType = sqlType;
       this.precision = ((DecimalType) sqlType).precision();
       this.scale = ((DecimalType) sqlType).scale();
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param input 参数
+     * @return 结果对象
+     */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -315,6 +477,11 @@ public class BucketFunction implements UnboundFunction {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 布尔结果
+     */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(decimal)";

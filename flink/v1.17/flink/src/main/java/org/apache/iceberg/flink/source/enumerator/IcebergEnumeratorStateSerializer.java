@@ -31,6 +31,29 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitStatus;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 文件级说明：Iceberg enumerator 状态的序列化器，支持版本化的序列化/反序列化。
+ *
+ * <p>所属模块：iceberg-flink（source/enumerator 子包），实现 Flink 的 {@link SimpleVersionedSerializer}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>序列化 {@link IcebergEnumeratorState}（含枚举位置和待分配 split）。
+ *   <li>支持 V1 和 V2 两个序列化版本的读取，V2 为当前写入版本。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>版本化序列化：通过 VERSION 区分序列化格式，deserialize 时按 version 分发。
+ *   <li>ThreadLocal 缓存 DataOutputSerializer：避免每次序列化分配缓冲区。
+ *   <li>委托 IcebergEnumeratorPositionSerializer 和 IcebergSourceSplitSerializer 分别序列化位置和 split。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link IcebergSource} 注册为 enumerator 的状态序列化器； 内部委托 positionSerializer 和
+ * splitSerializer 完成具体序列化。
+ */
 @Internal
 public class IcebergEnumeratorStateSerializer
     implements SimpleVersionedSerializer<IcebergEnumeratorState> {
@@ -44,6 +67,11 @@ public class IcebergEnumeratorStateSerializer
       IcebergEnumeratorPositionSerializer.INSTANCE;
   private final IcebergSourceSplitSerializer splitSerializer;
 
+  /**
+   * 构造方法。
+   *
+   * @param caseSensitive 是否大小写敏感（影响 split 序列化器）
+   */
   public IcebergEnumeratorStateSerializer(boolean caseSensitive) {
     this.splitSerializer = new IcebergSourceSplitSerializer(caseSensitive);
   }
@@ -53,11 +81,21 @@ public class IcebergEnumeratorStateSerializer
     return VERSION;
   }
 
+  /** 序列化 enumerator 状态为字节数组（使用 V2 格式）。 */
   @Override
   public byte[] serialize(IcebergEnumeratorState enumState) throws IOException {
     return serializeV2(enumState);
   }
 
+  /**
+   * 反序列化 enumerator 状态。
+   *
+   * <p>逻辑：按 version 分发到 V1 或 V2 反序列化方法，支持向后兼容。
+   *
+   * @param version 序列化版本
+   * @param serialized 序列化字节数组
+   * @return enumerator 状态
+   */
   @Override
   public IcebergEnumeratorState deserialize(int version, byte[] serialized) throws IOException {
     switch (version) {

@@ -20,9 +20,17 @@ package org.apache.spark.sql.connector.iceberg.write;
 
 import org.apache.spark.sql.connector.write.WriteBuilder;
 
-/** An interface for building delta writes. */
+/**
+ * Spark DataSource V2 连接器扩展的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 DeltaWriteBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface DeltaWriteBuilder extends WriteBuilder {
-  /** Returns a logical delta write. */
+  /** 构造并返回目标对象。 */
   @Override
   default DeltaWrite build() {
     throw new UnsupportedOperationException("Not implemented: build");

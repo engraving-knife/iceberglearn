@@ -23,6 +23,13 @@ import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.encryption.InputFilesDecryptor;
 import org.apache.iceberg.io.CloseableIterator;
 
+/**
+ * 把 Avro GenericRecord 扫描任务读取为结果记录的 FileScanTaskReader 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 FileScanTask 读取 Avro GenericRecord。
+ *
+ * <p>设计意图：实现 FileScanTaskReader；被读取算子调用。
+ */
 public class AvroGenericRecordFileScanTaskReader implements FileScanTaskReader<GenericRecord> {
   private final RowDataFileScanTaskReader rowDataReader;
   private final RowDataToAvroGenericRecordConverter converter;

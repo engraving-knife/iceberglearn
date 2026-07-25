@@ -26,8 +26,30 @@ import org.apache.iceberg.relocated.com.google.common.base.Joiner;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
+/**
+ * 文件级说明：字段名→字段 ID 的映射对象，用于在缺乏字段 ID 的文件上恢复 ID 信息。
+ *
+ * <p>所属模块：iceberg-core（mapping 子包）。职责：持有字段名到 {@link MappedField} 的映射表，提供按名查找、按 ID 查找、层级遍历等能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>NameMapping 的核心数据结构：把字段名路径映射到字段 ID，使无 ID 的文件 （如非 Iceberg 写入的 Avro/Parquet）也能参与 schema 演化。
+ *   <li>实现 Serializable，支持序列化缓存。
+ *   <li>不可变设计，通过 Builder 构造。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link MappingUtil} 创建；被 {@link PruneColumns}、{@link AvroSchemaUtil} 等在处理无 ID schema
+ * 时使用。
+ */
 public class MappedFields implements Serializable {
 
+  /**
+   * 工厂方法：从字段数组创建 MappedFields。
+   *
+   * @param fields 映射字段数组
+   * @return MappedFields 实例
+   */
   public static MappedFields of(MappedField... fields) {
     return new MappedFields(ImmutableList.copyOf(fields));
   }
@@ -50,10 +72,21 @@ public class MappedFields implements Serializable {
     return lazyIdToField().get(id);
   }
 
+  /**
+   * 按字段名查找字段 ID。
+   *
+   * @param name 字段名
+   * @return 字段 ID，未找到返回 null
+   */
   public Integer id(String name) {
     return lazyNameToId().get(name);
   }
 
+  /**
+   * 返回映射中的字段数量。
+   *
+   * @return 字段数量
+   */
   public int size() {
     return fields.size();
   }
@@ -86,6 +119,11 @@ public class MappedFields implements Serializable {
     return builder.build();
   }
 
+  /**
+   * 返回所有映射字段列表。
+   *
+   * @return 映射字段列表（不可变）
+   */
   public List<MappedField> fields() {
     return fields;
   }

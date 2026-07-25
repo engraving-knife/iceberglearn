@@ -53,6 +53,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceContinuous 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestIcebergSourceContinuous 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceContinuous {
 
   @ClassRule
@@ -68,6 +76,11 @@ public class TestIcebergSourceContinuous {
 
   private final AtomicLong randomSeed = new AtomicLong(0L);
 
+  /**
+   * 测试场景：Table Scan Then Incremental。
+   *
+   * <p>验证该方法在 Table Scan Then Incremental 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableScanThenIncremental() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -112,6 +125,11 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /**
+   * 测试场景：Table Scan Then Incremental After Expiration。
+   *
+   * <p>验证该方法在 Table Scan Then Incremental After Expiration 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableScanThenIncrementalAfterExpiration() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -162,6 +180,11 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /**
+   * 测试场景：Earliest Snapshot。
+   *
+   * <p>验证该方法在 Earliest Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testEarliestSnapshot() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -211,6 +234,11 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /**
+   * 测试场景：Latest Snapshot。
+   *
+   * <p>验证该方法在 Latest Snapshot 条件下的行为是否符合预期。
+   */
   @Test
   public void testLatestSnapshot() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -263,6 +291,11 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /**
+   * 测试场景：Specific Snapshot Id。
+   *
+   * <p>验证该方法在 Specific Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecificSnapshotId() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -313,6 +346,11 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /**
+   * 测试场景：Specific Snapshot Timestamp。
+   *
+   * <p>验证该方法在 Specific Snapshot Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecificSnapshotTimestamp() throws Exception {
     GenericAppenderHelper dataAppender =
@@ -367,6 +405,7 @@ public class TestIcebergSourceContinuous {
     }
   }
 
+  /** 辅助方法：createStream，create Stream。 */
   private DataStream<Row> createStream(ScanContext scanContext) throws Exception {
     // start the source and collect output
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -389,6 +428,7 @@ public class TestIcebergSourceContinuous {
     return stream;
   }
 
+  /** 辅助方法：waitForResult，wait For Result。 */
   public static List<Row> waitForResult(CloseableIterator<Row> iter, int limit) {
     List<Row> results = Lists.newArrayListWithCapacity(limit);
     while (results.size() < limit) {
@@ -401,12 +441,14 @@ public class TestIcebergSourceContinuous {
     return results;
   }
 
+  /** 辅助方法：waitUntilJobIsRunning，wait Until Job Is Running。 */
   public static void waitUntilJobIsRunning(ClusterClient<?> client) throws Exception {
     while (getRunningJobs(client).isEmpty()) {
       Thread.sleep(10);
     }
   }
 
+  /** 辅助方法：getRunningJobs，get Running Jobs。 */
   public static List<JobID> getRunningJobs(ClusterClient<?> client) throws Exception {
     Collection<JobStatusMessage> statusMessages = client.listJobs().get();
     return statusMessages.stream()

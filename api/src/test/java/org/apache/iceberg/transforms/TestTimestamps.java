@@ -25,7 +25,19 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTimestamps 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTimestamps 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTimestamps {
+  /**
+   * 测试场景：Deprecated Timestamp Transform。
+   *
+   * <p>验证该方法在 Deprecated Timestamp Transform 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("deprecation")
   public void testDeprecatedTimestampTransform() {
@@ -59,6 +71,11 @@ public class TestTimestamps {
     assertThat((int) hours.apply(nts.value())).isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：Timestamp Transform。
+   *
+   * <p>验证该方法在 Timestamp Transform 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampTransform() {
     Types.TimestampType type = Types.TimestampType.withoutZone();
@@ -103,6 +120,11 @@ public class TestTimestamps {
     assertThat((int) hours.bind(type).apply(nts.value())).isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：Timestamp Without Zone To Human String。
+   *
+   * <p>验证该方法在 Timestamp Without Zone To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithoutZoneToHumanString() {
     Types.TimestampType type = Types.TimestampType.withoutZone();
@@ -123,6 +145,11 @@ public class TestTimestamps {
         .isEqualTo("2017-12-01-10");
   }
 
+  /**
+   * 测试场景：Negative Timestamp Without Zone To Human String。
+   *
+   * <p>验证该方法在 Negative Timestamp Without Zone To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeTimestampWithoutZoneToHumanString() {
     Types.TimestampType type = Types.TimestampType.withoutZone();
@@ -143,6 +170,11 @@ public class TestTimestamps {
         .isEqualTo("1969-12-30-10");
   }
 
+  /**
+   * 测试场景：Negative Timestamp Without Zone To Human String Lower Bound。
+   *
+   * <p>验证该方法在 Negative Timestamp Without Zone To Human String Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeTimestampWithoutZoneToHumanStringLowerBound() {
     Types.TimestampType type = Types.TimestampType.withoutZone();
@@ -163,6 +195,11 @@ public class TestTimestamps {
         .isEqualTo("1969-12-30-00");
   }
 
+  /**
+   * 测试场景：Negative Timestamp Without Zone To Human String Upper Bound。
+   *
+   * <p>验证该方法在 Negative Timestamp Without Zone To Human String Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeTimestampWithoutZoneToHumanStringUpperBound() {
     Types.TimestampType type = Types.TimestampType.withoutZone();
@@ -183,6 +220,11 @@ public class TestTimestamps {
         .isEqualTo("1969-12-31-23");
   }
 
+  /**
+   * 测试场景：Timestamp With Zone To Human String。
+   *
+   * <p>验证该方法在 Timestamp With Zone To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithZoneToHumanString() {
     Types.TimestampType type = Types.TimestampType.withZone();
@@ -204,6 +246,11 @@ public class TestTimestamps {
         .isEqualTo("2017-12-01-18");
   }
 
+  /**
+   * 测试场景：Null Human String。
+   *
+   * <p>验证该方法在 Null Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHumanString() {
     Types.TimestampType type = Types.TimestampType.withZone();
@@ -221,6 +268,11 @@ public class TestTimestamps {
         .isEqualTo("null");
   }
 
+  /**
+   * 测试场景：Timestamps Return Type。
+   *
+   * <p>验证该方法在 Timestamps Return Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampsReturnType() {
     Types.TimestampType type = Types.TimestampType.withZone();

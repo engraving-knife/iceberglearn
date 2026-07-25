@@ -42,15 +42,28 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceReader 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestIcebergSourceReader 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceReader {
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
   private final GenericAppenderFactory appenderFactory;
 
+  /** 辅助方法：TestIcebergSourceReader，Iceberg Source Reader。 */
   public TestIcebergSourceReader() {
     this.appenderFactory = new GenericAppenderFactory(TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Reader Metrics。
+   *
+   * <p>验证该方法在 Reader Metrics 条件下的行为是否符合预期。
+   */
   @Test
   public void testReaderMetrics() throws Exception {
     TestingReaderOutput<RowData> readerOutput = new TestingReaderOutput<>();
@@ -63,6 +76,11 @@ public class TestIcebergSourceReader {
     testOneSplitFetcher(reader, readerOutput, metricGroup, 2);
   }
 
+  /**
+   * 测试场景：Reader Order。
+   *
+   * <p>验证该方法在 Reader Order 条件下的行为是否符合预期。
+   */
   @Test
   public void testReaderOrder() throws Exception {
     // Create 2 splits
@@ -99,6 +117,7 @@ public class TestIcebergSourceReader {
     Assert.assertEquals(rowDataList1.get(1), rowDataList2.get(1));
   }
 
+  /** 辅助方法：read，read。 */
   private List<RowData> read(List<IcebergSourceSplit> splits, long expected) throws Exception {
     TestingMetricGroup metricGroup = new TestingMetricGroup();
     TestingReaderContext readerContext = new TestingReaderContext(new Configuration(), metricGroup);
@@ -118,6 +137,11 @@ public class TestIcebergSourceReader {
     return readerOutput.getEmittedRecords();
   }
 
+  /**
+   * 测试场景：One Split Fetcher。
+   *
+   * <p>验证该方法在 One Split Fetcher 条件下的行为是否符合预期。
+   */
   private void testOneSplitFetcher(
       IcebergSourceReader reader,
       TestingReaderOutput<RowData> readerOutput,
@@ -151,6 +175,7 @@ public class TestIcebergSourceReader {
     reader.pollNext(readerOutput);
   }
 
+  /** 辅助方法：createReader，create Reader。 */
   private IcebergSourceReader createReader(
       MetricGroup metricGroup,
       SourceReaderContext readerContext,
@@ -171,6 +196,7 @@ public class TestIcebergSourceReader {
   }
 
   private static class IdBasedComparator implements SerializableComparator<IcebergSourceSplit> {
+    /** 辅助方法：compare，compare。 */
     @Override
     public int compare(IcebergSourceSplit o1, IcebergSourceSplit o2) {
       return o1.splitId().compareTo(o2.splitId());

@@ -35,6 +35,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestPartitioning，用于验证 Partitioning 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Partitioning 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestPartitioning {
 
   private static final int V1_FORMAT_VERSION = 1;
@@ -54,16 +62,23 @@ public class TestPartitioning {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private File tableDir = null;
 
+  /** 辅助方法：setup table dir。 */
   @Before
   public void setupTableDir() throws IOException {
     this.tableDir = temp.newFolder();
   }
 
+  /** 辅助方法：cleanup tables。 */
   @After
   public void cleanupTables() {
     TestTables.clearTables();
   }
 
+  /**
+   * 测试场景：partition type with spec evolution in 1 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithSpecEvolutionInV1Tables() {
     TestTables.TestTable table =
@@ -86,6 +101,11 @@ public class TestPartitioning {
     Assert.assertTrue("PartitionSpec should be unpartitioned", table.spec().isUnpartitioned());
   }
 
+  /**
+   * 测试场景：partition type with spec evolution in 2 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithSpecEvolutionInV2Tables() {
     TestTables.TestTable table =
@@ -103,6 +123,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：partition type with renames in 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithRenamesInV1Table() {
     PartitionSpec initialSpec = PartitionSpec.builderFor(SCHEMA).identity("data", "p1").build();
@@ -121,6 +146,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：partition type with adding back same partition field in 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithAddingBackSamePartitionFieldInV1Table() {
     TestTables.TestTable table =
@@ -139,6 +169,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：partition type with adding back same partition field in 2 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithAddingBackSamePartitionFieldInV2Table() {
     TestTables.TestTable table =
@@ -155,6 +190,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：partition type with incompatible spec evolution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionTypeWithIncompatibleSpecEvolution() {
     TestTables.TestTable table =
@@ -173,6 +213,11 @@ public class TestPartitioning {
         .hasMessageStartingWith("Conflicting partition fields");
   }
 
+  /**
+   * 测试场景：grouping key type with spec evolution in 1 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithSpecEvolutionInV1Tables() {
     TestTables.TestTable table =
@@ -188,6 +233,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with spec evolution in 2 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithSpecEvolutionInV2Tables() {
     TestTables.TestTable table =
@@ -203,6 +253,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with dropped partition field in 1 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithDroppedPartitionFieldInV1Tables() {
     TestTables.TestTable table =
@@ -219,6 +274,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with dropped partition field in 2 tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithDroppedPartitionFieldInV2Tables() {
     TestTables.TestTable table =
@@ -235,6 +295,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with renames in 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithRenamesInV1Table() {
     PartitionSpec initialSpec = PartitionSpec.builderFor(SCHEMA).identity("data", "p1").build();
@@ -251,6 +316,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with renames in 2 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithRenamesInV2Table() {
     PartitionSpec initialSpec = PartitionSpec.builderFor(SCHEMA).identity("data", "p1").build();
@@ -267,6 +337,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with evolved into unpartitioned spec 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithEvolvedIntoUnpartitionedSpecV1Table() {
     TestTables.TestTable table =
@@ -281,6 +356,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with evolved into unpartitioned spec 2 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithEvolvedIntoUnpartitionedSpecV2Table() {
     TestTables.TestTable table =
@@ -295,6 +375,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with adding back same partition field in 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithAddingBackSamePartitionFieldInV1Table() {
     TestTables.TestTable table =
@@ -310,6 +395,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with adding back same partition field in 2 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithAddingBackSamePartitionFieldInV2Table() {
     TestTables.TestTable table =
@@ -325,6 +415,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with only unpartitioned spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithOnlyUnpartitionedSpec() {
     TestTables.TestTable table =
@@ -338,6 +433,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with evolved unpartitioned spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithEvolvedUnpartitionedSpec() {
     TestTables.TestTable table =
@@ -353,6 +453,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with projected schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithProjectedSchema() {
     TestTables.TestTable table =
@@ -366,6 +471,11 @@ public class TestPartitioning {
     Assert.assertEquals("Types must match", expectedType, actualType);
   }
 
+  /**
+   * 测试场景：grouping key type with incompatible spec evolution。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingKeyTypeWithIncompatibleSpecEvolution() {
     TestTables.TestTable table =
@@ -385,6 +495,11 @@ public class TestPartitioning {
         .hasMessageStartingWith("Conflicting partition fields");
   }
 
+  /**
+   * 测试场景：deleting partition field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeletingPartitionField() {
     TestTables.TestTable table =

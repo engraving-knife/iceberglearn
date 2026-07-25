@@ -27,22 +27,9 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.apache.spark.sql.SparkSession;
 
 /**
- * A class for common Iceberg configs for Spark reads.
+ * Iceberg Spark 集成相关组件。
  *
- * <p>If a config is set at multiple levels, the following order of precedence is used (top to
- * bottom):
- *
- * <ol>
- *   <li>Read options
- *   <li>Session configuration
- *   <li>Table metadata
- * </ol>
- *
- * The most specific value is set in read options and takes precedence over all other configs. If no
- * read option is provided, this class checks the session configuration for any overrides. If no
- * applicable value is found in the session configuration, this class uses the table metadata.
- *
- * <p>Note this class is NOT meant to be serialized and sent to executors.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkReadConf。
  */
 public class SparkReadConf {
 
@@ -52,10 +39,12 @@ public class SparkReadConf {
   private final Map<String, String> readOptions;
   private final SparkConfParser confParser;
 
+  /** 构造 SparkReadConf 实例。 */
   public SparkReadConf(SparkSession spark, Table table, Map<String, String> readOptions) {
     this(spark, table, null, readOptions);
   }
 
+  /** 构造 SparkReadConf 实例。 */
   public SparkReadConf(
       SparkSession spark, Table table, String branch, Map<String, String> readOptions) {
     this.spark = spark;
@@ -65,31 +54,66 @@ public class SparkReadConf {
     this.confParser = new SparkConfParser(spark, table, readOptions);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean caseSensitive() {
     return SparkUtil.caseSensitive(spark);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean localityEnabled() {
     boolean defaultValue = Util.mayHaveBlockLocations(table.io(), table.location());
     return PropertyUtil.propertyAsBoolean(readOptions, SparkReadOptions.LOCALITY, defaultValue);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long snapshotId() {
     return confParser.longConf().option(SparkReadOptions.SNAPSHOT_ID).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long asOfTimestamp() {
     return confParser.longConf().option(SparkReadOptions.AS_OF_TIMESTAMP).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long startSnapshotId() {
     return confParser.longConf().option(SparkReadOptions.START_SNAPSHOT_ID).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long endSnapshotId() {
     return confParser.longConf().option(SparkReadOptions.END_SNAPSHOT_ID).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String branch() {
     String optionBranch = confParser.stringConf().option(SparkReadOptions.BRANCH).parseOptional();
     ValidationException.check(
@@ -116,14 +140,29 @@ public class SparkReadConf {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String tag() {
     return confParser.stringConf().option(SparkReadOptions.TAG).parseOptional();
   }
 
+  /**
+   * 执行扫描。
+   *
+   * @return 结果对象
+   */
   public String scanTaskSetId() {
     return confParser.stringConf().option(SparkReadOptions.SCAN_TASK_SET_ID).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean streamingSkipDeleteSnapshots() {
     return confParser
         .booleanConf()
@@ -132,6 +171,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean streamingSkipOverwriteSnapshots() {
     return confParser
         .booleanConf()
@@ -140,6 +184,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean parquetVectorizationEnabled() {
     return confParser
         .booleanConf()
@@ -150,6 +199,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int parquetBatchSize() {
     return confParser
         .intConf()
@@ -159,6 +213,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean orcVectorizationEnabled() {
     return confParser
         .booleanConf()
@@ -169,6 +228,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int orcBatchSize() {
     return confParser
         .intConf()
@@ -178,10 +242,20 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long splitSizeOption() {
     return confParser.longConf().option(SparkReadOptions.SPLIT_SIZE).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public long splitSize() {
     return confParser
         .longConf()
@@ -191,10 +265,20 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Integer splitLookbackOption() {
     return confParser.intConf().option(SparkReadOptions.LOOKBACK).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int splitLookback() {
     return confParser
         .intConf()
@@ -204,10 +288,20 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long splitOpenFileCostOption() {
     return confParser.longConf().option(SparkReadOptions.FILE_OPEN_COST).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public long splitOpenFileCost() {
     return confParser
         .longConf()
@@ -218,17 +312,9 @@ public class SparkReadConf {
   }
 
   /**
-   * Enables reading a timestamp without time zone as a timestamp with time zone.
+   * 执行该方法的具体逻辑。
    *
-   * <p>Generally, this is not safe as a timestamp without time zone is supposed to represent the
-   * wall-clock time, i.e. no matter the reader/writer timezone 3PM should always be read as 3PM,
-   * but a timestamp with time zone represents instant semantics, i.e. the timestamp is adjusted so
-   * that the corresponding time in the reader timezone is displayed.
-   *
-   * <p>When set to false (default), an exception must be thrown while reading a timestamp without
-   * time zone.
-   *
-   * @return boolean indicating if reading timestamps without timezone is allowed
+   * @return 结果对象
    */
   public boolean handleTimestampWithoutZone() {
     return confParser
@@ -239,6 +325,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public long streamFromTimestamp() {
     return confParser
         .longConf()
@@ -247,14 +338,29 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long startTimestamp() {
     return confParser.longConf().option(SparkReadOptions.START_TIMESTAMP).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Long endTimestamp() {
     return confParser.longConf().option(SparkReadOptions.END_TIMESTAMP).parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int maxFilesPerMicroBatch() {
     return confParser
         .intConf()
@@ -263,6 +369,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int maxRecordsPerMicroBatch() {
     return confParser
         .intConf()
@@ -271,6 +382,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean preserveDataGrouping() {
     return confParser
         .booleanConf()
@@ -279,6 +395,11 @@ public class SparkReadConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean aggregatePushDownEnabled() {
     return confParser
         .booleanConf()

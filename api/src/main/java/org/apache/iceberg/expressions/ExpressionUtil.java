@@ -37,14 +37,39 @@ import org.apache.iceberg.transforms.Transforms;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
-/** Expression utility methods. */
+/**
+ * 表达式工具集：提供表达式脱敏、等价判定、分区选择判定、term 描述与解绑等通用静态方法。
+ *
+ * <p>所属模块：iceberg-api（表达式体系的对外工具门面；既被 api 内部使用，也被 core/引擎 模块用于日志脱敏、过滤条件比较等场景）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@code sanitize*}：把表达式中的具体值替换为描述（数字按位数、字符串按 hash、 日期/时间按相对描述），用于日志/审计脱敏。
+ *   <li>{@code equivalent}：判定两个未绑定表达式在绑定到同一 struct 后是否语义等价。
+ *   <li>{@code selectsPartitions}：判定表达式是否在某分区 spec 下选择完整分区 （inclusive 投影与 strict 投影等价即视为整分区选择）。
+ *   <li>{@code describe} / {@code unbind}：生成 term 可读描述、把 BoundTerm 还原为 UnboundTerm。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>脱敏采用“相对时间”描述（如 (date-3-days-ago)），既隐藏真实值又保留语义信息， 便于排查过滤条件。
+ *   <li>StringSanitizer 直接产出可读字符串，避免先建表达式再 toString 的开销。
+ *   <li>abbreviateValues 在长 IN 列表中去重并隐藏重复值，控制日志体积。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link AggregateEvaluator}、core 模块日志与 metric 输出、引擎层 过滤条件打印等调用。
+ */
 public class ExpressionUtil {
+  // 字符串脱敏用的 hash 函数：bucket(MAX_VALUE) 绑定到 StringType，结果为稳定整数哈希。
   private static final Function<Object, Integer> HASH_FUNC =
       Transforms.bucket(Integer.MAX_VALUE).bind(Types.StringType.get());
   private static final OffsetDateTime EPOCH = Instant.ofEpochSecond(0).atOffset(ZoneOffset.UTC);
   private static final long FIVE_MINUTES_IN_MICROS = TimeUnit.MINUTES.toMicros(5);
   private static final long THREE_DAYS_IN_HOURS = TimeUnit.DAYS.toHours(3);
   private static final long NINETY_DAYS_IN_HOURS = TimeUnit.DAYS.toHours(90);
+  // 以下正则用于在字符串值中识别日期/时间格式，以便按时间语义脱敏。
   private static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
   private static final Pattern TIME = Pattern.compile("\\d{2}:\\d{2}(:\\d{2}(.\\d{1,9})?)?");
   private static final Pattern TIMESTAMP =
@@ -52,36 +77,33 @@ public class ExpressionUtil {
   private static final Pattern TIMESTAMPTZ =
       Pattern.compile(
           "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(.\\d{1,9})?)?([-+]\\d{2}:\\d{2}|Z)");
+  /** 长 IN 谓词触发缩写显示的元素数阈值。 */
   static final int LONG_IN_PREDICATE_ABBREVIATION_THRESHOLD = 10;
+
   private static final int LONG_IN_PREDICATE_ABBREVIATION_MIN_GAIN = 5;
 
   private ExpressionUtil() {}
 
   /**
-   * Produces an unbound {@link Expression} with the same structure, but with data values replaced
-   * by descriptions.
+   * 对未绑定表达式做脱敏：保留结构，把值替换为描述（数字按位数、字符串按 hash、日期/时间按相对描述）。
    *
-   * <p>Numbers are replaced with magnitude and type, string-like values are replaced by hashes, and
-   * date/time values are replaced by the type.
-   *
-   * @param expr an Expression to sanitize
-   * @return a sanitized Expression
+   * @param expr 待脱敏表达式
+   * @return 脱敏后的未绑定表达式
    */
   public static Expression sanitize(Expression expr) {
     return ExpressionVisitors.visit(expr, new ExpressionSanitizer());
   }
 
   /**
-   * Produces an unbound {@link Expression} with the same structure, but with data values replaced
-   * by descriptions.
+   * 对表达式做脱敏（先绑定到 struct 再脱敏）。
    *
-   * <p>Numbers are replaced with magnitude and type, string-like values are replaced by hashes, and
-   * date/time values are replaced by the type.
+   * <p>逻辑：尝试用 {@link Binder#bind} 绑定后由 {@link ExpressionSanitizer} 脱敏；
+   * 若绑定失败（如字段不存在）则回退到对未绑定表达式脱敏，保证调用方总能拿到结果。
    *
-   * @param struct a StructType to bind the expression
-   * @param expr an Expression to sanitize
-   * @param caseSensitive whether to bind case sensitively
-   * @return a sanitized Expression
+   * @param struct 用于绑定的 StructType
+   * @param expr 待脱敏表达式
+   * @param caseSensitive 是否大小写敏感绑定
+   * @return 脱敏后的表达式
    */
   public static Expression sanitize(
       Types.StructType struct, Expression expr, boolean caseSensitive) {
@@ -95,30 +117,24 @@ public class ExpressionUtil {
   }
 
   /**
-   * Produces a sanitized expression string with the same structure, but with data values replaced
-   * by descriptions.
+   * 直接产出脱敏后的可读字符串（未绑定版本）。
    *
-   * <p>Numbers are replaced with magnitude and type, string-like values are replaced by hashes, and
-   * date/time values are replaced by the type.
-   *
-   * @param expr an Expression to sanitize
-   * @return a sanitized expression string
+   * @param expr 待脱敏表达式
+   * @return 脱敏后的字符串
    */
   public static String toSanitizedString(Expression expr) {
     return ExpressionVisitors.visit(expr, new StringSanitizer());
   }
 
   /**
-   * Produces a sanitized expression string with the same structure, but with data values replaced
-   * by descriptions.
+   * 直接产出脱敏后的可读字符串（先绑定再脱敏）。
    *
-   * <p>Numbers are replaced with magnitude and type, string-like values are replaced by hashes, and
-   * date/time values are replaced by the type.
+   * <p>逻辑：与 {@link #sanitize(Types.StructType, Expression, boolean)} 同样先尝试绑定， 绑定失败则回退到未绑定脱敏。
    *
-   * @param struct a StructType to bind the expression
-   * @param expr an Expression to sanitize
-   * @param caseSensitive whether to bind case sensitively
-   * @return a sanitized expression string
+   * @param struct 用于绑定的 StructType
+   * @param expr 待脱敏表达式
+   * @param caseSensitive 是否大小写敏感绑定
+   * @return 脱敏后的字符串
    */
   public static String toSanitizedString(
       Types.StructType struct, Expression expr, boolean caseSensitive) {
@@ -132,16 +148,16 @@ public class ExpressionUtil {
   }
 
   /**
-   * Extracts an expression that references only the given column IDs from the given expression.
+   * 从过滤表达式中抽取仅引用给定列 id 的子表达式（inclusive 语义）。
    *
-   * <p>The result is inclusive. If a row would match the original filter, it must match the result
-   * filter.
+   * <p>语义：结果是“包含性”的——若一行满足原过滤，则必满足结果过滤。实现上构造一个 仅含这些列的 identity 分区 spec，并用 {@link
+   * Projections#inclusive} 投影得到。
    *
-   * @param expression a filter Expression
-   * @param schema a Schema
-   * @param caseSensitive whether binding is case sensitive
-   * @param ids field IDs used to match predicates to extract from the expression
-   * @return an Expression that selects at least the same rows as the original using only the IDs
+   * @param expression 原过滤表达式
+   * @param schema 表 schema
+   * @param caseSensitive 绑定是否大小写敏感
+   * @param ids 需要保留的字段 id
+   * @return 仅引用指定列的包含性过滤表达式
    */
   public static Expression extractByIdInclusive(
       Expression expression, Schema schema, boolean caseSensitive, int... ids) {
@@ -150,17 +166,16 @@ public class ExpressionUtil {
   }
 
   /**
-   * Returns whether two unbound expressions will accept the same inputs.
+   * 判定两个未绑定表达式是否语义等价。
    *
-   * <p>If this returns true, the expressions are guaranteed to return the same evaluation for the
-   * same input. However, if this returns false the expressions may return the same evaluation for
-   * the same input. That is, expressions may be equivalent even if this returns false.
+   * <p>逻辑：先对两边都做 not 重写并绑定到同一 struct，再调用 {@link Expression#isEquivalentTo} 比较。返回 true 保证等价；返回 false
+   * 不保证不等价。
    *
-   * @param left an unbound expression
-   * @param right an unbound expression
-   * @param struct a struct type for binding
-   * @param caseSensitive whether to bind expressions using case-sensitive matching
-   * @return true if the expressions are equivalent
+   * @param left 左侧未绑定表达式
+   * @param right 右侧未绑定表达式
+   * @param struct 用于绑定的 struct 类型
+   * @param caseSensitive 是否大小写敏感绑定
+   * @return 确定等价返回 true
    */
   public static boolean equivalent(
       Expression left, Expression right, Types.StructType struct, boolean caseSensitive) {
@@ -169,15 +184,12 @@ public class ExpressionUtil {
   }
 
   /**
-   * Returns whether an expression selects whole partitions for all partition specs in a table.
+   * 判定表达式是否在表的所有分区 spec 下都选择完整分区。
    *
-   * <p>For example, ts &lt; '2021-03-09T10:00:00.000' selects whole partitions in an hourly spec,
-   * [hours(ts)], but does not select whole partitions in a daily spec, [days(ts)].
-   *
-   * @param expr an unbound expression
-   * @param table a table
-   * @param caseSensitive whether expression binding should be case sensitive
-   * @return true if the expression will select whole partitions in all table specs
+   * @param expr 未绑定表达式
+   * @param table 表
+   * @param caseSensitive 绑定是否大小写敏感
+   * @return 所有 spec 下都整分区选择返回 true
    */
   public static boolean selectsPartitions(Expression expr, Table table, boolean caseSensitive) {
     return table.specs().values().stream()
@@ -185,14 +197,15 @@ public class ExpressionUtil {
   }
 
   /**
-   * Returns whether an expression selects whole partitions for a partition spec.
+   * 判定表达式是否在指定分区 spec 下选择完整分区。
    *
-   * <p>For example, ts &lt; '2021-03-09T10:00:00.000' selects whole partitions in an hourly spec,
-   * [hours(ts)], but does not select whole partitions in a daily spec, [days(ts)].
+   * <p>逻辑：当 inclusive 投影与 strict 投影等价时，说明过滤边界恰好与分区边界对齐， 即选择的是完整分区而非部分分区。例如 ts &lt;
+   * '2021-03-09T10:00:00.000' 在 [hours(ts)] spec 下不整分区选择，而在 [days(ts)] 下可能整分区选择。
    *
-   * @param expr an unbound expression
-   * @param spec a partition spec
-   * @return true if the expression will select whole partitions in the given spec
+   * @param expr 未绑定表达式
+   * @param spec 分区 spec
+   * @param caseSensitive 绑定是否大小写敏感
+   * @return 整分区选择返回 true
    */
   public static boolean selectsPartitions(
       Expression expr, PartitionSpec spec, boolean caseSensitive) {
@@ -203,6 +216,15 @@ public class ExpressionUtil {
         caseSensitive);
   }
 
+  /**
+   * 生成 term 的可读描述字符串。
+   *
+   * <p>逻辑：按 term 类型分派——变换 term 显示为 "transform(ref)"，命名/绑定引用显示字段名； 不支持的 term 抛 {@link
+   * UnsupportedOperationException}。
+   *
+   * @param term 待描述的 term
+   * @return 可读描述
+   */
   public static String describe(Term term) {
     if (term instanceof UnboundTransform) {
       return ((UnboundTransform<?, ?>) term).transform()
@@ -223,6 +245,16 @@ public class ExpressionUtil {
     }
   }
 
+  /**
+   * 把已绑定 term 还原为未绑定 term（按字段名重建引用）。
+   *
+   * <p>逻辑：BoundTransform 还原为 transform(refName)；BoundReference 还原为 ref(name)； 其余抛 {@link
+   * UnsupportedOperationException}。
+   *
+   * @param term 已绑定 term
+   * @param <T> term 值类型
+   * @return 未绑定 term
+   */
   public static <T> UnboundTerm<T> unbind(BoundTerm<T> term) {
     if (term instanceof BoundTransform) {
       BoundTransform<?, T> bound = (BoundTransform<?, T>) term;
@@ -234,6 +266,13 @@ public class ExpressionUtil {
     throw new UnsupportedOperationException("Cannot unbind unsupported term: " + term);
   }
 
+  /**
+   * 把任意 term 还原为未绑定 term（已是未绑定时直接返回）。
+   *
+   * @param term 任意 term
+   * @param <T> term 值类型
+   * @return 未绑定 term
+   */
   @SuppressWarnings("unchecked")
   public static <T> UnboundTerm<T> unbind(Term term) {
     if (term instanceof UnboundTerm) {
@@ -245,6 +284,11 @@ public class ExpressionUtil {
     throw new UnsupportedOperationException("Cannot unbind unsupported term: " + term);
   }
 
+  /**
+   * 表达式脱敏访问器：产出结构相同、值被替换为描述的未绑定表达式。
+   *
+   * <p>设计意图：在构造时记录当前时间（now 微秒、today 天），用于日期/时间值的相对描述。 布尔逻辑节点保持结构，只在叶子谓词处替换字面量。
+   */
   private static class ExpressionSanitizer
       extends ExpressionVisitors.ExpressionVisitor<Expression> {
     private final long now;
@@ -282,6 +326,15 @@ public class ExpressionUtil {
       return Expressions.or(leftResult, rightResult);
     }
 
+    /**
+     * 脱敏已绑定谓词。
+     *
+     * <p>逻辑：一元谓词直接保留 op 并解绑 term；字面量谓词把字面量值脱敏后重建； 集合谓词对集合中每个值脱敏后重建。
+     *
+     * @param pred 已绑定谓词
+     * @param <T> 谓词值类型
+     * @return 脱敏后的未绑定谓词
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Expression predicate(BoundPredicate<T> pred) {
@@ -307,6 +360,15 @@ public class ExpressionUtil {
       throw new UnsupportedOperationException("Cannot sanitize bound predicate type: " + pred.op());
     }
 
+    /**
+     * 脱敏未绑定谓词。
+     *
+     * <p>逻辑：一元谓词直接返回；字面量谓词脱敏字面量后重建；集合谓词脱敏每个元素后重建。
+     *
+     * @param pred 未绑定谓词
+     * @param <T> 谓词值类型
+     * @return 脱敏后的未绑定谓词
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Expression predicate(UnboundPredicate<T> pred) {
@@ -339,6 +401,11 @@ public class ExpressionUtil {
     }
   }
 
+  /**
+   * 字符串脱敏访问器：直接产出可读的脱敏字符串，避免先建表达式再 toString。
+   *
+   * <p>设计意图：与 {@link ExpressionSanitizer} 平行，但结果为 String，用于日志直接输出。
+   */
   private static class StringSanitizer extends ExpressionVisitors.ExpressionVisitor<String> {
     private final long nowMicros;
     private final int today;
@@ -375,10 +442,20 @@ public class ExpressionUtil {
       return "(" + leftResult + " OR " + rightResult + ")";
     }
 
+    /** 取已绑定字面量谓词的脱敏字符串值。 */
     private String value(BoundLiteralPredicate<?> pred) {
       return sanitize(pred.term().type(), pred.literal().value(), nowMicros, today);
     }
 
+    /**
+     * 把已绑定谓词渲染为脱敏字符串。
+     *
+     * <p>逻辑：按 op 拼装可读形式，集合谓词额外做缩写处理。
+     *
+     * @param pred 已绑定谓词
+     * @param <T> 谓词值类型
+     * @return 脱敏字符串
+     */
     @Override
     public <T> String predicate(BoundPredicate<T> pred) {
       String term = describe(pred.term());
@@ -431,6 +508,13 @@ public class ExpressionUtil {
       }
     }
 
+    /**
+     * 把未绑定谓词渲染为脱敏字符串。
+     *
+     * @param pred 未绑定谓词
+     * @param <T> 谓词值类型
+     * @return 脱敏字符串
+     */
     @Override
     public <T> String predicate(UnboundPredicate<T> pred) {
       String term = describe(pred.term());
@@ -484,6 +568,13 @@ public class ExpressionUtil {
     }
   }
 
+  /**
+   * 对长 IN 列表做缩写：当元素数达到阈值且去重后能减少足够多重复时，仅保留去重值并附加 "隐藏 N 个值（共 M 个）" 的提示，控制日志体积。
+   *
+   * @param sanitizedValues 已脱敏的值列表
+   * @param <T> 列表元素类型
+   * @return 缩写后的列表
+   */
   private static <T> List<String> abbreviateValues(List<String> sanitizedValues) {
     if (sanitizedValues.size() >= LONG_IN_PREDICATE_ABBREVIATION_THRESHOLD) {
       Set<String> distinctValues = ImmutableSet.copyOf(sanitizedValues);
@@ -501,6 +592,18 @@ public class ExpressionUtil {
     return sanitizedValues;
   }
 
+  /**
+   * 按类型把值脱敏为描述字符串。
+   *
+   * <p>逻辑：整数/浮点按位数与类型；日期按相对今天；时间固定为 "(time)"；时间戳按相对现在； 字符串先尝试识别为日期/时间格式，否则按简单
+   * hash；布尔/UUID/decimal/二进制按字符串 hash。
+   *
+   * @param type 值的类型
+   * @param value 值
+   * @param now 当前时间（微秒）
+   * @param today 当前日期（自 epoch 起的天数）
+   * @return 脱敏描述
+   */
   private static String sanitize(Type type, Object value, long now, int today) {
     switch (type.typeId()) {
       case INTEGER:
@@ -529,6 +632,17 @@ public class ExpressionUtil {
         String.format("Cannot sanitize value for unsupported type %s: %s", type, value));
   }
 
+  /**
+   * 按字面量子类型把值脱敏为描述字符串。
+   *
+   * <p>逻辑：与 {@link #sanitize(Type, Object, long, int)} 类似，但输入是 {@link Literal}
+   * 实例（未绑定谓词场景），按字面量子类型分派。
+   *
+   * @param literal 字面量
+   * @param now 当前时间（微秒）
+   * @param today 当前日期
+   * @return 脱敏描述
+   */
   private static String sanitize(Literal<?> literal, long now, int today) {
     if (literal instanceof Literals.StringLiteral) {
       return sanitizeString(((Literals.StringLiteral) literal).value(), now, today);
@@ -552,6 +666,15 @@ public class ExpressionUtil {
     }
   }
 
+  /**
+   * 把日期值脱敏为相对今天的描述。
+   *
+   * <p>逻辑：今天返回 "(date-today)"；90 天内返回 "(date-N-days-ago/from-now)"； 否则返回 "(date)"。
+   *
+   * @param days 自 epoch 起的天数
+   * @param today 当前日期
+   * @return 脱敏描述
+   */
   private static String sanitizeDate(int days, int today) {
     String isPast = today > days ? "ago" : "from-now";
     int diff = Math.abs(today - days);
@@ -564,6 +687,15 @@ public class ExpressionUtil {
     return "(date)";
   }
 
+  /**
+   * 把时间戳值脱敏为相对现在的描述。
+   *
+   * <p>逻辑：5 分钟内返回 "(timestamp-about-now)"；3 天内按小时；90 天内按天；否则返回 "(timestamp)"。
+   *
+   * @param micros 时间戳（微秒）
+   * @param now 当前时间（微秒）
+   * @return 脱敏描述
+   */
   private static String sanitizeTimestamp(long micros, long now) {
     String isPast = now > micros ? "ago" : "from-now";
     long diff = Math.abs(now - micros);
@@ -582,6 +714,13 @@ public class ExpressionUtil {
     return "(timestamp)";
   }
 
+  /**
+   * 把数字脱敏为按位数与类型的描述，如 "(3-digit-int)"。
+   *
+   * @param value 数字值
+   * @param type 类型标签（"int" 或 "float"）
+   * @return 脱敏描述
+   */
   private static String sanitizeNumber(Number value, String type) {
     // log10 of zero isn't defined and will result in negative infinity
     int numDigits =
@@ -589,6 +728,16 @@ public class ExpressionUtil {
     return "(" + numDigits + "-digit-" + type + ")";
   }
 
+  /**
+   * 把字符串值脱敏：先尝试识别为日期/时间格式并按时间语义脱敏，否则按简单 hash。
+   *
+   * <p>设计要点：解析失败时回退到简单 hash，因为用户可能传入看似日期但实际是普通字符串的值， 不应抛异常打断脱敏流程。
+   *
+   * @param value 字符串值
+   * @param now 当前时间（微秒）
+   * @param today 当前日期
+   * @return 脱敏描述
+   */
   private static String sanitizeString(CharSequence value, long now, int today) {
     try {
       if (DATE.matcher(value).matches()) {
@@ -613,11 +762,26 @@ public class ExpressionUtil {
     }
   }
 
+  /**
+   * 把字符串值脱敏为 hash 形式，如 "(hash-1a2b3c4d)"。
+   *
+   * @param value 字符串值
+   * @return hash 形式的脱敏描述
+   */
   private static String sanitizeSimpleString(CharSequence value) {
     // hash the value and return the hash as hex
     return String.format("(hash-%08x)", HASH_FUNC.apply(value));
   }
 
+  /**
+   * 基于给定字段 id 构造一个仅含 identity 分区的临时 PartitionSpec。
+   *
+   * <p>逻辑：按 id 查列名，对每个列添加 identity 分区字段，最终 build 出 spec。 用于 {@link #extractByIdInclusive} 的投影计算。
+   *
+   * @param schema 表 schema
+   * @param ids 字段 id 列表
+   * @return 临时构造的 identity 分区 spec
+   */
   private static PartitionSpec identitySpec(Schema schema, int... ids) {
     PartitionSpec.Builder specBuilder = PartitionSpec.builderFor(schema);
 

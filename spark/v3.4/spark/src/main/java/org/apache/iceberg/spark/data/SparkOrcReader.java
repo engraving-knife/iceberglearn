@@ -33,9 +33,13 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.spark.sql.catalyst.InternalRow;
 
 /**
- * Converts the OrcIterator, which returns ORC's VectorizedRowBatch to a set of Spark's UnsafeRows.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>It minimizes allocations by reusing most of the objects in the implementation.
+ * <p>职责：Iceberg ORC 文件的 Spark 读取器，将 ORC 行转换为 Spark InternalRow。
+ *
+ * <p>设计意图：基于 SparkOrcValueReaders 构建按列读取器，支持列裁剪与下推。
+ *
+ * <p>上下游关系：由 BaseRowReader 在读取 ORC 数据文件时使用。
  */
 public class SparkOrcReader implements OrcRowReader<InternalRow> {
   private final OrcValueReader<?> reader;
@@ -53,12 +57,12 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
         OrcSchemaWithTypeVisitor.visit(
             expectedSchema, readOrcSchema, new ReadBuilder(idToConstant));
   }
-
+  /** 读取数据。 */
   @Override
   public InternalRow read(VectorizedRowBatch batch, int row) {
     return (InternalRow) reader.read(new StructColumnVector(batch.size, batch.cols), row);
   }
-
+  /** 设置 BatchContext 属性。 */
   @Override
   public void setBatchContext(long batchOffsetInFile) {
     reader.setBatchContext(batchOffsetInFile);
@@ -70,7 +74,7 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
     private ReadBuilder(Map<Integer, ?> idToConstant) {
       this.idToConstant = idToConstant;
     }
-
+    /** 执行 record 相关操作。 */
     @Override
     public OrcValueReader<?> record(
         Types.StructType expected,
@@ -79,13 +83,13 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
         List<OrcValueReader<?>> fields) {
       return SparkOrcValueReaders.struct(fields, expected, idToConstant);
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public OrcValueReader<?> list(
         Types.ListType iList, TypeDescription array, OrcValueReader<?> elementReader) {
       return SparkOrcValueReaders.array(elementReader);
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public OrcValueReader<?> map(
         Types.MapType iMap,
@@ -94,7 +98,7 @@ public class SparkOrcReader implements OrcRowReader<InternalRow> {
         OrcValueReader<?> valueReader) {
       return SparkOrcValueReaders.map(keyReader, valueReader);
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public OrcValueReader<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (primitive.getCategory()) {

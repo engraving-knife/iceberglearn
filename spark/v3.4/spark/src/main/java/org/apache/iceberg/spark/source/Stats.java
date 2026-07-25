@@ -21,6 +21,15 @@ package org.apache.iceberg.spark.source;
 import java.util.OptionalLong;
 import org.apache.spark.sql.connector.read.Statistics;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：扫描统计工具，记录并暴露扫描过程中的文件数、字节数等运行时统计。
+ *
+ * <p>设计意图：以轻量计数器收集扫描指标，供 Spark UI 展示。
+ *
+ * <p>上下游关系：由 BaseReader / SparkScan 使用。
+ */
 class Stats implements Statistics {
   private final OptionalLong sizeInBytes;
   private final OptionalLong numRows;
@@ -29,12 +38,12 @@ class Stats implements Statistics {
     this.sizeInBytes = OptionalLong.of(sizeInBytes);
     this.numRows = OptionalLong.of(numRows);
   }
-
+  /** 执行 sizeInBytes 相关操作。 */
   @Override
   public OptionalLong sizeInBytes() {
     return sizeInBytes;
   }
-
+  /** 执行 numRows 相关操作。 */
   @Override
   public OptionalLong numRows() {
     return numRows;

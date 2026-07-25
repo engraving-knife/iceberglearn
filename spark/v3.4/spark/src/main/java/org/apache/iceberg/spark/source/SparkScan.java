@@ -66,6 +66,15 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Spark 扫描基类，封装扫描任务、Schema、指标与分区描述。
+ *
+ * <p>设计意图：实现 Spark Scan 接口，沉淀公共扫描元信息。
+ *
+ * <p>上下游关系：被 SparkBatchQueryScan / SparkStagedScan / SparkCopyOnWriteScan 继承。
+ */
 abstract class SparkScan implements Scan, SupportsReportStatistics {
   private static final Logger LOG = LoggerFactory.getLogger(SparkScan.class);
 
@@ -100,45 +109,45 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     this.branch = readConf.branch();
     this.scanReportSupplier = scanReportSupplier;
   }
-
+  /** 执行 table 相关操作。 */
   protected Table table() {
     return table;
   }
-
+  /** 执行 branch 相关操作。 */
   protected String branch() {
     return branch;
   }
-
+  /** 执行 caseSensitive 相关操作。 */
   protected boolean caseSensitive() {
     return caseSensitive;
   }
-
+  /** 执行 expectedSchema 相关操作。 */
   protected Schema expectedSchema() {
     return expectedSchema;
   }
-
+  /** 执行 filterExpressions 相关操作。 */
   protected List<Expression> filterExpressions() {
     return filterExpressions;
   }
-
+  /** 执行 groupingKeyType 相关操作。 */
   protected Types.StructType groupingKeyType() {
     return Types.StructType.of();
   }
 
   protected abstract List<? extends ScanTaskGroup<?>> taskGroups();
-
+  /** 转换为 Batch。 */
   @Override
   public Batch toBatch() {
     return new SparkBatch(
         sparkContext, table, readConf, groupingKeyType(), taskGroups(), expectedSchema, hashCode());
   }
-
+  /** 转换为 MicroBatchStream。 */
   @Override
   public MicroBatchStream toMicroBatchStream(String checkpointLocation) {
     return new SparkMicroBatchStream(
         sparkContext, table, readConf, expectedSchema, checkpointLocation);
   }
-
+  /** 执行 readSchema 相关操作。 */
   @Override
   public StructType readSchema() {
     if (readSchema == null) {
@@ -146,12 +155,12 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     }
     return readSchema;
   }
-
+  /** 执行 estimateStatistics 相关操作。 */
   @Override
   public Statistics estimateStatistics() {
     return estimateStatistics(SnapshotUtil.latestSnapshot(table, branch));
   }
-
+  /** 执行 estimateStatistics 相关操作。 */
   protected Statistics estimateStatistics(Snapshot snapshot) {
     // its a fresh table, no data
     if (snapshot == null) {
@@ -173,12 +182,12 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
     long sizeInBytes = SparkSchemaUtil.estimateSize(readSchema(), rowsCount);
     return new Stats(sizeInBytes, rowsCount);
   }
-
+  /** 执行 totalRecords 相关操作。 */
   private long totalRecords(Snapshot snapshot) {
     Map<String, String> summary = snapshot.summary();
     return PropertyUtil.propertyAsLong(summary, SnapshotSummary.TOTAL_RECORDS_PROP, Long.MAX_VALUE);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     String groupingKeyFieldNamesAsString =
@@ -190,7 +199,7 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
         "%s (branch=%s) [filters=%s, groupedBy=%s]",
         table(), branch(), Spark3Util.describe(filterExpressions), groupingKeyFieldNamesAsString);
   }
-
+  /** 执行 reportDriverMetrics 相关操作。 */
   @Override
   public CustomTaskMetric[] reportDriverMetrics() {
     ScanReport scanReport = scanReportSupplier != null ? scanReportSupplier.get() : null;
@@ -209,7 +218,7 @@ abstract class SparkScan implements Scan, SupportsReportStatistics {
 
     return driverMetrics.toArray(new CustomTaskMetric[0]);
   }
-
+  /** 执行 supportedCustomMetrics 相关操作。 */
   @Override
   public CustomMetric[] supportedCustomMetrics() {
     return new CustomMetric[] {

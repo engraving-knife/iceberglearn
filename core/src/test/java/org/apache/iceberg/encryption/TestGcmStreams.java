@@ -36,10 +36,22 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestGcmStreams，用于验证 Gcm Streams 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Gcm Streams 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestGcmStreams {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：empty file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyFile() throws IOException {
     Random random = new Random();
@@ -78,6 +90,11 @@ public class TestGcmStreams {
     }
   }
 
+  /**
+   * 测试场景：aad validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAADValidation() throws IOException {
     Random random = new Random();
@@ -141,6 +158,11 @@ public class TestGcmStreams {
     }
   }
 
+  /**
+   * 测试场景：corrupt nonce。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCorruptNonce() throws IOException {
     Random random = new Random();
@@ -190,6 +212,11 @@ public class TestGcmStreams {
     }
   }
 
+  /**
+   * 测试场景：corrupt ciphertext。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCorruptCiphertext() throws IOException {
     Random random = new Random();
@@ -239,6 +266,11 @@ public class TestGcmStreams {
     }
   }
 
+  /**
+   * 测试场景：random write read。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRandomWriteRead() throws IOException {
     Random random = new Random();
@@ -343,6 +375,11 @@ public class TestGcmStreams {
     }
   }
 
+  /**
+   * 测试场景：aligned write read。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAlignedWriteRead() throws IOException {
     Random random = new Random();

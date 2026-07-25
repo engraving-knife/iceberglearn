@@ -22,20 +22,42 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestArrayBatchRecords 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestArrayBatchRecords 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestArrayBatchRecords {
 
+  /**
+   * 测试场景：Full Range。
+   *
+   * <p>验证该方法在 Full Range 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullRange() {
     String[] elements = new String[] {"0", "1", "2", "3"};
     testArray(elements, elements.length, 2, 119);
   }
 
+  /**
+   * 测试场景：Sub Range。
+   *
+   * <p>验证该方法在 Sub Range 条件下的行为是否符合预期。
+   */
   @Test
   public void testSubRange() {
     String[] elements = new String[] {"0", "1", "2", "3"};
     testArray(elements, 2, 0, 0);
   }
 
+  /**
+   * 测试场景：Array。
+   *
+   * <p>验证该方法在 Array 条件下的行为是否符合预期。
+   */
   private void testArray(
       String[] elements, int numberOfRecords, int fileOffset, long startingRecordOffset) {
     String splitId = "iceberg_split_1";

@@ -35,10 +35,18 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestReplaceBranch 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 替换分支 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestReplaceBranch extends SparkExtensionsTestBase {
 
   private static final String[] TIME_UNITS = {"DAYS", "HOURS", "MINUTES"};
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -50,15 +58,18 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
     };
   }
 
+  /** 测试替换分支。 */
   public TestReplaceBranch(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试替换分支fails用于标签场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranchFailsForTag() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -83,6 +94,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
         .hasMessage("Ref tag1 is a tag not a branch");
   }
 
+  /** 测试替换分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranch() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -119,6 +131,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
     Assert.assertEquals(expectedMaxRefAgeMs, ref.maxRefAgeMs().longValue());
   }
 
+  /** 测试替换分支does非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranchDoesNotExist() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -137,6 +150,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
         .hasMessage("Branch does not exist: someBranch");
   }
 
+  /** 测试替换分支带retain场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranchWithRetain() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -172,6 +186,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试替换分支带快照retention场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranchWithSnapshotRetention() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -205,6 +220,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试替换分支带retain与快照retention场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceBranchWithRetainAndSnapshotRetention() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -247,6 +263,7 @@ public class TestReplaceBranch extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试创建或替换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateOrReplace() throws NoSuchTableException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);

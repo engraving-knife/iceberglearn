@@ -45,6 +45,14 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestName;
 
+/**
+ * 文件级说明：测试 TestContinuousSplitPlannerImpl 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestContinuousSplitPlannerImpl 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestContinuousSplitPlannerImpl {
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
@@ -64,11 +72,13 @@ public class TestContinuousSplitPlannerImpl {
   private DataFile dataFile2;
   private Snapshot snapshot2;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     dataAppender = new GenericAppenderHelper(tableResource.table(), fileFormat, TEMPORARY_FOLDER);
   }
 
+  /** 辅助方法：appendTwoSnapshots，append Two Snapshots。 */
   private void appendTwoSnapshots() throws IOException {
     // snapshot1
     List<Record> batch1 = RandomGenericData.generate(TestFixtures.SCHEMA, 2, 0L);
@@ -109,6 +119,11 @@ public class TestContinuousSplitPlannerImpl {
     return result.toPosition();
   }
 
+  /**
+   * 测试场景：Table Scan Then Incremental With Empty Table。
+   *
+   * <p>验证该方法在 Table Scan Then Incremental With Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableScanThenIncrementalWithEmptyTable() throws Exception {
     ScanContext scanContext =
@@ -139,6 +154,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Table Scan Then Incremental With Non Empty Table。
+   *
+   * <p>验证该方法在 Table Scan Then Incremental With Non Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableScanThenIncrementalWithNonEmptyTable() throws Exception {
     appendTwoSnapshots();
@@ -173,6 +193,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Latest Snapshot With Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Latest Snapshot With Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromLatestSnapshotWithEmptyTable() throws Exception {
     ScanContext scanContext =
@@ -210,6 +235,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Latest Snapshot With Non Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Latest Snapshot With Non Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromLatestSnapshotWithNonEmptyTable() throws Exception {
     appendTwoSnapshots();
@@ -255,6 +285,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Earliest Snapshot With Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Earliest Snapshot With Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromEarliestSnapshotWithEmptyTable() throws Exception {
     ScanContext scanContext =
@@ -285,6 +320,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Earliest Snapshot With Non Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Earliest Snapshot With Non Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromEarliestSnapshotWithNonEmptyTable() throws Exception {
     appendTwoSnapshots();
@@ -327,6 +367,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Id With Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Id With Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotIdWithEmptyTable() throws Exception {
     ScanContext scanContextWithInvalidSnapshotId =
@@ -343,6 +388,11 @@ public class TestContinuousSplitPlannerImpl {
         .hasMessage("Start snapshot id not found in history: 1");
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Id With Invalid Ids。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Id With Invalid Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotIdWithInvalidIds() throws Exception {
     appendTwoSnapshots();
@@ -369,6 +419,11 @@ public class TestContinuousSplitPlannerImpl {
         .hasMessage("Start snapshot id not found in history: " + invalidSnapshotId);
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Id。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotId() throws Exception {
     appendTwoSnapshots();
@@ -415,6 +470,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Timestamp With Empty Table。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Timestamp With Empty Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotTimestampWithEmptyTable() throws Exception {
     ScanContext scanContextWithInvalidSnapshotId =
@@ -431,6 +491,11 @@ public class TestContinuousSplitPlannerImpl {
         .hasMessage("Cannot find a snapshot after: 1");
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Timestamp With Invalid Ids。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Timestamp With Invalid Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotTimestampWithInvalidIds() throws Exception {
     appendTwoSnapshots();
@@ -452,6 +517,11 @@ public class TestContinuousSplitPlannerImpl {
         .hasMessageStartingWith("Cannot find a snapshot after:");
   }
 
+  /**
+   * 测试场景：Incremental From Snapshot Timestamp。
+   *
+   * <p>验证该方法在 Incremental From Snapshot Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalFromSnapshotTimestamp() throws Exception {
     appendTwoSnapshots();
@@ -497,6 +567,11 @@ public class TestContinuousSplitPlannerImpl {
     }
   }
 
+  /**
+   * 测试场景：Max Planning Snapshot Count。
+   *
+   * <p>验证该方法在 Max Planning Snapshot Count 条件下的行为是否符合预期。
+   */
   @Test
   public void testMaxPlanningSnapshotCount() throws Exception {
     appendTwoSnapshots();
@@ -533,6 +608,7 @@ public class TestContinuousSplitPlannerImpl {
         thirdResult, snapshot1, snapshot2, ImmutableSet.of(dataFile2.path().toString()));
   }
 
+  /** 辅助方法：verifyMaxPlanningSnapshotCountResult，verify Max Planning Snapshot Count Result。 */
   private void verifyMaxPlanningSnapshotCountResult(
       ContinuousEnumerationResult result,
       Snapshot fromSnapshotExclusive,
@@ -564,6 +640,7 @@ public class TestContinuousSplitPlannerImpl {
     Assert.assertEquals(expectedFiles, discoveredFiles);
   }
 
+  /** 辅助方法：appendSnapshot，append Snapshot。 */
   private Snapshot appendSnapshot(long seed, int numRecords) throws Exception {
     List<Record> batch = RandomGenericData.generate(TestFixtures.SCHEMA, numRecords, seed);
     DataFile dataFile = dataAppender.writeFile(null, batch);

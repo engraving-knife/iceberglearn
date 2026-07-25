@@ -29,6 +29,15 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 import org.apache.spark.sql.connector.read.streaming.Offset;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：结构化流偏移量，记录 Iceberg 流式读取的消费进度（已读快照与位置）。
+ *
+ * <p>设计意图：实现 Spark Offset，序列化快照进度以支持 exactly-once 续读。
+ *
+ * <p>上下游关系：由 SparkMicroBatchStream 使用。
+ */
 class StreamingOffset extends Offset {
   static final StreamingOffset START_OFFSET = new StreamingOffset(-1L, -1, false);
 
@@ -56,7 +65,7 @@ class StreamingOffset extends Offset {
     this.position = position;
     this.scanAllFiles = scanAllFiles;
   }
-
+  /** 执行 fromJson 相关操作。 */
   static StreamingOffset fromJson(String json) {
     Preconditions.checkNotNull(json, "Cannot parse StreamingOffset JSON: null");
 
@@ -68,7 +77,7 @@ class StreamingOffset extends Offset {
           String.format("Failed to parse StreamingOffset from JSON string %s", json), e);
     }
   }
-
+  /** 执行 fromJson 相关操作。 */
   static StreamingOffset fromJson(InputStream inputStream) {
     Preconditions.checkNotNull(inputStream, "Cannot parse StreamingOffset from inputStream: null");
 
@@ -81,7 +90,7 @@ class StreamingOffset extends Offset {
 
     return fromJsonNode(node);
   }
-
+  /** 执行 json 相关操作。 */
   @Override
   public String json() {
     StringWriter writer = new StringWriter();
@@ -113,7 +122,7 @@ class StreamingOffset extends Offset {
   boolean shouldScanAllFiles() {
     return scanAllFiles;
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StreamingOffset) {
@@ -125,19 +134,19 @@ class StreamingOffset extends Offset {
       return false;
     }
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hashCode(snapshotId, position, scanAllFiles);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(
         "Streaming Offset[%d: position (%d) scan_all_files (%b)]",
         snapshotId, position, scanAllFiles);
   }
-
+  /** 执行 fromJsonNode 相关操作。 */
   private static StreamingOffset fromJsonNode(JsonNode node) {
     // The version of StreamingOffset. The offset was created with a version number
     // used to validate when deserializing from json string.

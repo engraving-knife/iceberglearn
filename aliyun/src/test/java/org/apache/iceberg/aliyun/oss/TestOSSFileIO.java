@@ -44,6 +44,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestOSSFileIO 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSFileIO 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSFileIO extends AliyunOSSTestBase {
   private static final String OSS_IMPL_CLASS = OSSFileIO.class.getName();
   private final Configuration conf = new Configuration();
@@ -51,11 +58,13 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
 
   private FileIO fileIO;
 
+  /** 辅助方法：beforeFile。 */
   @Before
   public void beforeFile() {
     fileIO = new OSSFileIO(ossClient());
   }
 
+  /** 辅助方法：afterFile。 */
   @After
   public void afterFile() {
     if (fileIO != null) {
@@ -63,6 +72,11 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     }
   }
 
+  /**
+   * 测试场景：Output File。
+   *
+   * <p>验证该方法在 Output File 条件下的行为是否符合预期。
+   */
   @Test
   public void testOutputFile() throws IOException {
     String location = randomLocation();
@@ -80,6 +94,11 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Should have expected content", data, ossDataContent(uri, dataSize));
   }
 
+  /**
+   * 测试场景：Input File。
+   *
+   * <p>验证该方法在 Input File 条件下的行为是否符合预期。
+   */
   @Test
   public void testInputFile() throws IOException {
     String location = randomLocation();
@@ -97,6 +116,11 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     Assert.assertArrayEquals("Should have expected content", data, inFileContent(in, dataSize));
   }
 
+  /**
+   * 测试场景：Delete File。
+   *
+   * <p>验证该方法在 Delete File 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFile() throws IOException {
     String location = randomLocation();
@@ -111,6 +135,11 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     Assert.assertFalse("OSS file should not exist", fileIO().newInputFile(location).exists());
   }
 
+  /**
+   * 测试场景：Load File IO。
+   *
+   * <p>验证该方法在 Load File IO 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadFileIO() {
     FileIO file = CatalogUtil.loadFileIO(OSS_IMPL_CLASS, ImmutableMap.of(), conf);
@@ -122,6 +151,11 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
         "The deserialized FileIO should be OSSFileIO", expectedFileIO instanceof OSSFileIO);
   }
 
+  /**
+   * 测试场景：serialize Client。
+   *
+   * <p>验证该方法在 serialize Client 条件下的行为是否符合预期。
+   */
   @Test
   public void serializeClient() throws URISyntaxException {
     String endpoint = "iceberg-test-oss.aliyun.com";
@@ -149,20 +183,24 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
         oss.getCredentialsProvider().getCredentials().getSecretAccessKey());
   }
 
+  /** 辅助方法：fileIO。 */
   private FileIO fileIO() {
     return fileIO;
   }
 
+  /** 辅助方法：randomLocation。 */
   private String randomLocation() {
     return location(String.format("%s.dat", UUID.randomUUID()));
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：ossDataLength。 */
   private long ossDataLength(OSSURI uri) {
     return ossClient()
         .get()
@@ -171,6 +209,7 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
         .getContentLength();
   }
 
+  /** 辅助方法：ossDataContent。 */
   private byte[] ossDataContent(OSSURI uri, int dataSize) throws IOException {
     try (InputStream is = ossClient().get().getObject(uri.bucket(), uri.key()).getObjectContent()) {
       byte[] actual = new byte[dataSize];
@@ -179,6 +218,7 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     }
   }
 
+  /** 辅助方法：writeOSSData。 */
   private void writeOSSData(OutputFile out, byte[] data) throws IOException {
     try (OutputStream os = out.create();
         InputStream is = new ByteArrayInputStream(data)) {
@@ -186,6 +226,7 @@ public class TestOSSFileIO extends AliyunOSSTestBase {
     }
   }
 
+  /** 辅助方法：inFileContent。 */
   private byte[] inFileContent(InputFile in, int dataSize) throws IOException {
     try (InputStream is = in.newStream()) {
       byte[] actual = new byte[dataSize];

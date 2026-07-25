@@ -25,9 +25,17 @@ import org.apache.spark.sql.catalyst.plans.logical.SubqueryAlias
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import scala.annotation.tailrec
 
+/**
+ * 工具类，表示逻辑或物理计划节点。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：对象 PlanUtils。
+ */
 object PlanUtils {
+  /** 判断是否icebergrelation。 */
   @tailrec
   def isIcebergRelation(plan: LogicalPlan): Boolean = {
+    /** 判断是否icebergtable。 */
     def isIcebergTable(relation: DataSourceV2Relation): Boolean = relation.table match {
       case _: SparkTable => true
       case _ => false

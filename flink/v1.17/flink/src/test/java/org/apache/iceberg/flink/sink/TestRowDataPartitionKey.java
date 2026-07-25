@@ -38,6 +38,13 @@ import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRowDataPartitionKey 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestRowDataPartitionKey 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestRowDataPartitionKey {
   private static final Schema SCHEMA =
       new Schema(
@@ -70,6 +77,11 @@ public class TestRowDataPartitionKey {
                   Types.NestedField.optional(2, "innerStringType", Types.StringType.get()),
                   Types.NestedField.optional(3, "innerIntegerType", Types.IntegerType.get()))));
 
+  /**
+   * 测试场景：Null Partition Value。
+   *
+   * <p>验证该方法在 Null Partition Value 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullPartitionValue() {
     Schema schema =
@@ -98,6 +110,11 @@ public class TestRowDataPartitionKey {
     }
   }
 
+  /**
+   * 测试场景：Partition With One Nested Field。
+   *
+   * <p>验证该方法在 Partition With One Nested Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionWithOneNestedField() {
     RowDataWrapper rowWrapper =
@@ -128,6 +145,11 @@ public class TestRowDataPartitionKey {
     }
   }
 
+  /**
+   * 测试场景：Partition Multiple Nested Field。
+   *
+   * <p>验证该方法在 Partition Multiple Nested Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionMultipleNestedField() {
     RowDataWrapper rowWrapper =
@@ -167,6 +189,11 @@ public class TestRowDataPartitionKey {
     }
   }
 
+  /**
+   * 测试场景：Partition Value Types。
+   *
+   * <p>验证该方法在 Partition Value Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionValueTypes() {
     RowType rowType = FlinkSchemaUtil.convert(SCHEMA);
@@ -208,6 +235,11 @@ public class TestRowDataPartitionKey {
     }
   }
 
+  /**
+   * 测试场景：Nested Partition Values。
+   *
+   * <p>验证该方法在 Nested Partition Values 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedPartitionValues() {
     Schema nestedSchema = new Schema(Types.NestedField.optional(1001, "nested", SCHEMA.asStruct()));

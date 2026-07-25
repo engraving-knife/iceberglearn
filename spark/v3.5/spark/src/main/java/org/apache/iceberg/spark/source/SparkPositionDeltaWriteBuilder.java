@@ -35,6 +35,19 @@ import org.apache.spark.sql.connector.write.LogicalWriteInfo;
 import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Position Delta 写入的构建器。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。实现 {@link DeltaWriteBuilder}，为 Spark 行级
+ * 操作（UPDATE/DELETE/MERGE）基于 position delta 的写入构建 {@link SparkPositionDeltaWrite}。
+ *
+ * <p>职责：校验行 ID schema、元数据 schema 与分区变换合法性，构造数据 schema 后创建写入实例。
+ *
+ * <p>设计意图：行级操作需要按文件路径+行位置定位受影响行，本构建器在 build 前严格校验 必需的 rowId/metadata schema，确保 position delta
+ * 写入语义正确。
+ *
+ * <p>上下游关系：由 Spark 行级操作计划调用；产出 {@link SparkPositionDeltaWrite}。
+ */
 class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
 
   private static final Schema EXPECTED_ROW_ID_SCHEMA =
@@ -50,6 +63,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
   private final boolean checkNullability;
   private final boolean checkOrdering;
 
+  /** 构建器构造，初始化写配置与可空性/排序校验开关。 */
   SparkPositionDeltaWriteBuilder(
       SparkSession spark,
       Table table,
@@ -69,6 +83,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     this.checkOrdering = writeConf.checkOrdering();
   }
 
+  /** 校验 schema 与分区变换后构造 {@link SparkPositionDeltaWrite}。 */
   @Override
   public DeltaWrite build() {
     Schema dataSchema = dataSchema();
@@ -81,6 +96,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
         spark, table, command, scan, isolationLevel, writeConf, info, dataSchema);
   }
 
+  /** 计算数据 schema：info.schema 为空返回 null，否则转换并校验。 */
   private Schema dataSchema() {
     if (info.schema() == null || info.schema().isEmpty()) {
       return null;
@@ -91,6 +107,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     }
   }
 
+  /** 校验行 ID schema 与期望（FILE_PATH+ROW_POSITION）一致。 */
   private void validateRowIdSchema() {
     Preconditions.checkArgument(info.rowIdSchema().isPresent(), "Row ID schema must be set");
     StructType rowIdSparkType = info.rowIdSchema().get();
@@ -98,6 +115,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     validateSchema("row ID", EXPECTED_ROW_ID_SCHEMA, rowIdSchema);
   }
 
+  /** 校验元数据 schema 与期望（SPEC_ID+分区列）一致。 */
   private void validateMetadataSchema() {
     Preconditions.checkArgument(info.metadataSchema().isPresent(), "Metadata schema must be set");
     Schema expectedMetadataSchema =
@@ -109,6 +127,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     validateSchema("metadata", expectedMetadataSchema, metadataSchema);
   }
 
+  /** 按可空性/排序开关校验期望与实际 schema 兼容。 */
   private void validateSchema(String context, Schema expected, Schema actual) {
     TypeUtil.validateSchema(context, expected, actual, checkNullability, checkOrdering);
   }

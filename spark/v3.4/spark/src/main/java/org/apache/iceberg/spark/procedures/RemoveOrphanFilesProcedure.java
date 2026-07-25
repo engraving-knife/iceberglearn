@@ -20,7 +20,6 @@ package org.apache.iceberg.spark.procedures;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.DeleteOrphanFiles;
 import org.apache.iceberg.actions.DeleteOrphanFiles.PrefixMismatchMode;
 import org.apache.iceberg.io.SupportsBulkOperations;
@@ -28,7 +27,6 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.spark.actions.DeleteOrphanFilesSparkAction;
-import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.procedures.SparkProcedures.ProcedureBuilder;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
@@ -45,9 +43,13 @@ import org.slf4j.LoggerFactory;
 import scala.runtime.BoxedUnit;
 
 /**
- * A procedure that removes orphan files in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * @see SparkActions#deleteOrphanFiles(Table)
+ * <p>职责：删除孤儿文件的存储过程，清理表元数据不再引用的文件。
+ *
+ * <p>设计意图：委托 DeleteOrphanFilesSparkAction 执行，以行形式返回删除文件。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 public class RemoveOrphanFilesProcedure extends BaseProcedure {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveOrphanFilesProcedure.class);
@@ -70,9 +72,10 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
           new StructField[] {
             new StructField("orphan_file_location", DataTypes.StringType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RemoveOrphanFilesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RemoveOrphanFilesProcedure doBuild() {
         return new RemoveOrphanFilesProcedure(tableCatalog());
@@ -83,17 +86,17 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
   private RemoveOrphanFilesProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public InternalRow[] call(InternalRow args) {
@@ -187,7 +190,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
           return toOutputRows(result);
         });
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(DeleteOrphanFiles.Result result) {
     Iterable<String> orphanFileLocations = result.orphanFileLocations();
 
@@ -202,7 +205,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
 
     return rows;
   }
-
+  /** 执行 validateInterval 相关操作。 */
   private void validateInterval(long olderThanMillis) {
     long intervalMillis = System.currentTimeMillis() - olderThanMillis;
     if (intervalMillis < TimeUnit.DAYS.toMillis(1)) {
@@ -214,7 +217,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
               + "to remove orphan files with an arbitrary interval.");
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RemoveOrphanFilesProcedure";

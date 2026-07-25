@@ -41,6 +41,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkUpsert 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkUpsert 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFlinkUpsert extends FlinkCatalogTestBase {
 
@@ -54,6 +61,7 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
   private final Map<String, String> tableUpsertProps = Maps.newHashMap();
   private TableEnvironment tEnv;
 
+  /** 辅助方法：TestFlinkUpsert，Flink Upsert。 */
   public TestFlinkUpsert(
       String catalogName, Namespace baseNamespace, FileFormat format, Boolean isStreamingJob) {
     super(catalogName, baseNamespace);
@@ -65,6 +73,7 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
 
   @Parameterized.Parameters(
       name = "catalogName={0}, baseNamespace={1}, format={2}, isStreaming={3}")
+  /** 辅助方法：parameters，parameters。 */
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
     for (FileFormat format :
@@ -81,6 +90,7 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     return parameters;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
@@ -104,6 +114,7 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     return tEnv;
   }
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -113,6 +124,7 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     sql("USE %s", DATABASE);
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -120,6 +132,11 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Upsert And Query。
+   *
+   * <p>验证该方法在 Upsert And Query 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertAndQuery() {
     String tableName = "test_upsert_query";
@@ -164,6 +181,11 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Upsert Options。
+   *
+   * <p>验证该方法在 Upsert Options 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertOptions() {
     String tableName = "test_upsert_options";
@@ -210,6 +232,11 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Primary Key Equal To Partition Key。
+   *
+   * <p>验证该方法在 Primary Key Equal To Partition Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimaryKeyEqualToPartitionKey() {
     // This is an SQL based reproduction of TestFlinkIcebergSinkV2#testUpsertOnDataKey
@@ -243,6 +270,11 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Primary Key Fields At Beginning Of Schema。
+   *
+   * <p>验证该方法在 Primary Key Fields At Beginning Of Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimaryKeyFieldsAtBeginningOfSchema() {
     String tableName = "upsert_on_pk_at_schema_start";
@@ -292,6 +324,11 @@ public class TestFlinkUpsert extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Primary Key Fields At End Of Table Schema。
+   *
+   * <p>验证该方法在 Primary Key Fields At End Of Table Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrimaryKeyFieldsAtEndOfTableSchema() {
     // This is the same test case as testPrimaryKeyFieldsAtBeginningOfSchema, but the primary key

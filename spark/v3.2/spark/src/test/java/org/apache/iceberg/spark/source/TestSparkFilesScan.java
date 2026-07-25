@@ -37,17 +37,27 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkFilesScan 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Spark文件扫描 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkFilesScan extends SparkCatalogTestBase {
 
+  /** 测试Spark文件扫描。 */
   public TestSparkFilesScan(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试任务集合loading场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTaskSetLoading() throws NoSuchTableException, IOException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
@@ -83,6 +93,7 @@ public class TestSparkFilesScan extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试任务集合规划场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTaskSetPlanning() throws NoSuchTableException, IOException {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);

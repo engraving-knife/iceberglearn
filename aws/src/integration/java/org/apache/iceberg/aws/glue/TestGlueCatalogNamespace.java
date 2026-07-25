@@ -38,8 +38,20 @@ import software.amazon.awssdk.services.glue.model.EntityNotFoundException;
 import software.amazon.awssdk.services.glue.model.GetDatabaseRequest;
 import software.amazon.awssdk.services.glue.model.TableInput;
 
+/**
+ * 文件级说明：TestGlueCatalogNamespace 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 Glue目录命名空间 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestGlueCatalogNamespace extends GlueTestBase {
 
+  /**
+   * 测试场景：创建命名空间。
+   *
+   * <p>验证该方法在 创建命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     String namespace = getRandomName();
@@ -71,6 +83,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
     Assert.assertEquals(properties, glueCatalog.loadNamespaceMetadata(ns));
   }
 
+  /**
+   * 测试场景：创建duplicate。
+   *
+   * <p>验证该方法在 创建duplicate 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateDuplicate() {
     String namespace = createNamespace();
@@ -81,6 +98,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
         () -> glueCatalog.createNamespace(Namespace.of(namespace)));
   }
 
+  /**
+   * 测试场景：创建badname。
+   *
+   * <p>验证该方法在 创建badname 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateBadName() {
     List<Namespace> invalidNamespaces =
@@ -95,12 +117,22 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
     }
   }
 
+  /**
+   * 测试场景：命名空间存在。
+   *
+   * <p>验证该方法在 命名空间存在 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNamespaceExists() {
     String namespace = createNamespace();
     Assert.assertTrue(glueCatalog.namespaceExists(Namespace.of(namespace)));
   }
 
+  /**
+   * 测试场景：列表命名空间。
+   *
+   * <p>验证该方法在 列表命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testListNamespace() {
     String namespace = createNamespace();
@@ -111,6 +143,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
     Assert.assertTrue(namespaceList.isEmpty());
   }
 
+  /**
+   * 测试场景：命名空间属性。
+   *
+   * <p>验证该方法在 命名空间属性 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNamespaceProperties() {
     String namespace = createNamespace();
@@ -157,6 +194,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
     Assert.assertEquals("description2", database.description());
   }
 
+  /**
+   * 测试场景：删除命名空间。
+   *
+   * <p>验证该方法在 删除命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropNamespace() {
     String namespace = createNamespace();
@@ -168,6 +210,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
         () -> glue.getDatabase(GetDatabaseRequest.builder().name(namespace).build()));
   }
 
+  /**
+   * 测试场景：删除命名空间thatcontainsonlyIceberg表。
+   *
+   * <p>验证该方法在 删除命名空间thatcontainsonlyIceberg表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropNamespaceThatContainsOnlyIcebergTable() {
     String namespace = createNamespace();
@@ -179,6 +226,11 @@ public class TestGlueCatalogNamespace extends GlueTestBase {
         () -> glueCatalog.dropNamespace(Namespace.of(namespace)));
   }
 
+  /**
+   * 测试场景：删除命名空间thatcontains不存在的Iceberg表。
+   *
+   * <p>验证该方法在 删除命名空间thatcontains不存在的Iceberg表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropNamespaceThatContainsNonIcebergTable() {
     String namespace = createNamespace();

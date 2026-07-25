@@ -56,12 +56,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * {@link Write} class for rewriting position delete files from Spark. Responsible for creating
- * {@link SparkPositionDeletesRewrite.PositionDeleteBatchWrite}
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>This class is meant to be used for an action to rewrite position delete files. Hence, it
- * assumes all position deletes to rewrite have come from {@link ScanTaskSetManager} and that all
- * have the same partition spec id and partition values.
+ * <p>职责：位置删除重写的扫描与读取实现，读取待压缩的删除文件并写出合并结果。
+ *
+ * <p>设计意图：通过 ScanTaskSetManager 协调 Executor 重写 position-delete 文件。
+ *
+ * <p>上下游关系：由 SparkPositionDeletesRewriteBuilder 创建。
  */
 public class SparkPositionDeletesRewrite implements Write {
 
@@ -110,7 +111,7 @@ public class SparkPositionDeletesRewrite implements Write {
     this.partition = partition;
     this.writeProperties = writeConf.writeProperties();
   }
-
+  /** 转换为 Batch。 */
   @Override
   public BatchWrite toBatch() {
     return new PositionDeleteBatchWrite();
@@ -118,7 +119,7 @@ public class SparkPositionDeletesRewrite implements Write {
 
   /** {@link BatchWrite} class for rewriting position deletes files from Spark */
   class PositionDeleteBatchWrite implements BatchWrite {
-
+    /** 执行 createBatchWriterFactory 相关操作。 */
     @Override
     public DataWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       // broadcast the table metadata as the writer factory will be sent to executors
@@ -135,18 +136,18 @@ public class SparkPositionDeletesRewrite implements Write {
           partition,
           writeProperties);
     }
-
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       PositionDeletesRewriteCoordinator coordinator = PositionDeletesRewriteCoordinator.get();
       coordinator.stageRewrite(table, fileSetId, ImmutableSet.copyOf(files(messages)));
     }
-
+    /** 中止写入并清理。 */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       SparkCleanupUtil.deleteFiles("job abort", table.io(), files(messages));
     }
-
+    /** 执行 files 相关操作。 */
     private List<DeleteFile> files(WriterCommitMessage[] messages) {
       List<DeleteFile> files = Lists.newArrayList();
 
@@ -200,7 +201,7 @@ public class SparkPositionDeletesRewrite implements Write {
       this.partition = partition;
       this.writeProperties = writeProperties;
     }
-
+    /** 执行 createWriter 相关操作。 */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
       Table table = tableBroadcast.value();
@@ -240,7 +241,7 @@ public class SparkPositionDeletesRewrite implements Write {
           specId,
           partition);
     }
-
+    /** 执行 positionDeleteRowSchema 相关操作。 */
     private Schema positionDeleteRowSchema() {
       return new Schema(
           writeSchema
@@ -249,7 +250,7 @@ public class SparkPositionDeletesRewrite implements Write {
               .asStructType()
               .fields());
     }
-
+    /** 执行 deleteSparkType 相关操作。 */
     private StructType deleteSparkType() {
       return new StructType(
           new StructField[] {
@@ -258,7 +259,7 @@ public class SparkPositionDeletesRewrite implements Write {
             dsSchema.apply(MetadataColumns.DELETE_FILE_ROW_FIELD_NAME)
           });
     }
-
+    /** 执行 deleteSparkTypeWithoutRow 相关操作。 */
     private StructType deleteSparkTypeWithoutRow() {
       return new StructType(
           new StructField[] {
@@ -377,7 +378,7 @@ public class SparkPositionDeletesRewrite implements Write {
         this.closed = true;
       }
     }
-
+    /** 执行 lazyWriterWithRow 相关操作。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithRow() {
       if (writerWithRow == null) {
         this.writerWithRow =
@@ -386,7 +387,7 @@ public class SparkPositionDeletesRewrite implements Write {
       }
       return writerWithRow;
     }
-
+    /** 执行 lazyWriterWithoutRow 相关操作。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithoutRow() {
       if (writerWithoutRow == null) {
         this.writerWithoutRow =
@@ -395,7 +396,7 @@ public class SparkPositionDeletesRewrite implements Write {
       }
       return writerWithoutRow;
     }
-
+    /** 执行 allDeleteFiles 相关操作。 */
     private List<DeleteFile> allDeleteFiles() {
       List<DeleteFile> allDeleteFiles = Lists.newArrayList();
       if (writerWithRow != null) {

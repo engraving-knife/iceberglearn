@@ -47,6 +47,15 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 import org.joda.time.DateTime;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 集成通用工具类，提供类型兼容检查、时区处理、列名归一化等公共静态方法。
+ *
+ * <p>设计意图：集中放置跨模块复用的小工具，避免重复实现。
+ *
+ * <p>上下游关系：被 source / actions / procedures 等多个子包调用。
+ */
 public class SparkUtil {
   private static final String SPARK_CATALOG_CONF_PREFIX = "spark.sql.catalog";
   // Format string used as the prefix for Spark configuration keys to override Hadoop configuration
@@ -152,11 +161,11 @@ public class SparkUtil {
             });
     return conf;
   }
-
+  /** 执行 hadoopConfPrefixForCatalog 相关操作。 */
   private static String hadoopConfPrefixForCatalog(String catalogName) {
     return String.format(SPARK_CATALOG_HADOOP_CONF_OVERRIDE_FMT_STR, catalogName);
   }
-
+  /** 执行 validateTimestampWithoutTimezoneConfig 相关操作。 */
   public static void validateTimestampWithoutTimezoneConfig(RuntimeConfig conf) {
     validateTimestampWithoutTimezoneConfig(conf, ImmutableMap.of());
   }
@@ -266,11 +275,11 @@ public class SparkUtil {
 
     return filterExpressions;
   }
-
+  /** 转换为 ColumnName。 */
   public static String toColumnName(NamedReference ref) {
     return DOT.join(ref.fieldNames());
   }
-
+  /** 执行 caseSensitive 相关操作。 */
   public static boolean caseSensitive(SparkSession spark) {
     return Boolean.parseBoolean(spark.conf().get("spark.sql.caseSensitive"));
   }

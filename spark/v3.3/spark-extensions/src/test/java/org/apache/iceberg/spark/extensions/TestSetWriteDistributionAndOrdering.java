@@ -32,17 +32,27 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSetWriteDistributionAndOrdering 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 集合写分布与排序 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase {
+  /** 测试集合写分布与排序。 */
   public TestSetWriteDistributionAndOrdering(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试集合写顺序通过列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteOrderByColumn() {
     sql(
@@ -67,6 +77,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Should have expected order", expected, table.sortOrder());
   }
 
+  /** 测试集合写顺序带场景sensitive列names场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteOrderWithCaseSensitiveColumnNames() {
     sql(
@@ -89,6 +100,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
             });
   }
 
+  /** 测试集合写顺序通过列带direction场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteOrderByColumnWithDirection() {
     sql(
@@ -113,6 +125,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Should have expected order", expected, table.sortOrder());
   }
 
+  /** 测试集合写顺序通过列带direction与空值顺序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteOrderByColumnWithDirectionAndNullOrder() {
     sql(
@@ -137,6 +150,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Should have expected order", expected, table.sortOrder());
   }
 
+  /** 测试集合写顺序通过转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteOrderByTransform() {
     sql(
@@ -162,6 +176,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Should have expected order", expected, table.sortOrder());
   }
 
+  /** 测试集合写无序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteUnordered() {
     sql(
@@ -189,6 +204,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("New sort order must match", SortOrder.unsorted(), table.sortOrder());
   }
 
+  /** 测试集合写locally有序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteLocallyOrdered() {
     sql(
@@ -214,6 +230,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", expected, table.sortOrder());
   }
 
+  /** 测试集合写distributed通过带排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedByWithSort() {
     sql(
@@ -233,6 +250,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", expected, table.sortOrder());
   }
 
+  /** 测试集合写distributed通过带local排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedByWithLocalSort() {
     sql(
@@ -252,6 +270,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", expected, table.sortOrder());
   }
 
+  /** 测试集合写distributed通过与无序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedByAndUnordered() {
     sql(
@@ -270,6 +289,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", SortOrder.unsorted(), table.sortOrder());
   }
 
+  /** 测试集合写distributed通过only场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedByOnly() {
     sql(
@@ -288,6 +308,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", SortOrder.unsorted(), table.sortOrder());
   }
 
+  /** 测试集合写distributed与无序inverted场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedAndUnorderedInverted() {
     sql(
@@ -306,6 +327,7 @@ public class TestSetWriteDistributionAndOrdering extends SparkExtensionsTestBase
     Assert.assertEquals("Sort order must match", SortOrder.unsorted(), table.sortOrder());
   }
 
+  /** 测试集合写distributed与locally有序inverted场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetWriteDistributedAndLocallyOrderedInverted() {
     sql(

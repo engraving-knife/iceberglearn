@@ -47,6 +47,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestEcsCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-dell。职责：验证 TestEcsCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEcsCatalog {
 
   static final Schema SCHEMA = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -55,6 +62,7 @@ public class TestEcsCatalog {
 
   private EcsCatalog ecsCatalog;
 
+  /** 辅助方法：before。 */
   @Before
   public void before() {
     ecsCatalog = new EcsCatalog();
@@ -64,11 +72,17 @@ public class TestEcsCatalog {
     ecsCatalog.initialize("test", properties);
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws IOException {
     ecsCatalog.close();
   }
 
+  /**
+   * 测试场景：List Tables And Namespaces。
+   *
+   * <p>验证该方法在 List Tables And Namespaces 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesAndNamespaces() {
     ecsCatalog.createNamespace(Namespace.of("a"));
@@ -98,6 +112,11 @@ public class TestEcsCatalog {
         ecsCatalog.listTables(Namespace.of("a")));
   }
 
+  /**
+   * 测试场景：Namespace Properties。
+   *
+   * <p>验证该方法在 Namespace Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testNamespaceProperties() {
     ecsCatalog.createNamespace(Namespace.of("a"), ImmutableMap.of("a", "a"));
@@ -122,6 +141,11 @@ public class TestEcsCatalog {
         ecsCatalog.loadNamespaceMetadata(Namespace.of("a")));
   }
 
+  /**
+   * 测试场景：Drop Namespace。
+   *
+   * <p>验证该方法在 Drop Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNamespace() {
     ecsCatalog.createNamespace(Namespace.of("a"));
@@ -148,6 +172,11 @@ public class TestEcsCatalog {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：Drop Table。
+   *
+   * <p>验证该方法在 Drop Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTable() {
     ecsCatalog.createTable(TableIdentifier.of("a"), SCHEMA);
@@ -159,6 +188,11 @@ public class TestEcsCatalog {
     assertThat(ecsCatalog.dropTable(TableIdentifier.of("a"), true)).as("Drop a table").isTrue();
   }
 
+  /**
+   * 测试场景：Rename Table。
+   *
+   * <p>验证该方法在 Rename Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameTable() {
     ecsCatalog.createNamespace(Namespace.of("a"));
@@ -189,6 +223,11 @@ public class TestEcsCatalog {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Register Table。
+   *
+   * <p>验证该方法在 Register Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTable() {
     TableIdentifier identifier = TableIdentifier.of("a", "t1");
@@ -206,6 +245,11 @@ public class TestEcsCatalog {
     Assertions.assertThat(ecsCatalog.dropTable(identifier, true)).isTrue();
   }
 
+  /**
+   * 测试场景：Register Existing Table。
+   *
+   * <p>验证该方法在 Register Existing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterExistingTable() {
     TableIdentifier identifier = TableIdentifier.of("a", "t1");

@@ -44,6 +44,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 把 Flink 的 {@link LogicalType} 转换为 Iceberg 的 {@link Type}。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：访问 Flink 逻辑类型树并按需分配字段 id， 产出 Iceberg 类型。其中根 struct 的字段 id 从 0
+ * 开始，子字段 id 顺序递增。
+ *
+ * <p>设计意图：访问者模式——继承 {@link FlinkTypeVisitor}，对每种 Flink 类型给出对应 Iceberg 类型。 上下游：由 {@link
+ * FlinkSchemaUtil#convert(RowType)} 调用。
+ */
 class FlinkTypeToType extends FlinkTypeVisitor<Type> {
 
   private final RowType root;
@@ -55,6 +64,7 @@ class FlinkTypeToType extends FlinkTypeVisitor<Type> {
     this.nextId = root.getFieldCount();
   }
 
+  /** 分配下一个字段 id 并返回。 */
   private int getNextId() {
     int next = nextId;
     nextId += 1;
@@ -141,6 +151,7 @@ class FlinkTypeToType extends FlinkTypeVisitor<Type> {
     return Types.TimestampType.withZone();
   }
 
+  /** 转换 Flink 数组为 Iceberg ListType，按元素可空性决定 optional/required。 */
   @Override
   public Type visit(ArrayType arrayType) {
     Type elementType = arrayType.getElementType().accept(this);
@@ -151,12 +162,14 @@ class FlinkTypeToType extends FlinkTypeVisitor<Type> {
     }
   }
 
+  /** 转换 Flink Multiset 为 Iceberg Map（元素 -> 整数计数）。 */
   @Override
   public Type visit(MultisetType multisetType) {
     Type elementType = multisetType.getElementType().accept(this);
     return Types.MapType.ofRequired(getNextId(), getNextId(), elementType, Types.IntegerType.get());
   }
 
+  /** 转换 Flink Map 为 Iceberg MapType，键不允许为 null。 */
   @Override
   public Type visit(MapType mapType) {
     // keys in map are not allowed to be null.
@@ -169,6 +182,11 @@ class FlinkTypeToType extends FlinkTypeVisitor<Type> {
     }
   }
 
+  /**
+   * 转换 Flink RowType 为 Iceberg StructType。
+   *
+   * <p>逻辑：根 RowType 的字段 id 用 0..n-1，子 RowType 字段使用顺序分配的 id； 按字段可空性生成 optional/required 字段。
+   */
   @Override
   @SuppressWarnings("ReferenceEquality")
   public Type visit(RowType rowType) {

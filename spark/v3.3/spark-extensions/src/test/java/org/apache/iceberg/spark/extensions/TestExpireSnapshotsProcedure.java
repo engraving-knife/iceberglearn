@@ -58,18 +58,28 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestExpireSnapshotsProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 过期快照存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
 
+  /** 测试过期快照存储过程。 */
   public TestExpireSnapshotsProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试过期快照在空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsInEmptyTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -79,6 +89,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         "Should not delete any files", ImmutableList.of(row(0L, 0L, 0L, 0L, 0L, 0L)), output);
   }
 
+  /** 测试过期快照使用位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsUsingPositionalArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -135,6 +146,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         "Procedure output must match", ImmutableList.of(row(2L, 0L, 0L, 2L, 1L, 0L)), output);
   }
 
+  /** 测试过期快照使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotUsingNamedArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -158,6 +170,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         "Procedure output must match", ImmutableList.of(row(0L, 0L, 0L, 0L, 1L, 0L)), output);
   }
 
+  /** 测试过期快照gcdisabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsGCDisabled() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -171,6 +184,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.expire_snapshots('%s')", catalogName, tableIdent));
   }
 
+  /** 测试invalid过期快照场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidExpireSnapshotsCases() {
     AssertHelpers.assertThrows(
@@ -204,6 +218,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.expire_snapshots('')", catalogName));
   }
 
+  /** 测试resolving表在another目录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testResolvingTableInAnotherCatalog() throws IOException {
     String anotherCatalog = "another_" + catalogName;
@@ -229,6 +244,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
                 catalogName, anotherCatalog + "." + tableName));
   }
 
+  /** 测试并发过期快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testConcurrentExpireSnapshots() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -252,6 +268,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         output);
   }
 
+  /** 测试并发过期快照带invalidinput场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testConcurrentExpireSnapshotsWithInvalidInput() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -275,6 +292,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
                 catalogName, tableIdent, -1));
   }
 
+  /** 测试过期删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireDeleteFiles() throws Exception {
     sql(
@@ -341,6 +359,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
     Assert.assertFalse("Delete file should be removed", localFs.exists(deleteFilePath));
   }
 
+  /** 测试过期快照带流结果enabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotWithStreamResultsEnabled() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -367,6 +386,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         "Procedure output must match", ImmutableList.of(row(0L, 0L, 0L, 0L, 1L, 0L)), output);
   }
 
+  /** 测试过期快照带快照id场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsWithSnapshotId() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -395,6 +415,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
                 table.snapshots(), snapshot -> snapshot.snapshotId() == firstSnapshotId)));
   }
 
+  /** 测试过期快照应fail用于当前快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotShouldFailForCurrentSnapshot() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -420,6 +441,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
                 table.currentSnapshot().parentId()));
   }
 
+  /** 测试过期快照存储过程works带SQLcomments场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsProcedureWorksWithSqlComments() {
     // Ensure that systems such as dbt, that inject comments into the generated SQL files, will
@@ -453,6 +475,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Should be 1 snapshot remaining", 1, Iterables.size(table.snapshots()));
   }
 
+  /** 测试过期快照带statistic文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireSnapshotsWithStatisticFiles() throws Exception {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -513,6 +536,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
         .exists();
   }
 
+  /** 写stats文件。 */
   private StatisticsFile writeStatsFile(
       long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
       throws IOException {
@@ -537,6 +561,7 @@ public class TestExpireSnapshotsProcedure extends SparkExtensionsTestBase {
     }
   }
 
+  /** stats文件路径。 */
   private String statsFileLocation(String tableLocation) {
     String statsFileName = "stats-file-" + UUID.randomUUID();
     return tableLocation.replaceFirst("file:", "") + "/metadata/" + statsFileName;

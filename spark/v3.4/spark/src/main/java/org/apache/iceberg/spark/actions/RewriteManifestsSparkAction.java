@@ -71,12 +71,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An action that rewrites manifests in a distributed manner and co-locates metadata for partitions.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>By default, this action rewrites all manifests for the current partition spec and writes the
- * result to the metadata folder. The behavior can be modified by passing a custom predicate to
- * {@link #rewriteIf(Predicate)} and a custom spec id to {@link #specId(int)}. In addition, there is
- * a way to configure a custom location for new manifests via {@link #stagingLocation}.
+ * <p>职责：重写清单文件的 Spark 动作，将表的 manifest 重新写为更合理的分组以加速规划。
+ *
+ * <p>设计意图：通过 Spark 任务并行重写 manifest 并原子替换，改善后续扫描的清单读取效率。
+ *
+ * <p>上下游关系：由 SparkActions 创建；继承 BaseSnapshotUpdateSparkAction。
  */
 public class RewriteManifestsSparkAction
     extends BaseSnapshotUpdateSparkAction<RewriteManifestsSparkAction> implements RewriteManifests {
@@ -114,31 +115,31 @@ public class RewriteManifestsSparkAction
     // use the current table format version for new manifests
     this.formatVersion = ops.current().formatVersion();
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected RewriteManifestsSparkAction self() {
     return this;
   }
-
+  /** 执行 specId 相关操作。 */
   @Override
   public RewriteManifestsSparkAction specId(int specId) {
     Preconditions.checkArgument(table.specs().containsKey(specId), "Invalid spec id %s", specId);
     this.spec = table.specs().get(specId);
     return this;
   }
-
+  /** 执行 rewriteIf 相关操作。 */
   @Override
   public RewriteManifestsSparkAction rewriteIf(Predicate<ManifestFile> newPredicate) {
     this.predicate = newPredicate;
     return this;
   }
-
+  /** 执行 stagingLocation 相关操作。 */
   @Override
   public RewriteManifestsSparkAction stagingLocation(String newStagingLocation) {
     this.stagingLocation = newStagingLocation;
     return this;
   }
-
+  /** 执行动作并返回结果。 */
   @Override
   public RewriteManifests.Result execute() {
     String desc =
@@ -147,7 +148,7 @@ public class RewriteManifestsSparkAction
     JobGroupInfo info = newJobGroupInfo("REWRITE-MANIFESTS", desc);
     return withJobGroupInfo(info, this::doExecute);
   }
-
+  /** 执行 doExecute 相关操作。 */
   private RewriteManifests.Result doExecute() {
     List<ManifestFile> matchingManifests = findMatchingManifests();
     if (matchingManifests.isEmpty()) {
@@ -197,7 +198,7 @@ public class RewriteManifestsSparkAction
         .addedManifests(newManifests)
         .build();
   }
-
+  /** 执行 buildManifestEntryDF 相关操作。 */
   private Dataset<Row> buildManifestEntryDF(List<ManifestFile> manifests) {
     Dataset<Row> manifestDF =
         spark()
@@ -219,7 +220,7 @@ public class RewriteManifestsSparkAction
         .join(manifestDF, joinCond, "left_semi")
         .select("snapshot_id", "sequence_number", "file_sequence_number", "data_file");
   }
-
+  /** 执行 writeManifestsForUnpartitionedTable 相关操作。 */
   private List<ManifestFile> writeManifestsForUnpartitionedTable(
       Dataset<Row> manifestEntryDF, int numManifests) {
     Broadcast<Table> tableBroadcast = sparkContext().broadcast(SerializableTable.copyOf(table));
@@ -244,7 +245,7 @@ public class RewriteManifestsSparkAction
             manifestEncoder)
         .collectAsList();
   }
-
+  /** 执行 writeManifestsForPartitionedTable 相关操作。 */
   private List<ManifestFile> writeManifestsForPartitionedTable(
       Dataset<Row> manifestEntryDF, int numManifests, int targetNumManifestEntries) {
 
@@ -296,7 +297,7 @@ public class RewriteManifestsSparkAction
       }
     }
   }
-
+  /** 执行 findMatchingManifests 相关操作。 */
   private List<ManifestFile> findMatchingManifests() {
     Snapshot currentSnapshot = table.currentSnapshot();
 
@@ -308,21 +309,21 @@ public class RewriteManifestsSparkAction
         .filter(manifest -> manifest.partitionSpecId() == spec.specId() && predicate.test(manifest))
         .collect(Collectors.toList());
   }
-
+  /** 执行 targetNumManifests 相关操作。 */
   private int targetNumManifests(long totalSizeBytes) {
     return (int) ((totalSizeBytes + targetManifestSizeBytes - 1) / targetManifestSizeBytes);
   }
-
+  /** 执行 targetNumManifestEntries 相关操作。 */
   private int targetNumManifestEntries(int numEntries, int numManifests) {
     return (numEntries + numManifests - 1) / numManifests;
   }
-
+  /** 判断是否存在 FileCounts。 */
   private boolean hasFileCounts(ManifestFile manifest) {
     return manifest.addedFilesCount() != null
         && manifest.existingFilesCount() != null
         && manifest.deletedFilesCount() != null;
   }
-
+  /** 执行 replaceManifests 相关操作。 */
   private void replaceManifests(
       Iterable<ManifestFile> deletedManifests, Iterable<ManifestFile> addedManifests) {
     try {
@@ -350,7 +351,7 @@ public class RewriteManifestsSparkAction
       throw e;
     }
   }
-
+  /** 执行 deleteFiles 相关操作。 */
   private void deleteFiles(Iterable<String> locations) {
     Tasks.foreach(locations)
         .executeWith(ThreadPools.getWorkerPool())
@@ -359,7 +360,7 @@ public class RewriteManifestsSparkAction
         .onFailure((location, exc) -> LOG.warn("Failed to delete: {}", location, exc))
         .run(location -> table.io().deleteFile(location));
   }
-
+  /** 执行 writeManifest 相关操作。 */
   private static ManifestFile writeManifest(
       List<Row> rows,
       int startIndex,
@@ -401,7 +402,7 @@ public class RewriteManifestsSparkAction
 
     return writer.toManifestFile();
   }
-
+  /** 转换为 Manifests。 */
   private static MapPartitionsFunction<Row, ManifestFile> toManifests(
       Broadcast<Table> tableBroadcast,
       long maxNumManifestEntries,

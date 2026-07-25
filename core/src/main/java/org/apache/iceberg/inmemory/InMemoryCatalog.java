@@ -49,9 +49,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
 /**
- * Catalog implementation that uses in-memory data-structures to store the namespaces and tables.
- * This class doesn't touch external resources and can be utilized to write unit tests without side
- * effects. It uses {@link InMemoryFileIO}.
+ * 基于内存数据结构存储命名空间与表的 Catalog 实现。
+ *
+ * <p>所属模块：iceberg-core，继承 {@link BaseMetastoreCatalog} 并实现 {@link SupportsNamespaces}，
+ * 定位于测试场景——不接触任何外部资源，可在无副作用的单元测试中使用。底层使用 {@link InMemoryFileIO}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>用 {@link ConcurrentMap} 维护命名空间属性与表元数据位置，提供 create/drop/rename/list 等操作。
+ *   <li>实现命名空间层级管理（创建、列举、删除、属性增删）。
+ *   <li>通过内部 {@link InMemoryTableOperations} 提供表元数据的刷新与提交（CAS 语义）。
+ * </ul>
+ *
+ * <p>设计意图：使用 {@code ConcurrentMap} 实现线程安全的基础读写；renameTable 加 synchronized 保证原子性；doCommit 利用 {@code
+ * tables.compute} 做乐观并发控制，基于 metadata location 比较 实现 CAS 提交。所有集合使用不可变副本存储属性，避免外部修改。
+ *
+ * <p>上下游关系：被测试代码作为 Catalog 使用；依赖 {@link InMemoryFileIO} 处理底层文件 IO， 继承 {@link
+ * BaseMetastoreTableOperations} 的元数据读写能力。
  */
 public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNamespaces, Closeable {
   private static final Joiner SLASH = Joiner.on("/");
@@ -63,16 +78,24 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
   private String catalogName;
   private String warehouseLocation;
 
+  /** 构造一个空的内存 Catalog，需在 {@link #initialize} 后使用。 */
   public InMemoryCatalog() {
     this.namespaces = Maps.newConcurrentMap();
     this.tables = Maps.newConcurrentMap();
   }
 
+  /** @return Catalog 名称 */
   @Override
   public String name() {
     return catalogName;
   }
 
+  /**
+   * 初始化 Catalog：设置名称、warehouse 路径并创建 {@link InMemoryFileIO}。
+   *
+   * @param name Catalog 名称，为 null 时使用类名
+   * @param properties 配置属性，读取 {@link CatalogProperties#WAREHOUSE_LOCATION}
+   */
   @Override
   public void initialize(String name, Map<String, String> properties) {
     this.catalogName = name != null ? name : InMemoryCatalog.class.getSimpleName();
@@ -82,17 +105,35 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     this.io = new InMemoryFileIO();
   }
 
+  /**
+   * 为指定表创建 {@link TableOperations}。
+   *
+   * @param tableIdentifier 表标识
+   * @return 内存版 TableOperations
+   */
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
     return new InMemoryTableOperations(io, tableIdentifier);
   }
 
+  /**
+   * 计算默认 warehouse 位置：namespace 路径 + 表名。
+   *
+   * @param tableIdentifier 表标识
+   * @return 默认表存储路径
+   */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
     return SLASH.join(
         defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
   }
 
+  /**
+   * 计算命名空间的存储根路径：空 namespace 返回 warehouse，否则拼接各级 level。
+   *
+   * @param namespace 命名空间
+   * @return 命名空间路径
+   */
   private String defaultNamespaceLocation(Namespace namespace) {
     if (namespace.isEmpty()) {
       return warehouseLocation;
@@ -101,6 +142,15 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     }
   }
 
+  /**
+   * 删除表，可选清理底层数据文件。
+   *
+   * <p>逻辑：先从 tables 移除表标识；若 purge 为真且表存在，调用 {@link CatalogUtil#dropTableData} 删除表数据文件。
+   *
+   * @param tableIdentifier 表标识
+   * @param purge 是否物理删除数据文件
+   * @return 表存在并删除返回 true，否则 false
+   */
   @Override
   public boolean dropTable(TableIdentifier tableIdentifier, boolean purge) {
     TableOperations ops = newTableOps(tableIdentifier);
@@ -122,6 +172,13 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     return true;
   }
 
+  /**
+   * 列出指定命名空间下的所有表。
+   *
+   * @param namespace 命名空间，为空时列出所有表
+   * @return 按名称排序的表标识列表
+   * @throws NoSuchNamespaceException 命名空间不存在且非空时抛出
+   */
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     if (!namespaceExists(namespace) && !namespace.isEmpty()) {
@@ -135,6 +192,17 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
         .collect(Collectors.toList());
   }
 
+  /**
+   * 重命名表，整体操作加 synchronized 保证原子性。
+   *
+   * <p>逻辑：检查源表存在、目标命名空间存在且目标表不存在，随后以新标识写入旧 location 并删除原标识。
+   *
+   * @param from 源表标识
+   * @param to 目标表标识
+   * @throws NoSuchNamespaceException 目标命名空间不存在
+   * @throws NoSuchTableException 源表不存在
+   * @throws AlreadyExistsException 目标表已存在
+   */
   @Override
   public synchronized void renameTable(TableIdentifier from, TableIdentifier to) {
     if (from.equals(to)) {
@@ -159,11 +227,19 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     tables.remove(from);
   }
 
+  /** 创建命名空间，不带属性。 */
   @Override
   public void createNamespace(Namespace namespace) {
     createNamespace(namespace, Collections.emptyMap());
   }
 
+  /**
+   * 创建命名空间并写入属性（存为不可变副本）。
+   *
+   * @param namespace 命名空间
+   * @param metadata 命名空间属性
+   * @throws AlreadyExistsException 命名空间已存在
+   */
   @Override
   public void createNamespace(Namespace namespace, Map<String, String> metadata) {
     if (namespaceExists(namespace)) {
@@ -174,11 +250,19 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     namespaces.put(namespace, ImmutableMap.copyOf(metadata));
   }
 
+  /** @return 命名空间是否存在 */
   @Override
   public boolean namespaceExists(Namespace namespace) {
     return namespaces.containsKey(namespace);
   }
 
+  /**
+   * 删除命名空间；若命名空间下仍有表则抛出异常。
+   *
+   * @param namespace 命名空间
+   * @return 命名空间存在并删除返回 true，否则 false
+   * @throws NamespaceNotEmptyException 命名空间非空时抛出
+   */
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
     if (!namespaceExists(namespace)) {
@@ -194,6 +278,14 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     return namespaces.remove(namespace) != null;
   }
 
+  /**
+   * 为命名空间追加属性，重复键以新值覆盖。
+   *
+   * @param namespace 命名空间
+   * @param properties 待设置属性
+   * @return 始终返回 true
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException {
@@ -209,6 +301,14 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     return true;
   }
 
+  /**
+   * 移除命名空间的指定属性。
+   *
+   * @param namespace 命名空间
+   * @param properties 待移除属性键集合
+   * @return 始终返回 true
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
@@ -227,6 +327,13 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     return true;
   }
 
+  /**
+   * 加载命名空间属性（返回不可变副本）。
+   *
+   * @param namespace 命名空间
+   * @return 命名空间属性
+   * @throws NoSuchNamespaceException 命名空间不存在
+   */
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
@@ -238,6 +345,7 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
     return ImmutableMap.copyOf(properties);
   }
 
+  /** @return 所有顶层命名空间（取每个 namespace 的第一级，去重排序） */
   @Override
   public List<Namespace> listNamespaces() {
     return namespaces.keySet().stream()
@@ -249,6 +357,15 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
         .collect(Collectors.toList());
   }
 
+  /**
+   * 列出指定命名空间下的直接子命名空间。
+   *
+   * <p>逻辑：以前缀匹配筛选所有命名空间，再截取到指定层级 +1 作为直接子节点，去重排序返回。
+   *
+   * @param namespace 命名空间，为空时列出所有顶层命名空间
+   * @return 直接子命名空间列表
+   * @throws NoSuchNamespaceException 命名空间既不存在也非任何命名空间前缀时抛出
+   */
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
     final String searchNamespaceString =
@@ -274,12 +391,14 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
         .collect(Collectors.toList());
   }
 
+  /** 关闭 Catalog，清空所有命名空间与表映射。 */
   @Override
   public void close() throws IOException {
     namespaces.clear();
     tables.clear();
   }
 
+  /** 内存版表操作实现，基于 tables 映射做刷新与提交。 */
   private class InMemoryTableOperations extends BaseMetastoreTableOperations {
     private final FileIO fileIO;
     private final TableIdentifier tableIdentifier;
@@ -289,6 +408,7 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
       this.tableIdentifier = tableIdentifier;
     }
 
+    /** 刷新元数据：从 tables 取最新 location，不存在则禁用刷新，存在则按 metadata location 刷新。 */
     @Override
     public void doRefresh() {
       String latestLocation = tables.get(tableIdentifier);
@@ -299,6 +419,15 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
       }
     }
 
+    /**
+     * 提交表元数据：写入新 metadata 文件并通过 {@code tables.compute} 做 CAS 比较。
+     *
+     * <p>逻辑：若 base 为 null 校验命名空间存在；使用 tables.compute 比较 existingLocation 与 oldLocation，不一致则按并发修改抛
+     * {@link CommitFailedException} 或 {@link AlreadyExistsException}。
+     *
+     * @param base 旧元数据，新建表时为 null
+     * @param metadata 新元数据
+     */
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       String newLocation = writeNewMetadata(metadata, currentVersion() + 1);
@@ -327,11 +456,13 @@ public class InMemoryCatalog extends BaseMetastoreCatalog implements SupportsNam
           });
     }
 
+    /** @return 该表操作使用的 FileIO */
     @Override
     public FileIO io() {
       return fileIO;
     }
 
+    /** @return 表标识的字符串形式 */
     @Override
     protected String tableName() {
       return tableIdentifier.toString();

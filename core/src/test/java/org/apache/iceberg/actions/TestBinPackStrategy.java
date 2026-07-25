@@ -38,9 +38,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestBinPackStrategy，用于验证 Bin Pack Strategy 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Bin Pack Strategy 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestBinPackStrategy extends TableTestBase {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {2}; // We don't actually use the format version since everything is mock
@@ -48,33 +57,43 @@ public class TestBinPackStrategy extends TableTestBase {
 
   private static final long MB = 1024 * 1024;
 
+  /** 辅助方法：bin pack strategy。 */
   public TestBinPackStrategy(int formatVersion) {
     super(formatVersion);
   }
 
   class TestBinPackStrategyImpl extends BinPackStrategy {
 
+    /** 辅助方法：table。 */
     @Override
     public Table table() {
       return table;
     }
 
+    /** 辅助方法：rewrite files。 */
     @Override
     public Set<DataFile> rewriteFiles(List<FileScanTask> filesToRewrite) {
       throw new UnsupportedOperationException();
     }
   }
 
+  /** 辅助方法：files of size。 */
   private List<FileScanTask> filesOfSize(long... sizes) {
     return Arrays.stream(sizes)
         .mapToObj(size -> new MockFileScanTask(size * MB))
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：default bin pack。 */
   private RewriteStrategy defaultBinPack() {
     return new TestBinPackStrategyImpl().options(Collections.emptyMap());
   }
 
+  /**
+   * 测试场景：filtering all valid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilteringAllValid() {
     RewriteStrategy strategy = defaultBinPack();
@@ -86,6 +105,11 @@ public class TestBinPackStrategy extends TableTestBase {
     Assert.assertEquals("No files should be removed from the set", testFiles, filtered);
   }
 
+  /**
+   * 测试场景：filtering remove invalid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilteringRemoveInvalid() {
     RewriteStrategy strategy = defaultBinPack();
@@ -98,6 +122,11 @@ public class TestBinPackStrategy extends TableTestBase {
         "All files should be removed from the set", Collections.emptyList(), filtered);
   }
 
+  /**
+   * 测试场景：filtering custom min max file size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilteringCustomMinMaxFileSize() {
     RewriteStrategy strategy =
@@ -116,6 +145,11 @@ public class TestBinPackStrategy extends TableTestBase {
         "Should remove files that exceed or are smaller than new bounds", expectedFiles, filtered);
   }
 
+  /**
+   * 测试场景：filtering with deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilteringWithDeletes() {
     RewriteStrategy strategy =
@@ -135,6 +169,11 @@ public class TestBinPackStrategy extends TableTestBase {
     Assert.assertEquals("Should include file with deletes", expectedFiles, filtered);
   }
 
+  /**
+   * 测试场景：grouping min input files invalid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingMinInputFilesInvalid() {
     RewriteStrategy strategy =
@@ -148,6 +187,11 @@ public class TestBinPackStrategy extends TableTestBase {
     Assert.assertEquals("Should plan 0 groups, not enough input files", 0, Iterables.size(grouped));
   }
 
+  /**
+   * 测试场景：grouping min input files as one。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingMinInputFilesAsOne() {
     RewriteStrategy strategy =
@@ -188,6 +232,11 @@ public class TestBinPackStrategy extends TableTestBase {
         Iterables.size(grouped3));
   }
 
+  /**
+   * 测试场景：group with large file min input files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupWithLargeFileMinInputFiles() {
     RewriteStrategy strategy =
@@ -222,6 +271,11 @@ public class TestBinPackStrategy extends TableTestBase {
         grouped3);
   }
 
+  /**
+   * 测试场景：grouping min input files valid。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingMinInputFilesValid() {
     RewriteStrategy strategy =
@@ -238,6 +292,11 @@ public class TestBinPackStrategy extends TableTestBase {
         grouped);
   }
 
+  /**
+   * 测试场景：grouping with deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGroupingWithDeletes() {
     RewriteStrategy strategy =
@@ -259,6 +318,11 @@ public class TestBinPackStrategy extends TableTestBase {
         grouped);
   }
 
+  /**
+   * 测试场景：max group size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMaxGroupSize() {
     RewriteStrategy strategy =
@@ -277,6 +341,11 @@ public class TestBinPackStrategy extends TableTestBase {
         Iterables.size(grouped));
   }
 
+  /**
+   * 测试场景：num ouput files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNumOuputFiles() {
     BinPackStrategy strategy = (BinPackStrategy) defaultBinPack();
@@ -305,6 +374,11 @@ public class TestBinPackStrategy extends TableTestBase {
         "Should not return 0 even for very small files", 1, strategy.numOutputFiles(1));
   }
 
+  /**
+   * 测试场景：invalid options。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidOptions() {
     Assertions.assertThatThrownBy(
@@ -354,6 +428,11 @@ public class TestBinPackStrategy extends TableTestBase {
         .hasMessageStartingWith("Cannot set min-file-size-bytes to a negative number");
   }
 
+  /**
+   * 测试场景：rewrite all select files to rewrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteAllSelectFilesToRewrite() {
     RewriteStrategy strategy =
@@ -366,6 +445,11 @@ public class TestBinPackStrategy extends TableTestBase {
     Assert.assertEquals("Should rewrite all files", expectedFiles, filtered);
   }
 
+  /**
+   * 测试场景：rewrite all plan file groups。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRewriteAllPlanFileGroups() {
     RewriteStrategy strategy =

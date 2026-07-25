@@ -56,6 +56,15 @@ import org.apache.spark.sql.connector.read.partitioning.UnknownPartitioning;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：感知分区的扫描基类，提供按 Iceberg 分区对齐 Spark 分区的公共逻辑。
+ *
+ * <p>设计意图：在扫描时对齐分区，使下游可依赖分区分布进行优化。
+ *
+ * <p>上下游关系：被 SparkBatchQueryScan 等继承。
+ */
 abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends SparkScan
     implements SupportsReportPartitioning {
 
@@ -89,13 +98,13 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
       this.taskGroups = Collections.emptyList();
     }
   }
-
+  /** 执行 taskJavaClass 相关操作。 */
   protected abstract Class<T> taskJavaClass();
 
   protected Scan<?, ? extends ScanTask, ? extends ScanTaskGroup<?>> scan() {
     return scan;
   }
-
+  /** 执行 outputPartitioning 相关操作。 */
   @Override
   public Partitioning outputPartitioning() {
     if (groupingKeyType().fields().isEmpty()) {
@@ -113,7 +122,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
       return new KeyGroupedPartitioning(groupingKeyTransforms(), taskGroups().size());
     }
   }
-
+  /** 执行 groupingKeyType 相关操作。 */
   @Override
   protected StructType groupingKeyType() {
     if (groupingKeyType == null) {
@@ -126,11 +135,11 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
 
     return groupingKeyType;
   }
-
+  /** 执行 computeGroupingKeyType 相关操作。 */
   private StructType computeGroupingKeyType() {
     return org.apache.iceberg.Partitioning.groupingKeyType(expectedSchema(), specs());
   }
-
+  /** 执行 groupingKeyTransforms 相关操作。 */
   private Transform[] groupingKeyTransforms() {
     if (groupingKeyTransforms == null) {
       Map<Integer, PartitionField> fieldsById = indexFieldsById(specs());
@@ -146,7 +155,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
 
     return groupingKeyTransforms;
   }
-
+  /** 执行 indexFieldsById 相关操作。 */
   private Map<Integer, PartitionField> indexFieldsById(Iterable<PartitionSpec> specIterable) {
     Map<Integer, PartitionField> fieldsById = Maps.newHashMap();
 
@@ -158,7 +167,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
 
     return fieldsById;
   }
-
+  /** 执行 specs 相关操作。 */
   protected Set<PartitionSpec> specs() {
     if (specs == null) {
       // avoid calling equals/hashCode on specs as those methods are relatively expensive
@@ -168,7 +177,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
 
     return specs;
   }
-
+  /** 执行 tasks 相关操作。 */
   protected synchronized List<T> tasks() {
     if (tasks == null) {
       try (CloseableIterable<? extends ScanTask> taskIterable = scan.planFiles()) {
@@ -192,7 +201,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
 
     return tasks;
   }
-
+  /** 执行 taskGroups 相关操作。 */
   @Override
   protected synchronized List<ScanTaskGroup<T>> taskGroups() {
     if (taskGroups == null) {
@@ -240,7 +249,7 @@ abstract class SparkPartitioningAwareScan<T extends PartitionScanTask> extends S
     this.taskGroups = null;
     this.tasks = filteredTasks;
   }
-
+  /** 执行 collectGroupingKeys 相关操作。 */
   private StructLikeSet collectGroupingKeys(Iterable<ScanTaskGroup<T>> taskGroupIterable) {
     StructLikeSet keys = StructLikeSet.create(groupingKeyType());
 

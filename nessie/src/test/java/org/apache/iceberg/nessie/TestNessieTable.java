@@ -75,6 +75,13 @@ import org.projectnessie.model.LogResponse.LogEntry;
 import org.projectnessie.model.Operation;
 import org.projectnessie.model.Tag;
 
+/**
+ * 文件级说明：测试 TestNessieTable 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestNessieTable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNessieTable extends BaseTestIceberg {
 
   private static final String BRANCH = "iceberg-table-test";
@@ -94,10 +101,12 @@ public class TestNessieTable extends BaseTestIceberg {
 
   private String tableLocation;
 
+  /** 辅助方法：TestNessieTable。 */
   public TestNessieTable() {
     super(BRANCH);
   }
 
+  /** 辅助方法：beforeEach。 */
   @Override
   @BeforeEach
   public void beforeEach(NessieClientFactory clientFactory, @NessieClientUri URI nessieUri)
@@ -106,6 +115,7 @@ public class TestNessieTable extends BaseTestIceberg {
     this.tableLocation = createTable(TABLE_IDENTIFIER, schema).location().replaceFirst("file:", "");
   }
 
+  /** 辅助方法：afterEach。 */
   @Override
   @AfterEach
   public void afterEach() throws Exception {
@@ -120,10 +130,12 @@ public class TestNessieTable extends BaseTestIceberg {
     super.afterEach();
   }
 
+  /** 辅助方法：getTable。 */
   private IcebergTable getTable(ContentKey key) throws NessieNotFoundException {
     return getTable(BRANCH, key);
   }
 
+  /** 辅助方法：getTable。 */
   private IcebergTable getTable(String ref, ContentKey key) throws NessieNotFoundException {
     return api.getContent().key(key).refName(ref).get().get(key).unwrap(IcebergTable.class).get();
   }
@@ -203,6 +215,11 @@ public class TestNessieTable extends BaseTestIceberg {
     }
   }
 
+  /**
+   * 测试场景：Create。
+   *
+   * <p>验证该方法在 Create 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreate() throws IOException {
     // Table should be created in iceberg
@@ -223,6 +240,11 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /**
+   * 测试场景：Rename。
+   *
+   * <p>验证该方法在 Rename 条件下的行为是否符合预期。
+   */
   @Test
   public void testRename() throws NessieNotFoundException {
     String renamedTableName = "rename_table_name";
@@ -247,6 +269,11 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /**
+   * 测试场景：Rename With Table Reference。
+   *
+   * <p>验证该方法在 Rename With Table Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameWithTableReference() throws NessieNotFoundException {
     String renamedTableName = "rename_table_name";
@@ -286,6 +313,11 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /**
+   * 测试场景：Rename With Table Reference Invalid Case。
+   *
+   * <p>验证该方法在 Rename With Table Reference Invalid Case 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameWithTableReferenceInvalidCase() throws NessieNotFoundException {
     String renamedTableName = "rename_table_name";
@@ -331,6 +363,7 @@ public class TestNessieTable extends BaseTestIceberg {
         .hasMessage("from: iceberg-table-test and to: Something reference name must be same");
   }
 
+  /** 辅助方法：verifyCommitMetadata。 */
   private void verifyCommitMetadata() throws NessieNotFoundException {
     // check that the author is properly set
     List<LogEntry> log = api.getCommitLog().refName(BRANCH).get().getLogEntries();
@@ -349,6 +382,11 @@ public class TestNessieTable extends BaseTestIceberg {
             });
   }
 
+  /**
+   * 测试场景：Drop。
+   *
+   * <p>验证该方法在 Drop 条件下的行为是否符合预期。
+   */
   @Test
   public void testDrop() throws NessieNotFoundException {
     Assertions.assertThat(catalog.tableExists(TABLE_IDENTIFIER)).isTrue();
@@ -357,6 +395,11 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /**
+   * 测试场景：Drop With Table Reference。
+   *
+   * <p>验证该方法在 Drop With Table Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropWithTableReference() throws NessieNotFoundException {
     ImmutableTableReference tableReference =
@@ -372,6 +415,11 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /**
+   * 测试场景：Drop Without Purge Leaves Table Data。
+   *
+   * <p>验证该方法在 Drop Without Purge Leaves Table Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropWithoutPurgeLeavesTableData() throws IOException {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -392,6 +440,11 @@ public class TestNessieTable extends BaseTestIceberg {
     Assertions.assertThat(new File(manifestListLocation)).exists();
   }
 
+  /**
+   * 测试场景：Drop Table。
+   *
+   * <p>验证该方法在 Drop Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTable() throws IOException {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -429,6 +482,7 @@ public class TestNessieTable extends BaseTestIceberg {
     verifyCommitMetadata();
   }
 
+  /** 辅助方法：validateRegister。 */
   private void validateRegister(TableIdentifier identifier, String metadataVersionFiles) {
     Assertions.assertThat(catalog.registerTable(identifier, "file:" + metadataVersionFiles))
         .isNotNull();
@@ -440,6 +494,11 @@ public class TestNessieTable extends BaseTestIceberg {
     Assertions.assertThat(catalog.dropTable(identifier, false)).isTrue();
   }
 
+  /**
+   * 测试场景：Register Table With Given Branch。
+   *
+   * <p>验证该方法在 Register Table With Given Branch 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTableWithGivenBranch() throws Exception {
     List<String> metadataVersionFiles = metadataVersionFiles(tableLocation);
@@ -455,6 +514,11 @@ public class TestNessieTable extends BaseTestIceberg {
     validateRegister(identifier, metadataVersionFiles.get(0));
   }
 
+  /**
+   * 测试场景：Register Table Failure Scenarios。
+   *
+   * <p>验证该方法在 Register Table Failure Scenarios 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTableFailureScenarios()
       throws NessieConflictException, NessieNotFoundException {
@@ -502,6 +566,11 @@ public class TestNessieTable extends BaseTestIceberg {
         .hasMessage("Invalid identifier: null");
   }
 
+  /**
+   * 测试场景：Register Table With Default Branch。
+   *
+   * <p>验证该方法在 Register Table With Default Branch 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTableWithDefaultBranch() {
     List<String> metadataVersionFiles = metadataVersionFiles(tableLocation);
@@ -510,6 +579,11 @@ public class TestNessieTable extends BaseTestIceberg {
     validateRegister(TABLE_IDENTIFIER, metadataVersionFiles.get(0));
   }
 
+  /**
+   * 测试场景：Register Table More Than One Branch。
+   *
+   * <p>验证该方法在 Register Table More Than One Branch 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTableMoreThanOneBranch() throws Exception {
     List<String> metadataVersionFiles = metadataVersionFiles(tableLocation);
@@ -527,6 +601,11 @@ public class TestNessieTable extends BaseTestIceberg {
     validateRegister(TABLE_IDENTIFIER, metadataVersionFiles.get(0));
   }
 
+  /**
+   * 测试场景：Existing Table Update。
+   *
+   * <p>验证该方法在 Existing Table Update 条件下的行为是否符合预期。
+   */
   @Test
   public void testExistingTableUpdate() {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -541,6 +620,11 @@ public class TestNessieTable extends BaseTestIceberg {
     Assertions.assertThat(altered.asStruct()).isEqualTo(icebergTable.schema().asStruct());
   }
 
+  /**
+   * 测试场景：Failure。
+   *
+   * <p>验证该方法在 Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void testFailure() throws NessieNotFoundException, NessieConflictException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -562,6 +646,11 @@ public class TestNessieTable extends BaseTestIceberg {
             "Cannot commit: Reference hash is out of date. Update the reference 'iceberg-table-test' and try again");
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() {
     List<TableIdentifier> tableIdents = catalog.listTables(TABLE_IDENTIFIER.namespace());
@@ -574,6 +663,11 @@ public class TestNessieTable extends BaseTestIceberg {
     Assertions.assertThat(catalog.tableExists(TABLE_IDENTIFIER)).isTrue();
   }
 
+  /**
+   * 测试场景：GC Disabled。
+   *
+   * <p>验证该方法在 GC Disabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testGCDisabled() {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -589,6 +683,11 @@ public class TestNessieTable extends BaseTestIceberg {
             "Cannot expire snapshots: GC is disabled (deleting files may corrupt other tables)");
   }
 
+  /**
+   * 测试场景：GC Enabled。
+   *
+   * <p>验证该方法在 GC Enabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testGCEnabled() {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -602,6 +701,11 @@ public class TestNessieTable extends BaseTestIceberg {
         .doesNotThrowAnyException();
   }
 
+  /**
+   * 测试场景：GC Enabled Via Table Default Catalog Property。
+   *
+   * <p>验证该方法在 GC Enabled Via Table Default Catalog Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testGCEnabledViaTableDefaultCatalogProperty() {
     catalog.dropTable(TABLE_IDENTIFIER, false); // pre-created in @BeforeEach
@@ -624,6 +728,11 @@ public class TestNessieTable extends BaseTestIceberg {
         .doesNotThrowAnyException();
   }
 
+  /**
+   * 测试场景：Table Metadata Files Cleanup Disable。
+   *
+   * <p>验证该方法在 Table Metadata Files Cleanup Disable 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableMetadataFilesCleanupDisable() throws NessieNotFoundException {
     Table icebergTable = catalog.loadTable(TABLE_IDENTIFIER);
@@ -666,12 +775,14 @@ public class TestNessieTable extends BaseTestIceberg {
     Assertions.assertThat(tableMetadataFiles).hasSize(1).doesNotContain(metadataFileLocation);
   }
 
+  /** 辅助方法：getTableBasePath。 */
   private String getTableBasePath(String tableName) {
     return temp.toUri() + DB_NAME + "/" + tableName;
   }
 
   @SuppressWarnings(
       "RegexpSinglelineJava") // respecting this rule requires a lot more lines of code
+  /** 辅助方法：metadataFiles。 */
   private List<String> metadataFiles(String tablePath) {
     return Arrays.stream(
             Objects.requireNonNull(new File((tablePath + "/" + "metadata")).listFiles()))
@@ -679,20 +790,24 @@ public class TestNessieTable extends BaseTestIceberg {
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：metadataVersionFiles。 */
   protected List<String> metadataVersionFiles(String tablePath) {
     return filterByExtension(tablePath, getFileExtension(TableMetadataParser.Codec.NONE));
   }
 
+  /** 辅助方法：manifestFiles。 */
   protected List<String> manifestFiles(String tablePath) {
     return filterByExtension(tablePath, ".avro");
   }
 
+  /** 辅助方法：filterByExtension。 */
   private List<String> filterByExtension(String tablePath, String extension) {
     return metadataFiles(tablePath).stream()
         .filter(f -> f.endsWith(extension))
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：addRecordsToFile。 */
   private static String addRecordsToFile(Table table, String filename) throws IOException {
     GenericRecordBuilder recordBuilder =
         new GenericRecordBuilder(AvroSchemaUtil.convert(schema, "test"));

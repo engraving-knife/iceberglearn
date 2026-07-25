@@ -35,10 +35,22 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ByteBuffers;
 import org.apache.iceberg.util.DateTimeUtil;
 
+/**
+ * Flink RowData 相关的工具类。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：提供常量值类型转换与行克隆工具方法， 把 Iceberg 内部 Java 对象转换为 Flink RowData 兼容类型。
+ *
+ * <p>设计意图：工具类 + 静态方法；上下游：被 Flink 读取/写入算子调用。
+ */
 public class RowDataUtil {
 
   private RowDataUtil() {}
 
+  /**
+   * 把 Iceberg 常量值转换为 Flink RowData 兼容类型。
+   *
+   * <p>逻辑：按 Iceberg 类型 ID 处理 decimal/string/fixed/binary/time/timestamp 等类型转换。
+   */
   public static Object convertConstant(Type type, Object value) {
     if (value == null) {
       return null;
@@ -73,10 +85,10 @@ public class RowDataUtil {
   }
 
   /**
-   * Similar to the private {@link RowDataSerializer#copyRowData(RowData, RowData)} method. This
-   * skips the check the arity of rowType and from, because the from RowData may contains additional
-   * column for position deletes. Using {@link RowDataSerializer#copy(RowData, RowData)} will fail
-   * the arity check.
+   * 克隆一行数据，跳过 arity 检查。
+   *
+   * <p>逻辑：类似 {@link RowDataSerializer#copyRowData(RowData, RowData)}， 但 from RowData 可能含额外的
+   * position deletes 列，使用 {@link RowDataSerializer#copy(RowData, RowData)} 会因 arity 检查失败。
    */
   public static RowData clone(
       RowData from, RowData reuse, RowType rowType, TypeSerializer[] fieldSerializers) {

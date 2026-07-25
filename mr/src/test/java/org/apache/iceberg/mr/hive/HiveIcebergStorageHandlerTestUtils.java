@@ -33,6 +33,13 @@ import org.apache.iceberg.types.Types;
 import org.apache.orc.OrcConf;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 HiveIcebergStorageHandlerTestUtils 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 HiveIcebergStorageHandlerTestUtils 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class HiveIcebergStorageHandlerTestUtils {
   static final FileFormat[] FILE_FORMATS =
       new FileFormat[] {FileFormat.AVRO, FileFormat.ORC, FileFormat.PARQUET};
@@ -56,6 +63,7 @@ public class HiveIcebergStorageHandlerTestUtils {
           .add(2L, "Trudy", "Pink")
           .build();
 
+  /** 辅助方法：HiveIcebergStorageHandlerTestUtils。 */
   private HiveIcebergStorageHandlerTestUtils() {
     // Empty constructor for the utility class
   }

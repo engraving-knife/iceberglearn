@@ -36,6 +36,13 @@ import org.apache.orc.TypeDescription;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestORCSchemaUtil 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestORCSchemaUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestORCSchemaUtil {
 
   private static final Types.StructType SUPPORTED_PRIMITIVES =
@@ -59,6 +66,11 @@ public class TestORCSchemaUtil {
           required(116, "dec_38_10", Types.DecimalType.of(38, 10)) // spark's maximum precision
           );
 
+  /**
+   * 测试场景：Roundtrip Conversion Primitive。
+   *
+   * <p>验证该方法在 Roundtrip Conversion Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testRoundtripConversionPrimitive() {
     TypeDescription orcSchema = ORCSchemaUtil.convert(new Schema(SUPPORTED_PRIMITIVES.fields()));
@@ -66,6 +78,11 @@ public class TestORCSchemaUtil {
         .isEqualTo(SUPPORTED_PRIMITIVES);
   }
 
+  /**
+   * 测试场景：Roundtrip Conversion Nested。
+   *
+   * <p>验证该方法在 Roundtrip Conversion Nested 条件下的行为是否符合预期。
+   */
   @Test
   public void testRoundtripConversionNested() {
     Types.StructType leafStructType =
@@ -193,6 +210,11 @@ public class TestORCSchemaUtil {
         .isEqualTo(expectedSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Type Promotions。
+   *
+   * <p>验证该方法在 Type Promotions 条件下的行为是否符合预期。
+   */
   @Test
   public void testTypePromotions() {
     Schema originalSchema =
@@ -226,6 +248,11 @@ public class TestORCSchemaUtil {
     Assertions.assertThat(decimalC.getScale()).isEqualTo(2);
   }
 
+  /**
+   * 测试场景：Invalid Type Promotions。
+   *
+   * <p>验证该方法在 Invalid Type Promotions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidTypePromotions() {
     Schema originalSchema = new Schema(optional(1, "a", Types.LongType.get()));
@@ -238,6 +265,11 @@ public class TestORCSchemaUtil {
         .hasMessage("Can not promote LONG type to INTEGER");
   }
 
+  /**
+   * 测试场景：Skip Non Iceberg Columns。
+   *
+   * <p>验证该方法在 Skip Non Iceberg Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testSkipNonIcebergColumns() {
     TypeDescription schema = TypeDescription.createStruct();
@@ -309,6 +341,11 @@ public class TestORCSchemaUtil {
         .isEqualTo(expectedSchema2.asStruct());
   }
 
+  /**
+   * 测试场景：Has Ids。
+   *
+   * <p>验证该方法在 Has Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testHasIds() {
     Schema schema =
@@ -338,6 +375,11 @@ public class TestORCSchemaUtil {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Assign Ids By Name Mapping。
+   *
+   * <p>验证该方法在 Assign Ids By Name Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssignIdsByNameMapping() {
     Types.StructType structType =
@@ -409,6 +451,11 @@ public class TestORCSchemaUtil {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Assign Ids By Name Mapping And Project。
+   *
+   * <p>验证该方法在 Assign Ids By Name Mapping And Project 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssignIdsByNameMappingAndProject() {
     Types.StructType structType =
@@ -524,6 +571,7 @@ public class TestORCSchemaUtil {
         .isTrue();
   }
 
+  /** 辅助方法：equalsWithIds。 */
   private static boolean equalsWithIds(TypeDescription first, TypeDescription second) {
     if (second == first) {
       return true;

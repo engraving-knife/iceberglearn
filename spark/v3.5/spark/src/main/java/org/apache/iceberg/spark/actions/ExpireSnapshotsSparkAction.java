@@ -47,19 +47,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An action that performs the same operation as {@link org.apache.iceberg.ExpireSnapshots} but uses
- * Spark to determine the delta in files between the pre and post-expiration table metadata. All of
- * the same restrictions of {@link org.apache.iceberg.ExpireSnapshots} also apply to this action.
+ * 基于 Spark 的过期快照（ExpireSnapshots）action 实现。
  *
- * <p>This action first leverages {@link org.apache.iceberg.ExpireSnapshots} to expire snapshots and
- * then uses metadata tables to find files that can be safely deleted. This is done by anti-joining
- * two Datasets that contain all manifest and content files before and after the expiration. The
- * snapshot expiration will be fully committed before any deletes are issued.
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），actions 子包。功能等价于 {@link
+ * org.apache.iceberg.ExpireSnapshots}，但借助 Spark 计算过期前后文件差集。
  *
- * <p>This operation performs a shuffle so the parallelism can be controlled through
- * 'spark.sql.shuffle.partitions'.
+ * <p>职责：
  *
- * <p>Deletes are still performed locally after retrieving the results from the Spark executors.
+ * <ul>
+ *   <li>先调用 Iceberg 原生 {@code expireSnapshots()} 提交快照过期（不清理文件），更新表元数据。
+ *   <li>再用元数据表反连接（anti-join）计算过期前引用、过期后不再引用的文件集合。
+ *   <li>支持流式（toLocalIterator）或批量（collectAsList）两种方式拉取待删文件到 driver 删除。
+ *   <li>支持自定义删除函数、自定义删除线程池，以及批量删除优化。
+ * </ul>
+ *
+ * <p>设计意图：把耗时的"找可删文件"工作下推到 Spark 分布式执行，避免单机遍历大量 manifest； 过期提交与文件删除解耦，保证元数据先稳定提交再清理物理文件。本操作涉及
+ * shuffle， 并行度由 {@code spark.sql.shuffle.partitions} 控制。
+ *
+ * <p>上下游关系：继承 {@link BaseSparkAction}，实现 {@link ExpireSnapshots} 接口； 被 Spark 过程 {@code
+ * expire_snapshots} 调用；依赖 Iceberg core 的 ExpireSnapshots 与 TableOperations。
  */
 @SuppressWarnings("UnnecessaryAnonymousClass")
 public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsSparkAction>
@@ -80,6 +86,15 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
   private ExecutorService deleteExecutorService = null;
   private Dataset<FileInfo> expiredFileDS = null;
 
+  /**
+   * 构造过期快照 action。
+   *
+   * <p>逻辑：保存表与 TableOperations，并校验表属性 {@code gc.enabled} 为 true， 否则抛出 {@link
+   * ValidationException}（防止删除文件破坏其他共享文件的表）。
+   *
+   * @param spark SparkSession
+   * @param table 目标表
+   */
   ExpireSnapshotsSparkAction(SparkSession spark, Table table) {
     super(spark);
     this.table = table;
@@ -89,30 +104,34 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         PropertyUtil.propertyAsBoolean(table.properties(), GC_ENABLED, GC_ENABLED_DEFAULT),
         "Cannot expire snapshots: GC is disabled (deleting files may corrupt other tables)");
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected ExpireSnapshotsSparkAction self() {
     return this;
   }
 
+  /** 指定删除文件所用的线程池，返回当前 action 以支持链式调用。 */
   @Override
   public ExpireSnapshotsSparkAction executeDeleteWith(ExecutorService executorService) {
     this.deleteExecutorService = executorService;
     return this;
   }
 
+  /** 指定要过期的单个快照 ID。 */
   @Override
   public ExpireSnapshotsSparkAction expireSnapshotId(long snapshotId) {
     expiredSnapshotIds.add(snapshotId);
     return this;
   }
 
+  /** 过期所有早于给定时间戳的快照。 */
   @Override
   public ExpireSnapshotsSparkAction expireOlderThan(long timestampMillis) {
     this.expireOlderThanValue = timestampMillis;
     return this;
   }
 
+  /** 保留最近 N 个快照，其余过期；N 必须 >= 1。 */
   @Override
   public ExpireSnapshotsSparkAction retainLast(int numSnapshots) {
     Preconditions.checkArgument(
@@ -123,6 +142,7 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return this;
   }
 
+  /** 指定自定义删除函数，覆盖默认 IO 删除逻辑。 */
   @Override
   public ExpireSnapshotsSparkAction deleteWith(Consumer<String> newDeleteFunc) {
     this.deleteFunc = newDeleteFunc;
@@ -130,13 +150,15 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
   }
 
   /**
-   * Expires snapshots and commits the changes to the table, returning a Dataset of files to delete.
+   * 执行快照过期并提交表元数据变更，返回待删除文件的 Dataset。
    *
-   * <p>This does not delete data files. To delete data files, run {@link #execute()}.
+   * <p>逻辑：先记录原始 metadata；调用 Iceberg 原生 {@code expireSnapshots()} 配置过期条件并 {@code
+   * cleanExpiredFiles(false)} 后 commit；再 refresh 得到新 metadata，分别计算过期前后的文件集， 用 {@code except}
+   * 求差集得到可安全删除的文件 Dataset。结果会缓存到 expiredFileDS 供多次使用。
    *
-   * <p>This may be called before or after {@link #execute()} to return the expired files.
+   * <p>注意：本方法只提交过期并返回文件清单，不实际删除数据文件，需调用 {@link #execute()} 删除。
    *
-   * @return a Dataset of files that are no longer referenced by the table
+   * @return 不再被表引用的文件 Dataset
    */
   public Dataset<FileInfo> expireFiles() {
     if (expiredFileDS == null) {
@@ -175,12 +197,14 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return expiredFileDS;
   }
 
+  /** 在 EXPIRE-SNAPSHOTS 作业组下执行过期与文件删除，返回结果统计。 */
   @Override
   public ExpireSnapshots.Result execute() {
     JobGroupInfo info = newJobGroupInfo("EXPIRE-SNAPSHOTS", jobDesc());
     return withJobGroupInfo(info, this::doExecute);
   }
 
+  /** 构造用于 Spark UI 显示的作业描述，包含过期条件与表名。 */
   private String jobDesc() {
     List<String> options = Lists.newArrayList();
 
@@ -205,6 +229,11 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     return String.format("Expiring snapshots (%s) in %s", COMMA_JOINER.join(options), table.name());
   }
 
+  /**
+   * 实际执行删除：根据 streamResults 选择流式或批量拉取待删文件并删除。
+   *
+   * <p>逻辑：流式则用 {@code toLocalIterator} 逐批拉取避免 driver OOM；否则 collectAsList 一次性拉取。
+   */
   private ExpireSnapshots.Result doExecute() {
     if (streamResults()) {
       return deleteFiles(expireFiles().toLocalIterator());
@@ -213,14 +242,25 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
     }
   }
 
+  /** 读取 stream-results 选项，决定是否流式拉取待删文件。 */
   private boolean streamResults() {
     return PropertyUtil.propertyAsBoolean(options(), STREAM_RESULTS, STREAM_RESULTS_DEFAULT);
   }
 
+  /** 返回给定 metadata 下所有 manifest/内容/统计文件的并集 Dataset，不过滤快照。 */
   private Dataset<FileInfo> fileDS(TableMetadata metadata) {
     return fileDS(metadata, null);
   }
 
+  /**
+   * 返回给定 metadata 下内容文件、manifest、manifest list、统计文件的并集 Dataset。
+   *
+   * <p>逻辑：用 {@link #newStaticTable} 构造静态表，分别调用基类四个 DS 方法后 union。
+   *
+   * @param metadata 表元数据
+   * @param snapshotIds 可选快照 ID 集合
+   * @return 文件 FileInfo Dataset
+   */
   private Dataset<FileInfo> fileDS(TableMetadata metadata, Set<Long> snapshotIds) {
     Table staticTable = newStaticTable(metadata, table.io());
     return contentFileDS(staticTable, snapshotIds)
@@ -229,6 +269,15 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         .union(statisticsFileDS(staticTable, snapshotIds));
   }
 
+  /**
+   * 计算被过期掉的快照 ID 集合。
+   *
+   * <p>逻辑：用更新后 metadata 中保留的快照 ID 集合，从原始 metadata 的快照中过滤掉保留的， 剩下的即为被过期掉的快照。
+   *
+   * @param originalMetadata 过期前元数据
+   * @param updatedMetadata 过期后元数据
+   * @return 被过期的快照 ID 集合
+   */
   private Set<Long> findExpiredSnapshotIds(
       TableMetadata originalMetadata, TableMetadata updatedMetadata) {
     Set<Long> retainedSnapshots =
@@ -239,6 +288,15 @@ public class ExpireSnapshotsSparkAction extends BaseSparkAction<ExpireSnapshotsS
         .collect(Collectors.toSet());
   }
 
+  /**
+   * 删除待删文件并构造结果统计。
+   *
+   * <p>逻辑：若未提供自定义 deleteFunc 且 IO 支持 {@link SupportsBulkOperations}，则走批量删除； 否则用线程池并发逐个删除（默认
+   * IO::deleteFile 或自定义 deleteFunc）。最后汇总到结果对象。
+   *
+   * @param files 待删文件迭代器
+   * @return 过期结果统计
+   */
   private ExpireSnapshots.Result deleteFiles(Iterator<FileInfo> files) {
     DeleteSummary summary;
     if (deleteFunc == null && table.io() instanceof SupportsBulkOperations) {

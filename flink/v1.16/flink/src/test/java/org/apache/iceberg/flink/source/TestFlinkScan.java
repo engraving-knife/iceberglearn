@@ -57,6 +57,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkScan 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkScan 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class TestFlinkScan {
 
@@ -73,6 +80,7 @@ public abstract class TestFlinkScan {
   // parametrized variables
   protected final FileFormat fileFormat;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "format={0}")
   public static Object[] parameters() {
     return new Object[] {"avro", "parquet", "orc"};
@@ -82,23 +90,34 @@ public abstract class TestFlinkScan {
     this.fileFormat = FileFormat.fromString(fileFormat);
   }
 
+  /** 辅助方法：tableLoader，table Loader。 */
   protected TableLoader tableLoader() {
     return catalogResource.tableLoader();
   }
 
+  /** 辅助方法：runWithProjection，run With Projection。 */
   protected abstract List<Row> runWithProjection(String... projected) throws Exception;
 
+  /** 辅助方法：runWithFilter，run With Filter。 */
   protected abstract List<Row> runWithFilter(
       Expression filter, String sqlFilter, boolean caseSensitive) throws Exception;
 
+  /** 辅助方法：runWithFilter，run With Filter。 */
   protected List<Row> runWithFilter(Expression filter, String sqlFilter) throws Exception {
     return runWithFilter(filter, sqlFilter, true);
   }
 
+  /** 辅助方法：runWithOptions，run With Options。 */
   protected abstract List<Row> runWithOptions(Map<String, String> options) throws Exception;
 
+  /** 辅助方法：run，run。 */
   protected abstract List<Row> run() throws Exception;
 
+  /**
+   * 测试场景：Unpartitioned Table。
+   *
+   * <p>验证该方法在 Unpartitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedTable() throws Exception {
     Table table =
@@ -108,6 +127,11 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(run(), expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Partitioned Table。
+   *
+   * <p>验证该方法在 Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTable() throws Exception {
     Table table =
@@ -121,6 +145,11 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(run(), expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Projection。
+   *
+   * <p>验证该方法在 Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjection() throws Exception {
     Table table =
@@ -133,6 +162,11 @@ public abstract class TestFlinkScan {
     assertRows(runWithProjection("data"), Row.of(inputRecords.get(0).get(0)));
   }
 
+  /**
+   * 测试场景：Identity Partition Projections。
+   *
+   * <p>验证该方法在 Identity Partition Projections 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityPartitionProjections() throws Exception {
     Schema logSchema =
@@ -190,6 +224,7 @@ public abstract class TestFlinkScan {
         table, Arrays.asList("message", "level", "dt"), inputRecords);
   }
 
+  /** 辅助方法：validateIdentityPartitionProjections，validate Identity Partition Projections。 */
   private void validateIdentityPartitionProjections(
       Table table, List<String> projectedFields, List<Record> inputRecords) throws Exception {
     List<Row> rows = runWithProjection(projectedFields.toArray(new String[0]));
@@ -208,6 +243,11 @@ public abstract class TestFlinkScan {
     }
   }
 
+  /**
+   * 测试场景：Snapshot Reads。
+   *
+   * <p>验证该方法在 Snapshot Reads 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshotReads() throws Exception {
     Table table =
@@ -235,6 +275,11 @@ public abstract class TestFlinkScan {
         TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Tag Reads。
+   *
+   * <p>验证该方法在 Tag Reads 条件下的行为是否符合预期。
+   */
   @Test
   public void testTagReads() throws Exception {
     Table table =
@@ -264,6 +309,11 @@ public abstract class TestFlinkScan {
         runWithOptions(ImmutableMap.of("tag", "t1")), expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Branch Reads。
+   *
+   * <p>验证该方法在 Branch Reads 条件下的行为是否符合预期。
+   */
   @Test
   public void testBranchReads() throws Exception {
     Table table =
@@ -300,6 +350,11 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(run(), mainExpectedRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Incremental Read Via Tag。
+   *
+   * <p>验证该方法在 Incremental Read Via Tag 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalReadViaTag() throws Exception {
     Table table =
@@ -378,6 +433,11 @@ public abstract class TestFlinkScan {
                     .buildOrThrow()));
   }
 
+  /**
+   * 测试场景：Incremental Read。
+   *
+   * <p>验证该方法在 Incremental Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testIncrementalRead() throws Exception {
     Table table =
@@ -413,6 +473,11 @@ public abstract class TestFlinkScan {
         TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Filter Exp Partition。
+   *
+   * <p>验证该方法在 Filter Exp Partition 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterExpPartition() throws Exception {
     Table table =
@@ -438,6 +503,11 @@ public abstract class TestFlinkScan {
         TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Filter Exp。
+   *
+   * <p>验证该方法在 Filter Exp 条件下的行为是否符合预期。
+   */
   private void testFilterExp(Expression filter, String sqlFilter, boolean caseSensitive)
       throws Exception {
     Table table =
@@ -458,11 +528,21 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(actual, expectedRecords.subList(1, 3), TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Filter Exp。
+   *
+   * <p>验证该方法在 Filter Exp 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterExp() throws Exception {
     testFilterExp(Expressions.greaterThanOrEqual("data", "b"), "where data>='b'", true);
   }
 
+  /**
+   * 测试场景：Filter Exp Case Insensitive。
+   *
+   * <p>验证该方法在 Filter Exp Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testFilterExpCaseInsensitive() throws Exception {
     // sqlFilter does not support case-insensitive filtering:
@@ -470,6 +550,11 @@ public abstract class TestFlinkScan {
     testFilterExp(Expressions.greaterThanOrEqual("DATA", "b"), "where data>='b'", false);
   }
 
+  /**
+   * 测试场景：Partition Types。
+   *
+   * <p>验证该方法在 Partition Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionTypes() throws Exception {
     Schema typesSchema =
@@ -512,6 +597,11 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(run(), records, typesSchema);
   }
 
+  /**
+   * 测试场景：Customized Flink Data Types。
+   *
+   * <p>验证该方法在 Customized Flink Data Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomizedFlinkDataTypes() throws Exception {
     Schema schema =
@@ -529,10 +619,12 @@ public abstract class TestFlinkScan {
     TestHelpers.assertRecords(run(), records, schema);
   }
 
+  /** 辅助方法：assertRows，assert Rows。 */
   private static void assertRows(List<Row> results, Row... expected) {
     TestHelpers.assertRows(results, Arrays.asList(expected));
   }
 
+  /** 辅助方法：waitUntilAfter，wait Until After。 */
   private static void waitUntilAfter(long timestampMillis) {
     long current = System.currentTimeMillis();
     while (current <= timestampMillis) {

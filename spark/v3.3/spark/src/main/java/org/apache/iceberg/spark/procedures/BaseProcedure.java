@@ -52,6 +52,15 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import scala.Option;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 BaseProcedure。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 abstract class BaseProcedure implements Procedure {
   protected static final DataType STRING_MAP =
       DataTypes.createMapType(DataTypes.StringType, DataTypes.StringType);
@@ -63,15 +72,18 @@ abstract class BaseProcedure implements Procedure {
   private SparkActions actions;
   private ExecutorService executorService = null;
 
+  /** 构造 BaseProcedure 实例。 */
   protected BaseProcedure(TableCatalog tableCatalog) {
     this.spark = SparkSession.active();
     this.tableCatalog = tableCatalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkSession spark() {
     return this.spark;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkActions actions() {
     if (actions == null) {
       this.actions = SparkActions.get(spark);
@@ -79,10 +91,12 @@ abstract class BaseProcedure implements Procedure {
     return actions;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected TableCatalog tableCatalog() {
     return this.tableCatalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected <T> T modifyIcebergTable(Identifier ident, Function<org.apache.iceberg.Table, T> func) {
     try {
       return execute(ident, true, func);
@@ -91,6 +105,7 @@ abstract class BaseProcedure implements Procedure {
     }
   }
 
+  /** 返回带新设置的副本。 */
   protected <T> T withIcebergTable(Identifier ident, Function<org.apache.iceberg.Table, T> func) {
     try {
       return execute(ident, false, func);
@@ -99,6 +114,7 @@ abstract class BaseProcedure implements Procedure {
     }
   }
 
+  /** 执行具体逻辑。 */
   private <T> T execute(
       Identifier ident, boolean refreshSparkCache, Function<org.apache.iceberg.Table, T> func) {
     SparkTable sparkTable = loadSparkTable(ident);
@@ -113,6 +129,7 @@ abstract class BaseProcedure implements Procedure {
     return result;
   }
 
+  /** 转换为identifier。 */
   protected Identifier toIdentifier(String identifierAsString, String argName) {
     CatalogAndIdentifier catalogAndIdentifier =
         toCatalogAndIdentifier(identifierAsString, argName, tableCatalog);
@@ -127,6 +144,7 @@ abstract class BaseProcedure implements Procedure {
     return catalogAndIdentifier.identifier();
   }
 
+  /** 转换为catalogandidentifier。 */
   protected CatalogAndIdentifier toCatalogAndIdentifier(
       String identifierAsString, String argName, CatalogPlugin catalog) {
     Preconditions.checkArgument(
@@ -138,6 +156,7 @@ abstract class BaseProcedure implements Procedure {
         "identifier for arg " + argName, spark, identifierAsString, catalog);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkTable loadSparkTable(Identifier ident) {
     try {
       Table table = tableCatalog.loadTable(ident);
@@ -147,15 +166,18 @@ abstract class BaseProcedure implements Procedure {
     } catch (NoSuchTableException e) {
       String errMsg =
           String.format("Couldn't load table '%s' in catalog '%s'", ident, tableCatalog.name());
+      /** 执行该方法的具体逻辑。 */
       throw new RuntimeException(errMsg, e);
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<Row> loadRows(Identifier tableIdent, Map<String, String> options) {
     String tableName = Spark3Util.quotedFullIdentifier(tableCatalog().name(), tableIdent);
     return spark().read().options(options).table(tableName);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected void refreshSparkCache(Identifier ident, Table table) {
     CacheManager cacheManager = spark.sharedState().cacheManager();
     DataSourceV2Relation relation =
@@ -163,6 +185,7 @@ abstract class BaseProcedure implements Procedure {
     cacheManager.recacheByPlan(spark, relation);
   }
 
+  /** 按条件过滤。 */
   protected Expression filterExpression(Identifier ident, String where) {
     try {
       String name = Spark3Util.quotedFullIdentifier(tableCatalog.name(), ident);
@@ -174,52 +197,63 @@ abstract class BaseProcedure implements Procedure {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected InternalRow newInternalRow(Object... values) {
+    /** 执行该方法的具体逻辑。 */
     return new GenericInternalRow(values);
   }
 
+  /**
+   * Iceberg 存储过程，通过 Spark SQL CALL 调用的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 Builder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+   */
   protected abstract static class Builder<T extends BaseProcedure> implements ProcedureBuilder {
     private TableCatalog tableCatalog;
 
+    /**
+     * 返回带新设置的副本。
+     *
+     * @param newTableCatalog 参数
+     * @return 结果对象
+     */
     @Override
     public Builder<T> withTableCatalog(TableCatalog newTableCatalog) {
       this.tableCatalog = newTableCatalog;
       return this;
     }
 
+    /**
+     * 构造并返回目标对象。
+     *
+     * @return 结果对象
+     */
     @Override
     public T build() {
       return doBuild();
     }
 
+    /** 执行该方法的具体逻辑。 */
     protected abstract T doBuild();
 
+    /** 执行该方法的具体逻辑。 */
     TableCatalog tableCatalog() {
       return tableCatalog;
     }
   }
 
-  /**
-   * Closes this procedure's executor service if a new one was created with {@link
-   * #executorService(int, String)}. Does not block for any remaining tasks.
-   */
+  /** 释放底层资源。 */
   protected void closeService() {
     if (executorService != null) {
       executorService.shutdown();
     }
   }
 
-  /**
-   * Starts a new executor service which can be used by this procedure in its work. The pool will be
-   * automatically shut down if {@link #withIcebergTable(Identifier, Function)} or {@link
-   * #modifyIcebergTable(Identifier, Function)} are called. If these methods are not used then the
-   * service can be shut down with {@link #closeService()} or left to be closed when this class is
-   * finalized.
-   *
-   * @param threadPoolSize number of threads in the service
-   * @param nameFormat name prefix for threads created in this service
-   * @return the new executor service owned by this procedure
-   */
+  /** 执行该方法的具体逻辑。 */
   protected ExecutorService executorService(int threadPoolSize, String nameFormat) {
     Preconditions.checkArgument(
         executorService == null, "Cannot create a new executor service, one already exists.");

@@ -21,4 +21,11 @@ package org.apache.iceberg.flink.source.split;
 import java.io.Serializable;
 import java.util.Comparator;
 
+/**
+ * 可序列化的比较器接口，用于 split 排序。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：扩展 Comparator 与 Serializable，支持 checkpoint。
+ *
+ * <p>设计意图：标记接口；被 SplitComparators 使用。
+ */
 public interface SerializableComparator<T> extends Comparator<T>, Serializable {}

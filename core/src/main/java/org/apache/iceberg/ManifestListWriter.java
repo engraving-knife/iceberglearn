@@ -28,18 +28,44 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
+/**
+ * Manifest 列表写入器抽象类：把 {@link ManifestFile} 列表写入 Avro 格式的 manifest list 文件。
+ *
+ * <p>所属模块：iceberg-core（核心实现层），是 snapshot 提交时写 manifest list 的核心组件。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>包装底层 {@link FileAppender}，在写入前通过 {@link #prepare(ManifestFile)} 为每个 manifest 补充序列号等元数据。
+ *   <li>提供 V1/V2 两个具体子类，分别对应 Iceberg 格式 v1 与 v2 的 manifest list 写入。
+ * </ul>
+ *
+ * <p>设计意图：模板方法模式——子类实现 prepare 与 newAppender，父类统一管理 add/addAll/close 等。 V2Writer 会写入
+ * snapshot-id/parent-snapshot-id/sequence-number 元信息；V1Writer 不支持删除 manifest。
+ *
+ * <p>上下游关系：被 {@link SnapshotProducer} 等提交器调用；底层通过 {@link Avro} 写入 Avro 文件。
+ */
 abstract class ManifestListWriter implements FileAppender<ManifestFile> {
   private final FileAppender<ManifestFile> writer;
 
+  /**
+   * 构造方法：委托子类 {@link #newAppender} 创建底层 appender。
+   *
+   * @param file 输出文件
+   * @param meta Avro 文件元数据
+   */
   private ManifestListWriter(OutputFile file, Map<String, String> meta) {
     this.writer = newAppender(file, meta);
   }
 
+  /** 子类实现：为每个 manifest 补充元数据（如序列号）后返回写入版。 */
   protected abstract ManifestFile prepare(ManifestFile manifest);
 
+  /** 子类实现：创建底层 Avro appender。 */
   protected abstract FileAppender<ManifestFile> newAppender(
       OutputFile file, Map<String, String> meta);
 
+  /** 写入单个 manifest：先 prepare 再委托底层 appender。 */
   @Override
   public void add(ManifestFile manifest) {
     writer.add(prepare(manifest));
@@ -70,6 +96,10 @@ abstract class ManifestListWriter implements FileAppender<ManifestFile> {
     return writer.length();
   }
 
+  /**
+   * V2 格式 manifest list 写入器：写入 snapshot-id/parent-snapshot-id/sequence-number 元信息， 并通过 {@link
+   * V2Metadata.IndexedManifestFile} 为每个 manifest 索引序列号。
+   */
   static class V2Writer extends ManifestListWriter {
     private final V2Metadata.IndexedManifestFile wrapper;
 
@@ -105,6 +135,7 @@ abstract class ManifestListWriter implements FileAppender<ManifestFile> {
     }
   }
 
+  /** V1 格式 manifest list 写入器：不写入 sequence-number；并校验 manifest 必须为 DATA 内容 （V1 不支持删除文件 manifest）。 */
   static class V1Writer extends ManifestListWriter {
     private final V1Metadata.IndexedManifestFile wrapper = new V1Metadata.IndexedManifestFile();
 

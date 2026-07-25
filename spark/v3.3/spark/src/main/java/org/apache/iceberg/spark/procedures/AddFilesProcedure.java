@@ -51,6 +51,13 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 AddFilesProcedure。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 class AddFilesProcedure extends BaseProcedure {
 
   private static final ProcedureParameter TABLE_PARAM =
@@ -74,29 +81,49 @@ class AddFilesProcedure extends BaseProcedure {
             new StructField("changed_partition_count", DataTypes.LongType, false, Metadata.empty()),
           });
 
+  /** 构造 AddFilesProcedure 实例。 */
   private AddFilesProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /** 构造并返回目标对象。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new BaseProcedure.Builder<AddFilesProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected AddFilesProcedure doBuild() {
+        /** 添加元素或项。 */
         return new AddFilesProcedure(tableCatalog());
       }
     };
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -114,6 +141,7 @@ class AddFilesProcedure extends BaseProcedure {
     return importToIceberg(tableIdent, sourceIdent, partitionFilter, checkDuplicateFiles);
   }
 
+  /** 转换为outputrows。 */
   private InternalRow[] toOutputRows(Snapshot snapshot) {
     Map<String, String> summary = snapshot.summary();
     return new InternalRow[] {
@@ -123,6 +151,7 @@ class AddFilesProcedure extends BaseProcedure {
     };
   }
 
+  /** 判断是否fileidentifier。 */
   private boolean isFileIdentifier(Identifier ident) {
     String[] namespace = ident.namespace();
     return namespace.length == 1
@@ -131,6 +160,7 @@ class AddFilesProcedure extends BaseProcedure {
             || namespace[0].equalsIgnoreCase("avro"));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private InternalRow[] importToIceberg(
       Identifier destIdent,
       Identifier sourceIdent,
@@ -156,6 +186,7 @@ class AddFilesProcedure extends BaseProcedure {
         });
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static void ensureNameMappingPresent(Table table) {
     if (table.properties().get(TableProperties.DEFAULT_NAME_MAPPING) == null) {
       // Forces Name based resolution instead of position based resolution
@@ -165,6 +196,7 @@ class AddFilesProcedure extends BaseProcedure {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void importFileTable(
       Table table,
       Path tableLocation,
@@ -194,6 +226,7 @@ class AddFilesProcedure extends BaseProcedure {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void importCatalogTable(
       Table table,
       Identifier sourceIdent,
@@ -210,6 +243,7 @@ class AddFilesProcedure extends BaseProcedure {
         checkDuplicateFiles);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void importPartitions(
       Table table, List<SparkTableUtil.SparkPartition> partitions, boolean checkDuplicateFiles) {
     String stagingLocation = getMetadataLocation(table);
@@ -217,17 +251,24 @@ class AddFilesProcedure extends BaseProcedure {
         spark(), partitions, table, table.spec(), stagingLocation, checkDuplicateFiles);
   }
 
+  /** 返回metadatalocation。 */
   private String getMetadataLocation(Table table) {
     String defaultValue = LocationUtil.stripTrailingSlash(table.location()) + "/metadata";
     return LocationUtil.stripTrailingSlash(
         table.properties().getOrDefault(TableProperties.WRITE_METADATA_LOCATION, defaultValue));
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "AddFiles";
   }
 
+  /** 校验前置条件或参数。 */
   private void validatePartitionSpec(Table table, Map<String, String> partitionFilter) {
     List<PartitionField> partitionFields = table.spec().fields();
     Set<String> partitionNames =

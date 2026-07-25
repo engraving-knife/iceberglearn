@@ -74,6 +74,33 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 import software.amazon.awssdk.utils.BinaryUtils;
 
+/**
+ * 基于 S3 的输出流：通过本地暂存文件 + 分片上传实现大文件写入。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成模块，处于引擎层之下）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 {@link org.apache.iceberg.io.PositionOutputStream}，提供带位置追踪的写入能力。
+ *   <li>数据先写入本地暂存文件，达到阈值后切换为 S3 分片上传（Multipart Upload）模式。
+ *   <li>小文件直接通过 PutObject 上传，大文件通过分片上传并发上传各部分。
+ *   <li>支持写入标签、存储类别、服务端加密、MD5 校验等配置。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>暂存文件策略：S3 不支持追加写入，因此数据先写入本地临时文件，按 multiPartSize 分片。 写满一个分片大小的暂存文件后，异步上传该分片并创建新的暂存文件。
+ *   <li>延迟切换分片上传：写入数据量未超过 multiPartThresholdSize 时保持单文件 PutObject 模式， 超过后才初始化 Multipart
+ *       Upload，避免小文件也走分片流程的开销。
+ *   <li>分片上传并发执行：使用固定线程池异步上传各分片，通过 CompletableFuture 管理上传状态， 上传完成后立即删除暂存文件释放磁盘空间。
+ *   <li>MD5 校验：开启后为每个分片和完整文件计算 MD5，随请求发送给 S3 做完整性校验。
+ *   <li>通过 finalize 兜底检测未关闭的流，记录创建栈帮助排查资源泄漏。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link S3OutputFile} 创建，被 Iceberg 的 Parquet/ORC 写入器使用。
+ */
 class S3OutputStream extends PositionOutputStream {
   private static final Logger LOG = LoggerFactory.getLogger(S3OutputStream.class);
   private static final String digestAlgorithm = "MD5";
@@ -104,6 +131,17 @@ class S3OutputStream extends PositionOutputStream {
   private long pos = 0;
   private boolean closed = false;
 
+  /**
+   * 构造 S3 输出流。
+   *
+   * <p>逻辑：初始化上传线程池（DCL），设置 S3 客户端、URI、属性、标签， 计算分片大小和阈值，创建 MD5 摘要器（若启用校验），调用 newStream 创建首个暂存文件。
+   *
+   * @param s3 S3 客户端
+   * @param location S3 URI
+   * @param s3FileIOProperties S3 FileIO 属性
+   * @param metrics 指标上下文
+   * @throws IOException 创建暂存文件或摘要器失败
+   */
   @SuppressWarnings("StaticAssignmentInConstructor")
   S3OutputStream(
       S3Client s3, S3URI location, S3FileIOProperties s3FileIOProperties, MetricsContext metrics)
@@ -160,6 +198,12 @@ class S3OutputStream extends PositionOutputStream {
     stream.flush();
   }
 
+  /**
+   * 写入单个字节。
+   *
+   * <p>逻辑：若当前暂存文件已满（达到 multiPartSize），创建新暂存文件并触发分片上传； 写入字节后，若总写入量超过阈值且尚未进入分片模式，则初始化 Multipart
+   * Upload。
+   */
   @Override
   public void write(int b) throws IOException {
     if (stream.getCount() >= multiPartSize) {
@@ -179,6 +223,12 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /**
+   * 写入字节数组。
+   *
+   * <p>逻辑：循环将数据按 multiPartSize 分片写入暂存文件，每写满一个分片创建新暂存文件 并触发上传；写入完成后，若总写入量超过阈值且尚未进入分片模式，则初始化
+   * Multipart Upload。
+   */
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
     int remaining = len;
@@ -210,6 +260,12 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /**
+   * 创建新的暂存文件和对应的输出流。
+   *
+   * <p>逻辑：关闭旧流，在暂存目录创建临时文件，根据是否启用校验包装 DigestOutputStream（同时计算分片和完整文件 MD5），最终包装为
+   * CountingOutputStream。
+   */
   private void newStream() throws IOException {
     if (stream != null) {
       stream.close();
@@ -251,6 +307,13 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /**
+   * 关闭输出流并完成上传。
+   *
+   * <p>逻辑：关闭底层流，调用 completeUploads 完成上传（PutObject 或 CompleteMultipartUpload）， finally 块清理暂存文件。
+   *
+   * @throws IOException 上传或清理失败
+   */
   @Override
   public void close() throws IOException {
     if (closed) {
@@ -268,6 +331,11 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /**
+   * 初始化 S3 Multipart Upload，获取 uploadId。
+   *
+   * <p>逻辑：构建 CreateMultipartUploadRequest，设置标签、存储类别、加密、权限， 调用 S3 createMultipartUpload 获取 uploadId。
+   */
   private void initializeMultiPartUpload() {
     CreateMultipartUploadRequest.Builder requestBuilder =
         CreateMultipartUploadRequest.builder().bucket(location.bucket()).key(location.key());
@@ -284,6 +352,18 @@ class S3OutputStream extends PositionOutputStream {
     multipartUploadId = s3.createMultipartUpload(requestBuilder.build()).uploadId();
   }
 
+  /**
+   * 异步上传已完成的暂存文件分片。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>过滤出尚未上传且非当前正在写入的暂存文件。
+   *   <li>为每个文件构建 UploadPartRequest（partNumber 从 1 开始），配置 MD5 和加密。
+   *   <li>通过 CompletableFuture.supplyAsync 在线程池中并发上传，完成后删除暂存文件。
+   *   <li>将 Future 存入 multiPartMap 供后续 join。
+   * </ul>
+   */
   @SuppressWarnings("checkstyle:LocalVariableName")
   private void uploadParts() {
     // exit if multipart has not been initiated
@@ -346,6 +426,14 @@ class S3OutputStream extends PositionOutputStream {
             });
   }
 
+  /**
+   * 完成分片上传：等待所有分片上传完成，按 partNumber 排序后调用 CompleteMultipartUpload。
+   *
+   * <p>逻辑：join 所有 Future，任一失败则取消其余并 abortUpload； 成功则构建 CompleteMultipartUploadRequest
+   * 并提交。completeMultipartUpload 失败时也会 abort。
+   *
+   * @throws CompletionException 分片上传失败
+   */
   private void completeMultiPartUpload() {
     Preconditions.checkState(closed, "Complete upload called on open stream: " + location);
 
@@ -382,6 +470,11 @@ class S3OutputStream extends PositionOutputStream {
         .run(s3::completeMultipartUpload);
   }
 
+  /**
+   * 中止分片上传并清理暂存文件。
+   *
+   * <p>逻辑：若存在 multipartUploadId，调用 S3 abortMultipartUpload 中止上传， 然后清理所有暂存文件。
+   */
   private void abortUpload() {
     if (multipartUploadId != null) {
       try {
@@ -397,6 +490,7 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /** 删除所有暂存文件，失败仅告警不抛异常。 */
   private void cleanUpStagingFiles() {
     Tasks.foreach(stagingFiles.stream().map(FileAndDigest::file))
         .suppressFailureWhenFinished()
@@ -404,6 +498,17 @@ class S3OutputStream extends PositionOutputStream {
         .run(File::delete);
   }
 
+  /**
+   * 根据上传模式完成上传。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>未进入分片模式（multipartUploadId == null）：将所有暂存文件串联为 SequenceInputStream， 通过 PutObject
+   *       单次上传，设置标签、存储类别、MD5 校验、加密、权限。
+   *   <li>已进入分片模式：先 uploadParts 上传剩余分片，再 completeMultiPartUpload 完成。
+   * </ul>
+   */
   private void completeUploads() {
     if (multipartUploadId == null) {
       long contentLength =
@@ -486,6 +591,7 @@ class S3OutputStream extends PositionOutputStream {
     }
   }
 
+  /** 暂存文件及其 MD5 摘要的持有对，用于分片上传时传递文件和校验值。 */
   private static class FileAndDigest {
     private final File file;
     private final MessageDigest digest;

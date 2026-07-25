@@ -37,11 +37,19 @@ import org.apache.spark.sql.SparkSession;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkCompressionUtil 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkcompression工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkCompressionUtil {
 
   private SparkSession spark;
   private SparkConf sparkConf;
 
+  /** initSpark。 */
   @Before
   public void initSpark() {
     this.spark = mock(SparkSession.class);
@@ -53,6 +61,7 @@ public class TestSparkCompressionUtil {
     when(sparkContext.conf()).thenReturn(sparkConf);
   }
 
+  /** 测试Parquetcompressionratios场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParquetCompressionRatios() {
     configureShuffle("lz4", true);
@@ -67,6 +76,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio3).isEqualTo(2.0);
   }
 
+  /** 测试ORCcompressionratios场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOrcCompressionRatios() {
     configureShuffle("lz4", true);
@@ -78,6 +88,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio2).isEqualTo(2.0);
   }
 
+  /** 测试Avrocompressionratios场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAvroCompressionRatios() {
     configureShuffle("lz4", true);
@@ -89,6 +100,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio2).isEqualTo(1.5);
   }
 
+  /** 测试 testCodecNameNormalization 场景：验证 CodecNameNormalization 相关操作的行为与结果。 */
   @Test
   public void testCodecNameNormalization() {
     configureShuffle("zStD", true);
@@ -96,6 +108,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio).isEqualTo(2.0);
   }
 
+  /** 测试 testUnknownCodecNames 场景：验证 UnknownCodecNames 相关操作的行为与结果。 */
   @Test
   public void testUnknownCodecNames() {
     configureShuffle("SOME_SPARK_CODEC", true);
@@ -110,6 +123,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio3).isEqualTo(1.0);
   }
 
+  /** 测试other文件格式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOtherFileFormats() {
     configureShuffle("lz4", true);
@@ -117,6 +131,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio).isEqualTo(1.0);
   }
 
+  /** 测试空值文件codec场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullFileCodec() {
     configureShuffle("lz4", true);
@@ -131,6 +146,7 @@ public class TestSparkCompressionUtil {
     assertThat(ratio3).isEqualTo(1.0);
   }
 
+  /** 测试 testUncompressedShuffles 场景：验证 UncompressedShuffles 相关操作的行为与结果。 */
   @Test
   public void testUncompressedShuffles() {
     configureShuffle("zstd", false);
@@ -145,17 +161,20 @@ public class TestSparkCompressionUtil {
     assertThat(ratio3).isEqualTo(2.0);
   }
 
+  /** 测试Spark默认场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkDefaults() {
     assertThat(package$.MODULE$.SHUFFLE_COMPRESS().defaultValueString()).isEqualTo("true");
     assertThat(package$.MODULE$.IO_COMPRESSION_CODEC().defaultValueString()).isEqualTo("lz4");
   }
 
+  /** 辅助方法：configureShuffle。 */
   private void configureShuffle(String codec, boolean compress) {
     when(sparkConf.getBoolean(eq("spark.shuffle.compress"), anyBoolean())).thenReturn(compress);
     when(sparkConf.get(eq("spark.io.compression.codec"), anyString())).thenReturn(codec);
   }
 
+  /** 辅助方法：shuffleCompressionRatio。 */
   private double shuffleCompressionRatio(FileFormat fileFormat, String codec) {
     return SparkCompressionUtil.shuffleCompressionRatio(spark, fileFormat, codec);
   }

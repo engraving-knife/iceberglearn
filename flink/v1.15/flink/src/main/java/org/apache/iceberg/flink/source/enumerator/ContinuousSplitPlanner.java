@@ -23,6 +23,13 @@ import org.apache.flink.annotation.Internal;
 
 /** This interface is introduced so that we can plug in different split planner for unit test */
 @Internal
+/**
+ * 连续分片规划器接口，定义增量扫描与分片切分契约。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：从上次位置扫描新快照并产出 ContinuousEnumerationResult。
+ *
+ * <p>设计意图：策略接口；被 ContinuousIcebergEnumerator 调用。
+ */
 public interface ContinuousSplitPlanner extends Closeable {
 
   /** Discover the files appended between {@code lastPosition} and current table snapshot */

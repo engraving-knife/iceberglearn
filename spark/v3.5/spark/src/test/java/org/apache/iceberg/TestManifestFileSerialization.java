@@ -49,6 +49,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestManifestFileSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 清单文件序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestManifestFileSerialization {
 
   private static final Schema SCHEMA =
@@ -101,6 +108,7 @@ public class TestManifestFileSerialization {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试清单文件Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManifestFileKryoSerialization() throws IOException {
     File data = temp.newFile();
@@ -125,6 +133,7 @@ public class TestManifestFileSerialization {
     }
   }
 
+  /** 测试清单文件Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testManifestFileJavaSerialization() throws Exception {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -147,6 +156,7 @@ public class TestManifestFileSerialization {
     }
   }
 
+  /** 检查清单文件。 */
   private void checkManifestFile(ManifestFile expected, ManifestFile actual) {
     Assert.assertEquals("Path must match", expected.path(), actual.path());
     Assert.assertEquals("Length must match", expected.length(), actual.length());
@@ -194,6 +204,7 @@ public class TestManifestFileSerialization {
         actualPartition.upperBound());
   }
 
+  /** 写清单。 */
   private ManifestFile writeManifest(DataFile... files) throws IOException {
     File manifestFile = temp.newFile("input.m0.avro");
     Assert.assertTrue(manifestFile.delete());
@@ -211,6 +222,7 @@ public class TestManifestFileSerialization {
     return writer.toManifestFile();
   }
 
+  /** 长整型到buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

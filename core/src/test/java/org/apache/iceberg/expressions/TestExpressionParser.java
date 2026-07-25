@@ -30,6 +30,14 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestExpressionParser，用于验证 Expression Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Expression Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestExpressionParser {
 
   private static final Types.StructType SUPPORTED_PRIMITIVES =
@@ -53,6 +61,11 @@ public class TestExpressionParser {
           required(117, "time", Types.TimeType.get()));
   private static final Schema SCHEMA = new Schema(SUPPORTED_PRIMITIVES.fields());
 
+  /**
+   * 测试场景：simple expressions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSimpleExpressions() {
     Expression[] expressions =
@@ -112,6 +125,11 @@ public class TestExpressionParser {
     }
   }
 
+  /**
+   * 测试场景：null expression。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void nullExpression() {
     Assertions.assertThatThrownBy(() -> ExpressionParser.toJson(null))
@@ -123,6 +141,11 @@ public class TestExpressionParser {
         .hasMessage("Cannot parse expression from null object");
   }
 
+  /**
+   * 测试场景：true expression。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void trueExpression() {
     Assertions.assertThat(ExpressionParser.toJson(Expressions.alwaysTrue(), true))
@@ -134,6 +157,11 @@ public class TestExpressionParser {
     Assertions.assertThat(ExpressionParser.fromJson(longJson)).isEqualTo(Expressions.alwaysTrue());
   }
 
+  /**
+   * 测试场景：false expression。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void falseExpression() {
     Assertions.assertThat(ExpressionParser.toJson(Expressions.alwaysFalse(), true))
@@ -145,6 +173,11 @@ public class TestExpressionParser {
     Assertions.assertThat(ExpressionParser.fromJson(longJson)).isEqualTo(Expressions.alwaysFalse());
   }
 
+  /**
+   * 测试场景：eq expression。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void eqExpression() {
     String expected =
@@ -155,6 +188,11 @@ public class TestExpressionParser {
     Assertions.assertThat(ExpressionParser.toJson(expression, true)).isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：transform。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTransform() {
     String expected =
@@ -178,6 +216,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：extra fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void extraFields() {
     Assertions.assertThat(
@@ -199,6 +242,11 @@ public class TestExpressionParser {
                 + "}");
   }
 
+  /**
+   * 测试场景：invalid term。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidTerm() {
     Assertions.assertThatThrownBy(
@@ -216,6 +264,11 @@ public class TestExpressionParser {
         .hasMessage("Cannot parse reference (requires string or object): 23");
   }
 
+  /**
+   * 测试场景：invalid values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidValues() {
     Assertions.assertThatThrownBy(
@@ -287,6 +340,11 @@ public class TestExpressionParser {
         .hasMessage("Cannot parse IN predicate: has invalid value field");
   }
 
+  /**
+   * 测试场景：invalid operation type。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidOperationType() {
     Assertions.assertThatThrownBy(
@@ -318,6 +376,11 @@ public class TestExpressionParser {
         .hasMessage("Invalid operation type: ILLEGAL");
   }
 
+  /**
+   * 测试场景：invalid and。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidAnd() {
     Assertions.assertThatThrownBy(() -> ExpressionParser.fromJson("{\n  \"type\" : \"and\"\n}"))
@@ -335,6 +398,11 @@ public class TestExpressionParser {
         .hasMessage("Cannot parse missing field: left");
   }
 
+  /**
+   * 测试场景：predicate。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPredicate() {
     String expected =
@@ -351,6 +419,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：predicate with object literal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPredicateWithObjectLiteral() {
     String expected =
@@ -374,6 +447,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：predicate with object reference。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPredicateWithObjectReference() {
     String expected =
@@ -397,6 +475,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：and。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAnd() {
     String expected =
@@ -424,6 +507,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：or。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOr() {
     String expected =
@@ -448,6 +536,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：not。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNot() {
     String expected =
@@ -467,6 +560,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：nested expression。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNestedExpression() {
     String expected =
@@ -502,6 +600,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：fixed literal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFixedLiteral() {
     String expected =
@@ -519,6 +622,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：decimal literal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDecimalLiteral() {
     String expected =
@@ -535,6 +643,11 @@ public class TestExpressionParser {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：negative scale decimal literal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNegativeScaleDecimalLiteral() {
     String expected =

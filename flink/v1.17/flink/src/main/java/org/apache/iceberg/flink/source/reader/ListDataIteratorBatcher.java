@@ -29,23 +29,38 @@ import org.apache.iceberg.io.CloseableIterator;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * FlinkRecordReaderFunction essentially cloned objects already. So there is no need to use array
- * pool to clone objects. Simply create a new ArrayList for each batch.
+ * 使用 ArrayList 缓存批次的 DataIterator 批处理器。
+ *
+ * <p>所属模块：iceberg-flink（source reader 侧），实现 {@link DataIteratorBatcher}。
+ *
+ * <p>职责：将 DataIterator 的记录按批次大小打包为 {@link RecordsWithSplitIds}，每批创建新的 ArrayList。
+ *
+ * <p>设计意图：当上游 reader 函数已对记录做了克隆（如 FlinkRecordReaderFunction），无需再使用数组池克隆， 直接用 ArrayList
+ * 更简单。每批在当前文件读完时提前截断以保证 fileOffset 一致。
+ *
+ * <p>上下游关系：被 {@link DataIteratorReaderFunction} 调用。
  */
 class ListDataIteratorBatcher<T> implements DataIteratorBatcher<T> {
 
   private final int batchSize;
 
+  /**
+   * 构造批处理器。
+   *
+   * @param config Flink 配置（读取批次大小）
+   */
   ListDataIteratorBatcher(ReadableConfig config) {
     this.batchSize = config.get(FlinkConfigOptions.SOURCE_READER_FETCH_BATCH_RECORD_COUNT);
   }
 
+  /** 返回 {@link ListBatchIterator} 包装输入迭代器。 */
   @Override
   public CloseableIterator<RecordsWithSplitIds<RecordAndPosition<T>>> batch(
       String splitId, DataIterator<T> dataIterator) {
     return new ListBatchIterator(splitId, dataIterator);
   }
 
+  /** 用 ArrayList 收集记录并产出 {@link ListBatchRecords} 的迭代器。 */
   private class ListBatchIterator
       implements CloseableIterator<RecordsWithSplitIds<RecordAndPosition<T>>> {
 

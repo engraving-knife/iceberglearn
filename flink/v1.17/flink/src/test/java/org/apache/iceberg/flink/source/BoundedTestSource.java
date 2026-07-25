@@ -27,12 +27,11 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * A stream source that: 1) emits the elements from elementsPerCheckpoint.get(0) without allowing
- * checkpoints. 2) then waits for the checkpoint to complete. 3) emits the elements from
- * elementsPerCheckpoint.get(1) without allowing checkpoints. 4) then waits for the checkpoint to
- * complete. 5) ...
+ * 文件级说明：测试 BoundedTestSource 的功能。
  *
- * <p>Util all the list from elementsPerCheckpoint are exhausted.
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 BoundedTestSource 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
  */
 public final class BoundedTestSource<T> implements SourceFunction<T>, CheckpointListener {
 
@@ -48,6 +47,7 @@ public final class BoundedTestSource<T> implements SourceFunction<T>, Checkpoint
     this.checkpointEnabled = checkpointEnabled;
   }
 
+  /** 辅助方法：BoundedTestSource，Bounded Test Source。 */
   public BoundedTestSource(List<List<T>> elementsPerCheckpoint) {
     this(elementsPerCheckpoint, true);
   }
@@ -57,6 +57,7 @@ public final class BoundedTestSource<T> implements SourceFunction<T>, Checkpoint
     this(Collections.singletonList(Arrays.asList(elements)));
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   public void run(SourceContext<T> ctx) throws Exception {
     if (!checkpointEnabled) {
@@ -70,6 +71,7 @@ public final class BoundedTestSource<T> implements SourceFunction<T>, Checkpoint
     for (List<T> elements : elementsPerCheckpoint) {
 
       final int checkpointToAwait;
+      /** 辅助方法：getCheckpointLock，get Checkpoint Lock。 */
       synchronized (ctx.getCheckpointLock()) {
         // Let's say checkpointToAwait = numCheckpointsComplete.get() + delta, in fact the value of
         // delta should not
@@ -88,6 +90,7 @@ public final class BoundedTestSource<T> implements SourceFunction<T>, Checkpoint
         }
       }
 
+      /** 辅助方法：getCheckpointLock，get Checkpoint Lock。 */
       synchronized (ctx.getCheckpointLock()) {
         while (running && numCheckpointsComplete.get() < checkpointToAwait) {
           ctx.getCheckpointLock().wait(1);
@@ -96,11 +99,13 @@ public final class BoundedTestSource<T> implements SourceFunction<T>, Checkpoint
     }
   }
 
+  /** 辅助方法：notifyCheckpointComplete，notify Checkpoint Complete。 */
   @Override
   public void notifyCheckpointComplete(long checkpointId) throws Exception {
     numCheckpointsComplete.incrementAndGet();
   }
 
+  /** 辅助方法：cancel，cancel。 */
   @Override
   public void cancel() {
     running = false;

@@ -32,6 +32,15 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Parquet 文件的向量化 Spark 读取器构建器，生成列式批读取器。
+ *
+ * <p>设计意图：基于 ArrowVectorAccessorFactory 构建列向量，支持向量化批量读取与删除行过滤。
+ *
+ * <p>上下游关系：由 BatchDataReader 在向量化 Parquet 读取时使用。
+ */
 public class VectorizedSparkParquetReaders {
 
   private static final Logger LOG = LoggerFactory.getLogger(VectorizedSparkParquetReaders.class);
@@ -50,7 +59,7 @@ public class VectorizedSparkParquetReaders {
   }
 
   private VectorizedSparkParquetReaders() {}
-
+  /** 执行 buildReader 相关操作。 */
   public static ColumnarBatchReader buildReader(
       Schema expectedSchema,
       MessageType fileSchema,
@@ -92,7 +101,7 @@ public class VectorizedSparkParquetReaders {
       LOG.info("Null checking for get calls was configured explicitly: {}", value);
     }
   }
-
+  /** 执行 confValue 相关操作。 */
   private static String confValue(String propName, String envName) {
     String propValue = System.getProperty(propName);
     if (propValue != null) {
@@ -115,7 +124,7 @@ public class VectorizedSparkParquetReaders {
       super(expectedSchema, parquetSchema, setArrowValidityVector, idToConstant, readerFactory);
       this.deleteFilter = deleteFilter;
     }
-
+    /** 执行 vectorizedReader 相关操作。 */
     @Override
     protected VectorizedReader<?> vectorizedReader(List<VectorizedReader<?>> reorderedFields) {
       VectorizedReader<?> reader = super.vectorizedReader(reorderedFields);

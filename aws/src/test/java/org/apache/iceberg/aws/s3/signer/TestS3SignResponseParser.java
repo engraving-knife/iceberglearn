@@ -25,8 +25,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestS3SignResponseParser 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3SignResponseParser 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3SignResponseParser {
 
+  /**
+   * 测试场景：null Response。
+   *
+   * <p>验证该方法在 null Response 条件下的行为是否符合预期。
+   */
   @Test
   public void nullResponse() {
     Assertions.assertThatThrownBy(() -> S3SignResponseParser.fromJson((JsonNode) null))
@@ -38,6 +50,11 @@ public class TestS3SignResponseParser {
         .hasMessage("Invalid s3 sign response: null");
   }
 
+  /**
+   * 测试场景：missing Fields。
+   *
+   * <p>验证该方法在 missing Fields 条件下的行为是否符合预期。
+   */
   @Test
   public void missingFields() {
     Assertions.assertThatThrownBy(() -> S3SignResponseParser.fromJson("{}"))
@@ -52,6 +69,11 @@ public class TestS3SignResponseParser {
         .hasMessage("Cannot parse missing field: headers");
   }
 
+  /**
+   * 测试场景：invalid Uri。
+   *
+   * <p>验证该方法在 invalid Uri 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidUri() {
     Assertions.assertThatThrownBy(

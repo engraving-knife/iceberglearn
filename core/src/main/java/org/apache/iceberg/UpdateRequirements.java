@@ -24,10 +24,35 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
+/**
+ * 更新前置要求的构造工具。
+ *
+ * <p>所属模块：iceberg-core。职责：根据提交场景（建表/替换表/更新表）与一组 {@link MetadataUpdate}， 推导出提交时需要校验的前置 {@link
+ * UpdateRequirement} 列表。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>场景入口：{@code forCreateTable}/{@code forReplaceTable}/{@code forUpdateTable} 三个工厂方法。
+ *   <li>Builder 累积：在 Builder 中按 update 类型动态追加断言（如 schema 变更则追加 schema id 断言）。
+ *   <li>OCC 基线保护：确保提交基于调用方持有的基线，防止丢失更新。
+ * </ul>
+ *
+ * <p>上下游关系：上游为各 {@link Update} 实现或 REST 提交端点；产物经 {@link UpdateRequirementParser} 序列化后随提交请求发出。
+ */
 public class UpdateRequirements {
 
+  /** 私有构造：工具类禁止实例化。 */
   private UpdateRequirements() {}
 
+  /**
+   * 为建表场景构造更新前置要求列表。
+   *
+   * <p>步骤：创建无 base 元数据的 Builder，先断言表不存在，再逐条处理 metadataUpdates。
+   *
+   * @param metadataUpdates 建表时的元数据变更列表
+   * @return 前置要求列表
+   */
   public static List<UpdateRequirement> forCreateTable(List<MetadataUpdate> metadataUpdates) {
     Preconditions.checkArgument(null != metadataUpdates, "Invalid metadata updates: null");
     Builder builder = new Builder(null, false);
@@ -36,6 +61,15 @@ public class UpdateRequirements {
     return builder.build();
   }
 
+  /**
+   * 为替换表场景构造更新前置要求列表。
+   *
+   * <p>步骤：创建以 base 为基准的 Builder（isReplace=true），先断言表 UUID 一致，再逐条处理 metadataUpdates。
+   *
+   * @param base 基线表元数据
+   * @param metadataUpdates 替换表时的元数据变更列表
+   * @return 前置要求列表
+   */
   public static List<UpdateRequirement> forReplaceTable(
       TableMetadata base, List<MetadataUpdate> metadataUpdates) {
     Preconditions.checkArgument(null != base, "Invalid table metadata: null");
@@ -46,6 +80,16 @@ public class UpdateRequirements {
     return builder.build();
   }
 
+  /**
+   * 为更新表场景构造更新前置要求列表。
+   *
+   * <p>步骤：创建以 base 为基准的 Builder（isReplace=false），先断言表 UUID 一致，再逐条处理 metadataUpdates，
+   * 确保基于调用方持有的基线提交，防止丢失更新。
+   *
+   * @param base 基线表元数据
+   * @param metadataUpdates 更新表时的元数据变更列表
+   * @return 前置要求列表
+   */
   public static List<UpdateRequirement> forUpdateTable(
       TableMetadata base, List<MetadataUpdate> metadataUpdates) {
     Preconditions.checkArgument(null != base, "Invalid table metadata: null");

@@ -29,10 +29,19 @@ import java.io.ObjectOutputStream;
 import org.apache.spark.SparkConf;
 import org.apache.spark.serializer.KryoSerializer;
 
+/**
+ * 文件级说明：测试 KryoHelpers 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Kryo辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class KryoHelpers {
 
+  /** Kryo辅助。 */
   private KryoHelpers() {}
 
+  /** roundtrip序列化。 */
   @SuppressWarnings("unchecked")
   public static <T> T roundTripSerialize(T obj) throws IOException {
     Kryo kryo = new KryoSerializer(new SparkConf()).newKryo();

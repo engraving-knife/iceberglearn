@@ -26,7 +26,19 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestOSSURI 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSURI 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSURI {
+  /**
+   * 测试场景：Url Parsing。
+   *
+   * <p>验证该方法在 Url Parsing 条件下的行为是否符合预期。
+   */
   @Test
   public void testUrlParsing() {
     String location = "oss://bucket/path/to/file";
@@ -37,6 +49,11 @@ public class TestOSSURI {
     Assert.assertEquals(location, uri.toString());
   }
 
+  /**
+   * 测试场景：Encoded String。
+   *
+   * <p>验证该方法在 Encoded String 条件下的行为是否符合预期。
+   */
   @Test
   public void testEncodedString() {
     String location = "oss://bucket/path%20to%20file";
@@ -47,6 +64,11 @@ public class TestOSSURI {
     Assert.assertEquals(location, uri.toString());
   }
 
+  /**
+   * 测试场景：invalid Bucket。
+   *
+   * <p>验证该方法在 invalid Bucket 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidBucket() {
 
@@ -56,6 +78,11 @@ public class TestOSSURI {
             OSS_RESOURCE_MANAGER.getFormattedString("BucketNameInvalid", "test_bucket"));
   }
 
+  /**
+   * 测试场景：missing Key。
+   *
+   * <p>验证该方法在 missing Key 条件下的行为是否符合预期。
+   */
   @Test
   public void missingKey() {
 
@@ -64,6 +91,11 @@ public class TestOSSURI {
         .hasMessageContaining("Missing key in OSS location");
   }
 
+  /**
+   * 测试场景：invalid Key。
+   *
+   * <p>验证该方法在 invalid Key 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidKey() {
     Assertions.assertThatThrownBy(() -> new OSSURI("https://bucket/\\path/to/file"))
@@ -72,6 +104,11 @@ public class TestOSSURI {
             OSS_RESOURCE_MANAGER.getFormattedString("ObjectKeyInvalid", "\\path/to/file"));
   }
 
+  /**
+   * 测试场景：relative Pathing。
+   *
+   * <p>验证该方法在 relative Pathing 条件下的行为是否符合预期。
+   */
   @Test
   public void relativePathing() {
 
@@ -80,6 +117,11 @@ public class TestOSSURI {
         .hasMessageContaining("Invalid OSS location");
   }
 
+  /**
+   * 测试场景：invalid Scheme。
+   *
+   * <p>验证该方法在 invalid Scheme 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidScheme() {
 
@@ -88,6 +130,11 @@ public class TestOSSURI {
         .hasMessageContaining("Invalid scheme");
   }
 
+  /**
+   * 测试场景：Fragment。
+   *
+   * <p>验证该方法在 Fragment 条件下的行为是否符合预期。
+   */
   @Test
   public void testFragment() {
     String location = "oss://bucket/path/to/file#print";
@@ -98,6 +145,11 @@ public class TestOSSURI {
     Assert.assertEquals(location, uri.toString());
   }
 
+  /**
+   * 测试场景：Query And Fragment。
+   *
+   * <p>验证该方法在 Query And Fragment 条件下的行为是否符合预期。
+   */
   @Test
   public void testQueryAndFragment() {
     String location = "oss://bucket/path/to/file?query=foo#bar";
@@ -108,6 +160,11 @@ public class TestOSSURI {
     Assert.assertEquals(location, uri.toString());
   }
 
+  /**
+   * 测试场景：Valid Schemes。
+   *
+   * <p>验证该方法在 Valid Schemes 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidSchemes() {
     for (String scheme : Lists.newArrayList("https", "oss")) {

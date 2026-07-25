@@ -43,8 +43,20 @@ import org.apache.iceberg.types.Types;
 import org.apache.thrift.TException;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestHiveCommits 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveCommits 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveCommits extends HiveTableBaseTest {
 
+  /**
+   * 测试场景：Suppress Unlock Exceptions。
+   *
+   * <p>验证该方法在 Suppress Unlock Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testSuppressUnlockExceptions() {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -297,6 +309,11 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .hasSize(2);
   }
 
+  /**
+   * 测试场景：Invalid Object Exception。
+   *
+   * <p>验证该方法在 Invalid Object Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidObjectException() {
     TableIdentifier badTi = TableIdentifier.of(DB_NAME, "`tbl`");
@@ -305,6 +322,11 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .hasMessage(String.format("Invalid Hive object for %s.%s", DB_NAME, "`tbl`"));
   }
 
+  /**
+   * 测试场景：Already Exists Exception。
+   *
+   * <p>验证该方法在 Already Exists Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlreadyExistsException() {
     assertThatThrownBy(
@@ -354,6 +376,11 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .isEqualTo(2);
   }
 
+  /**
+   * 测试场景：Lock Exception Unknown Success Commit。
+   *
+   * <p>验证该方法在 Lock Exception Unknown Success Commit 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockExceptionUnknownSuccessCommit() throws TException, InterruptedException {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -397,6 +424,7 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .isTrue();
   }
 
+  /** 辅助方法：commitAndThrowException。 */
   private void commitAndThrowException(
       HiveTableOperations realOperations, HiveTableOperations spyOperations)
       throws TException, InterruptedException {
@@ -413,6 +441,7 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .persistTable(any(), anyBoolean(), any());
   }
 
+  /** 辅助方法：concurrentCommitAndThrowException。 */
   private void concurrentCommitAndThrowException(
       HiveTableOperations realOperations,
       HiveTableOperations spyOperations,
@@ -436,6 +465,7 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .persistTable(any(), anyBoolean(), any());
   }
 
+  /** 辅助方法：failCommitAndThrowException。 */
   private void failCommitAndThrowException(HiveTableOperations spyOperations)
       throws TException, InterruptedException {
     doThrow(new TException("Datacenter on fire"))
@@ -443,15 +473,18 @@ public class TestHiveCommits extends HiveTableBaseTest {
         .persistTable(any(), anyBoolean(), any());
   }
 
+  /** 辅助方法：breakFallbackCatalogCommitCheck。 */
   private void breakFallbackCatalogCommitCheck(HiveTableOperations spyOperations) {
     when(spyOperations.refresh())
         .thenThrow(new RuntimeException("Still on fire")); // Failure on commit check
   }
 
+  /** 辅助方法：metadataFileExists。 */
   private boolean metadataFileExists(TableMetadata metadata) {
     return new File(metadata.metadataFileLocation().replace("file:", "")).exists();
   }
 
+  /** 辅助方法：metadataFileCount。 */
   private int metadataFileCount(TableMetadata metadata) {
     return new File(metadata.metadataFileLocation().replace("file:", ""))
         .getParentFile()

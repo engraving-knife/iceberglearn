@@ -34,23 +34,34 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 UnpartitionedWritesTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 非分区写 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
+  /** 非分区写测试基类。 */
   public UnpartitionedWritesTestBase(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTables() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
     sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b'), (3, 'c')", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试插入追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInsertAppend() {
     Assert.assertEquals(
@@ -72,6 +83,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试插入覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInsertOverwrite() {
     Assert.assertEquals(
@@ -92,6 +104,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试插入追加at快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInsertAppendAtSnapshot() {
     Assume.assumeTrue(tableName.equals(commitTarget()));
@@ -105,6 +118,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         .hasMessageStartingWith("Cannot write to table at a specific snapshot");
   }
 
+  /** 测试插入覆盖写at快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInsertOverwriteAtSnapshot() {
     Assume.assumeTrue(tableName.equals(commitTarget()));
@@ -120,6 +134,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         .hasMessageStartingWith("Cannot write to table at a specific snapshot");
   }
 
+  /** 测试数据framev2追加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2Append() throws NoSuchTableException {
     Assert.assertEquals(
@@ -144,6 +159,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试数据framev2动态覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2DynamicOverwrite() throws NoSuchTableException {
     Assert.assertEquals(
@@ -167,6 +183,7 @@ public abstract class UnpartitionedWritesTestBase extends SparkCatalogTestBase {
         sql("SELECT * FROM %s ORDER BY id", selectTarget()));
   }
 
+  /** 测试数据framev2覆盖写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFrameV2Overwrite() throws NoSuchTableException {
     Assert.assertEquals(

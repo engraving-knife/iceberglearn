@@ -26,12 +26,21 @@ import org.apache.iceberg.data.GenericAppenderFactory;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.io.FileAppender;
 
+/**
+ * 文件级说明：测试 TestGenericMergingMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericMergingMetrics 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericMergingMetrics extends TestMergingMetrics<Record> {
 
+  /** 辅助方法：TestGenericMergingMetrics。 */
   public TestGenericMergingMetrics(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：writeAndGetAppender。 */
   @Override
   protected FileAppender<Record> writeAndGetAppender(List<Record> records) throws IOException {
     FileAppender<Record> appender =

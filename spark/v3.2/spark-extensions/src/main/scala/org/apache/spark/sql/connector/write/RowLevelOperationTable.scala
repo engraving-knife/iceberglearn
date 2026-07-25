@@ -32,22 +32,46 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /**
- * An internal v2 table implementation that wraps the original table during DELETE, UPDATE,
- * MERGE operations.
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 RowLevelOperationTable。
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 case class RowLevelOperationTable(
     table: Table with SupportsRowLevelOperations,
     operation: RowLevelOperation) extends Table with SupportsRead with SupportsWrite {
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def name: String = table.name
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def schema: StructType = table.schema
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def capabilities: util.Set[TableCapability] = table.capabilities
+  /** 返回该对象的字符串表示。 */
   override def toString: String = table.toString
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = {
     operation.newScanBuilder(options)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def newWriteBuilder(info: LogicalWriteInfo): WriteBuilder = {
     operation.newWriteBuilder(info.asInstanceOf[ExtendedLogicalWriteInfo])
   }

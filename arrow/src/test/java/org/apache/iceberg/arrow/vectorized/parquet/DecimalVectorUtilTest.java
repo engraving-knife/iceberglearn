@@ -24,8 +24,20 @@ import java.math.BigInteger;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 DecimalVectorUtilTest 的功能。
+ *
+ * <p>所属模块：iceberg-arrow。职责：验证 DecimalVectorUtilTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class DecimalVectorUtilTest {
 
+  /**
+   * 测试场景：Pad Big Endian Bytes。
+   *
+   * <p>验证该方法在 Pad Big Endian Bytes 条件下的行为是否符合预期。
+   */
   @Test
   public void testPadBigEndianBytes() {
     BigInteger bigInt = new BigInteger("12345");
@@ -37,6 +49,11 @@ public class DecimalVectorUtilTest {
     assertThat(result).isEqualTo(bigInt);
   }
 
+  /**
+   * 测试场景：Pad Big Endian Bytes Negative。
+   *
+   * <p>验证该方法在 Pad Big Endian Bytes Negative 条件下的行为是否符合预期。
+   */
   @Test
   public void testPadBigEndianBytesNegative() {
     BigInteger bigInt = new BigInteger("-12345");
@@ -48,6 +65,11 @@ public class DecimalVectorUtilTest {
     assertThat(result).isEqualTo(bigInt);
   }
 
+  /**
+   * 测试场景：Pad Big Endian Bytes Zero。
+   *
+   * <p>验证该方法在 Pad Big Endian Bytes Zero 条件下的行为是否符合预期。
+   */
   @Test
   public void testPadBigEndianBytesZero() {
     byte[] bytes = BigInteger.ZERO.toByteArray();
@@ -65,6 +87,11 @@ public class DecimalVectorUtilTest {
     assertThat(result).isEqualTo(BigInteger.ZERO);
   }
 
+  /**
+   * 测试场景：Pad Big Endian Bytes Overflow。
+   *
+   * <p>验证该方法在 Pad Big Endian Bytes Overflow 条件下的行为是否符合预期。
+   */
   @Test
   public void testPadBigEndianBytesOverflow() {
     byte[] bytes = new byte[17];

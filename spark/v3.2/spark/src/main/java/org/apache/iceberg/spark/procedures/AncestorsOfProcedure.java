@@ -32,6 +32,13 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 AncestorsOfProcedure。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 public class AncestorsOfProcedure extends BaseProcedure {
 
   private static final ProcedureParameter TABLE_PARAM =
@@ -49,29 +56,49 @@ public class AncestorsOfProcedure extends BaseProcedure {
             new StructField("timestamp", DataTypes.LongType, true, Metadata.empty())
           });
 
+  /** 构造 AncestorsOfProcedure 实例。 */
   private AncestorsOfProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /** 构造并返回目标对象。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new Builder<AncestorsOfProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected AncestorsOfProcedure doBuild() {
+        /** 执行该方法的具体逻辑。 */
         return new AncestorsOfProcedure(tableCatalog());
       }
     };
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -94,11 +121,17 @@ public class AncestorsOfProcedure extends BaseProcedure {
     return toOutputRow(icebergTable, snapshotIds);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "AncestorsOf";
   }
 
+  /** 转换为outputrow。 */
   private InternalRow[] toOutputRow(Table table, List<Long> snapshotIds) {
     if (snapshotIds.isEmpty()) {
       return new InternalRow[0];

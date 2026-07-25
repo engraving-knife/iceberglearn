@@ -23,9 +23,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TaskCheckHelper 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 任务检查辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public final class TaskCheckHelper {
+  /** 任务检查辅助。 */
   private TaskCheckHelper() {}
 
+  /** 断言equals。 */
   public static void assertEquals(
       ScanTaskGroup<FileScanTask> expected, ScanTaskGroup<FileScanTask> actual) {
     List<FileScanTask> expectedTasks = getFileScanTasksInFilePathOrder(expected);
@@ -41,6 +50,7 @@ public final class TaskCheckHelper {
     }
   }
 
+  /** 断言equals。 */
   public static void assertEquals(FileScanTask expected, FileScanTask actual) {
     assertEquals(expected.file(), actual.file());
 
@@ -59,6 +69,7 @@ public final class TaskCheckHelper {
         actual.residual().toString());
   }
 
+  /** 断言equals。 */
   public static void assertEquals(DataFile expected, DataFile actual) {
     Assert.assertEquals("Should match the serialized record path", expected.path(), actual.path());
     Assert.assertEquals(
@@ -101,6 +112,7 @@ public final class TaskCheckHelper {
         "Should match the serialized record offsets", expected.keyMetadata(), actual.keyMetadata());
   }
 
+  /** 获取文件扫描任务在文件路径顺序。 */
   private static List<FileScanTask> getFileScanTasksInFilePathOrder(
       ScanTaskGroup<FileScanTask> taskGroup) {
     return taskGroup.tasks().stream()

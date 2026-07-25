@@ -28,8 +28,11 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.flink.RowDataWrapper;
 
 /**
- * A {@link KeySelector} that extracts the bucketId from a data row's bucket partition as the key.
- * To be used with the {@link BucketPartitioner}.
+ * Bucket 分区键选择器，按分桶列计算桶 ID。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：从 RowData 提取分桶列并计算桶编号。
+ *
+ * <p>设计意图：实现 Flink KeySelector；被 BucketPartitioner 调用。
  */
 class BucketPartitionKeySelector implements KeySelector<RowData, Integer> {
 

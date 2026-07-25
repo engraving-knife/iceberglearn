@@ -31,9 +31,38 @@ import org.apache.iceberg.flink.FlinkSchemaUtil;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.types.Type;
 
+/**
+ * 文件级说明：把 Flink 的 ALTER TABLE 操作应用到 Iceberg 表的工具类。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 util 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>把 Flink 的 {@link TableChange}（schema 变更、属性变更）翻译为 Iceberg 的对应操作。
+ *   <li>支持 SET LOCATION、SET SNAPSHOT、CHERRYPICK SNAPSHOT、属性设置等操作。
+ *   <li>把多个变更放在一个 {@link Transaction} 中提交以保证原子性。
+ * </ul>
+ *
+ * <p>设计意图：作为 Flink 与 Iceberg 表变更操作的适配层， 屏蔽两种 API 的差异，便于支持 ALTER TABLE 语法。
+ *
+ * <p>上下游关系：上游为 {@link org.apache.iceberg.flink.FlinkCatalog}， 下游为 Iceberg 的 {@link
+ * UpdateSchema}、{@link UpdateProperties}、{@link Transaction} 等 API。
+ */
 public class FlinkAlterTableUtil {
   private FlinkAlterTableUtil() {}
 
+  /**
+   * 提交属性与位置变更到 Iceberg 表。
+   *
+   * <p>逻辑：先处理 snapshot 管理操作，然后开启事务依次执行 位置变更与属性变更，最后统一提交。
+   *
+   * @param table Iceberg 表
+   * @param setLocation 新位置，可为空
+   * @param setSnapshotId 设置当前 snapshot 的 ID，可为空
+   * @param pickSnapshotId cherry-pick 的 snapshot ID，可为空
+   * @param setProperties 属性变更映射，value 为 null 表示删除
+   */
   public static void commitChanges(
       Table table,
       String setLocation,
@@ -64,6 +93,18 @@ public class FlinkAlterTableUtil {
     transaction.commitTransaction();
   }
 
+  /**
+   * 提交 schema 与属性变更到 Iceberg 表。
+   *
+   * <p>逻辑：先处理 snapshot 管理操作，再开启事务依次执行位置、schema、属性变更， 最后统一提交以保证原子性。
+   *
+   * @param table Iceberg 表
+   * @param setLocation 新位置，可为空
+   * @param setSnapshotId 设置当前 snapshot 的 ID，可为空
+   * @param pickSnapshotId cherry-pick 的 snapshot ID，可为空
+   * @param schemaChanges Flink schema 变更列表
+   * @param propertyChanges Flink 属性变更列表
+   */
   public static void commitChanges(
       Table table,
       String setLocation,
@@ -94,10 +135,19 @@ public class FlinkAlterTableUtil {
     transaction.commitTransaction();
   }
 
+  /**
+   * 提交 snapshot 管理操作（设置当前 snapshot 或 cherry-pick）。
+   *
+   * <p>逻辑：不允许同时设置 snapshot 与 cherry-pick，因二者顺序敏感会导致不同结果。 若设置 snapshot，调用
+   * manageSnapshots().setCurrentSnapshot().commit()； 若 cherry-pick，先于其他操作执行以避免失败影响后续。
+   *
+   * @param table Iceberg 表
+   * @param setSnapshotId 设置当前 snapshot 的 ID，可为空
+   * @param cherrypickSnapshotId cherry-pick 的 snapshot ID，可为空
+   */
   public static void commitManageSnapshots(
       Table table, String setSnapshotId, String cherrypickSnapshotId) {
-    // don't allow setting the snapshot and picking a commit at the same time because order is
-    // ambiguous and choosing one order leads to different results
+    // 不允许同时设置 snapshot 与 cherry-pick，因顺序敏感会导致不同结果
     Preconditions.checkArgument(
         setSnapshotId == null || cherrypickSnapshotId == null,
         "Cannot set the current snapshot ID and cherry-pick snapshot changes");
@@ -107,7 +157,7 @@ public class FlinkAlterTableUtil {
       table.manageSnapshots().setCurrentSnapshot(newSnapshotId).commit();
     }
 
-    // if updating the table snapshot, perform that update first in case it fails
+    // 若更新表 snapshot，先于其他操作执行，便于失败时不影响后续
     if (cherrypickSnapshotId != null) {
       long newSnapshotId = Long.parseLong(cherrypickSnapshotId);
       table.manageSnapshots().cherrypick(newSnapshotId).commit();
@@ -115,10 +165,10 @@ public class FlinkAlterTableUtil {
   }
 
   /**
-   * Applies a list of Flink table changes to an {@link UpdateSchema} operation.
+   * 把 Flink 表变更列表应用到 {@link UpdateSchema}。
    *
-   * @param pendingUpdate an uncommitted UpdateSchema operation to configure
-   * @param schemaChanges a list of Flink table changes
+   * @param pendingUpdate 未提交的 UpdateSchema 操作
+   * @param schemaChanges Flink 表变更列表
    */
   public static void applySchemaChanges(
       UpdateSchema pendingUpdate, List<TableChange> schemaChanges) {
@@ -163,10 +213,12 @@ public class FlinkAlterTableUtil {
   }
 
   /**
-   * Applies a list of Flink table property changes to an {@link UpdateProperties} operation.
+   * 把 Flink 属性变更列表应用到 {@link UpdateProperties}。
    *
-   * @param pendingUpdate an uncommitted UpdateProperty operation to configure
-   * @param propertyChanges a list of Flink table changes
+   * <p>逻辑：SetOption 调用 {@code set}，ResetOption 调用 {@code remove}，其他类型抛异常。
+   *
+   * @param pendingUpdate 未提交的 UpdateProperties 操作
+   * @param propertyChanges Flink 表变更列表
    */
   public static void applyPropertyChanges(
       UpdateProperties pendingUpdate, List<TableChange> propertyChanges) {
@@ -184,6 +236,14 @@ public class FlinkAlterTableUtil {
     }
   }
 
+  /**
+   * 把 Flink 修改列变更应用到 {@link UpdateSchema}。
+   *
+   * <p>逻辑：按子类型分发：重命名、移动位置、修改类型、修改注释，其他抛异常。
+   *
+   * @param pendingUpdate 未提交的 UpdateSchema
+   * @param modifyColumn Flink 修改列变更
+   */
   private static void applyModifyColumn(
       UpdateSchema pendingUpdate, TableChange.ModifyColumn modifyColumn) {
     if (modifyColumn instanceof TableChange.ModifyColumnName) {
@@ -215,6 +275,7 @@ public class FlinkAlterTableUtil {
     }
   }
 
+  /** 把 Flink 修改列位置变更（First/After）应用到 UpdateSchema。 */
   private static void applyModifyColumnPosition(
       UpdateSchema pendingUpdate, TableChange.ModifyColumnPosition modifyColumnPosition) {
     TableChange.ColumnPosition newPosition = modifyColumnPosition.getNewPosition();
@@ -229,6 +290,7 @@ public class FlinkAlterTableUtil {
     }
   }
 
+  /** 把 Flink 唯一约束（主键）应用到 UpdateSchema 的 identifier fields。 */
   private static void applyUniqueConstraint(
       UpdateSchema pendingUpdate, UniqueConstraint constraint) {
     switch (constraint.getType()) {

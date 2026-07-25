@@ -77,6 +77,15 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 动作基类，提供 SparkSession、Table、配置与作业组管理的公共骨架。
+ *
+ * <p>设计意图：采用模板方法模式，沉淀公共的 Spark 任务执行、异常处理与作业组封装。
+ *
+ * <p>上下游关系：被所有 SparkAction 子类继承；依赖 SparkSession 与 Iceberg Table。
+ */
 abstract class BaseSparkAction<ThisT> {
 
   protected static final String MANIFEST = "Manifest";
@@ -103,27 +112,27 @@ abstract class BaseSparkAction<ThisT> {
     this.spark = spark;
     this.sparkContext = JavaSparkContext.fromSparkContext(spark.sparkContext());
   }
-
+  /** 执行 spark 相关操作。 */
   protected SparkSession spark() {
     return spark;
   }
-
+  /** 执行 sparkContext 相关操作。 */
   protected JavaSparkContext sparkContext() {
     return sparkContext;
   }
-
+  /** 执行 self 相关操作。 */
   protected abstract ThisT self();
-
+  /** 执行 option 相关操作。 */
   public ThisT option(String name, String value) {
     options.put(name, value);
     return self();
   }
-
+  /** 执行 options 相关操作。 */
   public ThisT options(Map<String, String> newOptions) {
     options.putAll(newOptions);
     return self();
   }
-
+  /** 执行 options 相关操作。 */
   protected Map<String, String> options() {
     return options;
   }
@@ -131,21 +140,21 @@ abstract class BaseSparkAction<ThisT> {
   protected <T> T withJobGroupInfo(JobGroupInfo info, Supplier<T> supplier) {
     return JobGroupUtils.withJobGroupInfo(sparkContext, info, supplier);
   }
-
+  /** 创建 JobGroupInfo 实例。 */
   protected JobGroupInfo newJobGroupInfo(String groupId, String desc) {
     return new JobGroupInfo(groupId + "-" + JOB_COUNTER.incrementAndGet(), desc);
   }
-
+  /** 创建 StaticTable 实例。 */
   protected Table newStaticTable(TableMetadata metadata, FileIO io) {
     String metadataFileLocation = metadata.metadataFileLocation();
     StaticTableOperations ops = new StaticTableOperations(metadataFileLocation, io);
     return new BaseTable(ops, metadataFileLocation);
   }
-
+  /** 执行 contentFileDS 相关操作。 */
   protected Dataset<FileInfo> contentFileDS(Table table) {
     return contentFileDS(table, null);
   }
-
+  /** 执行 contentFileDS 相关操作。 */
   protected Dataset<FileInfo> contentFileDS(Table table, Set<Long> snapshotIds) {
     Table serializableTable = SerializableTableWithSize.copyOf(table);
     Broadcast<Table> tableBroadcast = sparkContext.broadcast(serializableTable);
@@ -166,17 +175,17 @@ abstract class BaseSparkAction<ThisT> {
 
     return manifestBeanDS.flatMap(new ReadManifest(tableBroadcast), FileInfo.ENCODER);
   }
-
+  /** 执行 manifestDS 相关操作。 */
   protected Dataset<FileInfo> manifestDS(Table table) {
     return manifestDS(table, null);
   }
-
+  /** 执行 manifestDS 相关操作。 */
   protected Dataset<FileInfo> manifestDS(Table table, Set<Long> snapshotIds) {
     return manifestDF(table, snapshotIds)
         .select(col("path"), lit(MANIFEST).as("type"))
         .as(FileInfo.ENCODER);
   }
-
+  /** 执行 manifestDF 相关操作。 */
   private Dataset<Row> manifestDF(Table table, Set<Long> snapshotIds) {
     Dataset<Row> manifestDF = loadMetadataTable(table, ALL_MANIFESTS);
     if (snapshotIds != null) {
@@ -186,16 +195,16 @@ abstract class BaseSparkAction<ThisT> {
       return manifestDF;
     }
   }
-
+  /** 执行 manifestListDS 相关操作。 */
   protected Dataset<FileInfo> manifestListDS(Table table) {
     return manifestListDS(table, null);
   }
-
+  /** 执行 manifestListDS 相关操作。 */
   protected Dataset<FileInfo> manifestListDS(Table table, Set<Long> snapshotIds) {
     List<String> manifestLists = ReachableFileUtil.manifestListLocations(table, snapshotIds);
     return toFileInfoDS(manifestLists, MANIFEST_LIST);
   }
-
+  /** 执行 statisticsFileDS 相关操作。 */
   protected Dataset<FileInfo> statisticsFileDS(Table table, Set<Long> snapshotIds) {
     Predicate<StatisticsFile> predicate;
     if (snapshotIds == null) {
@@ -207,15 +216,15 @@ abstract class BaseSparkAction<ThisT> {
     List<String> statisticsFiles = ReachableFileUtil.statisticsFilesLocations(table, predicate);
     return toFileInfoDS(statisticsFiles, STATISTICS_FILES);
   }
-
+  /** 执行 otherMetadataFileDS 相关操作。 */
   protected Dataset<FileInfo> otherMetadataFileDS(Table table) {
     return otherMetadataFileDS(table, false /* include all reachable old metadata locations */);
   }
-
+  /** 执行 allReachableOtherMetadataFileDS 相关操作。 */
   protected Dataset<FileInfo> allReachableOtherMetadataFileDS(Table table) {
     return otherMetadataFileDS(table, true /* include all reachable old metadata locations */);
   }
-
+  /** 执行 otherMetadataFileDS 相关操作。 */
   private Dataset<FileInfo> otherMetadataFileDS(Table table, boolean recursive) {
     List<String> otherMetadataFiles = Lists.newArrayList();
     otherMetadataFiles.addAll(ReachableFileUtil.metadataFileLocations(table, recursive));
@@ -223,11 +232,11 @@ abstract class BaseSparkAction<ThisT> {
     otherMetadataFiles.addAll(ReachableFileUtil.statisticsFilesLocations(table));
     return toFileInfoDS(otherMetadataFiles, OTHERS);
   }
-
+  /** 执行 loadMetadataTable 相关操作。 */
   protected Dataset<Row> loadMetadataTable(Table table, MetadataTableType type) {
     return SparkTableUtil.loadMetadataTable(spark, table, type);
   }
-
+  /** 转换为 FileInfoDS。 */
   private Dataset<FileInfo> toFileInfoDS(List<String> paths, String type) {
     List<FileInfo> fileInfoList = Lists.transform(paths, path -> new FileInfo(path, type));
     return spark.createDataset(fileInfoList, FileInfo.ENCODER);
@@ -267,7 +276,7 @@ abstract class BaseSparkAction<ThisT> {
 
     return summary;
   }
-
+  /** 执行 deleteFiles 相关操作。 */
   protected DeleteSummary deleteFiles(SupportsBulkOperations io, Iterator<FileInfo> files) {
     DeleteSummary summary = new DeleteSummary();
     Iterator<List<FileInfo>> fileGroups = Iterators.partition(files, DELETE_GROUP_SIZE);
@@ -278,7 +287,7 @@ abstract class BaseSparkAction<ThisT> {
 
     return summary;
   }
-
+  /** 执行 deleteFileGroup 相关操作。 */
   private static void deleteFileGroup(
       List<FileInfo> fileGroup, SupportsBulkOperations io, DeleteSummary summary) {
 
@@ -307,7 +316,7 @@ abstract class BaseSparkAction<ThisT> {
     private final AtomicLong manifestListsCount = new AtomicLong(0L);
     private final AtomicLong statisticsFilesCount = new AtomicLong(0L);
     private final AtomicLong otherFilesCount = new AtomicLong(0L);
-
+    /** 执行 deletedFiles 相关操作。 */
     public void deletedFiles(String type, int numFiles) {
       if (FileContent.DATA.name().equalsIgnoreCase(type)) {
         dataFilesCount.addAndGet(numFiles);
@@ -334,7 +343,7 @@ abstract class BaseSparkAction<ThisT> {
         throw new ValidationException("Illegal file type: %s", type);
       }
     }
-
+    /** 执行 deletedFile 相关操作。 */
     public void deletedFile(String path, String type) {
       if (FileContent.DATA.name().equalsIgnoreCase(type)) {
         dataFilesCount.incrementAndGet();
@@ -368,35 +377,35 @@ abstract class BaseSparkAction<ThisT> {
         throw new ValidationException("Illegal file type: %s", type);
       }
     }
-
+    /** 执行 dataFilesCount 相关操作。 */
     public long dataFilesCount() {
       return dataFilesCount.get();
     }
-
+    /** 执行 positionDeleteFilesCount 相关操作。 */
     public long positionDeleteFilesCount() {
       return positionDeleteFilesCount.get();
     }
-
+    /** 执行 equalityDeleteFilesCount 相关操作。 */
     public long equalityDeleteFilesCount() {
       return equalityDeleteFilesCount.get();
     }
-
+    /** 执行 manifestsCount 相关操作。 */
     public long manifestsCount() {
       return manifestsCount.get();
     }
-
+    /** 执行 manifestListsCount 相关操作。 */
     public long manifestListsCount() {
       return manifestListsCount.get();
     }
-
+    /** 执行 statisticsFilesCount 相关操作。 */
     public long statisticsFilesCount() {
       return statisticsFilesCount.get();
     }
-
+    /** 执行 otherFilesCount 相关操作。 */
     public long otherFilesCount() {
       return otherFilesCount.get();
     }
-
+    /** 执行 totalFilesCount 相关操作。 */
     public long totalFilesCount() {
       return dataFilesCount()
           + positionDeleteFilesCount()
@@ -414,12 +423,12 @@ abstract class BaseSparkAction<ThisT> {
     ReadManifest(Broadcast<Table> table) {
       this.table = table;
     }
-
+    /** 执行过程并返回结果行。 */
     @Override
     public Iterator<FileInfo> call(ManifestFileBean manifest) {
       return new ClosingIterator<>(entries(manifest));
     }
-
+    /** 执行 entries 相关操作。 */
     public CloseableIterator<FileInfo> entries(ManifestFileBean manifest) {
       ManifestContent content = manifest.content();
       FileIO io = table.getValue().io();
@@ -439,7 +448,7 @@ abstract class BaseSparkAction<ThisT> {
           throw new IllegalArgumentException("Unsupported manifest content type:" + content);
       }
     }
-
+    /** 转换为 FileInfo。 */
     static FileInfo toFileInfo(ContentFile<?> file) {
       return new FileInfo(file.path().toString(), file.content().toString());
     }

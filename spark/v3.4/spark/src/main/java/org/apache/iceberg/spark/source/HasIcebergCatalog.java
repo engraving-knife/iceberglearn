@@ -21,6 +21,15 @@ package org.apache.iceberg.spark.source;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：标识可获取底层 Iceberg Catalog 的接口，用于在 Spark catalog 与 Iceberg catalog 间桥接。
+ *
+ * <p>设计意图：以接口暴露内部 catalog 引用，便于扩展层访问底层能力。
+ *
+ * <p>上下游关系：由 SparkCatalog 实现；由扩展层使用。
+ */
 public interface HasIcebergCatalog extends TableCatalog {
 
   /**

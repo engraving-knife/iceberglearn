@@ -28,14 +28,27 @@ import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Branch;
 import org.projectnessie.model.Reference;
 
+/**
+ * 文件级说明：测试 TestNessieIcebergClient 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestNessieIcebergClient 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNessieIcebergClient extends BaseTestIceberg {
 
   private static final String BRANCH = "test-nessie-client";
 
+  /** 辅助方法：TestNessieIcebergClient。 */
   public TestNessieIcebergClient() {
     super(BRANCH);
   }
 
+  /**
+   * 测试场景：With Null Ref Loads Main。
+   *
+   * <p>验证该方法在 With Null Ref Loads Main 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNullRefLoadsMain() throws NessieNotFoundException {
     NessieIcebergClient client = new NessieIcebergClient(api, null, null, ImmutableMap.of());
@@ -43,6 +56,11 @@ public class TestNessieIcebergClient extends BaseTestIceberg {
         .isEqualTo(api.getReference().refName("main").get());
   }
 
+  /**
+   * 测试场景：With Null Hash。
+   *
+   * <p>验证该方法在 With Null Hash 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNullHash() throws NessieNotFoundException {
     NessieIcebergClient client = new NessieIcebergClient(api, BRANCH, null, ImmutableMap.of());
@@ -50,6 +68,11 @@ public class TestNessieIcebergClient extends BaseTestIceberg {
         .isEqualTo(api.getReference().refName(BRANCH).get());
   }
 
+  /**
+   * 测试场景：With Reference。
+   *
+   * <p>验证该方法在 With Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithReference() throws NessieNotFoundException {
     NessieIcebergClient client = new NessieIcebergClient(api, "main", null, ImmutableMap.of());
@@ -66,6 +89,11 @@ public class TestNessieIcebergClient extends BaseTestIceberg {
         .isNotEqualTo(client);
   }
 
+  /**
+   * 测试场景：With Reference After Recreating Branch。
+   *
+   * <p>验证该方法在 With Reference After Recreating Branch 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithReferenceAfterRecreatingBranch()
       throws NessieConflictException, NessieNotFoundException {
@@ -91,6 +119,11 @@ public class TestNessieIcebergClient extends BaseTestIceberg {
     Assertions.assertThat(client.withReference(branch, null)).isNotEqualTo(client);
   }
 
+  /**
+   * 测试场景：Invalid Client Api Version。
+   *
+   * <p>验证该方法在 Invalid Client Api Version 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidClientApiVersion() throws IOException {
     try (NessieCatalog newCatalog = new NessieCatalog()) {

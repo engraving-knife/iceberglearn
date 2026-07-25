@@ -43,6 +43,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestSortOrder，用于验证 Sort Order 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Sort Order 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestSortOrder {
 
@@ -72,6 +79,7 @@ public class TestSortOrder {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private File tableDir = null;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
@@ -79,20 +87,28 @@ public class TestSortOrder {
 
   private final int formatVersion;
 
+  /** 辅助方法：sort order。 */
   public TestSortOrder(int formatVersion) {
     this.formatVersion = formatVersion;
   }
 
+  /** 辅助方法：setup table dir。 */
   @Before
   public void setupTableDir() throws IOException {
     this.tableDir = temp.newFolder();
   }
 
+  /** 辅助方法：cleanup tables。 */
   @After
   public void cleanupTables() {
     TestTables.clearTables();
   }
 
+  /**
+   * 测试场景：sort order builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSortOrderBuilder() {
     Assert.assertEquals(
@@ -110,6 +126,11 @@ public class TestSortOrder {
         .hasMessage("Unsorted order ID must be 0");
   }
 
+  /**
+   * 测试场景：default order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultOrder() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -121,6 +142,11 @@ public class TestSortOrder {
     Assert.assertTrue("Order must unsorted", actualOrder.isUnsorted());
   }
 
+  /**
+   * 测试场景：fresh ids。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFreshIds() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).withSpecId(5).identity("data").build();
@@ -146,6 +172,11 @@ public class TestSortOrder {
     Assert.assertEquals("Field id must be fresh", 2, actualOrder.fields().get(1).sourceId());
   }
 
+  /**
+   * 测试场景：compatible orders。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompatibleOrders() {
     SortOrder order1 = SortOrder.builderFor(SCHEMA).withOrderId(9).asc("s.id", NULLS_LAST).build();
@@ -205,6 +236,11 @@ public class TestSortOrder {
     Assert.assertFalse(order1.satisfies(order2));
   }
 
+  /**
+   * 测试场景：satisfies truncate field order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSatisfiesTruncateFieldOrder() {
     SortOrder id = SortOrder.builderFor(SCHEMA).asc("data", NULLS_LAST).build();
@@ -221,6 +257,11 @@ public class TestSortOrder {
     Assert.assertFalse(truncate2.satisfies(truncate4));
   }
 
+  /**
+   * 测试场景：satisfies date field order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSatisfiesDateFieldOrder() {
     SortOrder id = SortOrder.builderFor(SCHEMA).asc("d", NULLS_LAST).build();
@@ -242,6 +283,11 @@ public class TestSortOrder {
     Assert.assertFalse(year.satisfies(month));
   }
 
+  /**
+   * 测试场景：satisfies timestamp field order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSatisfiesTimestampFieldOrder() {
     SortOrder id = SortOrder.builderFor(SCHEMA).asc("ts", NULLS_LAST).build();
@@ -272,6 +318,11 @@ public class TestSortOrder {
     Assert.assertFalse(year.satisfies(hour));
   }
 
+  /**
+   * 测试场景：same order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSameOrder() {
     SortOrder order1 = SortOrder.builderFor(SCHEMA).withOrderId(9).asc("s.id", NULLS_LAST).build();
@@ -284,6 +335,11 @@ public class TestSortOrder {
     Assert.assertTrue("Orders must be equivalent", order2.sameOrder(order1));
   }
 
+  /**
+   * 测试场景：schema evolution with sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSchemaEvolutionWithSortOrder() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -302,6 +358,11 @@ public class TestSortOrder {
     Assert.assertEquals("Field id must match", 2, actualOrder.fields().get(1).sourceId());
   }
 
+  /**
+   * 测试场景：column drop with sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testColumnDropWithSortOrder() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -325,6 +386,11 @@ public class TestSortOrder {
     TableMetadataParser.fromJson(TableMetadataParser.toJson(table.ops().current()));
   }
 
+  /**
+   * 测试场景：incompatible schema evolution with sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIncompatibleSchemaEvolutionWithSortOrder() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -338,12 +404,22 @@ public class TestSortOrder {
         .hasMessageStartingWith("Cannot find source column for sort field");
   }
 
+  /**
+   * 测试场景：empty sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptySortOrder() {
     SortOrder order = SortOrder.builderFor(SCHEMA).build();
     Assert.assertEquals("Order must be unsorted", SortOrder.unsorted(), order);
   }
 
+  /**
+   * 测试场景：sorted column names。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSortedColumnNames() {
     SortOrder order =
@@ -352,6 +428,11 @@ public class TestSortOrder {
     Assert.assertEquals(ImmutableSet.of("s.id", "data"), sortedCols);
   }
 
+  /**
+   * 测试场景：preserving order sorted column names。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPreservingOrderSortedColumnNames() {
     SortOrder order =
@@ -364,6 +445,11 @@ public class TestSortOrder {
     Assert.assertEquals(ImmutableSet.of("data"), sortedCols);
   }
 
+  /**
+   * 测试场景：case sensitive sorted column names。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCaseSensitiveSortedColumnNames() {
     String fieldName = "ext1";

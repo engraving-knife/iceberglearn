@@ -22,57 +22,71 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * {@code RangeReadable} is an interface that allows for implementations of {@link InputFile}
- * streams to perform positional, range-based reads, which are more efficient than unbounded reads
- * in many cloud provider object stores.
+ * 文件级说明：按位置范围读取的接口，允许 {@link InputFile} 的流实现执行基于位置的范围读， 在许多云对象存储上比无界顺序读更高效。
  *
- * <p>Thread safety is not a requirement of the interface and is left to the implementation.
+ * <p>所属模块：iceberg-api（核心对外 API 模块）。
  *
- * <p>If the implementation is also a {@link SeekableInputStream}, the position of the stream is not
- * required to be updated based on the positional reads performed by this interface. Usage of {@link
- * SeekableInputStream} should always seek to the appropriate position for {@link
- * java.io.InputStream} based reads.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>通过 {@link #readFully(long, byte[], int, int)} 从指定位置读取定长数据填入缓冲区。
+ *   <li>通过 {@link #readTail(byte[], int, int)} 读取文件末尾定长字节。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>云对象存储（S3/GCS/Azure 等）通常对范围 GET 请求有原生优化，本接口允许实现直接 发起 range request，避免拉取不必要的数据。
+ *   <li>线程安全并非接口要求，由实现自行决定。
+ *   <li>若实现同时也是 {@link SeekableInputStream}，本接口的范围读不要求同步更新流位置； 调用方在切回 {@link java.io.InputStream}
+ *       顺序读时应主动 seek 到正确位置。
+ * </ul>
+ *
+ * <p>上下游关系：通常由 {@link InputFile#newStream()} 返回的流实现本接口；被列式读取器 （如读取 Parquet footer / 列块）使用以按需取数。
  */
 public interface RangeReadable extends Closeable {
 
   /**
-   * Fill the provided buffer with the contents of the input source starting at {@code position} for
-   * the given {@code offset} and {@code length}.
+   * 从输入源的 {@code position} 处读取 {@code length} 字节，填入 {@code buffer} 的 {@code offset} 起始位置。
    *
-   * @param position start position of the read
-   * @param buffer target buffer to copy data
-   * @param offset offset in the buffer to copy the data
-   * @param length size of the read
+   * @param position 读取起始位置
+   * @param buffer 目标缓冲区
+   * @param offset 写入缓冲区的起始偏移
+   * @param length 要读取的字节数
    */
   void readFully(long position, byte[] buffer, int offset, int length) throws IOException;
 
   /**
-   * Fill the entire buffer with the contents of the input source starting at {@code position}.
+   * 从输入源的 {@code position} 处读取数据填满整个 {@code buffer}。
    *
-   * @param position start position of the read
-   * @param buffer target buffer to copy data
+   * <p>逻辑：委托给 {@link #readFully(long, byte[], int, int)}，偏移为 0，长度为 buffer 长度。
+   *
+   * @param position 读取起始位置
+   * @param buffer 目标缓冲区
    */
   default void readFully(long position, byte[] buffer) throws IOException {
     readFully(position, buffer, 0, buffer.length);
   }
 
   /**
-   * Read the last {@code length} bytes from the file.
+   * 读取文件末尾 {@code length} 字节，写入 {@code buffer} 的 {@code offset} 起始位置。
    *
-   * @param buffer the buffer to write data into
-   * @param offset the offset in the buffer to start writing
-   * @param length the number of bytes from the end of the object to read
-   * @return the actual number of bytes read
-   * @throws IOException if an error occurs while reading
+   * @param buffer 目标缓冲区
+   * @param offset 写入缓冲区的起始偏移
+   * @param length 从文件末尾算起要读取的字节数
+   * @return 实际读取到的字节数
+   * @throws IOException 若读取过程中发生错误
    */
   int readTail(byte[] buffer, int offset, int length) throws IOException;
 
   /**
-   * Read the full size of the buffer from the end of the file.
+   * 读取文件末尾数据填满整个 {@code buffer}。
    *
-   * @param buffer the buffer to write data into
-   * @return the actual number of bytes read
-   * @throws IOException if an error occurs while reading
+   * <p>逻辑：委托给 {@link #readTail(byte[], int, int)}，偏移为 0，长度为 buffer 长度。
+   *
+   * @param buffer 目标缓冲区
+   * @return 实际读取到的字节数
+   * @throws IOException 若读取过程中发生错误
    */
   default int readTail(byte[] buffer) throws IOException {
     return readTail(buffer, 0, buffer.length);

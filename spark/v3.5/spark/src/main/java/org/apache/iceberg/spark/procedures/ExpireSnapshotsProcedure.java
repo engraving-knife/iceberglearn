@@ -18,7 +18,6 @@
  */
 package org.apache.iceberg.spark.procedures;
 
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.ExpireSnapshots;
 import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
@@ -38,9 +37,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A procedure that expires snapshots in a table.
+ * Spark 存储过程：过期表中不再需要的快照并清理关联文件。
  *
- * @see SparkActions#expireSnapshots(Table)
+ * <p>所属模块：iceberg-spark（procedures 子包，通过 Spark CALL 语句暴露快照过期能力）。
+ *
+ * <p>职责：按 older_than 时间、retain_last 保留数、指定 snapshot_ids 等条件过期快照， 委托 {@link
+ * ExpireSnapshotsSparkAction} 执行，返回各类被删除文件的统计计数。
+ *
+ * <p>设计意图：将多种过期选项聚合到单一存储过程，按需设置到 action 上执行； 当 IO 支持批量删除时忽略 max_concurrent_deletes 并告警，因为批量删除并行度由
+ * IO 自身控制。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册，调用 {@link SparkActions#expireSnapshots}。
  */
 public class ExpireSnapshotsProcedure extends BaseProcedure {
 
@@ -71,9 +78,10 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
             new StructField(
                 "deleted_statistics_files_count", DataTypes.LongType, true, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<ExpireSnapshotsProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected ExpireSnapshotsProcedure doBuild() {
         return new ExpireSnapshotsProcedure(tableCatalog());
@@ -84,17 +92,26 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
   private ExpireSnapshotsProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行快照过期。
+   *
+   * <p>逻辑：解析表名与各可选参数（older_than、retain_last、max_concurrent_deletes、 stream_results、snapshot_ids），校验
+   * max_concurrent_deletes 为正； 构造过期动作并按参数配置，IO 支持批量删除时跳过并发删除线程池并告警； 执行动作并将结果转为输出行。
+   *
+   * @param args 调用参数行
+   * @return 含各类删除文件计数的单行结果
+   */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public InternalRow[] call(InternalRow args) {
@@ -153,7 +170,7 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
           return toOutputRows(result);
         });
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(ExpireSnapshots.Result result) {
     InternalRow row =
         newInternalRow(
@@ -165,7 +182,7 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
             result.deletedStatisticsFilesCount());
     return new InternalRow[] {row};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "ExpireSnapshotProcedure";

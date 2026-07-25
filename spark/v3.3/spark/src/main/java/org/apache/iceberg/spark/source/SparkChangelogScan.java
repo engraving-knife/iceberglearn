@@ -45,6 +45,13 @@ import org.apache.spark.sql.connector.read.Statistics;
 import org.apache.spark.sql.connector.read.SupportsReportStatistics;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkChangelogScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkChangelogScan implements Scan, SupportsReportStatistics {
 
   private static final Types.StructType EMPTY_GROUPING_KEY_TYPE = Types.StructType.of();
@@ -88,13 +95,24 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     long rowsCount = taskGroups().stream().mapToLong(ScanTaskGroup::estimatedRowsCount).sum();
     long sizeInBytes = SparkSchemaUtil.estimateSize(readSchema(), rowsCount);
+    /** 执行该方法的具体逻辑。 */
     return new Stats(sizeInBytes, rowsCount);
   }
 
+  /**
+   * 读取数据。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType readSchema() {
     if (expectedSparkType == null) {
@@ -108,8 +126,14 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
     return expectedSparkType;
   }
 
+  /**
+   * 转换为batch。
+   *
+   * @return 结果对象
+   */
   @Override
   public Batch toBatch() {
+    /** 执行该方法的具体逻辑。 */
     return new SparkBatch(
         sparkContext,
         table,
@@ -120,6 +144,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         hashCode());
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<ScanTaskGroup<ChangelogScanTask>> taskGroups() {
     if (taskGroups == null) {
       try (CloseableIterable<ScanTaskGroup<ChangelogScanTask>> groups = scan.planTasks()) {
@@ -132,6 +157,11 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
     return taskGroups;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return String.format(
@@ -139,6 +169,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         table, startSnapshotId, endSnapshotId, Spark3Util.describe(filters));
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -150,6 +181,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         Spark3Util.describe(filters));
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -168,6 +200,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         && Objects.equals(endSnapshotId, that.endSnapshotId);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(

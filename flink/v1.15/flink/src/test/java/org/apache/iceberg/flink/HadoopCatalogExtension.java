@@ -35,6 +35,13 @@ import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
+/**
+ * 文件级说明：测试 HadoopCatalogExtension 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 HadoopCatalogExtension 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class HadoopCatalogExtension
     implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, AfterEachCallback {
   protected final String database;
@@ -46,21 +53,25 @@ public class HadoopCatalogExtension
   protected String warehouse;
   protected TableLoader tableLoader;
 
+  /** 辅助方法：HadoopCatalogExtension，Hadoop Catalog Extension。 */
   public HadoopCatalogExtension(String database, String tableName) {
     this.database = database;
     this.tableName = tableName;
   }
 
+  /** 辅助方法：beforeAll，before All。 */
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
     this.temporaryFolder = Files.createTempDirectory("junit5_hadoop_catalog-");
   }
 
+  /** 辅助方法：afterAll，after All。 */
   @Override
   public void afterAll(ExtensionContext context) throws Exception {
     FileUtils.deleteDirectory(temporaryFolder.toFile());
   }
 
+  /** 辅助方法：beforeEach，before Each。 */
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     Assertions.assertThat(temporaryFolder).exists().isDirectory();
@@ -75,6 +86,7 @@ public class HadoopCatalogExtension
         TableLoader.fromCatalog(catalogLoader, TableIdentifier.of(database, tableName));
   }
 
+  /** 辅助方法：afterEach，after Each。 */
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
     try {
@@ -86,18 +98,22 @@ public class HadoopCatalogExtension
     }
   }
 
+  /** 辅助方法：tableLoader，table Loader。 */
   public TableLoader tableLoader() {
     return tableLoader;
   }
 
+  /** 辅助方法：catalog，catalog。 */
   public Catalog catalog() {
     return catalog;
   }
 
+  /** 辅助方法：catalogLoader，catalog Loader。 */
   public CatalogLoader catalogLoader() {
     return catalogLoader;
   }
 
+  /** 辅助方法：warehouse，warehouse。 */
   public String warehouse() {
     return warehouse;
   }

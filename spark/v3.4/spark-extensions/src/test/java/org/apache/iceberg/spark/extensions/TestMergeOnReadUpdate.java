@@ -24,8 +24,16 @@ import org.apache.iceberg.RowLevelOperationMode;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
+/**
+ * 文件级说明：测试 TestMergeOnReadUpdate 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 合并上读更新 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestMergeOnReadUpdate extends TestUpdate {
 
+  /** 测试合并上读更新。 */
   public TestMergeOnReadUpdate(
       String catalogName,
       String implementation,
@@ -48,6 +56,7 @@ public class TestMergeOnReadUpdate extends TestUpdate {
         planningMode);
   }
 
+  /** extra表属性。 */
   @Override
   protected Map<String, String> extraTableProperties() {
     return ImmutableMap.of(

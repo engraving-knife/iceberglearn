@@ -28,6 +28,18 @@ import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * {@link DeltaManifests} 的 Flink 版本化序列化器。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），实现 {@link SimpleVersionedSerializer}。
+ *
+ * <p>职责：将一次 checkpoint 产生的数据/删除 manifest 与引用的数据文件列表序列化为字节数组， 用于在 Flink 状态后端持久化与恢复。
+ *
+ * <p>设计意图：支持 V1（仅数据 manifest）与 V2（数据+删除 manifest+引用文件）两个版本， 通过 {@link ManifestFiles#encode} 复用
+ * Iceberg 的 manifest 编码；单例 {@link #INSTANCE} 避免重复创建。
+ *
+ * <p>上下游关系：被 {@link IcebergFilesCommitter} 在 checkpoint 快照/恢复时调用。
+ */
 class DeltaManifestsSerializer implements SimpleVersionedSerializer<DeltaManifests> {
   private static final int VERSION_1 = 1;
   private static final int VERSION_2 = 2;
@@ -35,11 +47,21 @@ class DeltaManifestsSerializer implements SimpleVersionedSerializer<DeltaManifes
 
   static final DeltaManifestsSerializer INSTANCE = new DeltaManifestsSerializer();
 
+  /** 返回当前序列化版本（V2）。 */
   @Override
   public int getVersion() {
     return VERSION_2;
   }
 
+  /**
+   * 将 DeltaManifests 序列化为字节数组。
+   *
+   * <p>逻辑：分别编码 dataManifest 与 deleteManifest（空则写 0 长度占位）， 再依次写入引用数据文件列表的 UTF 字符串。
+   *
+   * @param deltaManifests 待序列化对象
+   * @return 序列化字节数组
+   * @throws IOException 编码失败时抛出
+   */
   @Override
   public byte[] serialize(DeltaManifests deltaManifests) throws IOException {
     Preconditions.checkNotNull(
@@ -73,6 +95,16 @@ class DeltaManifestsSerializer implements SimpleVersionedSerializer<DeltaManifes
     return binaryOut.toByteArray();
   }
 
+  /**
+   * 按版本号反序列化。
+   *
+   * <p>逻辑：V1 走 {@link #deserializeV1}，V2 走 {@link #deserializeV2}，其余版本抛异常。
+   *
+   * @param version 序列化版本
+   * @param serialized 序列化字节
+   * @return DeltaManifests 对象
+   * @throws IOException 解码失败时抛出
+   */
   @Override
   public DeltaManifests deserialize(int version, byte[] serialized) throws IOException {
     if (version == VERSION_1) {
@@ -84,10 +116,16 @@ class DeltaManifestsSerializer implements SimpleVersionedSerializer<DeltaManifes
     }
   }
 
+  /** V1 反序列化：整个字节为一个数据 manifest，无删除 manifest。 */
   private DeltaManifests deserializeV1(byte[] serialized) throws IOException {
     return new DeltaManifests(ManifestFiles.decode(serialized), null);
   }
 
+  /**
+   * V2 反序列化。
+   *
+   * <p>逻辑：依次读取数据 manifest 长度与字节、删除 manifest 长度与字节、引用数据文件数量与各 UTF 字符串， 组装为 DeltaManifests。
+   */
   private DeltaManifests deserializeV2(byte[] serialized) throws IOException {
     ManifestFile dataManifest = null;
     ManifestFile deleteManifest = null;

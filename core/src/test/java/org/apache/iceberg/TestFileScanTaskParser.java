@@ -26,7 +26,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 测试类：TestFileScanTaskParser，用于验证 File Scan Task Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 File Scan Task Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestFileScanTaskParser {
+  /**
+   * 测试场景：null arguments。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNullArguments() {
     Assertions.assertThatThrownBy(() -> FileScanTaskParser.toJson(null))
@@ -38,6 +51,11 @@ public class TestFileScanTaskParser {
         .hasMessage("Invalid JSON string for file scan task: null");
   }
 
+  /**
+   * 测试场景：parser。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testParser(boolean caseSensitive) {
@@ -49,6 +67,7 @@ public class TestFileScanTaskParser {
     assertFileScanTaskEquals(fileScanTask, deserializedTask, spec, caseSensitive);
   }
 
+  /** 辅助方法：create scan task。 */
   private FileScanTask createScanTask(PartitionSpec spec, boolean caseSensitive) {
     ResidualEvaluator residualEvaluator;
     if (spec.isUnpartitioned()) {
@@ -65,6 +84,7 @@ public class TestFileScanTaskParser {
         residualEvaluator);
   }
 
+  /** 辅助方法：expected file scan task json。 */
   private String expectedFileScanTaskJson() {
     return "{\"schema\":{\"type\":\"struct\",\"schema-id\":0,\"fields\":["
         + "{\"id\":3,\"name\":\"id\",\"required\":true,\"type\":\"int\"},"
@@ -84,6 +104,7 @@ public class TestFileScanTaskParser {
         + "\"residual-filter\":{\"type\":\"eq\",\"term\":\"id\",\"value\":1}}";
   }
 
+  /** 辅助方法：assert file scan task equals。 */
   private static void assertFileScanTaskEquals(
       FileScanTask expected, FileScanTask actual, PartitionSpec spec, boolean caseSensitive) {
     TestContentFileParser.assertContentFileEquals(expected.file(), actual.file(), spec);

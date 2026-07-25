@@ -31,7 +31,19 @@ import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestFixedReservoirHistogram 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestFixedReservoirHistogram 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestFixedReservoirHistogram {
+  /**
+   * 测试场景：empty Histogram。
+   *
+   * <p>验证该方法在 empty Histogram 条件下的行为是否符合预期。
+   */
   @Test
   public void emptyHistogram() {
     FixedReservoirHistogram histogram = new FixedReservoirHistogram(100);
@@ -46,6 +58,11 @@ public class TestFixedReservoirHistogram {
     Assertions.assertThat(statistics.percentile(0.99)).isEqualTo(0L);
   }
 
+  /**
+   * 测试场景：single Observation。
+   *
+   * <p>验证该方法在 single Observation 条件下的行为是否符合预期。
+   */
   @Test
   public void singleObservation() {
     FixedReservoirHistogram histogram = new FixedReservoirHistogram(100);
@@ -61,6 +78,11 @@ public class TestFixedReservoirHistogram {
     Assertions.assertThat(statistics.percentile(0.99)).isEqualTo(123L);
   }
 
+  /**
+   * 测试场景：min Max Percentile Points。
+   *
+   * <p>验证该方法在 min Max Percentile Points 条件下的行为是否符合预期。
+   */
   @Test
   public void minMaxPercentilePoints() {
     int reservoirSize = 100;
@@ -74,6 +96,11 @@ public class TestFixedReservoirHistogram {
     Assertions.assertThat(statistics.percentile(1.0)).isEqualTo(99L);
   }
 
+  /**
+   * 测试场景：invalid Percentile Points。
+   *
+   * <p>验证该方法在 invalid Percentile Points 条件下的行为是否符合预期。
+   */
   @Test
   public void invalidPercentilePoints() {
     int reservoirSize = 100;
@@ -93,6 +120,11 @@ public class TestFixedReservoirHistogram {
         .hasMessage("Percentile point cannot be outside the range of [0.0 - 1.0]: " + 1.1);
   }
 
+  /**
+   * 测试场景：Multiple Thread Writers。
+   *
+   * <p>验证该方法在 Multiple Thread Writers 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleThreadWriters() throws InterruptedException {
     int threads = 10;

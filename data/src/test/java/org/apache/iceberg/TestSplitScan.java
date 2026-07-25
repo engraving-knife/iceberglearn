@@ -41,6 +41,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestSplitScan 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestSplitScan 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestSplitScan {
   private static final Configuration CONF = new Configuration();
   private static final HadoopTables TABLES = new HadoopTables(CONF);
@@ -57,6 +64,7 @@ public class TestSplitScan {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private List<Record> expectedRecords;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "format = {0}")
   public static Object[] parameters() {
     return new Object[] {"parquet", "avro"};
@@ -64,16 +72,23 @@ public class TestSplitScan {
 
   private final FileFormat format;
 
+  /** 辅助方法：TestSplitScan。 */
   public TestSplitScan(String format) {
     this.format = FileFormat.fromString(format);
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     tableLocation = new File(temp.newFolder(), "table");
     setupTable();
   }
 
+  /**
+   * 测试场景：test。
+   *
+   * <p>验证该方法在 test 条件下的行为是否符合预期。
+   */
   @Test
   public void test() {
     Assert.assertEquals(
@@ -87,6 +102,7 @@ public class TestSplitScan {
     }
   }
 
+  /** 辅助方法：setupTable。 */
   private void setupTable() throws IOException {
     table = TABLES.create(SCHEMA, tableLocation.toString());
     table.updateProperties().set(TableProperties.SPLIT_SIZE, String.valueOf(SPLIT_SIZE)).commit();
@@ -108,6 +124,7 @@ public class TestSplitScan {
     table.newAppend().appendFile(dataFile).commit();
   }
 
+  /** 辅助方法：writeToFile。 */
   private File writeToFile(List<Record> records, FileFormat fileFormat) throws IOException {
     File file = temp.newFile();
     Assert.assertTrue(file.delete());

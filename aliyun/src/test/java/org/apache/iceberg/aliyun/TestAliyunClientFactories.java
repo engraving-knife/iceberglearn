@@ -25,8 +25,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestAliyunClientFactories 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestAliyunClientFactories 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestAliyunClientFactories {
 
+  /**
+   * 测试场景：Load Default。
+   *
+   * <p>验证该方法在 Load Default 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadDefault() {
     Assert.assertEquals(
@@ -52,6 +64,11 @@ public class TestAliyunClientFactories {
         defaultFactoryWithConfig.aliyunProperties().accessKeyId());
   }
 
+  /**
+   * 测试场景：Load Custom。
+   *
+   * <p>验证该方法在 Load Custom 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadCustom() {
     Map<String, String> properties = Maps.newHashMap();
@@ -65,18 +82,22 @@ public class TestAliyunClientFactories {
 
     AliyunProperties aliyunProperties;
 
+    /** 辅助方法：CustomFactory。 */
     public CustomFactory() {}
 
+    /** 辅助方法：newOSSClient。 */
     @Override
     public OSS newOSSClient() {
       return null;
     }
 
+    /** 辅助方法：initialize。 */
     @Override
     public void initialize(Map<String, String> properties) {
       this.aliyunProperties = new AliyunProperties(properties);
     }
 
+    /** 辅助方法：aliyunProperties。 */
     @Override
     public AliyunProperties aliyunProperties() {
       return aliyunProperties;

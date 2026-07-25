@@ -39,6 +39,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 FlinkCatalogTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 FlinkCatalogTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class FlinkCatalogTestBase extends FlinkTestBase {
 
@@ -46,28 +53,33 @@ public abstract class FlinkCatalogTestBase extends FlinkTestBase {
   private static TemporaryFolder hiveWarehouse = new TemporaryFolder();
   private static TemporaryFolder hadoopWarehouse = new TemporaryFolder();
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   @BeforeClass
   public static void createWarehouse() throws IOException {
     hiveWarehouse.create();
     hadoopWarehouse.create();
   }
 
+  /** 辅助方法：dropWarehouse，drop Warehouse。 */
   @AfterClass
   public static void dropWarehouse() {
     hiveWarehouse.delete();
     hadoopWarehouse.delete();
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     sql("CREATE CATALOG %s WITH %s", catalogName, toWithClause(config));
   }
 
+  /** 辅助方法：clean，clean。 */
   @After
   public void clean() {
     dropCatalog(catalogName, true);
   }
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "catalogName = {0} baseNamespace = {1}")
   public static Iterable<Object[]> parameters() {
     return Lists.newArrayList(
@@ -86,6 +98,7 @@ public abstract class FlinkCatalogTestBase extends FlinkTestBase {
   protected final Namespace icebergNamespace;
   protected final boolean isHadoopCatalog;
 
+  /** 辅助方法：FlinkCatalogTestBase，Flink Catalog Test Base。 */
   public FlinkCatalogTestBase(String catalogName, Namespace baseNamespace) {
     this.catalogName = catalogName;
     this.baseNamespace = baseNamespace;
@@ -113,6 +126,7 @@ public abstract class FlinkCatalogTestBase extends FlinkTestBase {
         Namespace.of(ArrayUtils.concat(baseNamespace.levels(), new String[] {DATABASE}));
   }
 
+  /** 辅助方法：warehouseRoot，warehouse Root。 */
   protected String warehouseRoot() {
     if (isHadoopCatalog) {
       return hadoopWarehouse.getRoot().getAbsolutePath();
@@ -121,16 +135,19 @@ public abstract class FlinkCatalogTestBase extends FlinkTestBase {
     }
   }
 
+  /** 辅助方法：getFullQualifiedTableName，get Full Qualified Table Name。 */
   protected String getFullQualifiedTableName(String tableName) {
     final List<String> levels = Lists.newArrayList(icebergNamespace.levels());
     levels.add(tableName);
     return Joiner.on('.').join(levels);
   }
 
+  /** 辅助方法：getURI，get URI。 */
   static String getURI(HiveConf conf) {
     return conf.get(HiveConf.ConfVars.METASTOREURIS.varname);
   }
 
+  /** 辅助方法：toWithClause，to With Clause。 */
   static String toWithClause(Map<String, String> props) {
     StringBuilder builder = new StringBuilder();
     builder.append("(");

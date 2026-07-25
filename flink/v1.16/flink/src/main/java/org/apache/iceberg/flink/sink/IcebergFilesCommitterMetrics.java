@@ -24,6 +24,13 @@ import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 
+/**
+ * Iceberg 文件提交算子的 metrics 容器，统计 commit 次数与延迟。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：注册与更新 commit 相关的 Flink 指标。
+ *
+ * <p>设计意图：辅助类；被 IcebergFilesCommitter 调用。
+ */
 class IcebergFilesCommitterMetrics {
   private final AtomicLong lastCheckpointDurationMs = new AtomicLong();
   private final AtomicLong lastCommitDurationMs = new AtomicLong();

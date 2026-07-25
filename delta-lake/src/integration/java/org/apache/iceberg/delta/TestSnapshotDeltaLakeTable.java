@@ -28,7 +28,6 @@ import io.delta.standalone.OptimisticTransaction;
 import io.delta.standalone.VersionLog;
 import io.delta.standalone.actions.Action;
 import io.delta.standalone.actions.AddFile;
-import io.delta.standalone.actions.RemoveFile;
 import io.delta.standalone.exceptions.DeltaConcurrentModificationException;
 import java.io.File;
 import java.io.IOException;
@@ -67,6 +66,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * 文件级说明：TestSnapshotDeltaLakeTable 集成测试。
+ *
+ * <p>所属模块：iceberg-delta-lake。职责：验证 快照Deltalake表 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
   private static final String SNAPSHOT_SOURCE_PROP = "snapshot_source";
   private static final String DELTA_SOURCE_VALUE = "delta";
@@ -77,6 +83,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
   private static Dataset<Row> typeTestDataFrame;
   private static Dataset<Row> nestedDataFrame;
 
+  /** 辅助方法：参数。 */
   static Stream<Arguments> parameters() {
     return Stream.of(
         Arguments.of(
@@ -96,12 +103,14 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
 
   @TempDir private Path temp;
 
+  /** 构造方法：TestSnapshotDeltaLakeTable。 */
   public TestSnapshotDeltaLakeTable(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
     spark.conf().set("spark.sql.catalog." + defaultSparkCatalog, DeltaCatalog.class.getName());
   }
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeAll
   public static void beforeClass() {
     spark.sql(String.format("CREATE DATABASE IF NOT EXISTS %s", NAMESPACE));
@@ -155,11 +164,17 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
             .withColumn("structCol3", expr("STRUCT(structCol2, mapCol3, arrayCol)"));
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterAll
   public static void afterClass() {
     spark.sql(String.format("DROP DATABASE IF EXISTS %s CASCADE", NAMESPACE));
   }
 
+  /**
+   * 测试场景：basic快照分区。
+   *
+   * <p>验证该方法在 basic快照分区 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testBasicSnapshotPartitioned() {
@@ -182,6 +197,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableLocation(newTableIdentifier, partitionedLocation);
   }
 
+  /**
+   * 测试场景：basic快照非分区。
+   *
+   * <p>验证该方法在 basic快照非分区 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testBasicSnapshotUnpartitioned() {
@@ -204,6 +224,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableLocation(newTableIdentifier, unpartitionedLocation);
   }
 
+  /**
+   * 测试场景：快照带新建路径。
+   *
+   * <p>验证该方法在 快照带新建路径 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotWithNewLocation() {
@@ -228,6 +253,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableLocation(newTableIdentifier, newIcebergTableLocation);
   }
 
+  /**
+   * 测试场景：快照带additional属性。
+   *
+   * <p>验证该方法在 快照带additional属性 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotWithAdditionalProperties() {
@@ -267,6 +297,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
         unpartitionedLocation);
   }
 
+  /**
+   * 测试场景：快照表带external数据文件。
+   *
+   * <p>验证该方法在 快照表带external数据文件 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotTableWithExternalDataFiles() {
@@ -297,6 +332,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkDataFilePathsIntegrity(newTableIdentifier, externalDataFilesTableLocation);
   }
 
+  /**
+   * 测试场景：快照supported类型。
+   *
+   * <p>验证该方法在 快照supported类型 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotSupportedTypes() {
@@ -316,6 +356,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableProperties(newTableIdentifier, ImmutableMap.of(), typeTestTableLocation);
   }
 
+  /**
+   * 测试场景：快照vacuum表。
+   *
+   * <p>验证该方法在 快照vacuum表 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotVacuumTable() throws IOException {
@@ -352,6 +397,11 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableLocation(newTableIdentifier, vacuumTestTableLocation);
   }
 
+  /**
+   * 测试场景：快照日志clean表。
+   *
+   * <p>验证该方法在 快照日志clean表 条件下的行为与断言结果是否符合预期。
+   */
   @ParameterizedTest(name = "Catalog Name {0} - Options {2}")
   @MethodSource("parameters")
   public void testSnapshotLogCleanTable() throws IOException {
@@ -387,6 +437,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     checkIcebergTableLocation(newTableIdentifier, logCleanTestTableLocation);
   }
 
+  /** 辅助方法：检查快照integrity。 */
   private void checkSnapshotIntegrity(
       String deltaTableLocation,
       String deltaTableIdentifier,
@@ -407,6 +458,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
         .containsExactlyInAnyOrderElementsOf(deltaTableContents);
   }
 
+  /** 辅助方法：检查标签contentand顺序。 */
   private void checkTagContentAndOrder(
       String deltaTableLocation, String icebergTableIdentifier, long firstConstructableVersion) {
     DeltaLog deltaLog = DeltaLog.forTable(spark.sessionState().newHadoopConf(), deltaTableLocation);
@@ -440,12 +492,14 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     }
   }
 
+  /** 辅助方法：检查Iceberg表路径。 */
   private void checkIcebergTableLocation(String icebergTableIdentifier, String expectedLocation) {
     Table icebergTable = getIcebergTable(icebergTableIdentifier);
     Assertions.assertThat(icebergTable.location())
         .isEqualTo(LocationUtil.stripTrailingSlash(expectedLocation));
   }
 
+  /** 辅助方法：检查Iceberg表属性。 */
   private void checkIcebergTableProperties(
       String icebergTableIdentifier,
       Map<String, String> expectedAdditionalProperties,
@@ -463,6 +517,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
         .containsEntry(ORIGINAL_LOCATION_PROP, deltaTableLocation);
   }
 
+  /** 辅助方法：检查数据文件路径integrity。 */
   private void checkDataFilePathsIntegrity(
       String icebergTableIdentifier, String deltaTableLocation) {
     Table icebergTable = getIcebergTable(icebergTableIdentifier);
@@ -483,6 +538,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
             });
   }
 
+  /** 辅助方法：获取Iceberg表。 */
   private Table getIcebergTable(String icebergTableIdentifier) {
     CatalogPlugin defaultCatalog = spark.sessionState().catalogManager().currentCatalog();
     Spark3Util.CatalogAndIdentifier catalogAndIdent =
@@ -492,6 +548,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
         .loadTable(TableIdentifier.parse(catalogAndIdent.identifier().toString()));
   }
 
+  /** 辅助方法：destName。 */
   private String destName(String catalogName, String dest) {
     if (catalogName.equals(defaultSparkCatalog)) {
       return NAMESPACE + "." + catalogName + "_" + dest;
@@ -499,15 +556,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     return catalogName + "." + NAMESPACE + "." + catalogName + "_" + dest;
   }
 
-  /**
-   * Add parquet files manually to a delta lake table to mock the situation that some data files are
-   * not in the same location as the delta lake table. The case that {@link AddFile#getPath()} or
-   * {@link RemoveFile#getPath()} returns absolute path.
-   *
-   * <p>The known <a href="https://github.com/delta-io/connectors/issues/380">issue</a> makes it
-   * necessary to manually rebuild the AddFile to avoid deserialization error when committing the
-   * transaction.
-   */
+  /** 辅助方法：添加external数据文件。 */
   private void addExternalDatafiles(
       String targetDeltaTableLocation, String sourceDeltaTableLocation) {
     DeltaLog targetLog =
@@ -534,6 +583,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     }
   }
 
+  /** 辅助方法：获取全文件路径。 */
   private static String getFullFilePath(String path, String tableRoot) {
     URI dataFileUri = URI.create(path);
     try {
@@ -548,6 +598,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     }
   }
 
+  /** 辅助方法：写入Delta表。 */
   private void writeDeltaTable(
       Dataset<Row> df, String identifier, String path, String partitionColumn) {
     spark.sql(String.format("DROP TABLE IF EXISTS %s", identifier));
@@ -563,6 +614,7 @@ public class TestSnapshotDeltaLakeTable extends SparkDeltaLakeSnapshotTestBase {
     }
   }
 
+  /** 辅助方法：计数数据文件inDeltalake表。 */
   private long countDataFilesInDeltaLakeTable(DeltaLog deltaLog, long firstConstructableVersion) {
     long dataFilesCount = 0;
 

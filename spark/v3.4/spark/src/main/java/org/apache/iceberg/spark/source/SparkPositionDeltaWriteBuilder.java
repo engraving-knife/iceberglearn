@@ -35,6 +35,15 @@ import org.apache.spark.sql.connector.write.LogicalWriteInfo;
 import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：位置增量写入构建器，构建 SparkPositionDeltaWrite。
+ *
+ * <p>设计意图：实现 WriteBuilder，配置分布与排序要求后创建写入。
+ *
+ * <p>上下游关系：由 SparkPositionDeltaOperation 使用。
+ */
 class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
 
   private static final Schema EXPECTED_ROW_ID_SCHEMA =
@@ -68,7 +77,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     this.checkNullability = writeConf.checkNullability();
     this.checkOrdering = writeConf.checkOrdering();
   }
-
+  /** 构建目标对象。 */
   @Override
   public DeltaWrite build() {
     Schema dataSchema = dataSchema();
@@ -80,7 +89,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     return new SparkPositionDeltaWrite(
         spark, table, command, scan, isolationLevel, writeConf, info, dataSchema);
   }
-
+  /** 执行 dataSchema 相关操作。 */
   private Schema dataSchema() {
     if (info.schema() == null || info.schema().isEmpty()) {
       return null;
@@ -90,14 +99,14 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
       return dataSchema;
     }
   }
-
+  /** 执行 validateRowIdSchema 相关操作。 */
   private void validateRowIdSchema() {
     Preconditions.checkArgument(info.rowIdSchema().isPresent(), "Row ID schema must be set");
     StructType rowIdSparkType = info.rowIdSchema().get();
     Schema rowIdSchema = SparkSchemaUtil.convert(EXPECTED_ROW_ID_SCHEMA, rowIdSparkType);
     validateSchema("row ID", EXPECTED_ROW_ID_SCHEMA, rowIdSchema);
   }
-
+  /** 执行 validateMetadataSchema 相关操作。 */
   private void validateMetadataSchema() {
     Preconditions.checkArgument(info.metadataSchema().isPresent(), "Metadata schema must be set");
     Schema expectedMetadataSchema =
@@ -108,7 +117,7 @@ class SparkPositionDeltaWriteBuilder implements DeltaWriteBuilder {
     Schema metadataSchema = SparkSchemaUtil.convert(expectedMetadataSchema, metadataSparkType);
     validateSchema("metadata", expectedMetadataSchema, metadataSchema);
   }
-
+  /** 执行 validateSchema 相关操作。 */
   private void validateSchema(String context, Schema expected, Schema actual) {
     TypeUtil.validateSchema(context, expected, actual, checkNullability, checkOrdering);
   }

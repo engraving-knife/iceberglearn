@@ -27,6 +27,13 @@ import org.apache.orc.TypeDescription;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestEstimateOrcAvgWidthVisitor 的功能。
+ *
+ * <p>所属模块：iceberg-orc。职责：验证 TestEstimateOrcAvgWidthVisitor 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEstimateOrcAvgWidthVisitor {
 
   // all supported fields
@@ -73,6 +80,11 @@ public class TestEstimateOrcAvgWidthVisitor {
               optional(25, "date", Types.DateType.get()),
               optional(27, "timestamp", Types.TimestampType.withZone())));
 
+  /**
+   * 测试场景：Estimate Integer Width。
+   *
+   * <p>验证该方法在 Estimate Integer Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateIntegerWidth() {
     Schema integerSchema = new Schema(ID_FIELD);
@@ -83,6 +95,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate String Width。
+   *
+   * <p>验证该方法在 Estimate String Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateStringWidth() {
     Schema stringSchema = new Schema(DATA_FIELD);
@@ -93,6 +110,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(128);
   }
 
+  /**
+   * 测试场景：Estimate Float Width。
+   *
+   * <p>验证该方法在 Estimate Float Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateFloatWidth() {
     Schema floatSchema = new Schema(FLOAT_FIELD);
@@ -103,6 +125,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate Double Width。
+   *
+   * <p>验证该方法在 Estimate Double Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateDoubleWidth() {
     Schema doubleSchema = new Schema(DOUBLE_FIELD);
@@ -113,6 +140,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate Decimal Width。
+   *
+   * <p>验证该方法在 Estimate Decimal Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateDecimalWidth() {
     Schema decimalSchema = new Schema(DECIMAL_FIELD);
@@ -123,6 +155,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(7);
   }
 
+  /**
+   * 测试场景：Estimate Fixed Width。
+   *
+   * <p>验证该方法在 Estimate Fixed Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateFixedWidth() {
     Schema fixedSchema = new Schema(FIXED_FIELD);
@@ -133,6 +170,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(128);
   }
 
+  /**
+   * 测试场景：Estimate Binary Width。
+   *
+   * <p>验证该方法在 Estimate Binary Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateBinaryWidth() {
     Schema binarySchema = new Schema(BINARY_FIELD);
@@ -143,6 +185,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(128);
   }
 
+  /**
+   * 测试场景：Estimate List Width。
+   *
+   * <p>验证该方法在 Estimate List Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateListWidth() {
     Schema listSchema = new Schema(FLOAT_LIST_FIELD);
@@ -153,6 +200,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate Long Width。
+   *
+   * <p>验证该方法在 Estimate Long Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateLongWidth() {
     Schema longSchema = new Schema(LONG_FIELD);
@@ -163,6 +215,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate Boolean Width。
+   *
+   * <p>验证该方法在 Estimate Boolean Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateBooleanWidth() {
     Schema booleanSchema = new Schema(BOOLEAN_FIELD);
@@ -173,6 +230,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate Timestamp Width。
+   *
+   * <p>验证该方法在 Estimate Timestamp Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateTimestampWidth() {
     Schema timestampZoneSchema = new Schema(TIMESTAMP_ZONE_FIELD);
@@ -190,6 +252,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(12);
   }
 
+  /**
+   * 测试场景：Estimate Date Width。
+   *
+   * <p>验证该方法在 Estimate Date Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateDateWidth() {
     Schema dateSchema = new Schema(DATE_FIELD);
@@ -200,6 +267,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(8);
   }
 
+  /**
+   * 测试场景：Estimate UUID Width。
+   *
+   * <p>验证该方法在 Estimate UUID Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateUUIDWidth() {
     Schema uuidSchema = new Schema(UUID_FIELD);
@@ -210,6 +282,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(128);
   }
 
+  /**
+   * 测试场景：Estimate Map Width。
+   *
+   * <p>验证该方法在 Estimate Map Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateMapWidth() {
     Schema mapSchema = new Schema(MAP_FIELD_1);
@@ -220,6 +297,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(136);
   }
 
+  /**
+   * 测试场景：Estimate Struct Width。
+   *
+   * <p>验证该方法在 Estimate Struct Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateStructWidth() {
     Schema structSchema = new Schema(STRUCT_FIELD);
@@ -230,6 +312,11 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(28);
   }
 
+  /**
+   * 测试场景：Estimate Full Width。
+   *
+   * <p>验证该方法在 Estimate Full Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testEstimateFullWidth() {
     Schema fullSchema =
@@ -253,6 +340,7 @@ public class TestEstimateOrcAvgWidthVisitor {
         .isEqualTo(611);
   }
 
+  /** 辅助方法：getEstimateLength。 */
   private Integer getEstimateLength(TypeDescription orcSchemaWithDate) {
     return OrcSchemaVisitor.visitSchema(orcSchemaWithDate, new EstimateOrcAvgWidthVisitor())
         .stream()

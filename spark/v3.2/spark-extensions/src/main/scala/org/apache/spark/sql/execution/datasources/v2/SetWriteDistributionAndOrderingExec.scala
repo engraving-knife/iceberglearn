@@ -31,6 +31,13 @@ import org.apache.spark.sql.connector.catalog.CatalogV2Implicits
 import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
 
+/**
+ * Spark 物理执行相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 SetWriteDistributionAndOrderingExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class SetWriteDistributionAndOrderingExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -41,6 +48,10 @@ case class SetWriteDistributionAndOrderingExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -68,6 +79,10 @@ case class SetWriteDistributionAndOrderingExec(
     Nil
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     val tableIdent = s"${catalog.name}.${ident.quoted}"
     val order = sortOrder.map {

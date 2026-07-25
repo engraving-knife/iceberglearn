@@ -33,15 +33,24 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.internal.SQLConf;
 import org.junit.BeforeClass;
 
+/**
+ * 文件级说明：测试 SparkExtensionsTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Spark扩展 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class SparkExtensionsTestBase extends SparkCatalogTestBase {
 
   private static final Random RANDOM = ThreadLocalRandom.current();
 
+  /** Spark扩展测试基类。 */
   public SparkExtensionsTestBase(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 启动元存储与Spark。 */
   @BeforeClass
   public static void startMetastoreAndSpark() {
     SparkTestBase.metastore = new TestHiveMetastore();

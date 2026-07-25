@@ -38,11 +38,23 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestStartsWith 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestStartsWith 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestStartsWith {
 
   private static final String COLUMN = "someStringCol";
   private static final Schema SCHEMA = new Schema(optional(1, COLUMN, Types.StringType.get()));
 
+  /**
+   * 测试场景：Truncate Projections。
+   *
+   * <p>验证该方法在 Truncate Projections 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateProjections() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).truncate(COLUMN, 4).build();
@@ -60,6 +72,11 @@ public class TestStartsWith {
     Assertions.assertThat(projection).isInstanceOf(False.class);
   }
 
+  /**
+   * 测试场景：Truncate String。
+   *
+   * <p>验证该方法在 Truncate String 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testTruncateString() {
@@ -76,6 +93,7 @@ public class TestStartsWith {
         .isTrue();
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   private void assertProjectionInclusive(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -85,6 +103,7 @@ public class TestStartsWith {
     assertProjection(spec, expectedLiteral, projection, expectedOp);
   }
 
+  /** 辅助方法：assertProjectionStrict。 */
   private void assertProjectionStrict(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -94,6 +113,7 @@ public class TestStartsWith {
     assertProjection(spec, expectedLiteral, projection, expectedOp);
   }
 
+  /** 辅助方法：assertProjection。 */
   @SuppressWarnings("unchecked")
   private void assertProjection(
       PartitionSpec spec,

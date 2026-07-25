@@ -25,8 +25,12 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
 /**
- * The uuid and fixed are converted to the same Flink type. Conversion back can produce only one,
- * which may not be correct.
+ * Flink 类型修正器，处理 Iceberg UUID 与 Fixed 类型在 Flink 中合并后无法区分的问题。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：在 schema 转换中，UUID 与 16 字节 Fixed 都映射 到 Flink 的 BinaryType，反向转换时按参考
+ * schema 修正回原始类型。
+ *
+ * <p>设计意图：继承 Iceberg {@link FixupTypes}，按参考 schema 决定应当还原为 Fixed 还是 UUID。
  */
 class FlinkFixupTypes extends FixupTypes {
 
@@ -34,11 +38,13 @@ class FlinkFixupTypes extends FixupTypes {
     super(referenceSchema);
   }
 
+  /** 按参考 schema 修正给定 schema 中的类型并返回新 Schema。 */
   static Schema fixup(Schema schema, Schema referenceSchema) {
     return new Schema(
         TypeUtil.visit(schema, new FlinkFixupTypes(referenceSchema)).asStructType().fields());
   }
 
+  /** 若类型为 16 字节 Fixed 且源类型为 UUID，则修正为 UUID 类型。 */
   @Override
   protected boolean fixupPrimitive(Type.PrimitiveType type, Type source) {
     if (type instanceof Types.FixedType) {

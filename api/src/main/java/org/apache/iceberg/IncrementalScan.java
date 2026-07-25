@@ -18,30 +18,48 @@
  */
 package org.apache.iceberg;
 
-/** API for configuring an incremental scan. */
+/**
+ * 增量扫描配置 API。
+ *
+ * <p>所属模块：iceberg-api（扫描接口层）。
+ *
+ * <p>职责：在 {@link Scan} 基础上扩展增量扫描语义，允许指定起止快照范围（含 inclusive / exclusive 两种起点语义），从而只扫描两个快照之间发生变更的数据。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>起点支持 inclusive 与 exclusive 两种语义，分别用于"包含该快照本身的变更"与 "从该快照之后开始"两种增量场景。
+ *   <li>同时支持直接传快照 ID 与传 ref 名称（默认方法抛 UnsupportedOperationException， 由具体实现覆盖），便于 ref 化的表使用。
+ *   <li>未配置起点时默认取终点快照的最老祖先（inclusive）；未配置终点时默认取当前表快照。
+ * </ul>
+ *
+ * <p>上下游关系：继承 {@link Scan}；由 core 模块实现，被引擎用于增量拉取/CDC 等场景。
+ *
+ * @param <ThisT> 扫描具体类型（CRTP 风格，便于链式返回子类型）
+ * @param <T> 扫描任务类型
+ * @param <G> 扫描任务分组类型
+ */
 public interface IncrementalScan<ThisT, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends Scan<ThisT, T, G> {
   /**
-   * Instructs this scan to look for changes starting from a particular snapshot (inclusive).
+   * 指定从某个快照开始（inclusive）查找变更。
    *
-   * <p>If the start snapshot is not configured, it defaults to the oldest ancestor of the end
-   * snapshot (inclusive).
+   * <p>若未配置起点，默认取终点快照的最老祖先（inclusive）。
    *
-   * @param fromSnapshotId the start snapshot ID (inclusive)
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the start snapshot is not an ancestor of the end snapshot
+   * @param fromSnapshotId 起点快照 ID（包含）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若起点快照不是终点快照的祖先
    */
   ThisT fromSnapshotInclusive(long fromSnapshotId);
 
   /**
-   * Instructs this scan to look for changes starting from a particular snapshot (inclusive).
+   * 指定从某个 ref 指向的快照开始（inclusive）查找变更。
    *
-   * <p>If the start snapshot is not configured, it defaults to the oldest ancestor of the end
-   * snapshot (inclusive).
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
    *
-   * @param ref the start ref name that points to a particular snapshot ID (inclusive)
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the start snapshot is not an ancestor of the end snapshot
+   * @param ref 起点快照 ref 名称（包含）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若起点快照不是终点快照的祖先
    */
   default ThisT fromSnapshotInclusive(String ref) {
     throw new UnsupportedOperationException(
@@ -49,26 +67,24 @@ public interface IncrementalScan<ThisT, T extends ScanTask, G extends ScanTaskGr
   }
 
   /**
-   * Instructs this scan to look for changes starting from a particular snapshot (exclusive).
+   * 指定从某个快照之后（exclusive）开始查找变更。
    *
-   * <p>If the start snapshot is not configured, it defaults to the oldest ancestor of the end
-   * snapshot (inclusive).
+   * <p>若未配置起点，默认取终点快照的最老祖先（inclusive）。
    *
-   * @param fromSnapshotId the start snapshot ID (exclusive)
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the start snapshot is not an ancestor of the end snapshot
+   * @param fromSnapshotId 起点快照 ID（不包含）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若起点快照不是终点快照的祖先
    */
   ThisT fromSnapshotExclusive(long fromSnapshotId);
 
   /**
-   * Instructs this scan to look for changes starting from a particular snapshot (exclusive).
+   * 指定从某个 ref 指向的快照之后（exclusive）开始查找变更。
    *
-   * <p>If the start snapshot is not configured, it defaults to the oldest ancestor of the end
-   * snapshot (inclusive).
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
    *
-   * @param ref the start ref name that points to a particular snapshot ID (exclusive)
-   * @return this for method chaining
-   * @throws IllegalArgumentException if the start snapshot is not an ancestor of the end snapshot
+   * @param ref 起点快照 ref 名称（不包含）
+   * @return this，便于链式调用
+   * @throws IllegalArgumentException 若起点快照不是终点快照的祖先
    */
   default ThisT fromSnapshotExclusive(String ref) {
     throw new UnsupportedOperationException(
@@ -76,24 +92,22 @@ public interface IncrementalScan<ThisT, T extends ScanTask, G extends ScanTaskGr
   }
 
   /**
-   * Instructs this scan to look for changes up to a particular snapshot (inclusive).
+   * 指定扫描到某个快照为止（inclusive）。
    *
-   * <p>If the end snapshot is not configured, it defaults to the current table snapshot
-   * (inclusive).
+   * <p>若未配置终点，默认取当前表快照（inclusive）。
    *
-   * @param toSnapshotId the end snapshot ID (inclusive)
-   * @return this for method chaining
+   * @param toSnapshotId 终点快照 ID（包含）
+   * @return this，便于链式调用
    */
   ThisT toSnapshot(long toSnapshotId);
 
   /**
-   * Instructs this scan to look for changes up to a particular snapshot ref (inclusive).
+   * 指定扫描到某个 ref 指向的快照为止（inclusive）。
    *
-   * <p>If the end snapshot is not configured, it defaults to the current table snapshot
-   * (inclusive).
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
    *
-   * @param ref the end snapshot Ref (inclusive)
-   * @return this for method chaining
+   * @param ref 终点快照 ref 名称（包含）
+   * @return this，便于链式调用
    */
   default ThisT toSnapshot(String ref) {
     throw new UnsupportedOperationException(
@@ -101,10 +115,12 @@ public interface IncrementalScan<ThisT, T extends ScanTask, G extends ScanTaskGr
   }
 
   /**
-   * Use the specified branch
+   * 指定增量扫描所使用的分支。
    *
-   * @param branch the branch name
-   * @return this for method chaining
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由具体实现覆盖。
+   *
+   * @param branch 分支名
+   * @return this，便于链式调用
    */
   default ThisT useBranch(String branch) {
     throw new UnsupportedOperationException(

@@ -54,6 +54,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestWriterMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestWriterMetrics 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestWriterMetrics<T> {
 
   private static final int FORMAT_V2 = 2;
@@ -83,21 +90,27 @@ public abstract class TestWriterMetrics<T> {
   protected TestTables.TestTable table = null;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat = {0}")
   public static Object[][] parameters() {
     return new Object[][] {{FileFormat.ORC}, {FileFormat.PARQUET}};
   }
 
+  /** 辅助方法：TestWriterMetrics。 */
   public TestWriterMetrics(FileFormat fileFormat) {
     this.fileFormat = fileFormat;
   }
 
+  /** 辅助方法：newWriterFactory。 */
   protected abstract FileWriterFactory<T> newWriterFactory(Table sourceTable);
 
+  /** 辅助方法：toRow。 */
   protected abstract T toRow(Integer id, String data, boolean boolValue, Long longValue);
 
+  /** 辅助方法：toGenericRow。 */
   protected abstract T toGenericRow(int value, int repeated);
 
+  /** 辅助方法：setupTable。 */
   @Before
   public void setupTable() throws Exception {
     File tableDir = temp.newFolder();
@@ -111,11 +124,17 @@ public abstract class TestWriterMetrics<T> {
     this.fileFactory = OutputFileFactory.builderFor(table, 1, 1).format(fileFormat).build();
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() {
     TestTables.clearTables();
   }
 
+  /**
+   * 测试场景：verify Sorted Col Metric。
+   *
+   * <p>验证该方法在 verify Sorted Col Metric 条件下的行为是否符合预期。
+   */
   @Test
   public void verifySortedColMetric() throws Exception {
     T row = toRow(3, "3", true, 3L);
@@ -146,6 +165,11 @@ public abstract class TestWriterMetrics<T> {
         3L, (long) Conversions.fromByteBuffer(Types.LongType.get(), upperBounds.get(5)));
   }
 
+  /**
+   * 测试场景：Position Delete Metrics。
+   *
+   * <p>验证该方法在 Position Delete Metrics 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteMetrics() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table);
@@ -203,6 +227,11 @@ public abstract class TestWriterMetrics<T> {
         3L, (long) Conversions.fromByteBuffer(Types.LongType.get(), upperBounds.get(5)));
   }
 
+  /**
+   * 测试场景：Position Delete Metrics Covering Multiple Data Files。
+   *
+   * <p>验证该方法在 Position Delete Metrics Covering Multiple Data Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testPositionDeleteMetricsCoveringMultipleDataFiles() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table);
@@ -241,6 +270,11 @@ public abstract class TestWriterMetrics<T> {
         3L, (long) Conversions.fromByteBuffer(Types.LongType.get(), upperBounds.get(5)));
   }
 
+  /**
+   * 测试场景：Max Columns。
+   *
+   * <p>验证该方法在 Max Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testMaxColumns() throws IOException {
     File tableDir = temp.newFolder();
@@ -295,6 +329,11 @@ public abstract class TestWriterMetrics<T> {
     }
   }
 
+  /**
+   * 测试场景：Max Columns With Default Override。
+   *
+   * <p>验证该方法在 Max Columns With Default Override 条件下的行为是否符合预期。
+   */
   @Test
   public void testMaxColumnsWithDefaultOverride() throws IOException {
     File tableDir = temp.newFolder();

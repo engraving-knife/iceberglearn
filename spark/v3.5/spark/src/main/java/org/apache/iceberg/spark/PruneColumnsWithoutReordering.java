@@ -47,16 +47,36 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampNTZType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * 按请求 Schema 裁剪列但不重排序的 Schema 访问器。
+ *
+ * <p>所属模块：iceberg-spark。继承 {@link TypeUtil.CustomOrderSchemaVisitor}，依据 Spark 请求的 StructType
+ * 与过滤条件引用字段，对 Iceberg Schema 进行列裁剪，保留原始字段顺序。
+ *
+ * <p>职责：逐字段比对请求类型，删除未请求且未被过滤条件引用的字段，必要时调整可空性， 并校验 Iceberg 类型与 Spark 请求类型的兼容性（如 decimal 精度/标度）。
+ *
+ * <p>设计意图：Spark 列裁剪要求不改变字段顺序，本访问器严格按 Iceberg Schema 顺序遍历， 仅做"裁剪"不做"重排"；通过 current 指针跟踪当前对应的 Spark
+ * 类型，实现类型兼容校验。
+ *
+ * <p>上下游关系：由 Spark 读取路径（如 {@link org.apache.iceberg.spark.source.SparkScanBuilder}） 调用以投影所需列。
+ */
 public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final StructType requestedType;
   private final Set<Integer> filterRefs;
   private DataType current = null;
 
+  /**
+   * 构造裁剪访问器。
+   *
+   * @param requestedType Spark 端请求的 StructType
+   * @param filterRefs 过滤条件引用的字段 ID 集合（这些字段即使未被请求也需保留）
+   */
   PruneColumnsWithoutReordering(StructType requestedType, Set<Integer> filterRefs) {
     this.requestedType = requestedType;
     this.filterRefs = filterRefs;
   }
 
+  /** 顶层 schema 访问：将 current 置为请求类型后求值 struct 结果。 */
   @Override
   public Type schema(Schema schema, Supplier<Type> structResult) {
     this.current = requestedType;
@@ -67,6 +87,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     }
   }
 
+  /** 处理 struct：按字段顺序遍历，根据各字段裁剪结果（null 表示删除）重建 struct， 保持原顺序与可空性；无变化时返回原 struct。 */
   @Override
   public Type struct(Types.StructType struct, Iterable<Type> fieldResults) {
     Preconditions.checkNotNull(
@@ -105,6 +126,9 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     return struct;
   }
 
+  /**
+   * 处理字段：按名匹配请求结构；未请求时若被过滤条件引用则保留原类型，否则返回 null（删除）。 请求字段为非空时校验 Iceberg 字段也必须必填。切换 current 后递归求值。
+   */
   @Override
   public Type field(Types.NestedField field, Supplier<Type> fieldResult) {
     Preconditions.checkArgument(current instanceof StructType, "Not a struct: %s", current);
@@ -138,6 +162,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     }
   }
 
+  /** 处理 list：校验元素可空性兼容，递归裁剪元素类型，无变化返回原 list。 */
   @Override
   public Type list(Types.ListType list, Supplier<Type> elementResult) {
     Preconditions.checkArgument(current instanceof ArrayType, "Not an array: %s", current);
@@ -166,6 +191,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     }
   }
 
+  /** 处理 map：校验值可空性兼容，递归裁剪值类型，无变化返回原 map。 */
   @Override
   public Type map(Types.MapType map, Supplier<Type> keyResult, Supplier<Type> valueResult) {
     Preconditions.checkArgument(current instanceof MapType, "Not a map: %s", current);
@@ -193,6 +219,7 @@ public class PruneColumnsWithoutReordering extends TypeUtil.CustomOrderSchemaVis
     }
   }
 
+  /** 处理基本类型：校验 Spark 当前类型与 Iceberg 基本类型兼容（decimal 还需校验精度/标度）， 兼容则返回原 Iceberg 类型，否则抛出异常。 */
   @Override
   public Type primitive(Type.PrimitiveType primitive) {
     Set<Class<? extends DataType>> expectedType = TYPES.get(primitive.typeId());

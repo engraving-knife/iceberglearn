@@ -20,15 +20,24 @@ package org.apache.iceberg.spark.source.metrics;
 
 import org.apache.spark.sql.connector.metric.CustomSumMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：已跳过清单文件数指标，定义指标名与聚合方式。
+ *
+ * <p>设计意图：实现 Spark CustomMetric，统计被跳过的 manifest 数量。
+ *
+ * <p>上下游关系：由 BaseReader 上报；由 Spark UI 展示。
+ */
 public class SkippedDataManifests extends CustomSumMetric {
 
   static final String NAME = "skippedDataManifests";
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return NAME;
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "number of skipped data manifests";

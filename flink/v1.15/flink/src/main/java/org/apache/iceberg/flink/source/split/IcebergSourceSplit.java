@@ -39,6 +39,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 @Internal
+/**
+ * Iceberg Source 分片，封装 FileScanTask 列表与位置信息。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：承载分片任务与 checkpoint 位置，实现 Flink SourceSplit。
+ *
+ * <p>设计意图：值对象；被 enumerator 分配、reader 消费。
+ */
 public class IcebergSourceSplit implements SourceSplit, Serializable {
   private static final long serialVersionUID = 1L;
   private static final ThreadLocal<DataOutputSerializer> SERIALIZER_CACHE =

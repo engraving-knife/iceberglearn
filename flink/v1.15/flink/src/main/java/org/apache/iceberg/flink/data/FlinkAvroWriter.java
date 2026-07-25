@@ -35,14 +35,24 @@ import org.apache.iceberg.avro.ValueWriter;
 import org.apache.iceberg.avro.ValueWriters;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * 把 Flink {@link RowData} 序列化为 Avro 编码数据的 DatumWriter 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 Avro schema 构造 {@link ValueWriter}， 并在写入时收集字段级 metrics（用于
+ * Iceberg 统计信息）。
+ *
+ * <p>设计意图：适配器模式，把 Iceberg Avro 写入能力适配到 Flink RowData； 上下游：被 Flink 写入算子（如 IcebergStreamWriter）调用。
+ */
 public class FlinkAvroWriter implements MetricsAwareDatumWriter<RowData> {
   private final RowType rowType;
   private ValueWriter<RowData> writer = null;
 
+  /** 构造函数，携带 Flink 行类型。 */
   public FlinkAvroWriter(RowType rowType) {
     this.rowType = rowType;
   }
 
+  /** 设置 Avro schema，并通过 {@link AvroWithFlinkSchemaVisitor} 构造写入器。 */
   @Override
   @SuppressWarnings("unchecked")
   public void setSchema(Schema schema) {
@@ -51,17 +61,21 @@ public class FlinkAvroWriter implements MetricsAwareDatumWriter<RowData> {
             AvroWithFlinkSchemaVisitor.visit(rowType, schema, new WriteBuilder());
   }
 
+  /** 写入一行数据到 Avro Encoder。 */
   @Override
   public void write(RowData datum, Encoder out) throws IOException {
     writer.write(datum, out);
   }
 
+  /** 返回字段级 metrics 流。 */
   @Override
   public Stream<FieldMetrics> metrics() {
     return writer.metrics();
   }
 
+  /** Avro schema 访问者实现，按 Iceberg 类型构造 Flink RowData 的 ValueWriter。 */
   private static class WriteBuilder extends AvroWithFlinkSchemaVisitor<ValueWriter<?>> {
+    /** 构造 struct 类型的 ValueWriter。 */
     @Override
     public ValueWriter<?> record(
         LogicalType struct, Schema record, List<String> names, List<ValueWriter<?>> fields) {
@@ -72,6 +86,7 @@ public class FlinkAvroWriter implements MetricsAwareDatumWriter<RowData> {
               .collect(Collectors.toList()));
     }
 
+    /** 构造 union（可选类型）的 ValueWriter，只支持两元素 nullable union。 */
     @Override
     public ValueWriter<?> union(LogicalType type, Schema union, List<ValueWriter<?>> options) {
       Preconditions.checkArgument(
@@ -87,17 +102,20 @@ public class FlinkAvroWriter implements MetricsAwareDatumWriter<RowData> {
       }
     }
 
+    /** 构造数组类型的 ValueWriter。 */
     @Override
     public ValueWriter<?> array(LogicalType sArray, Schema array, ValueWriter<?> elementWriter) {
       return FlinkValueWriters.array(elementWriter, arrayElementType(sArray));
     }
 
+    /** 构造 map（key 为字符串）的 ValueWriter。 */
     @Override
     public ValueWriter<?> map(LogicalType sMap, Schema map, ValueWriter<?> valueReader) {
       return FlinkValueWriters.map(
           FlinkValueWriters.strings(), mapKeyType(sMap), valueReader, mapValueType(sMap));
     }
 
+    /** 构造 map（key 为数组形式）的 ValueWriter。 */
     @Override
     public ValueWriter<?> map(
         LogicalType sMap, Schema map, ValueWriter<?> keyWriter, ValueWriter<?> valueWriter) {
@@ -105,6 +123,12 @@ public class FlinkAvroWriter implements MetricsAwareDatumWriter<RowData> {
           keyWriter, mapKeyType(sMap), valueWriter, mapValueType(sMap));
     }
 
+    /**
+     * 构造基本类型的 ValueWriter。
+     *
+     * <p>逻辑：先按 Avro logicalType 处理 date/time/decimal/uuid 等； 再按 Avro primitive 类型分派到对应写入器，并参考 Flink
+     * 类型根区分 tinyint/smallint/int。
+     */
     @Override
     public ValueWriter<?> primitive(LogicalType type, Schema primitive) {
       org.apache.avro.LogicalType logicalType = primitive.getLogicalType();

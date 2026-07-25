@@ -30,9 +30,30 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.util.ByteBuffers;
 
+/**
+ * 文件级说明：数据文件/删除文件元信息构建器工厂，提供便捷的 Builder 创建入口。
+ *
+ * <p>所属模块：iceberg-core。职责：作为 {@link DataFile} / {@link DeleteFile} 元信息 构建的入口，提供 {@link
+ * #deleteFileBuilder(PartitionSpec)} 等工厂方法，以及内部 Builder 类用于逐步组装文件元信息。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>用 Builder 模式聚合大量可选字段（路径、格式、分区值、记录数、文件大小、列统计等）。
+ *   <li>与 PartitionSpec 关联，自动处理分区值类型转换。
+ * </ul>
+ *
+ * <p>上下游关系：被写入链路（如 DataFileWriter）用于构建写入完成的文件元信息。
+ */
 public class FileMetadata {
   private FileMetadata() {}
 
+  /**
+   * 创建删除文件元信息构建器。
+   *
+   * @param spec 分区规格
+   * @return Builder 实例
+   */
   public static Builder deleteFileBuilder(PartitionSpec spec) {
     return new Builder(spec);
   }
@@ -156,6 +177,12 @@ public class FileMetadata {
       return this;
     }
 
+    /**
+     * 设置分区值。
+     *
+     * @param newPartition 分区值
+     * @return 当前 Builder（链式调用）
+     */
     public Builder withPartition(StructLike newPartition) {
       if (isPartitioned) {
         this.partitionData = DataFiles.copyPartitionData(spec, newPartition, partitionData);

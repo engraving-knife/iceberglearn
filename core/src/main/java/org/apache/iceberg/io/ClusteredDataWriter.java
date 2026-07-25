@@ -25,8 +25,18 @@ import org.apache.iceberg.StructLike;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * A data writer capable of writing to multiple specs and partitions that requires the incoming
- * records to be properly clustered by partition spec and by partition within each spec.
+ * 文件级说明：聚簇式数据写入器。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：继承 {@link ClusteredWriter}，向多个 spec/partition 写入数据，要求输入按分区聚簇。 每个分区内通过 {@link
+ * RollingDataWriter} 实现文件滚动。
+ *
+ * <p>设计意图：将 ClusteredWriter 的模板方法落地到数据写入场景。适用于已按分区排序的批处理写入， 内存开销低于 {@link FanoutDataWriter}。
+ *
+ * <p>上下游关系：由引擎集成层在能保证分区聚簇时创建；实现 {@link PartitioningWriter}。
+ *
+ * @param <T> 行记录类型
  */
 public class ClusteredDataWriter<T> extends ClusteredWriter<T, DataWriteResult> {
 
@@ -36,6 +46,14 @@ public class ClusteredDataWriter<T> extends ClusteredWriter<T, DataWriteResult> 
   private final long targetFileSizeInBytes;
   private final List<DataFile> dataFiles;
 
+  /**
+   * 构造聚簇式数据写入器。
+   *
+   * @param writerFactory 写入器工厂
+   * @param fileFactory 输出文件工厂
+   * @param io FileIO 实例
+   * @param targetFileSizeInBytes 目标文件大小
+   */
   public ClusteredDataWriter(
       FileWriterFactory<T> writerFactory,
       OutputFileFactory fileFactory,
@@ -48,17 +66,20 @@ public class ClusteredDataWriter<T> extends ClusteredWriter<T, DataWriteResult> 
     this.dataFiles = Lists.newArrayList();
   }
 
+  /** 为每个分区创建滚动数据写入器。 */
   @Override
   protected FileWriter<T, DataWriteResult> newWriter(PartitionSpec spec, StructLike partition) {
     return new RollingDataWriter<>(
         writerFactory, fileFactory, io, targetFileSizeInBytes, spec, partition);
   }
 
+  /** 将分区写入结果中的数据文件加入聚合列表。 */
   @Override
   protected void addResult(DataWriteResult result) {
     dataFiles.addAll(result.dataFiles());
   }
 
+  /** 返回所有数据文件的聚合结果。 */
   @Override
   protected DataWriteResult aggregatedResult() {
     return new DataWriteResult(dataFiles);

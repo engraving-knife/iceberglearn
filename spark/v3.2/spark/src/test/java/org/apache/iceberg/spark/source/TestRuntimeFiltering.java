@@ -42,14 +42,23 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRuntimeFiltering 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 runtime过滤 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS dim");
   }
 
+  /** 测试恒等分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIdentityPartitionedTable() throws NoSuchTableException {
     sql(
@@ -88,6 +97,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试bucketed表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketedTable() throws NoSuchTableException {
     sql(
@@ -126,6 +136,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试renamed源列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRenamedSourceColumnTable() throws NoSuchTableException {
     sql(
@@ -166,6 +177,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试多个runtime过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMultipleRuntimeFilters() throws NoSuchTableException {
     sql(
@@ -208,6 +220,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试场景sensitivity的runtime过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCaseSensitivityOfRuntimeFilters() throws NoSuchTableException {
     sql(
@@ -251,6 +264,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(caseInsensitiveQuery));
   }
 
+  /** 测试bucketed表带多个分区规格场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketedTableWithMultipleSpecs() throws NoSuchTableException {
     sql(
@@ -302,6 +316,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试源列带dots场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSourceColumnWithDots() throws NoSuchTableException {
     sql(
@@ -345,6 +360,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试源列带backticks场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSourceColumnWithBackticks() throws NoSuchTableException {
     sql(
@@ -385,6 +401,7 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 测试非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTable() throws NoSuchTableException {
     sql(
@@ -419,14 +436,17 @@ public class TestRuntimeFiltering extends SparkTestBaseWithCatalog {
         sql(query));
   }
 
+  /** 断言查询containsruntime过滤器。 */
   private void assertQueryContainsRuntimeFilter(String query) {
     assertQueryContainsRuntimeFilters(query, 1, "Query should have 1 runtime filter");
   }
 
+  /** 断言查询containsnoruntime过滤器。 */
   private void assertQueryContainsNoRuntimeFilter(String query) {
     assertQueryContainsRuntimeFilters(query, 0, "Query should have no runtime filters");
   }
 
+  /** 断言查询containsruntime过滤器。 */
   private void assertQueryContainsRuntimeFilters(
       String query, int expectedFilterCount, String errorMessage) {
     List<Row> output = spark.sql("EXPLAIN EXTENDED " + query).collectAsList();

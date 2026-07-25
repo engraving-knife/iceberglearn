@@ -21,10 +21,11 @@ package org.apache.iceberg.flink.source.split;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * Provides implementations of {@link org.apache.iceberg.flink.source.split.SerializableComparator}
- * which could be used for ordering splits. These are used by the {@link
- * org.apache.iceberg.flink.source.assigner.OrderedSplitAssignerFactory} and the {@link
- * org.apache.iceberg.flink.source.reader.IcebergSourceReader}
+ * 分片比较器工厂，提供按文件大小/路径等排序的比较器。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：构造可序列化的 split 比较器实例。
+ *
+ * <p>设计意图：工厂 + 静态方法；被 OrderedSplitAssignerFactory 调用。
  */
 public class SplitComparators {
   private SplitComparators() {}

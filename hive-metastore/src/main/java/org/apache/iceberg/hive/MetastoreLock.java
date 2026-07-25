@@ -52,6 +52,32 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Hive Metastore 的表级锁实现。
+ *
+ * <p>所属模块：iceberg-hive-metastore（表元数据提交的并发控制层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 {@link HiveLock} 接口，通过 HMS Thrift 接口对表加排他锁。
+ *   <li>在持锁期间启动后台心跳线程定期续约，防止锁因超时被 HMS 自动释放。
+ *   <li>提供进程级 JVM 锁（ReentrantLock），避免同一 JVM 内多线程对同一表并发提交时 产生不必要的 HMS 锁竞争。
+ *   <li>支持锁创建失败重试、锁等待超时、锁查找等容错机制。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>双层锁：JVM 锁（进程内互斥）+ HMS 锁（跨进程互斥），减少 HMS 锁请求量。
+ *   <li>心跳续约：HMS 锁有超时机制，长时间提交需定期 heartbeat 保活，否则锁会被 HMS 回收 导致其他写入者并发提交。
+ *   <li>agentInfo 标识：使用 UUID 标识锁请求，配合 showLocks API 实现锁查找与容错恢复 （Hive 2+）。
+ *   <li>指数退避重试：锁创建与锁等待检查均采用指数退避策略，避免 HMS 压力过大。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link HiveTableOperations#lockObject} 在启用 HMS 锁时创建； 内部通过 {@link ClientPool} 调用 HMS
+ * Thrift 接口。
+ */
 class MetastoreLock implements HiveLock {
   private static final Logger LOG = LoggerFactory.getLogger(MetastoreLock.class);
   private static final String HIVE_ACQUIRE_LOCK_TIMEOUT_MS = "iceberg.hive.lock-timeout-ms";
@@ -96,6 +122,17 @@ class MetastoreLock implements HiveLock {
   private ReentrantLock jvmLock = null;
   private Heartbeat heartbeat = null;
 
+  /**
+   * 构造 MetastoreLock 实例。
+   *
+   * <p>逻辑：保存表标识与客户端池，从配置读取锁超时、检查间隔、心跳间隔等参数， 生成 UUID 作为 agentInfo，创建心跳调度线程池，并初始化表级 JVM 锁缓存。
+   *
+   * @param conf Hadoop 配置（含锁超时等参数）
+   * @param metaClients HMS 客户端池
+   * @param catalogName Catalog 名称
+   * @param databaseName database 名
+   * @param tableName 表名
+   */
   MetastoreLock(
       Configuration conf,
       ClientPool<IMetaStoreClient, TException> metaClients,
@@ -136,6 +173,19 @@ class MetastoreLock implements HiveLock {
     initTableLevelLockCache(tableLevelLockCacheEvictionTimeout);
   }
 
+  /**
+   * 加锁：先获取 JVM 进程级锁，再获取 HMS 锁，最后启动心跳续约线程。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>获取 JVM 锁（ReentrantLock），避免同进程内并发提交。
+   *   <li>调用 {@link #acquireLock} 获取 HMS 排他锁。
+   *   <li>创建 {@link Heartbeat} 并调度定期心跳。
+   * </ol>
+   *
+   * @throws LockException 加锁失败
+   */
   @Override
   public void lock() throws LockException {
     // getting a process-level lock per table to avoid concurrent commit attempts to the same table
@@ -150,6 +200,13 @@ class MetastoreLock implements HiveLock {
     heartbeat.schedule(exitingScheduledExecutorService);
   }
 
+  /**
+   * 确保锁仍然活跃。
+   *
+   * <p>逻辑：检查心跳线程是否存在、是否遇到异常、是否仍在运行；任一条件不满足则抛出 {@link LockException}，使上层将提交标记为状态未知。
+   *
+   * @throws LockException 锁未激活或心跳异常
+   */
   @Override
   public void ensureActive() throws LockException {
     if (heartbeat == null) {
@@ -167,6 +224,11 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /**
+   * 释放锁：取消心跳、关闭调度线程池、释放 HMS 锁、释放 JVM 锁。
+   *
+   * <p>设计要点：先停心跳再释放 HMS 锁，确保释放过程中不会产生无用心跳； HMS 锁释放放在 finally 中保证 JVM 锁一定被释放。
+   */
   @Override
   public void unlock() {
     if (heartbeat != null) {
@@ -181,6 +243,21 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /**
+   * 获取 HMS 锁并等待其变为 ACQUIRED 状态。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>调用 {@link #createLock} 创建锁请求，获取 lockId 和初始状态。
+   *   <li>若状态为 WAITING，使用指数退避策略反复调用 checkLock 轮询锁状态， 直至变为 ACQUIRED 或超时。
+   *   <li>超时或异常时在 finally 中释放未获取成功的锁。
+   *   <li>最终未获取成功则抛出带超时/错误信息的 LockException。
+   * </ol>
+   *
+   * @return 已获取的锁 ID
+   * @throws LockException 锁获取超时或失败
+   */
   private long acquireLock() throws LockException {
     LockInfo lockInfo = createLock();
 
@@ -260,11 +337,20 @@ class MetastoreLock implements HiveLock {
   }
 
   /**
-   * Creates a lock, retrying if possible on failure.
+   * 创建 HMS 锁请求，失败时按指数退避重试。
    *
-   * @return The {@link LockInfo} object for the successfully created lock
-   * @throws LockException When we are not able to fill the hostname for lock creation, or there is
-   *     an error during lock creation
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>获取本机主机名，构造排他锁组件和锁请求（含用户名、主机名、agentInfo）。
+   *   <li>使用 Tasks 框架以指数退避策略重试调用 HMS lock 接口。
+   *   <li>若 lock 调用抛 TException（Hive 2+），尝试通过 showLocks + agentInfo 查找已创建的锁 （容错：lock 请求可能已到达 HMS
+   *       但响应丢失）。
+   *   <li>中断时设置中断标志并停止重试。
+   * </ol>
+   *
+   * @return 成功创建的锁信息
+   * @throws LockException 无法获取主机名或锁创建失败
    */
   @SuppressWarnings("ReverseDnsLookup")
   private LockInfo createLock() throws LockException {
@@ -353,11 +439,15 @@ class MetastoreLock implements HiveLock {
   }
 
   /**
-   * Search for the locks using HMSClient.showLocks identified by the agentInfo. If the lock is
-   * there, then a {@link LockInfo} object is returned. If the lock is not found <code>null</code>
-   * is returned.
+   * 通过 showLocks API 按 agentInfo 查找已创建的锁。
    *
-   * @return The {@link LockInfo} for the found lock, or <code>null</code> if nothing found
+   * <p>逻辑：向 HMS 发起 showLocks 请求获取该表的所有锁，遍历匹配 agentInfo 相等的锁。
+   *
+   * <p>设计要点：用于 lock 请求响应丢失时的容错恢复（Hive 2+）。
+   *
+   * @return 找到的锁信息，未找到返回 null
+   * @throws LockException showLocks 调用失败
+   * @throws InterruptedException 线程被中断
    */
   private LockInfo findLock() throws LockException, InterruptedException {
     Preconditions.checkArgument(
@@ -383,6 +473,14 @@ class MetastoreLock implements HiveLock {
     return null;
   }
 
+  /**
+   * 释放 HMS 锁，支持按 lockId 或按 agentInfo 查找后释放。
+   *
+   * <p>逻辑：若 lockId 存在则直接释放；否则（Hive 2+）通过 findLock 按 agentInfo 查找后释放。
+   * 中断时清理中断状态并尝试再释放一次；其他异常仅告警不抛出（释放失败不应阻断流程）。
+   *
+   * @param lockId 锁 ID（可为空，空时按 agentInfo 查找）
+   */
   private void unlock(Optional<Long> lockId) {
     Long id = null;
     try {
@@ -427,6 +525,11 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /**
+   * 调用 HMS unlock 接口释放指定锁。
+   *
+   * @param lockId 锁 ID
+   */
   private void doUnlock(long lockId) throws TException, InterruptedException {
     metaClients.run(
         client -> {
@@ -435,6 +538,11 @@ class MetastoreLock implements HiveLock {
         });
   }
 
+  /**
+   * 获取表级 JVM 进程锁。
+   *
+   * <p>设计要点：使用 Caffeine 缓存的 ReentrantLock（按表全名缓存），避免同进程内多线程 对同一表并发提交产生不必要的 HMS 锁请求。
+   */
   private void acquireJvmLock() {
     if (jvmLock != null) {
       throw new IllegalStateException(
@@ -445,6 +553,7 @@ class MetastoreLock implements HiveLock {
     jvmLock.lock();
   }
 
+  /** 释放表级 JVM 进程锁。 */
   private void releaseJvmLock() {
     if (jvmLock != null) {
       jvmLock.unlock();
@@ -452,6 +561,13 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /**
+   * 懒初始化表级 JVM 锁缓存（双重检查锁模式）。
+   *
+   * <p>设计要点：commitLockCache 为静态 volatile，使用 Caffeine 的 expireAfterAccess 策略 自动回收长时间未使用的表级锁对象。
+   *
+   * @param evictionTimeout 锁缓存淘汰时间（毫秒）
+   */
   private static void initTableLevelLockCache(long evictionTimeout) {
     if (commitLockCache == null) {
       synchronized (MetastoreLock.class) {
@@ -465,6 +581,12 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /**
+   * 心跳续约任务，定期向 HMS 发送 heartbeat 防止锁超时。
+   *
+   * <p>设计要点：作为 Runnable 由调度线程池定期执行；遇到异常时记录到 encounteredException 字段供 {@link #ensureActive()} 检查，并抛出
+   * {@link CommitFailedException} 终止心跳。
+   */
   private static class Heartbeat implements Runnable {
     private final ClientPool<IMetaStoreClient, TException> hmsClients;
     private final long lockId;
@@ -479,6 +601,12 @@ class MetastoreLock implements HiveLock {
       this.future = null;
     }
 
+    /**
+     * 执行一次心跳：调用 HMS heartbeat 续约锁。
+     *
+     * <p>逻辑：通过客户端池调用 {@code heartbeat(txnId=0, lockId)} 续约；异常时记录到 encounteredException 并抛出
+     * CommitFailedException 终止后续心跳。
+     */
     @Override
     public void run() {
       try {
@@ -493,6 +621,11 @@ class MetastoreLock implements HiveLock {
       }
     }
 
+    /**
+     * 以固定速率调度心跳任务。
+     *
+     * @param scheduler 调度线程池
+     */
     public void schedule(ScheduledExecutorService scheduler) {
       future =
           scheduler.scheduleAtFixedRate(this, intervalMs / 2, intervalMs, TimeUnit.MILLISECONDS);
@@ -509,6 +642,7 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /** 锁信息 holder：持有 lockId 与锁状态。 */
   private static class LockInfo {
     private long lockId;
     private LockState lockState;
@@ -532,6 +666,7 @@ class MetastoreLock implements HiveLock {
     }
   }
 
+  /** 等待锁超时信号异常，用于在 Tasks 框架中标识锁等待状态。 */
   private static class WaitingForLockException extends RuntimeException {
     WaitingForLockException(String message) {
       super(message);

@@ -28,15 +28,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.ArrayUtil;
 import org.apache.iceberg.util.StructLikeSet;
 
+/**
+ * 文件级说明：测试 TestGenericAppenderFactory 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericAppenderFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericAppenderFactory extends TestAppenderFactory<Record> {
 
   private final GenericRecord gRecord;
 
+  /** 辅助方法：TestGenericAppenderFactory。 */
   public TestGenericAppenderFactory(String fileFormat, boolean partitioned) {
     super(fileFormat, partitioned);
     this.gRecord = GenericRecord.create(SCHEMA);
   }
 
+  /** 辅助方法：createAppenderFactory。 */
   @Override
   protected FileAppenderFactory<Record> createAppenderFactory(
       List<Integer> equalityFieldIds, Schema eqDeleteSchema, Schema posDeleteRowSchema) {
@@ -48,11 +57,13 @@ public class TestGenericAppenderFactory extends TestAppenderFactory<Record> {
         posDeleteRowSchema);
   }
 
+  /** 辅助方法：createRow。 */
   @Override
   protected Record createRow(Integer id, String data) {
     return gRecord.copy(ImmutableMap.of("id", id, "data", data));
   }
 
+  /** 辅助方法：expectedRowSet。 */
   @Override
   protected StructLikeSet expectedRowSet(Iterable<Record> records) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());

@@ -32,6 +32,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.runtime.BoxedUnit;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：快照表的存储过程，为外部表创建 Iceberg 快照表。
+ *
+ * <p>设计意图：委托 SnapshotTableSparkAction 执行无拷贝快照。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
+ */
 class SnapshotTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -50,26 +59,27 @@ class SnapshotTableProcedure extends BaseProcedure {
   private SnapshotTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new BaseProcedure.Builder<SnapshotTableProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected SnapshotTableProcedure doBuild() {
         return new SnapshotTableProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     String source = args.getString(0);
@@ -105,7 +115,7 @@ class SnapshotTableProcedure extends BaseProcedure {
     SnapshotTable.Result result = action.tableProperties(properties).execute();
     return new InternalRow[] {newInternalRow(result.importedDataFilesCount())};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "SnapshotTableProcedure";

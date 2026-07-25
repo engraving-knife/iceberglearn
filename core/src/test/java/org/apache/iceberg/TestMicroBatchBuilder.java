@@ -29,22 +29,38 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestMicroBatchBuilder，用于验证 Micro Batch Builder 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Micro Batch Builder 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestMicroBatchBuilder extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：micro batch builder。 */
   public TestMicroBatchBuilder(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setup table properties。 */
   @Before
   public void setupTableProperties() {
     table.updateProperties().set(TableProperties.MANIFEST_MIN_MERGE_COUNT, "3").commit();
   }
 
+  /**
+   * 测试场景：generate micro batch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGenerateMicroBatch() {
     add(table.newAppend(), files("A", "B", "C", "D", "E"));
@@ -88,6 +104,11 @@ public class TestMicroBatchBuilder extends TableTestBase {
     filesMatch(Lists.newArrayList("E"), filesToScan(batch3.tasks()));
   }
 
+  /**
+   * 测试场景：generate micro batch with small target size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGenerateMicroBatchWithSmallTargetSize() {
     add(table.newAppend(), files("A", "B", "C", "D", "E"));
@@ -149,6 +170,7 @@ public class TestMicroBatchBuilder extends TableTestBase {
     Assert.assertTrue(batch5.lastIndexOfSnapshot());
   }
 
+  /** 辅助方法：file。 */
   private static DataFile file(String name) {
     return DataFiles.builder(SPEC)
         .withPath(name + ".parquet")
@@ -158,6 +180,7 @@ public class TestMicroBatchBuilder extends TableTestBase {
         .build();
   }
 
+  /** 辅助方法：add。 */
   private static void add(AppendFiles appendFiles, List<DataFile> adds) {
     for (DataFile f : adds) {
       appendFiles.appendFile(f);
@@ -165,6 +188,7 @@ public class TestMicroBatchBuilder extends TableTestBase {
     appendFiles.commit();
   }
 
+  /** 辅助方法：delete。 */
   private static void delete(DeleteFiles deleteFiles, List<DataFile> deletes) {
     for (DataFile f : deletes) {
       deleteFiles.deleteFile(f);
@@ -172,10 +196,12 @@ public class TestMicroBatchBuilder extends TableTestBase {
     deleteFiles.commit();
   }
 
+  /** 辅助方法：files。 */
   private static List<DataFile> files(String... names) {
     return Lists.transform(Lists.newArrayList(names), TestMicroBatchBuilder::file);
   }
 
+  /** 辅助方法：files to scan。 */
   private static List<String> filesToScan(Iterable<FileScanTask> tasks) {
     Iterable<String> filesToRead =
         Iterables.transform(
@@ -187,6 +213,7 @@ public class TestMicroBatchBuilder extends TableTestBase {
     return Lists.newArrayList(filesToRead);
   }
 
+  /** 辅助方法：files match。 */
   private static void filesMatch(List<String> expected, List<String> actual) {
     Collections.sort(expected);
     Collections.sort(actual);

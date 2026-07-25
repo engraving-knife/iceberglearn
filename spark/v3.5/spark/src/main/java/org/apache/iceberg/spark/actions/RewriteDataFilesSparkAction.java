@@ -69,6 +69,27 @@ import org.apache.spark.sql.internal.SQLConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 的重写数据文件（RewriteDataFiles）action 实现。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），actions 子包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>把小文件或布局不佳的数据文件重写为更优的文件集合（bin-pack / sort / zOrder 三种策略）。
+ *   <li>按分区规划文件组（file group），每个组独立重写并可作为独立提交单元。
+ *   <li>支持部分进度（partial progress）：把重写拆为多次提交，单次失败不影响其他成功组。
+ *   <li>支持并发重写线程池、作业顺序控制、自定义过滤器等。
+ * </ul>
+ *
+ * <p>设计意图：构造时关闭 Spark 自适应执行（AQE），保证写出的分区数与重写器预期一致，避免 文件布局被打乱；通过 {@link FileRewriter}
+ * 抽象不同重写策略，commitManager 负责原子提交与冲突回退。 部分进度模式下用独立 CommitService 异步提交，提升并发度并隔离失败影响。
+ *
+ * <p>上下游关系：继承 {@link BaseSnapshotUpdateSparkAction}，实现 {@link RewriteDataFiles}； 被 Spark 过程 {@code
+ * rewrite_data_files} 调用；依赖 SparkBinPackDataRewriter/SparkSortDataRewriter/ SparkZOrderDataRewriter
+ * 等具体重写器与 Iceberg core 的提交管理器。
+ */
 public class RewriteDataFilesSparkAction
     extends BaseSnapshotUpdateSparkAction<RewriteDataFilesSparkAction> implements RewriteDataFiles {
 
@@ -96,18 +117,27 @@ public class RewriteDataFilesSparkAction
   private RewriteJobOrder rewriteJobOrder;
   private FileRewriter<FileScanTask, DataFile> rewriter = null;
 
+  /**
+   * 构造重写数据文件 action。
+   *
+   * <p>逻辑：克隆 SparkSession 避免污染调用方会话；关闭 AQE（自适应查询执行）， 因为 AQE 可能改变写出的分区数，破坏重写器的文件布局预期。
+   *
+   * @param spark SparkSession
+   * @param table 目标表
+   */
   RewriteDataFilesSparkAction(SparkSession spark, Table table) {
     super(spark.cloneSession());
     // Disable Adaptive Query Execution as this may change the output partitioning of our write
     spark().conf().set(SQLConf.ADAPTIVE_EXECUTION_ENABLED().key(), false);
     this.table = table;
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected RewriteDataFilesSparkAction self() {
     return this;
   }
 
+  /** 使用 bin-pack（紧凑打包）策略重写，文件按大小合并。 */
   @Override
   public RewriteDataFilesSparkAction binPack() {
     Preconditions.checkArgument(
@@ -116,6 +146,7 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /** 使用指定排序规则 sort 策略重写。 */
   @Override
   public RewriteDataFilesSparkAction sort(SortOrder sortOrder) {
     Preconditions.checkArgument(
@@ -124,6 +155,7 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /** 使用表自带排序规则 sort 策略重写。 */
   @Override
   public RewriteDataFilesSparkAction sort() {
     Preconditions.checkArgument(
@@ -132,6 +164,7 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /** 使用指定列做 zOrder 策略重写，提升多维查询局部性。 */
   @Override
   public RewriteDataFilesSparkAction zOrder(String... columnNames) {
     Preconditions.checkArgument(
@@ -140,12 +173,21 @@ public class RewriteDataFilesSparkAction
     return this;
   }
 
+  /** 追加文件过滤表达式，只重写符合条件的文件。 */
   @Override
   public RewriteDataFilesSparkAction filter(Expression expression) {
     filter = Expressions.and(filter, expression);
     return this;
   }
 
+  /**
+   * 执行数据文件重写。
+   *
+   * <p>逻辑：取当前快照为起点；默认 bin-pack 策略；校验并初始化选项； 调 {@link #planFileGroups} 按分区规划文件组；若无文件可重写返回空结果； 否则按
+   * partialProgressEnabled 选择部分进度或全量提交模式执行。
+   *
+   * @return 重写结果统计
+   */
   @Override
   public RewriteDataFiles.Result execute() {
     if (table.currentSnapshot() == null) {
@@ -179,6 +221,15 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /**
+   * 规划待重写的文件组（包级可见，便于测试）。
+   *
+   * <p>逻辑：以 startingSnapshotId 扫描文件并应用 filter，按分区分组后再由 rewriter 切分为 多个文件组；返回 StructLikeMap（分区 ->
+   * 文件组列表）。
+   *
+   * @param startingSnapshotId 起始快照 ID
+   * @return 按分区组织的文件组映射
+   */
   StructLikeMap<List<List<FileScanTask>>> planFileGroups(long startingSnapshotId) {
     CloseableIterable<FileScanTask> fileScanTasks =
         table
@@ -202,6 +253,15 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /**
+   * 把扫描任务按分区分组。
+   *
+   * <p>逻辑：遍历任务，若任务文件 specId 与当前表 spec 不一致（旧分区规格）， 视为未分区统一归到 emptyStruct，避免跨分区数据生成过多新文件。
+   *
+   * @param partitionType 分区类型
+   * @param tasks 文件扫描任务
+   * @return 分区到任务列表的映射
+   */
   private StructLikeMap<List<FileScanTask>> groupByPartition(
       StructType partitionType, Iterable<FileScanTask> tasks) {
     StructLikeMap<List<FileScanTask>> filesByPartition = StructLikeMap.create(partitionType);
@@ -225,15 +285,26 @@ public class RewriteDataFilesSparkAction
     return filesByPartition;
   }
 
+  /** 对每个分区的文件列表调用 rewriter.planFileGroups 切分为文件组。 */
   private StructLikeMap<List<List<FileScanTask>>> fileGroupsByPartition(
       StructLikeMap<List<FileScanTask>> filesByPartition) {
     return filesByPartition.transformValues(this::planFileGroups);
   }
 
+  /** 委托 rewriter 把单个分区的任务切分为文件组。 */
   private List<List<FileScanTask>> planFileGroups(List<FileScanTask> tasks) {
     return ImmutableList.copyOf(rewriter.planFileGroups(tasks));
   }
 
+  /**
+   * 在 REWRITE-DATA-FILES 作业组下重写单个文件组（包级可见便于测试）。
+   *
+   * <p>逻辑：构造作业描述，在 JobGroupInfo 上下文中调用 rewriter.rewrite 得到新增文件集合， 设置到 fileGroup 上并返回。
+   *
+   * @param ctx 重写执行上下文
+   * @param fileGroup 待重写文件组
+   * @return 含输出文件的文件组
+   */
   @VisibleForTesting
   RewriteFileGroup rewriteFiles(RewriteExecutionContext ctx, RewriteFileGroup fileGroup) {
     String desc = jobDesc(fileGroup, ctx);
@@ -247,6 +318,7 @@ public class RewriteDataFilesSparkAction
     return fileGroup;
   }
 
+  /** 构造固定大小的重写线程池，线程命名 Rewrite-Service-%d。 */
   private ExecutorService rewriteService() {
     return MoreExecutors.getExitingExecutorService(
         (ThreadPoolExecutor)
@@ -255,11 +327,22 @@ public class RewriteDataFilesSparkAction
                 new ThreadFactoryBuilder().setNameFormat("Rewrite-Service-%d").build()));
   }
 
+  /** 构造提交管理器（包级可见便于测试），用于原子提交重写结果或冲突回退。 */
   @VisibleForTesting
   RewriteDataFilesCommitManager commitManager(long startingSnapshotId) {
     return new RewriteDataFilesCommitManager(table, startingSnapshotId, useStartingSequenceNumber);
   }
 
+  /**
+   * 全量提交模式执行重写。
+   *
+   * <p>逻辑：用线程池并发重写所有文件组，任一组失败则中止并清理已重写组； 全部成功后调用 commitManager 一次性提交。提交冲突抛出带提示的 RuntimeException。
+   *
+   * @param ctx 执行上下文
+   * @param groupStream 文件组流
+   * @param commitManager 提交管理器
+   * @return 重写结果
+   */
   private Result doExecute(
       RewriteExecutionContext ctx,
       Stream<RewriteFileGroup> groupStream,
@@ -325,6 +408,16 @@ public class RewriteDataFilesSparkAction
     return ImmutableRewriteDataFiles.Result.builder().rewriteResults(rewriteResults).build();
   }
 
+  /**
+   * 部分进度模式执行重写。
+   *
+   * <p>逻辑：启动独立 CommitService 异步按 groupsPerCommit 批次提交； 重写任务失败仅记录到 rewriteFailures 不中断；最后汇总成功与失败结果。
+   *
+   * @param ctx 执行上下文
+   * @param groupStream 文件组流
+   * @param commitManager 提交管理器
+   * @return 含部分失败的重写结果
+   */
   private Result doExecuteWithPartialProgress(
       RewriteExecutionContext ctx,
       Stream<RewriteFileGroup> groupStream,
@@ -375,6 +468,11 @@ public class RewriteDataFilesSparkAction
         .build();
   }
 
+  /**
+   * 把按分区的文件组映射展开为排序后的文件组流。
+   *
+   * <p>逻辑：过滤空分区，flatmap 每个分区的文件组为 RewriteFileGroup， 再按 rewriteJobOrder 排序（控制重写先后顺序，如先大后小）。
+   */
   Stream<RewriteFileGroup> toGroupStream(
       RewriteExecutionContext ctx, Map<StructLike, List<List<FileScanTask>>> groupsByPartition) {
     return groupsByPartition.entrySet().stream()
@@ -388,6 +486,7 @@ public class RewriteDataFilesSparkAction
         .sorted(RewriteFileGroup.comparator(rewriteJobOrder));
   }
 
+  /** 构造新的 RewriteFileGroup，分配全局与分区内索引。 */
   private RewriteFileGroup newRewriteGroup(
       RewriteExecutionContext ctx, StructLike partition, List<FileScanTask> tasks) {
     int globalIndex = ctx.currentGlobalIndex();
@@ -401,6 +500,11 @@ public class RewriteDataFilesSparkAction
     return new RewriteFileGroup(info, tasks);
   }
 
+  /**
+   * 校验选项合法性并初始化各运行参数。
+   *
+   * <p>逻辑：合并 action 与 rewriter 的合法选项集合，拒绝未知选项；从 options 读取 并发数、最大提交数、部分进度开关、起始序列号、作业顺序等，并做边界校验。
+   */
   void validateAndInitOptions() {
     Set<String> validOptions = Sets.newHashSet(rewriter.validOptions());
     validOptions.addAll(VALID_OPTIONS);
@@ -452,6 +556,7 @@ public class RewriteDataFilesSparkAction
         PARTIAL_PROGRESS_ENABLED);
   }
 
+  /** 构造单个文件组重写的 Spark UI 作业描述，含文件数、组索引、分区、表名。 */
   private String jobDesc(RewriteFileGroup group, RewriteExecutionContext ctx) {
     StructLike partition = group.info().partition();
     if (partition.size() > 0) {
@@ -476,6 +581,12 @@ public class RewriteDataFilesSparkAction
     }
   }
 
+  /**
+   * 重写执行上下文（包级可见便于测试）。
+   *
+   * <p>设计意图：在并发重写时为每个文件组分配唯一的全局索引与分区内索引， 并提供总组数与分区内组数查询，用于作业描述与进度跟踪。使用 AtomicInteger 与
+   * ConcurrentHashMap 保证线程安全。
+   */
   @VisibleForTesting
   static class RewriteExecutionContext {
     private final StructLikeMap<Integer> numGroupsByPartition;
@@ -483,6 +594,7 @@ public class RewriteDataFilesSparkAction
     private final Map<StructLike, Integer> partitionIndexMap;
     private final AtomicInteger groupIndex;
 
+    /** 构造执行上下文，统计各分区组数与总组数，初始化索引计数器。 */
     RewriteExecutionContext(StructLikeMap<List<List<FileScanTask>>> fileGroupsByPartition) {
       this.numGroupsByPartition = fileGroupsByPartition.transformValues(List::size);
       this.totalGroupCount = numGroupsByPartition.values().stream().reduce(Integer::sum).orElse(0);
@@ -490,18 +602,22 @@ public class RewriteDataFilesSparkAction
       this.groupIndex = new AtomicInteger(1);
     }
 
+    /** 原子地取下一个全局组索引。 */
     public int currentGlobalIndex() {
       return groupIndex.getAndIncrement();
     }
 
+    /** 原子地取指定分区的下一个组内索引。 */
     public int currentPartitionIndex(StructLike partition) {
       return partitionIndexMap.merge(partition, 1, Integer::sum);
     }
 
+    /** 返回指定分区的文件组总数。 */
     public int groupsInPartition(StructLike partition) {
       return numGroupsByPartition.get(partition);
     }
 
+    /** 返回所有分区的文件组总数。 */
     public int totalGroupCount() {
       return totalGroupCount;
     }

@@ -30,15 +30,24 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestPartitionedWritesToWapBranch 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 分区写到wap分支 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestPartitionedWritesToWapBranch extends PartitionedWritesTestBase {
 
   private static final String BRANCH = "test";
 
+  /** 测试分区写到wap分支。 */
   public TestPartitionedWritesToWapBranch(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   @Override
   public void createTables() {
@@ -49,6 +58,7 @@ public class TestPartitionedWritesToWapBranch extends PartitionedWritesTestBase 
     sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b'), (3, 'c')", tableName);
   }
 
+  /** 移除表。 */
   @After
   @Override
   public void removeTables() {
@@ -57,16 +67,19 @@ public class TestPartitionedWritesToWapBranch extends PartitionedWritesTestBase 
     spark.conf().unset(SparkSQLProperties.WAP_ID);
   }
 
+  /** 提交target。 */
   @Override
   protected String commitTarget() {
     return tableName;
   }
 
+  /** 辅助方法：selectTarget。 */
   @Override
   protected String selectTarget() {
     return String.format("%s VERSION AS OF '%s'", tableName, BRANCH);
   }
 
+  /** 测试分支与wap分支cannotboth被集合用于写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBranchAndWapBranchCannotBothBeSetForWrite() {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -80,6 +93,7 @@ public class TestPartitionedWritesToWapBranch extends PartitionedWritesTestBase 
             BRANCH);
   }
 
+  /** 测试wapid与wap分支cannotboth被集合用于写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWapIdAndWapBranchCannotBothBeSetForWrite() {
     String wapId = UUID.randomUUID().toString();
@@ -90,6 +104,7 @@ public class TestPartitionedWritesToWapBranch extends PartitionedWritesTestBase 
             "Cannot set both WAP ID and branch, but got ID [%s] and branch [%s]", wapId, BRANCH);
   }
 
+  /** 断言分区元数据。 */
   @Override
   protected void assertPartitionMetadata(
       String tableName, List<Object[]> expected, String... selectPartitionColumns) {

@@ -36,6 +36,13 @@ import org.apache.iceberg.util.DateTimeUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExpressionUtil 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestExpressionUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExpressionUtil {
   private static final Schema SCHEMA =
       new Schema(
@@ -54,6 +61,11 @@ public class TestExpressionUtil {
   private static final Types.StructType FLOAT_TEST =
       Types.StructType.of(Types.NestedField.optional(1, "test", Types.FloatType.get()));
 
+  /**
+   * 测试场景：Unchanged Unary Predicates。
+   *
+   * <p>验证该方法在 Unchanged Unary Predicates 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnchangedUnaryPredicates() {
     for (Expression unary :
@@ -67,6 +79,11 @@ public class TestExpressionUtil {
     }
   }
 
+  /**
+   * 测试场景：Sanitize In。
+   *
+   * <p>验证该方法在 Sanitize In 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeIn() {
     assertEquals(
@@ -86,6 +103,11 @@ public class TestExpressionUtil {
         .isEqualTo("test IN ((2-digit-int), (3-digit-int))");
   }
 
+  /**
+   * 测试场景：Sanitize Long In。
+   *
+   * <p>验证该方法在 Sanitize Long In 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeLongIn() {
     Object[] tooLongRange =
@@ -112,6 +134,11 @@ public class TestExpressionUtil {
         ExpressionUtil.sanitize(Expressions.in("test", tooLongRange)));
   }
 
+  /**
+   * 测试场景：zero And Negative Number Handling。
+   *
+   * <p>验证该方法在 zero And Negative Number Handling 条件下的行为是否符合预期。
+   */
   @Test
   public void zeroAndNegativeNumberHandling() {
     Assertions.assertThat(
@@ -130,6 +157,11 @@ public class TestExpressionUtil {
             "test IN ((1-digit-int), (1-digit-int), (3-digit-int), (10-digit-int), (10-digit-int), (13-digit-float), (39-digit-float), (309-digit-float))");
   }
 
+  /**
+   * 测试场景：Sanitize Not In。
+   *
+   * <p>验证该方法在 Sanitize Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeNotIn() {
     assertEquals(
@@ -145,6 +177,11 @@ public class TestExpressionUtil {
         .isEqualTo("test NOT IN ((2-digit-int), (3-digit-int))");
   }
 
+  /**
+   * 测试场景：Sanitize Long Not In。
+   *
+   * <p>验证该方法在 Sanitize Long Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeLongNotIn() {
     Object[] tooLongRange =
@@ -172,6 +209,11 @@ public class TestExpressionUtil {
         ExpressionUtil.sanitize(Expressions.notIn("test", tooLongRange)));
   }
 
+  /**
+   * 测试场景：Sanitize Less Than。
+   *
+   * <p>验证该方法在 Sanitize Less Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeLessThan() {
     assertEquals(
@@ -191,6 +233,11 @@ public class TestExpressionUtil {
         .isEqualTo("test < (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Less Than Or Equal。
+   *
+   * <p>验证该方法在 Sanitize Less Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeLessThanOrEqual() {
     assertEquals(
@@ -211,6 +258,11 @@ public class TestExpressionUtil {
         .isEqualTo("test <= (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Greater Than。
+   *
+   * <p>验证该方法在 Sanitize Greater Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeGreaterThan() {
     assertEquals(
@@ -230,6 +282,11 @@ public class TestExpressionUtil {
         .isEqualTo("test > (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Greater Than Or Equal。
+   *
+   * <p>验证该方法在 Sanitize Greater Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeGreaterThanOrEqual() {
     assertEquals(
@@ -251,6 +308,11 @@ public class TestExpressionUtil {
         .isEqualTo("test >= (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Equal。
+   *
+   * <p>验证该方法在 Sanitize Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeEqual() {
     assertEquals(
@@ -270,6 +332,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Not Equal。
+   *
+   * <p>验证该方法在 Sanitize Not Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeNotEqual() {
     assertEquals(
@@ -289,6 +356,11 @@ public class TestExpressionUtil {
         .isEqualTo("test != (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Starts With。
+   *
+   * <p>验证该方法在 Sanitize Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeStartsWith() {
     assertEquals(
@@ -309,6 +381,11 @@ public class TestExpressionUtil {
         .isEqualTo("data STARTS WITH (hash-34d05fb7)");
   }
 
+  /**
+   * 测试场景：Sanitize Not Starts With。
+   *
+   * <p>验证该方法在 Sanitize Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeNotStartsWith() {
     assertEquals(
@@ -330,6 +407,11 @@ public class TestExpressionUtil {
         .isEqualTo("data NOT STARTS WITH (hash-34d05fb7)");
   }
 
+  /**
+   * 测试场景：Sanitize Transformed Term。
+   *
+   * <p>验证该方法在 Sanitize Transformed Term 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTransformedTerm() {
     assertEquals(
@@ -354,6 +436,11 @@ public class TestExpressionUtil {
         .isEqualTo("truncate[2](test) = (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Long。
+   *
+   * <p>验证该方法在 Sanitize Long 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeLong() {
     assertEquals(
@@ -373,6 +460,11 @@ public class TestExpressionUtil {
         .isEqualTo("id = (2-digit-int)");
   }
 
+  /**
+   * 测试场景：Sanitize Float。
+   *
+   * <p>验证该方法在 Sanitize Float 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeFloat() {
     assertEquals(
@@ -392,6 +484,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (2-digit-float)");
   }
 
+  /**
+   * 测试场景：Sanitize Double。
+   *
+   * <p>验证该方法在 Sanitize Double 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeDouble() {
     assertEquals(
@@ -411,6 +508,11 @@ public class TestExpressionUtil {
         .isEqualTo("measurement = (2-digit-float)");
   }
 
+  /**
+   * 测试场景：Sanitize Date。
+   *
+   * <p>验证该方法在 Sanitize Date 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeDate() {
     assertEquals(
@@ -431,6 +533,11 @@ public class TestExpressionUtil {
         .isEqualTo("date = (date)");
   }
 
+  /**
+   * 测试场景：Sanitize Time。
+   *
+   * <p>验证该方法在 Sanitize Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTime() {
     long micros = DateTimeUtil.microsFromTimestamptz(OffsetDateTime.now()) / 1000000;
@@ -454,6 +561,11 @@ public class TestExpressionUtil {
         .isEqualTo("time = (time)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamp。
+   *
+   * <p>验证该方法在 Sanitize Timestamp 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestamp() {
     for (String timestamp :
@@ -480,6 +592,11 @@ public class TestExpressionUtil {
     }
   }
 
+  /**
+   * 测试场景：Sanitize Timestamp About Now。
+   *
+   * <p>验证该方法在 Sanitize Timestamp About Now 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestampAboutNow() {
     // this string is the current UTC time, without a zone offset
@@ -503,6 +620,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-about-now)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamp Past。
+   *
+   * <p>验证该方法在 Sanitize Timestamp Past 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestampPast() {
     String ninetyMinutesAgoLocal =
@@ -529,6 +651,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-1-hours-ago)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamp Last Week。
+   *
+   * <p>验证该方法在 Sanitize Timestamp Last Week 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestampLastWeek() {
     String lastWeekLocal =
@@ -555,6 +682,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-7-days-ago)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamp Future。
+   *
+   * <p>验证该方法在 Sanitize Timestamp Future 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestampFuture() {
     String ninetyMinutesFromNowLocal =
@@ -582,6 +714,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-1-hours-from-now)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamptz About Now。
+   *
+   * <p>验证该方法在 Sanitize Timestamptz About Now 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestamptzAboutNow() {
     // this string is the current time with the local zone offset
@@ -604,6 +741,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-about-now)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamptz Past。
+   *
+   * <p>验证该方法在 Sanitize Timestamptz Past 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestamptzPast() {
     String ninetyMinutesAgoUtc = OffsetDateTime.now().minusMinutes(90).toString();
@@ -625,6 +767,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-1-hours-ago)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamptz Last Week。
+   *
+   * <p>验证该方法在 Sanitize Timestamptz Last Week 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestamptzLastWeek() {
     String lastWeekUtc = OffsetDateTime.now().minusHours(180).toString();
@@ -646,6 +793,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-7-days-ago)");
   }
 
+  /**
+   * 测试场景：Sanitize Timestamptz Future。
+   *
+   * <p>验证该方法在 Sanitize Timestamptz Future 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeTimestamptzFuture() {
     String ninetyMinutesFromNowUtc = OffsetDateTime.now().plusMinutes(90).toString();
@@ -667,6 +819,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (timestamp-1-hours-from-now)");
   }
 
+  /**
+   * 测试场景：Sanitize Date Today。
+   *
+   * <p>验证该方法在 Sanitize Date Today 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeDateToday() {
     String today = LocalDate.now(ZoneOffset.UTC).toString();
@@ -686,6 +843,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (date-today)");
   }
 
+  /**
+   * 测试场景：Sanitize Date Last Week。
+   *
+   * <p>验证该方法在 Sanitize Date Last Week 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeDateLastWeek() {
     String lastWeek = LocalDate.now(ZoneOffset.UTC).minusWeeks(1).toString();
@@ -705,6 +867,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (date-7-days-ago)");
   }
 
+  /**
+   * 测试场景：Sanitize Date Next Week。
+   *
+   * <p>验证该方法在 Sanitize Date Next Week 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeDateNextWeek() {
     String nextWeek = LocalDate.now(ZoneOffset.UTC).plusWeeks(1).toString();
@@ -724,6 +891,11 @@ public class TestExpressionUtil {
         .isEqualTo("test = (date-7-days-from-now)");
   }
 
+  /**
+   * 测试场景：Sanitize String Fallback。
+   *
+   * <p>验证该方法在 Sanitize String Fallback 条件下的行为是否符合预期。
+   */
   @Test
   public void testSanitizeStringFallback() {
     Pattern filterPattern = Pattern.compile("^test = \\(hash-[0-9a-fA-F]{8}\\)$");
@@ -738,6 +910,11 @@ public class TestExpressionUtil {
     }
   }
 
+  /**
+   * 测试场景：Identical Expression Is Equivalent。
+   *
+   * <p>验证该方法在 Identical Expression Is Equivalent 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdenticalExpressionIsEquivalent() {
     Expression[] exprs =
@@ -775,6 +952,11 @@ public class TestExpressionUtil {
     }
   }
 
+  /**
+   * 测试场景：Identical Term Is Equivalent。
+   *
+   * <p>验证该方法在 Identical Term Is Equivalent 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdenticalTermIsEquivalent() {
     UnboundTerm<?>[] terms =
@@ -802,6 +984,11 @@ public class TestExpressionUtil {
     }
   }
 
+  /**
+   * 测试场景：Ref Equivalence。
+   *
+   * <p>验证该方法在 Ref Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testRefEquivalence() {
     assertThat(
@@ -812,6 +999,11 @@ public class TestExpressionUtil {
         .isFalse();
   }
 
+  /**
+   * 测试场景：In Equivalence。
+   *
+   * <p>验证该方法在 In Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testInEquivalence() {
     assertThat(
@@ -862,6 +1054,11 @@ public class TestExpressionUtil {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Inequality Equivalence。
+   *
+   * <p>验证该方法在 Inequality Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testInequalityEquivalence() {
     String[] cols = new String[] {"id", "val", "ts", "date", "time"};
@@ -919,6 +1116,11 @@ public class TestExpressionUtil {
         .isFalse();
   }
 
+  /**
+   * 测试场景：And Equivalence。
+   *
+   * <p>验证该方法在 And Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testAndEquivalence() {
     assertThat(
@@ -933,6 +1135,11 @@ public class TestExpressionUtil {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Or Equivalence。
+   *
+   * <p>验证该方法在 Or Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testOrEquivalence() {
     assertThat(
@@ -947,6 +1154,11 @@ public class TestExpressionUtil {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Not Equivalence。
+   *
+   * <p>验证该方法在 Not Equivalence 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotEquivalence() {
     assertThat(
@@ -961,6 +1173,11 @@ public class TestExpressionUtil {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Selects Partitions。
+   *
+   * <p>验证该方法在 Selects Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testSelectsPartitions() {
     assertThat(
@@ -988,17 +1205,20 @@ public class TestExpressionUtil {
         .isFalse();
   }
 
+  /** 辅助方法：assertEquals。 */
   private void assertEquals(Expression expected, Expression actual) {
     Assertions.assertThat(expected).isInstanceOf(UnboundPredicate.class);
     assertEquals((UnboundPredicate<?>) expected, (UnboundPredicate<?>) actual);
   }
 
+  /** 辅助方法：assertEquals。 */
   private void assertEquals(UnboundPredicate<?> expected, UnboundPredicate<?> actual) {
     assertThat(actual.op()).isEqualTo(expected.op());
     assertEquals(expected.term(), actual.term());
     assertThat(actual.literals()).isEqualTo(expected.literals());
   }
 
+  /** 辅助方法：assertEquals。 */
   private void assertEquals(UnboundTerm<?> expected, UnboundTerm<?> actual) {
     Assertions.assertThat(expected)
         .as("Unknown expected term: " + expected)
@@ -1013,10 +1233,12 @@ public class TestExpressionUtil {
     }
   }
 
+  /** 辅助方法：assertEquals。 */
   private void assertEquals(NamedReference<?> expected, NamedReference<?> actual) {
     assertThat(actual.name()).as("Should reference the same field name").isEqualTo(expected.name());
   }
 
+  /** 辅助方法：assertEquals。 */
   private void assertEquals(UnboundTransform<?, ?> expected, UnboundTransform<?, ?> actual) {
     assertThat(actual.transform())
         .as("Should apply the same transform")

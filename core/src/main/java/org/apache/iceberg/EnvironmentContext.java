@@ -22,8 +22,26 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 运行环境上下文：维护引擎名称/版本等全局属性，用于快照 summary 标识提交来源。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>维护一组全局键值对属性（如引擎名称、引擎版本、Iceberg 版本）。
+ *   <li>在提交快照时把这些属性写入 summary，便于追踪提交来源。
+ * </ul>
+ *
+ * <p>设计意图：使用并发安全的 {@code ConcurrentHashMap} 存储属性，支持多线程读写。 Iceberg 版本在类加载时自动注入。
+ *
+ * <p>上下游关系：被各引擎集成模块在初始化时设置引擎信息；被 {@link SnapshotProducer} 等在构建快照 summary 时读取。
+ */
 public class EnvironmentContext {
+  /** 引擎名称属性键。 */
   public static final String ENGINE_NAME = "engine-name";
+  /** 引擎版本属性键。 */
   public static final String ENGINE_VERSION = "engine-version";
 
   private EnvironmentContext() {}
@@ -35,19 +53,19 @@ public class EnvironmentContext {
   }
 
   /**
-   * Returns a {@link Map} of all properties.
+   * 返回所有环境属性的不可变副本。
    *
-   * @return A {@link Map} of all properties.
+   * @return 属性的不可变映射
    */
   public static Map<String, String> get() {
     return ImmutableMap.copyOf(PROPERTIES);
   }
 
   /**
-   * Will add the given key/value pair in a global properties map.
+   * 向全局属性映射中添加键值对。
    *
-   * @param key The key to add
-   * @param value The value to add
+   * @param key 属性键
+   * @param value 属性值
    */
   public static void put(String key, String value) {
     PROPERTIES.put(key, value);

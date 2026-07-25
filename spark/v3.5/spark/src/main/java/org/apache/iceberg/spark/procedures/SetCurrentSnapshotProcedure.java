@@ -34,12 +34,16 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that sets the current snapshot in a table.
+ * Spark 存储过程：将表的当前快照切换为指定快照或指定引用对应的快照。
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>所属模块：iceberg-spark（procedures 子包，通过 Spark CALL 语句暴露快照管理能力）。
  *
- * @see org.apache.iceberg.ManageSnapshots#setCurrentSnapshot(long)
+ * <p>职责：接收表名与 snapshot_id（或 ref），二选一，调用 {@link
+ * org.apache.iceberg.ManageSnapshots#setCurrentSnapshot(long)} 切换当前快照， 返回切换前后的快照 ID。
+ *
+ * <p>设计意图：snapshot_id 与 ref 互斥，调用前校验；通过 modifyIcebergTable 在修改表的同时 失效引用该表的缓存 Spark 计划。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册，调用 Iceberg 表快照管理 API。
  */
 class SetCurrentSnapshotProcedure extends BaseProcedure {
 
@@ -56,9 +60,10 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
             new StructField("previous_snapshot_id", DataTypes.LongType, true, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<SetCurrentSnapshotProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected SetCurrentSnapshotProcedure doBuild() {
         return new SetCurrentSnapshotProcedure(tableCatalog());
@@ -69,17 +74,25 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
   private SetCurrentSnapshotProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行当前快照切换。
+   *
+   * <p>逻辑：解析表名、snapshot_id 与 ref，校验二者只能提供一个； 记录切换前快照 ID，按 snapshot_id 或 ref 解析目标快照，提交切换并返回前后快照 ID。
+   *
+   * @param args 调用参数行
+   * @return 含 previous_snapshot_id 与 current_snapshot_id 的单行结果
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -102,12 +115,12 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "SetCurrentSnapshotProcedure";
   }
-
+  /** 转换为 SnapshotId。 */
   private long toSnapshotId(Table table, String refName) {
     SnapshotRef ref = table.refs().get(refName);
     ValidationException.check(ref != null, "Cannot find matching snapshot ID for ref " + refName);

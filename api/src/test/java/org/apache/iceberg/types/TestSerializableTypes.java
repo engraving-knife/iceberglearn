@@ -26,7 +26,19 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.TestHelpers;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestSerializableTypes 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestSerializableTypes 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestSerializableTypes {
+  /**
+   * 测试场景：Identity Types。
+   *
+   * <p>验证该方法在 Identity Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityTypes() throws Exception {
     // these types make a strong guarantee than equality, instances are identical
@@ -53,6 +65,11 @@ public class TestSerializableTypes {
     }
   }
 
+  /**
+   * 测试场景：Equal Types。
+   *
+   * <p>验证该方法在 Equal Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualTypes() throws Exception {
     Type[] equalityPrimitives =
@@ -70,6 +87,11 @@ public class TestSerializableTypes {
     }
   }
 
+  /**
+   * 测试场景：Structs。
+   *
+   * <p>验证该方法在 Structs 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructs() throws Exception {
     Types.StructType struct =
@@ -91,6 +113,11 @@ public class TestSerializableTypes {
         .isEqualTo(Types.DecimalType.of(38, 2));
   }
 
+  /**
+   * 测试场景：Maps。
+   *
+   * <p>验证该方法在 Maps 条件下的行为是否符合预期。
+   */
   @Test
   public void testMaps() throws Exception {
     Type[] maps =
@@ -108,6 +135,11 @@ public class TestSerializableTypes {
     }
   }
 
+  /**
+   * 测试场景：Lists。
+   *
+   * <p>验证该方法在 Lists 条件下的行为是否符合预期。
+   */
   @Test
   public void testLists() throws Exception {
     Type[] maps =
@@ -125,6 +157,11 @@ public class TestSerializableTypes {
     }
   }
 
+  /**
+   * 测试场景：Schema。
+   *
+   * <p>验证该方法在 Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchema() throws Exception {
     Schema schema =

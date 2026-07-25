@@ -37,8 +37,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO: publish enumerator monitor metrics like number of pending metrics after FLINK-21000 is
- * resolved
+ * 文件级说明：Iceberg Flink Source 的枚举器抽象基类。
+ *
+ * <p>所属模块：iceberg-flink（source/enumerator 子包），实现 Flink 的 {@link SplitEnumerator} 接口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>协调 split 的发现和分配：通过 {@link SplitAssigner} 管理 split 的分配策略。
+ *   <li>处理 reader 的 split 请求：维护等待 split 的 reader 队列，在有可用 split 时分配。
+ *   <li>处理 reader 上报的已完成 split 和退回的 split。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>将 split 分配策略委托给 {@link SplitAssigner}，enumerator 专注于协调逻辑。
+ *   <li>使用 CompletableFuture + AtomicReference 实现异步等待：当 assigner 无可用 split 时， reader 进入等待状态，待新
+ *       split 发现后通过 future 唤醒。
+ *   <li>使用自定义 SplitRequestEvent 携带已完成 split id，而非 Flink 默认的 split 请求机制。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link IcebergSource} 创建；通过 {@link SplitAssigner} 管理 split； 与 reader 通过 SourceEvent
+ * 通信。
  */
 abstract class AbstractIcebergEnumerator
     implements SplitEnumerator<IcebergSourceSplit, IcebergEnumeratorState> {
@@ -49,6 +70,12 @@ abstract class AbstractIcebergEnumerator
   private final Map<Integer, String> readersAwaitingSplit;
   private final AtomicReference<CompletableFuture<Void>> availableFuture;
 
+  /**
+   * 构造方法。
+   *
+   * @param enumeratorContext Flink SplitEnumerator 上下文
+   * @param assigner split 分配器
+   */
   AbstractIcebergEnumerator(
       SplitEnumeratorContext<IcebergSourceSplit> enumeratorContext, SplitAssigner assigner) {
     this.enumeratorContext = enumeratorContext;
@@ -67,6 +94,12 @@ abstract class AbstractIcebergEnumerator
     assigner.close();
   }
 
+  /**
+   * 处理 Flink 默认的 split 请求（不支持，Iceberg 使用自定义事件）。
+   *
+   * <p>设计要点：Iceberg source 使用 {@link SplitRequestEvent} 自定义事件携带已完成 split id， 不走 Flink 默认的
+   * handleSplitRequest 路径。
+   */
   @Override
   public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
     // Iceberg source uses custom split request event to piggyback finished split ids.

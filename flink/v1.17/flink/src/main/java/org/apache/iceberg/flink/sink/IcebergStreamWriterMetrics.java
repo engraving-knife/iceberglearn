@@ -27,6 +27,18 @@ import org.apache.flink.metrics.Histogram;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.iceberg.io.WriteResult;
 
+/**
+ * Iceberg 流式写入器的指标收集器。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），将写入相关指标注册到 Flink MetricGroup。
+ *
+ * <p>职责：统计已刷写的数据/删除/引用数据文件数量、最近一次刷写耗时， 以及数据/删除文件大小的直方图分布。
+ *
+ * <p>设计意图：直方图使用 1024 容量的滑动窗口 reservoir（约 8KB），在内存占用与百分位精度间取得平衡； 文件大小直方图在刷写结果产生时即更新，避免在
+ * CommitSummary 中额外维护大小列表。
+ *
+ * <p>上下游关系：被 {@link IcebergStreamWriter} 调用以上报指标。
+ */
 class IcebergStreamWriterMetrics {
   // 1,024 reservoir size should cost about 8KB, which is quite small.
   // It should also produce good accuracy for histogram distribution (like percentiles).
@@ -39,6 +51,12 @@ class IcebergStreamWriterMetrics {
   private final Histogram dataFilesSizeHistogram;
   private final Histogram deleteFilesSizeHistogram;
 
+  /**
+   * 构造指标收集器，在 IcebergStreamWriter/table 分组下注册各 Counter/Gauge/Histogram。
+   *
+   * @param metrics Flink 指标组
+   * @param fullTableName 完整表名
+   */
   IcebergStreamWriterMetrics(MetricGroup metrics, String fullTableName) {
     MetricGroup writerMetrics =
         metrics.addGroup("IcebergStreamWriter").addGroup("table", fullTableName);
@@ -62,6 +80,13 @@ class IcebergStreamWriterMetrics {
             new DropwizardHistogramWrapper(dropwizardDeleteFilesSizeHistogram));
   }
 
+  /**
+   * 根据刷写结果更新指标。
+   *
+   * <p>逻辑：累加数据/删除/引用数据文件计数，并将各文件大小更新到对应直方图。
+   *
+   * @param result 刷写结果
+   */
   void updateFlushResult(WriteResult result) {
     flushedDataFiles.inc(result.dataFiles().length);
     flushedDeleteFiles.inc(result.deleteFiles().length);
@@ -83,6 +108,7 @@ class IcebergStreamWriterMetrics {
             });
   }
 
+  /** 设置最近一次刷写耗时（毫秒）。 */
   void flushDuration(long flushDurationMs) {
     lastFlushDurationMs.set(flushDurationMs);
   }

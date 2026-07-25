@@ -44,17 +44,32 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestReplaceTransaction，用于验证 Replace Transaction 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Replace Transaction 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestReplaceTransaction extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：replace transaction。 */
   public TestReplaceTransaction(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：replace transaction with custom sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransactionWithCustomSortOrder() {
     Snapshot start = table.currentSnapshot();
@@ -101,6 +116,11 @@ public class TestReplaceTransaction extends TableTestBase {
     Assert.assertEquals("Transform must match", transform, sortOrder.fields().get(0).transform());
   }
 
+  /**
+   * 测试场景：replace transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransaction() {
     Schema newSchema =
@@ -142,6 +162,11 @@ public class TestReplaceTransaction extends TableTestBase {
     Assert.assertTrue("Table should be unsorted", table.sortOrder().isUnsorted());
   }
 
+  /**
+   * 测试场景：replace with incompatible schema update。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceWithIncompatibleSchemaUpdate() {
     Assume.assumeTrue(
@@ -170,6 +195,11 @@ public class TestReplaceTransaction extends TableTestBase {
         table.schema().asStruct());
   }
 
+  /**
+   * 测试场景：replace with new partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceWithNewPartitionSpec() {
     PartitionSpec newSpec = PartitionSpec.unpartitioned();
@@ -206,6 +236,11 @@ public class TestReplaceTransaction extends TableTestBase {
     V1Assert.assertEquals("Table should have a spec with one void field", v1Expected, table.spec());
   }
 
+  /**
+   * 测试场景：replace with new data。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceWithNewData() {
     Snapshot start = table.currentSnapshot();
@@ -235,6 +270,11 @@ public class TestReplaceTransaction extends TableTestBase {
     validateSnapshot(null, table.currentSnapshot(), FILE_B, FILE_C, FILE_D);
   }
 
+  /**
+   * 测试场景：replace detects uncommitted change on commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceDetectsUncommittedChangeOnCommit() {
     Assert.assertEquals("Version should be 0", 0L, (long) version());
@@ -254,6 +294,11 @@ public class TestReplaceTransaction extends TableTestBase {
     Assert.assertEquals("Version should be 0", 0L, (long) version());
   }
 
+  /**
+   * 测试场景：replace detects uncommitted change on table commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceDetectsUncommittedChangeOnTableCommit() {
     Assert.assertEquals("Version should be 0", 0L, (long) version());
@@ -274,6 +319,11 @@ public class TestReplaceTransaction extends TableTestBase {
     Assert.assertEquals("Version should be 0", 0L, (long) version());
   }
 
+  /**
+   * 测试场景：replace transaction retry。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransactionRetry() {
     Snapshot start = table.currentSnapshot();
@@ -306,6 +356,11 @@ public class TestReplaceTransaction extends TableTestBase {
     validateSnapshot(null, table.currentSnapshot(), FILE_B, FILE_C, FILE_D);
   }
 
+  /**
+   * 测试场景：replace transaction conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransactionConflict() {
     Snapshot start = table.currentSnapshot();
@@ -338,6 +393,11 @@ public class TestReplaceTransaction extends TableTestBase {
         "Should clean up replace manifests", manifests, Sets.newHashSet(listManifestFiles()));
   }
 
+  /**
+   * 测试场景：replace to create and append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceToCreateAndAppend() throws IOException {
     File tableDir = temp.newFolder();
@@ -380,6 +440,11 @@ public class TestReplaceTransaction extends TableTestBase {
     validateSnapshot(null, meta.currentSnapshot(), FILE_A, FILE_B);
   }
 
+  /**
+   * 测试场景：replace transaction with unknown state。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransactionWithUnknownState() {
     Schema newSchema =
@@ -425,6 +490,11 @@ public class TestReplaceTransaction extends TableTestBase {
     validateSnapshot(null, table.currentSnapshot(), FILE_B);
   }
 
+  /**
+   * 测试场景：create transaction with unknown state。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTransactionWithUnknownState() throws IOException {
     File tableDir = temp.newFolder();
@@ -479,6 +549,7 @@ public class TestReplaceTransaction extends TableTestBase {
     validateSnapshot(null, meta.currentSnapshot(), FILE_A, FILE_B);
   }
 
+  /** 辅助方法：assign fresh ids。 */
   private static Schema assignFreshIds(Schema schema) {
     AtomicInteger lastColumnId = new AtomicInteger(0);
     return TypeUtil.assignFreshIds(schema, lastColumnId::incrementAndGet);

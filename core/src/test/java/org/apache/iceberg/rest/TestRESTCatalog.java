@@ -97,6 +97,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+/**
+ * 测试类：TestRESTCatalog，用于验证 REST Catalog 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 REST Catalog 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   private static final ObjectMapper MAPPER = RESTObjectMapper.mapper();
   private static final ResourcePaths RESOURCE_PATHS =
@@ -108,6 +116,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   private JdbcCatalog backendCatalog;
   private Server httpServer;
 
+  /** 辅助方法：create catalog。 */
   @BeforeEach
   public void createCatalog() throws Exception {
     File warehouse = temp.toFile();
@@ -134,6 +143,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
 
     RESTCatalogAdapter adaptor =
         new RESTCatalogAdapter(backendCatalog) {
+          /** 辅助方法：execute。 */
           @Override
           public <T extends RESTResponse> T execute(
               RESTCatalogAdapter.HTTPMethod method,
@@ -193,6 +203,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             CatalogProperties.URI, httpServer.getURI().toString(), "credential", "catalog:12345"));
   }
 
+  /** 辅助方法：round trip serialize。 */
   @SuppressWarnings("unchecked")
   public static <T> T roundTripSerialize(T payload, String description) {
     if (payload != null) {
@@ -211,6 +222,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     return null;
   }
 
+  /** 辅助方法：close catalog。 */
   @AfterEach
   public void closeCatalog() throws Exception {
     if (restCatalog != null) {
@@ -227,21 +239,25 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     }
   }
 
+  /** 辅助方法：catalog。 */
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
   }
 
+  /** 辅助方法：supports namespace properties。 */
   @Override
   protected boolean supportsNamespaceProperties() {
     return true;
   }
 
+  /** 辅助方法：supports server side retry。 */
   @Override
   protected boolean supportsServerSideRetry() {
     return true;
   }
 
+  /** 辅助方法：supports nested namespaces。 */
   @Override
   protected boolean supportsNestedNamespaces() {
     return true;
@@ -253,6 +269,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   public void testConfigRoute() throws IOException {
     RESTClient testClient =
         new RESTCatalogAdapter(backendCatalog) {
+          /** 辅助方法：get。 */
           @Override
           public <T extends RESTResponse> T get(
               String path,
@@ -302,6 +319,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     restCat.close();
   }
 
+  /**
+   * 测试场景：initialize with bad arguments。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInitializeWithBadArguments() throws IOException {
     RESTCatalog restCat = new RESTCatalog();
@@ -317,6 +339,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     restCat.close();
   }
 
+  /**
+   * 测试场景：catalog basic bearer token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogBasicBearerToken() {
     Map<String, String> catalogHeaders = ImmutableMap.of("Authorization", "Bearer bearer-token");
@@ -351,6 +378,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogCredential() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -398,6 +430,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog bearer token with client credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogBearerTokenWithClientCredential() {
     Map<String, String> contextHeaders =
@@ -451,6 +488,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog credential with client credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogCredentialWithClientCredential() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -516,6 +558,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog bearer token and credential with client credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogBearerTokenAndCredentialWithClientCredential() {
     Map<String, String> contextHeaders =
@@ -588,6 +635,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：client bearer token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientBearerToken() {
     testClientAuth(
@@ -603,6 +655,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of("Authorization", "Bearer client-bearer-token"));
   }
 
+  /**
+   * 测试场景：client credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientCredential() {
     testClientAuth(
@@ -617,6 +674,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=user"));
   }
 
+  /**
+   * 测试场景：client id token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientIDToken() {
     testClientAuth(
@@ -631,6 +693,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Authorization", "Bearer token-exchange-token:sub=id-token,act=bearer-token"));
   }
 
+  /**
+   * 测试场景：client access token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientAccessToken() {
     testClientAuth(
@@ -644,6 +711,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Authorization", "Bearer token-exchange-token:sub=access-token,act=bearer-token"));
   }
 
+  /**
+   * 测试场景：client jwt token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientJWTToken() {
     testClientAuth(
@@ -656,6 +728,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Authorization", "Bearer token-exchange-token:sub=jwt-token,act=bearer-token"));
   }
 
+  /**
+   * 测试场景：client sam 2 token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientSAML2Token() {
     testClientAuth(
@@ -667,6 +744,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Authorization", "Bearer token-exchange-token:sub=saml2-token,act=bearer-token"));
   }
 
+  /**
+   * 测试场景：client sam 1 token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClientSAML1Token() {
     testClientAuth(
@@ -676,6 +758,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Authorization", "Bearer token-exchange-token:sub=saml1-token,act=bearer-token"));
   }
 
+  /**
+   * 测试场景：client auth。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   private void testClientAuth(
       String catalogToken, Map<String, String> credentials, Map<String, String> expectedHeaders) {
     Map<String, String> catalogHeaders = ImmutableMap.of("Authorization", "Bearer " + catalogToken);
@@ -727,6 +814,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：table bearer token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableBearerToken() {
     testTableAuth(
@@ -737,6 +829,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of("Authorization", "Bearer table-bearer-token"));
   }
 
+  /**
+   * 测试场景：table id token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableIDToken() {
     testTableAuth(
@@ -749,6 +846,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "Bearer token-exchange-token:sub=table-id-token,act=token-exchange-token:sub=id-token,act=catalog"));
   }
 
+  /**
+   * 测试场景：table credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableCredential() {
     testTableAuth(
@@ -759,6 +861,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=table-user"));
   }
 
+  /**
+   * 测试场景：snapshot params。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotParams() {
     assertThat(SnapshotMode.ALL.params()).isEqualTo(ImmutableMap.of("snapshots", "all"));
@@ -766,6 +873,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     assertThat(SnapshotMode.REFS.params()).isEqualTo(ImmutableMap.of("snapshots", "refs"));
   }
 
+  /**
+   * 测试场景：table snapshot loading。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableSnapshotLoading() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -860,6 +972,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：table snapshot loading with diverged branches。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(strings = {"1", "2"})
   public void testTableSnapshotLoadingWithDivergedBranches(String formatVersion) {
@@ -981,6 +1098,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .hasSizeGreaterThan(Lists.newArrayList(table.snapshots()).size());
   }
 
+  /**
+   * 测试场景：lazy snapshot loading with diverged history。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void lazySnapshotLoadingWithDivergedHistory() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -1048,6 +1170,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     assertThat(refsTables.history()).hasSize(numSnapshots);
   }
 
+  /**
+   * 测试场景：table auth。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   public void testTableAuth(
       String catalogToken,
       Map<String, String> credentials,
@@ -1196,6 +1323,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog token refresh。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogTokenRefresh() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -1303,6 +1435,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             });
   }
 
+  /**
+   * 测试场景：catalog refreshed token is used。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogRefreshedTokenIsUsed() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -1407,6 +1544,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             });
   }
 
+  /**
+   * 测试场景：catalog with custom metrics reporter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogWithCustomMetricsReporter() throws IOException {
     this.restCatalog =
@@ -1452,12 +1594,18 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   public static class CustomMetricsReporter implements MetricsReporter {
     static final AtomicInteger COUNTER = new AtomicInteger(0);
 
+    /** 辅助方法：report。 */
     @Override
     public void report(MetricsReport report) {
       COUNTER.incrementAndGet();
     }
   }
 
+  /**
+   * 测试场景：catalog expired bearer token refresh without credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogExpiredBearerTokenRefreshWithoutCredential() {
     // expires at epoch second = 1
@@ -1476,6 +1624,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     catalog.initialize("prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "token", token));
   }
 
+  /**
+   * 测试场景：catalog expired bearer token is refreshed with credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogExpiredBearerTokenIsRefreshedWithCredential() {
     // expires at epoch second = 1
@@ -1565,6 +1718,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog valid bearer token is not refreshed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogValidBearerTokenIsNotRefreshed() {
     // expires at epoch second = 19999999999
@@ -1607,6 +1765,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog token refresh fails and uses credential for refresh。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogTokenRefreshFailsAndUsesCredentialForRefresh() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -1743,6 +1906,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             });
   }
 
+  /**
+   * 测试场景：catalog with custom token scope。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogWithCustomTokenScope() {
     Map<String, String> emptyHeaders = ImmutableMap.of();
@@ -1836,6 +2004,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             });
   }
 
+  /**
+   * 测试场景：catalog token refresh disabled with token。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   public void testCatalogTokenRefreshDisabledWithToken() {
     String token = "some-token";
     Map<String, String> catalogHeaders = ImmutableMap.of("Authorization", "Bearer " + token);
@@ -1892,6 +2065,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：catalog token refresh disabled with credential。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogTokenRefreshDisabledWithCredential() {
     Map<String, String> catalogHeaders =
@@ -1946,6 +2124,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any());
   }
 
+  /**
+   * 测试场景：diff against single table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void diffAgainstSingleTable() {
     Namespace namespace = Namespace.of("namespace");
@@ -1977,6 +2160,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     assertThat(loaded.spec().fields()).isEqualTo(expectedSpec.fields());
   }
 
+  /**
+   * 测试场景：multiple diffs against multiple tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void multipleDiffsAgainstMultipleTables() {
     Namespace namespace = Namespace.of("multiDiffNamespace");
@@ -2019,6 +2207,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isEqualTo(expectedSchema2.asStruct());
   }
 
+  /**
+   * 测试场景：multiple diffs against multiple tables last fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void multipleDiffsAgainstMultipleTablesLastFails() {
     Namespace namespace = Namespace.of("multiDiffNamespace");
@@ -2068,6 +2261,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     assertThat(schema2.columns()).hasSize(1);
   }
 
+  /**
+   * 测试场景：cleanup uncommited files for cleanable failures。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCleanupUncommitedFilesForCleanableFailures() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2099,6 +2297,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isInstanceOf(NotFoundException.class);
   }
 
+  /**
+   * 测试场景：no cleanup for non cleanable exceptions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoCleanupForNonCleanableExceptions() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2124,6 +2327,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isTrue();
   }
 
+  /**
+   * 测试场景：cleanup cleanable exceptions create。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCleanupCleanableExceptionsCreate() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2158,6 +2366,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isInstanceOf(NotFoundException.class);
   }
 
+  /**
+   * 测试场景：no cleanup for non cleanable create transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoCleanupForNonCleanableCreateTransaction() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2191,6 +2404,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isTrue();
   }
 
+  /**
+   * 测试场景：cleanup cleanable exceptions replace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCleanupCleanableExceptionsReplace() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2224,6 +2442,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isInstanceOf(NotFoundException.class);
   }
 
+  /**
+   * 测试场景：no cleanup for non cleanable replace transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoCleanupForNonCleanableReplaceTransaction() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
@@ -2256,6 +2479,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         .isTrue();
   }
 
+  /** 辅助方法：catalog。 */
   private Catalog catalog(RESTCatalogAdapter adapter) {
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);

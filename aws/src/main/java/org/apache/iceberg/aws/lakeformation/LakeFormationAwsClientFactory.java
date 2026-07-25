@@ -37,16 +37,22 @@ import software.amazon.awssdk.services.lakeformation.model.PermissionType;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * This implementation of AwsClientFactory is used by default if {@link
- * org.apache.iceberg.aws.AwsProperties#GLUE_LAKEFORMATION_ENABLED} is set to true. It uses the
- * default credential chain to assume role. Third-party engines can further extend this class to any
- * custom credential setup.
+ * 模块：aws-lakeformation，AWS 客户端工厂实现。
  *
- * <p>It extends AssumeRoleAwsClientFactory to reuse the assuming-role approach for all clients
- * except S3 and KMS. If a table is registered with LakeFormation, the S3/KMS client will use
- * LakeFormation vended credentials, otherwise it uses AssumingRole credentials. For using
- * LakeFormation credential vending for a third-party query engine, see:
- * https://docs.aws.amazon.com/lake-formation/latest/dg/register-query-engine.html
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>当 {@link org.apache.iceberg.aws.AwsProperties#GLUE_LAKEFORMATION_ENABLED} 为 true 时作为默认
+ *       AwsClientFactory
+ *   <li>使用默认凭证链 assume role；若表已注册到 LakeFormation，则为 S3/KMS 客户端使用 LakeFormation 下发的临时凭证
+ *   <li>第三方引擎可继承本类以实现自定义凭证配置
+ * </ul>
+ *
+ * <p>设计意图：继承 {@link AssumeRoleAwsClientFactory} 复用 assume-role 方式创建除 S3/KMS 外的所有客户端； 表未注册
+ * LakeFormation 时回退到 AssumeRole 凭证，保证兼容性。
+ *
+ * <p>上下游关系：上游由 Iceberg catalog 配置加载；下游产出 S3/KMS/Glue 等客户端供 {@code S3FileIO}、 {@code GlueCatalog}
+ * 使用。第三方查询引擎接入参考： https://docs.aws.amazon.com/lake-formation/latest/dg/register-query-engine.html
  */
 public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
 
@@ -57,8 +63,13 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
   private String glueCatalogId;
   private String glueAccountId;
 
+  /** 默认构造方法。 */
   public LakeFormationAwsClientFactory() {}
 
+  /**
+   * 初始化工厂：校验 STS assume role 会话标签必须包含 {@link #LF_AUTHORIZED_CALLER}， 并读取 LakeFormation 数据库名、表名、Glue
+   * catalog id 与账号 id 等配置。
+   */
   @Override
   public void initialize(Map<String, String> catalogProperties) {
     super.initialize(catalogProperties);
@@ -74,6 +85,7 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
     this.glueAccountId = catalogProperties.get(AwsProperties.GLUE_ACCOUNT_ID);
   }
 
+  /** 创建 S3 客户端：若表已注册 LakeFormation 则使用 LakeFormation 下发凭证，否则回退到父类 assume-role 凭证。 */
   @Override
   public S3Client s3() {
     if (isTableRegisteredWithLakeFormation()) {
@@ -90,6 +102,7 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
     }
   }
 
+  /** 创建 KMS 客户端：若表已注册 LakeFormation 则使用 LakeFormation 下发凭证，否则回退到父类 assume-role 凭证。 */
   @Override
   public KmsClient kms() {
     if (isTableRegisteredWithLakeFormation()) {
@@ -104,6 +117,11 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
     }
   }
 
+  /**
+   * 通过 Glue 查询表是否已注册到 LakeFormation。
+   *
+   * <p>逻辑：校验数据库名与表名非空，调用 Glue GetTable 接口并返回注册状态。
+   */
   private boolean isTableRegisteredWithLakeFormation() {
     Preconditions.checkArgument(
         dbName != null && !dbName.isEmpty(), "Database name can not be empty");
@@ -121,6 +139,7 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
     return response.table().isRegisteredWithLakeFormation();
   }
 
+  /** 构建 Glue 表的 ARN，格式为 arn:{partition}:glue:{region}:{accountId}:table/{db}/{table}。 */
   private String buildTableArn() {
     Preconditions.checkArgument(
         glueAccountId != null && !glueAccountId.isEmpty(),
@@ -131,6 +150,7 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
         "arn:%s:glue:%s:%s:table/%s/%s", partitionName, region(), glueAccountId, dbName, tableName);
   }
 
+  /** 创建 LakeFormation 客户端，应用 assume-role 与 HTTP 客户端配置。 */
   private LakeFormationClient lakeFormation() {
     return LakeFormationClient.builder()
         .applyMutation(this::applyAssumeRoleConfigurations)
@@ -138,6 +158,7 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
         .build();
   }
 
+  /** LakeFormation 临时表凭证提供者，按需向 LakeFormation 请求表的临时凭证。 */
   static class LakeFormationCredentialsProvider implements AwsCredentialsProvider {
     private LakeFormationClient client;
     private String tableArn;
@@ -147,6 +168,14 @@ public class LakeFormationAwsClientFactory extends AssumeRoleAwsClientFactory {
       this.tableArn = tableArn;
     }
 
+    /**
+     * 解析并返回 LakeFormation 临时表凭证。
+     *
+     * <p>逻辑：构建 GetTemporaryGlueTableCredentialsRequest（仅支持 COLUMN_PERMISSION）， 调用 LakeFormation
+     * 获取临时凭证，包装为 AwsSessionCredentials 返回。
+     *
+     * @return AWS 会话凭证
+     */
     @Override
     public AwsCredentials resolveCredentials() {
       GetTemporaryGlueTableCredentialsRequest getTemporaryGlueTableCredentialsRequest =

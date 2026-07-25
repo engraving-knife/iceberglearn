@@ -19,5 +19,12 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+/**
+ * Spark Catalyst 逻辑计划节点，承载配置项。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 BranchOptions。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class BranchOptions (snapshotId: Option[Long], numSnapshots: Option[Long],
                           snapshotRetain: Option[Long], snapshotRefRetain: Option[Long])

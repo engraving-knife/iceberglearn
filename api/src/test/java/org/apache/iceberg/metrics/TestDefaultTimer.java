@@ -34,8 +34,20 @@ import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDefaultTimer 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDefaultTimer 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDefaultTimer {
 
+  /**
+   * 测试场景：null Check。
+   *
+   * <p>验证该方法在 null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void nullCheck() {
     Assertions.assertThatThrownBy(() -> new DefaultTimer(null))
@@ -43,6 +55,11 @@ public class TestDefaultTimer {
         .hasMessage("Invalid time unit: null");
   }
 
+  /**
+   * 测试场景：name And Unit。
+   *
+   * <p>验证该方法在 name And Unit 条件下的行为是否符合预期。
+   */
   @Test
   public void nameAndUnit() {
     DefaultTimer timer = new DefaultTimer(TimeUnit.MINUTES);
@@ -50,6 +67,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(timer.isNoop()).isFalse();
   }
 
+  /**
+   * 测试场景：noop。
+   *
+   * <p>验证该方法在 noop 条件下的行为是否符合预期。
+   */
   @Test
   public void noop() {
     Assertions.assertThat(Timer.NOOP.isNoop()).isTrue();
@@ -64,6 +86,11 @@ public class TestDefaultTimer {
         .hasMessage("NOOP timer has no unit");
   }
 
+  /**
+   * 测试场景：record Negative Amount。
+   *
+   * <p>验证该方法在 record Negative Amount 条件下的行为是否符合预期。
+   */
   @Test
   public void recordNegativeAmount() {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -75,6 +102,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(timer.totalDuration()).isEqualTo(Duration.ZERO);
   }
 
+  /**
+   * 测试场景：multiple Stops。
+   *
+   * <p>验证该方法在 multiple Stops 条件下的行为是否符合预期。
+   */
   @Test
   public void multipleStops() {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -86,6 +118,11 @@ public class TestDefaultTimer {
         .hasMessage("stop() called multiple times");
   }
 
+  /**
+   * 测试场景：closeable Timer。
+   *
+   * <p>验证该方法在 closeable Timer 条件下的行为是否符合预期。
+   */
   @Test
   public void closeableTimer() throws InterruptedException {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -98,6 +135,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(timer.totalDuration()).isGreaterThan(Duration.ZERO);
   }
 
+  /**
+   * 测试场景：measure Runnable。
+   *
+   * <p>验证该方法在 measure Runnable 条件下的行为是否符合预期。
+   */
   @Test
   public void measureRunnable() {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -123,6 +165,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(secondDuration).isGreaterThan(duration);
   }
 
+  /**
+   * 测试场景：measure Callable。
+   *
+   * <p>验证该方法在 measure Callable 条件下的行为是否符合预期。
+   */
   @Test
   public void measureCallable() throws Exception {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -149,6 +196,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(secondDuration).isGreaterThan(duration);
   }
 
+  /**
+   * 测试场景：measure Supplier。
+   *
+   * <p>验证该方法在 measure Supplier 条件下的行为是否符合预期。
+   */
   @Test
   public void measureSupplier() {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -175,6 +227,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(secondDuration).isGreaterThan(duration);
   }
 
+  /**
+   * 测试场景：measure Nested Runnables。
+   *
+   * <p>验证该方法在 measure Nested Runnables 条件下的行为是否符合预期。
+   */
   @Test
   public void measureNestedRunnables() {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);
@@ -213,6 +270,11 @@ public class TestDefaultTimer {
     Assertions.assertThat(outerDuration).isGreaterThan(innerDuration);
   }
 
+  /**
+   * 测试场景：multi Threaded Starts。
+   *
+   * <p>验证该方法在 multi Threaded Starts 条件下的行为是否符合预期。
+   */
   @Test
   public void multiThreadedStarts() throws InterruptedException {
     Timer timer = new DefaultTimer(TimeUnit.NANOSECONDS);

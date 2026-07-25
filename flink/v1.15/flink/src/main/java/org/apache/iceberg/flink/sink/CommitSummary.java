@@ -24,6 +24,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 
+/**
+ * 提交摘要，汇总一次 commit 的数据文件统计信息。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：记录已写入的数据文件、删除文件、重写文件等数量与字节数。
+ *
+ * <p>设计意图：值对象；上下游：被 IcebergFilesCommitter 在 commit 前汇总，供 metrics 上报。
+ */
 class CommitSummary {
 
   private final AtomicLong dataFilesCount = new AtomicLong();

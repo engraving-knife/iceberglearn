@@ -27,7 +27,11 @@ import org.apache.spark.sql.connector.write.Write
 import org.apache.spark.sql.types.DataType
 
 /**
- * Replace data in an existing table.
+ * Spark Catalyst 逻辑计划节点。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 ReplaceIcebergData。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
  */
 case class ReplaceIcebergData(
     table: NamedRelation,
@@ -44,6 +48,10 @@ case class ReplaceIcebergData(
     query.output.filter(attr => tableAttrNames.exists(conf.resolver(_, attr.name)))
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def outputResolved: Boolean = {
     assert(table.resolved && query.resolved,
       "`outputResolved` can only be called when `table` and `query` are both resolved.")
@@ -63,6 +71,10 @@ case class ReplaceIcebergData(
       })
   }
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: LogicalPlan): ReplaceIcebergData = {
     copy(query = newChild)
   }

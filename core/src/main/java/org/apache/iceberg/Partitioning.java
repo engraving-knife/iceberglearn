@@ -38,14 +38,41 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types.NestedField;
 import org.apache.iceberg.types.Types.StructType;
 
+/**
+ * 文件级说明：分区相关工具方法。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>判断分区规范是否包含 bucket 字段。
+ *   <li>根据分区规范生成推荐的 sort order（聚簇数据）。
+ *   <li>构建 grouping key 类型 / 统一 partition type，支持多 spec 表。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>通过 {@link PartitionSpecVisitor} 模式遍历分区字段，避免对每种 transform 重复 if/else。
+ *   <li>grouping key 取所有 spec 的交集（且非 void transform），保证 Iceberg 能保证不同 key 值的记录互不相交；统一 partition
+ *       type 取并集，用于元数据表统一展示。
+ *   <li>对 v1 表中“已删除分区字段（被替换为 void transform）”做特殊处理，避免类型丢失。
+ * </ul>
+ *
+ * <p>上下游关系：被扫描层、元数据表（如 partitions 表）、写入层调用；依赖 {@link PartitionSpecVisitor}、{@link SortOrder}、{@link
+ * Transform} 等。
+ */
 public class Partitioning {
+
+  /** 私有构造：工具类禁止实例化。 */
   private Partitioning() {}
 
   /**
-   * Check whether the spec contains a bucketed partition field.
+   * 判断分区规范中是否包含 bucket 变换的字段。
    *
-   * @param spec a partition spec
-   * @return true if the spec has field with a bucket transform
+   * @param spec 分区规范
+   * @return true 表示存在 bucket 字段
    */
   public static boolean hasBucketField(PartitionSpec spec) {
     List<Boolean> bucketList =
@@ -103,14 +130,12 @@ public class Partitioning {
   }
 
   /**
-   * Create a sort order that will group data for a partition spec.
+   * 根据分区规范生成推荐的排序顺序，使数据按分区聚簇。
    *
-   * <p>If the partition spec contains bucket columns, the sort order will also have a field to sort
-   * by a column that is bucketed in the spec. The column is selected by the highest number of
-   * buckets in the transform.
+   * <p>若分区规范包含 bucket 字段，会在排序末尾追加桶数最多的列以提升聚簇效果。
    *
-   * @param spec a partition spec
-   * @return a sort order that will cluster data for the spec
+   * @param spec 分区规范
+   * @return 聚簇数据的排序顺序
    */
   public static SortOrder sortOrderFor(PartitionSpec spec) {
     if (spec.isUnpartitioned()) {
@@ -130,6 +155,17 @@ public class Partitioning {
     return builder.build();
   }
 
+  /**
+   * 把分区字段转换为 sort order 字段的访问器：每个分区字段对应一条 sort 字段。
+   *
+   * <p>设计要点：
+   *
+   * <ul>
+   *   <li>identity / bucket / truncate / 时间变换均按相同 transform 加入 sort；
+   *   <li>{@code alwaysNull} 不加入 sort；
+   *   <li>bucket 字段额外记录“桶数最大”的列名，调用方会在末尾追加该列以提升聚簇效果。
+   * </ul>
+   */
   private static class SpecToOrderVisitor implements PartitionSpecVisitor<Void> {
     private final SortOrder.Builder builder;
     private String bucketColumn = null;
@@ -139,6 +175,7 @@ public class Partitioning {
       this.builder = builder;
     }
 
+    /** @return 当前记录的桶数最多的列名（用于在 sort order 末尾追加该列） */
     String bucketColumn() {
       return bucketColumn;
     }
@@ -198,50 +235,50 @@ public class Partitioning {
   }
 
   /**
-   * Builds a grouping key type considering the provided schema and specs.
+   * 构建 grouping key 类型：取所有 spec 中非 void transform 分区字段的交集。
    *
-   * <p>A grouping key defines how data is split between files and consists of partition fields with
-   * non-void transforms that are present in each provided spec. Iceberg guarantees that records
-   * with different values for the grouping key are disjoint and are stored in separate files.
+   * <p>grouping key 定义了数据如何在文件间分割。Iceberg 保证不同 grouping key 值的记录互不相交。 多 spec 表取交集，单 spec 取全部活跃字段。v1
+   * 表中被删除的分区字段（void transform）不参与。
    *
-   * <p>If there is only one spec, the grouping key will include all partition fields with non-void
-   * transforms from that spec. Whenever there are multiple specs, the grouping key will represent
-   * an intersection of all partition fields with non-void transforms. If a partition field is
-   * present only in a subset of specs, Iceberg cannot guarantee data distribution on that field.
-   * That's why it will not be part of the grouping key. Unpartitioned tables or tables with
-   * non-overlapping specs have empty grouping keys.
-   *
-   * <p>When partition fields are dropped in v1 tables, they are replaced with new partition fields
-   * that have the same field ID but use a void transform under the hood. Such fields cannot be part
-   * of the grouping key as void transforms always return null.
-   *
-   * <p>If the provided schema is not null, this method will only take into account partition fields
-   * on top of columns present in the schema. Otherwise, all partition fields will be considered.
-   *
-   * @param schema a schema specifying a set of source columns to consider (null to consider all)
-   * @param specs one or many specs
-   * @return the constructed grouping key type
+   * @param schema 可选 schema，指定只考虑某些 source 列（null 表示考虑全部）
+   * @param specs 一个或多个分区规范
+   * @return 构建的 grouping key 类型
    */
   public static StructType groupingKeyType(Schema schema, Collection<PartitionSpec> specs) {
     return buildPartitionProjectionType("grouping key", specs, commonActiveFieldIds(schema, specs));
   }
 
   /**
-   * Builds a unified partition type considering all specs in a table.
+   * 构建表的统一分区类型：取所有 spec 中分区字段的并集。
    *
-   * <p>If there is only one spec, the partition type is that spec's partition type. Whenever there
-   * are multiple specs, the partition type is a struct containing all fields that have ever been a
-   * part of any spec in the table. In other words, the struct fields represent a union of all known
-   * partition fields.
+   * <p>单 spec 表直接返回该 spec 的分区类型；多 spec 表返回所有曾出现过的分区字段的并集 struct。
    *
-   * @param table a table with one or many specs
-   * @return the constructed unified partition type
+   * @param table 包含一个或多个 spec 的表
+   * @return 统一分区类型
    */
   public static StructType partitionType(Table table) {
     Collection<PartitionSpec> specs = table.specs().values();
     return buildPartitionProjectionType("table partition", specs, allFieldIds(specs));
   }
 
+  /**
+   * 构建分区投影类型（grouping key 或统一 partition type 的核心实现）。
+   *
+   * <p>步骤：
+   *
+   * <ol>
+   *   <li>收集所有 spec 中的 unknown transform，存在则抛 {@link ValidationException}；
+   *   <li>按 spec id 降序遍历，使最新 spec 的字段名优先被记录；
+   *   <li>对每个目标 fieldId，校验跨 spec 是否兼容（忽略名称差异）； 若旧记录是 void transform 而新不是，则用新字段替换，恢复正确类型；
+   *   <li>按 fieldId 升序组装为 {@link StructType}。
+   * </ol>
+   *
+   * @param typeName 类型名称（用于错误信息）
+   * @param specs 参与的分区规范集合
+   * @param projectedFieldIds 需要包含的字段 id 集合
+   * @return 构造出的分区投影类型
+   * @throws ValidationException 当存在 unknown transform 或字段冲突时
+   */
   private static StructType buildPartitionProjectionType(
       String typeName, Collection<PartitionSpec> specs, Set<Integer> projectedFieldIds) {
 
@@ -306,10 +343,22 @@ public class Partitioning {
     return StructType.of(sortedStructFields);
   }
 
+  /**
+   * 判断分区字段是否使用 void transform（即 v1 表中已删除的分区字段被替换为 alwaysNull）。
+   *
+   * @param field 分区字段
+   * @return true 表示该字段的 transform 是 alwaysNull
+   */
   private static boolean isVoidTransform(PartitionField field) {
     return field.transform().equals(Transforms.alwaysNull());
   }
 
+  /**
+   * 收集所有 spec 中的 unknown transform（自定义但引擎不识别的 transform）。
+   *
+   * @param specs 分区规范集合
+   * @return unknown transform 列表
+   */
   private static List<Transform<?, ?>> collectUnknownTransforms(Collection<PartitionSpec> specs) {
     List<Transform<?, ?>> unknownTransforms = Lists.newArrayList();
 
@@ -323,6 +372,15 @@ public class Partitioning {
     return unknownTransforms;
   }
 
+  /**
+   * 判断两个分区字段是否等价（忽略字段名差异）。
+   *
+   * <p>等价条件：fieldId 相同 + sourceId 相同 + transform 兼容。
+   *
+   * @param field 字段 A
+   * @param anotherField 字段 B
+   * @return true 表示两字段等价（忽略名称）
+   */
   private static boolean equivalentIgnoringNames(
       PartitionField field, PartitionField anotherField) {
     return field.fieldId() == anotherField.fieldId()
@@ -330,13 +388,27 @@ public class Partitioning {
         && compatibleTransforms(field.transform(), anotherField.transform());
   }
 
+  /**
+   * 判断两个 transform 是否兼容（用于跨 spec 字段比对）。
+   *
+   * <p>兼容条件：完全相等，或其中之一是 alwaysNull（被删除字段）。
+   *
+   * @param t1 transform A
+   * @param t2 transform B
+   * @return true 表示兼容
+   */
   private static boolean compatibleTransforms(Transform<?, ?> t1, Transform<?, ?> t2) {
     return t1.equals(t2)
         || t1.equals(Transforms.alwaysNull())
         || t2.equals(Transforms.alwaysNull());
   }
 
-  // collects IDs of all partition field used across specs
+  /**
+   * 收集所有 spec 中出现过的分区字段 id 的并集（用于统一 partition type）。
+   *
+   * @param specs 分区规范集合
+   * @return 字段 id 并集
+   */
   private static Set<Integer> allFieldIds(Collection<PartitionSpec> specs) {
     return FluentIterable.from(specs)
         .transformAndConcat(PartitionSpec::fields)
@@ -344,7 +416,15 @@ public class Partitioning {
         .toSet();
   }
 
-  // collects IDs of partition fields with non-void transforms that are present in each spec
+  /**
+   * 收集所有 spec 中“非 void transform”的分区字段 id 的交集（用于 grouping key）。
+   *
+   * <p>步骤：以第一个 spec 的活跃字段 id 为初始集合，与后续每个 spec 取交集。
+   *
+   * @param schema 可选 schema（用于只考虑某些 source 列），可为 null
+   * @param specs 分区规范集合
+   * @return 字段 id 交集
+   */
   private static Set<Integer> commonActiveFieldIds(Schema schema, Collection<PartitionSpec> specs) {
     Set<Integer> commonActiveFieldIds = Sets.newHashSet();
 
@@ -362,6 +442,14 @@ public class Partitioning {
     return commonActiveFieldIds;
   }
 
+  /**
+   * 收集单个 spec 中的活跃分区字段 id（非 void transform，且 source 列在 schema 中存在）。
+   *
+   * @schema 为 null 时不过滤 source 列
+   * @param schema 可选 schema，可为 null
+   * @param spec 分区规范
+   * @return 活跃字段 id 列表
+   */
   private static List<Integer> activeFieldIds(Schema schema, PartitionSpec spec) {
     return spec.fields().stream()
         .filter(field -> schema == null || schema.findField(field.sourceId()) != null)

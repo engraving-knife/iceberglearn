@@ -28,6 +28,15 @@ import org.apache.spark.sql.connector.catalog.SupportsNamespaces;
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 import org.apache.spark.sql.connector.iceberg.catalog.ProcedureCatalog;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Spark 表目录（TableCatalog）的抽象基类，提供目录初始化、命名空间与表操作以及存储过程加载的公共骨架。
+ *
+ * <p>设计意图：采用模板方法模式，将公共的目录代理、过程加载与函数命名空间逻辑沉淀在基类，子类只需关注具体 Catalog 代理实现。
+ *
+ * <p>上下游关系：被 SparkCatalog / SparkSessionCatalog 继承；依赖底层 Iceberg Catalog 与 SparkProcedures。
+ */
 abstract class BaseCatalog
     implements StagingTableCatalog,
         ProcedureCatalog,
@@ -51,7 +60,7 @@ abstract class BaseCatalog
 
     throw new NoSuchProcedureException(ident);
   }
-
+  /** 判断是否 FunctionNamespace。 */
   @Override
   public boolean isFunctionNamespace(String[] namespace) {
     // Allow for empty namespace, as Spark's storage partitioned joins look up
@@ -60,12 +69,12 @@ abstract class BaseCatalog
     // Otherwise, use `system` namespace.
     return namespace.length == 0 || isSystemNamespace(namespace);
   }
-
+  /** 判断是否 ExistingNamespace。 */
   @Override
   public boolean isExistingNamespace(String[] namespace) {
     return namespaceExists(namespace);
   }
-
+  /** 判断是否 SystemNamespace。 */
   private static boolean isSystemNamespace(String[] namespace) {
     return namespace.length == 1 && namespace[0].equalsIgnoreCase("system");
   }

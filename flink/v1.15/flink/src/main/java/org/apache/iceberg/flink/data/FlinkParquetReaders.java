@@ -55,14 +55,28 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * Flink 专用的 Parquet 读取器工厂与内部实现集合。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 Iceberg schema 与 Parquet MessageType 构造 {@link
+ * ParquetValueReader}，把 Parquet 列式数据读取为 Flink {@link RowData}。
+ *
+ * <p>设计意图：访问者模式 + 工厂方法，通过 {@link TypeWithSchemaVisitor} 按类型构造读取器； 上下游：被 Flink Parquet 读取算子调用。
+ */
 public class FlinkParquetReaders {
   private FlinkParquetReaders() {}
 
+  /** 构造读取器入口，使用空常量 Map。 */
   public static ParquetValueReader<RowData> buildReader(
       Schema expectedSchema, MessageType fileSchema) {
     return buildReader(expectedSchema, fileSchema, ImmutableMap.of());
   }
 
+  /**
+   * 构造读取器入口，携带字段常量。
+   *
+   * <p>逻辑：通过 {@link TypeWithSchemaVisitor} 按 expectedSchema 与 fileSchema 构造 ParquetValueReader。
+   */
   @SuppressWarnings("unchecked")
   public static ParquetValueReader<RowData> buildReader(
       Schema expectedSchema, MessageType fileSchema, Map<Integer, ?> idToConstant) {
@@ -71,6 +85,7 @@ public class FlinkParquetReaders {
             expectedSchema.asStruct(), fileSchema, new ReadBuilder(fileSchema, idToConstant));
   }
 
+  /** Parquet schema 访问者实现，按 Iceberg 类型构造 Flink RowData 的 ParquetValueReader。 */
   private static class ReadBuilder extends TypeWithSchemaVisitor<ParquetValueReader<?>> {
     private final MessageType type;
     private final Map<Integer, ?> idToConstant;
@@ -80,12 +95,14 @@ public class FlinkParquetReaders {
       this.idToConstant = idToConstant;
     }
 
+    /** 构造 message（顶层 struct）的读取器。 */
     @Override
     public ParquetValueReader<RowData> message(
         Types.StructType expected, MessageType message, List<ParquetValueReader<?>> fieldReaders) {
       return struct(expected, message.asGroupType(), fieldReaders);
     }
 
+    /** 构造 struct 读取器，按 expected 顺序重排字段并处理常量列。 */
     @Override
     public ParquetValueReader<RowData> struct(
         Types.StructType expected, GroupType struct, List<ParquetValueReader<?>> fieldReaders) {
@@ -146,6 +163,7 @@ public class FlinkParquetReaders {
       return new RowDataReader(types, reorderedFields);
     }
 
+    /** 构造 list 读取器，处理 Parquet repeated group。 */
     @Override
     public ParquetValueReader<?> list(
         Types.ListType expectedList, GroupType array, ParquetValueReader<?> elementReader) {
@@ -165,6 +183,7 @@ public class FlinkParquetReaders {
           repeatedD, repeatedR, ParquetValueReaders.option(elementType, elementD, elementReader));
     }
 
+    /** 构造 map 读取器，处理 Parquet repeated key-value group。 */
     @Override
     public ParquetValueReader<?> map(
         Types.MapType expectedMap,
@@ -193,6 +212,12 @@ public class FlinkParquetReaders {
           ParquetValueReaders.option(valueType, valueD, valueReader));
     }
 
+    /**
+     * 构造基本类型的读取器。
+     *
+     * <p>逻辑：先按 Parquet originalType 处理 ENUM/UTF8/INT/DECIMAL/TIME/TIMESTAMP 等； 再按 Iceberg 类型 ID
+     * 分派到具体读取器。
+     */
     @Override
     @SuppressWarnings("CyclomaticComplexity")
     public ParquetValueReader<?> primitive(

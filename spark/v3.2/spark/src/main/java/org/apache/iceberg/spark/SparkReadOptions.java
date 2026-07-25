@@ -18,9 +18,14 @@
  */
 package org.apache.iceberg.spark;
 
-/** Spark DF read options */
+/**
+ * Iceberg Spark 集成相关组件，承载配置项。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkReadOptions。
+ */
 public class SparkReadOptions {
 
+  /** 构造 SparkReadOptions 实例。 */
   private SparkReadOptions() {}
 
   // Snapshot ID of the table snapshot to read

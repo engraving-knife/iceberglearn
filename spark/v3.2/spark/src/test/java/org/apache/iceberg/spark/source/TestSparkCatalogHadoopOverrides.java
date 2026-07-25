@@ -36,6 +36,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkCatalogHadoopOverrides 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Spark目录Hadoop覆盖 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkCatalogHadoopOverrides extends SparkCatalogTestBase {
 
   private static final String configToOverride = "fs.s3a.buffer.dir";
@@ -44,6 +51,7 @@ public class TestSparkCatalogHadoopOverrides extends SparkCatalogTestBase {
   private static final String hadoopPrefixedConfigToOverride = "hadoop." + configToOverride;
   private static final String configOverrideValue = "/tmp-overridden";
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -77,21 +85,25 @@ public class TestSparkCatalogHadoopOverrides extends SparkCatalogTestBase {
     };
   }
 
+  /** 测试Spark目录Hadoop覆盖。 */
   public TestSparkCatalogHadoopOverrides(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE IF NOT EXISTS %s (id bigint) USING iceberg", tableName(tableIdent.name()));
   }
 
+  /** 删除表。 */
   @After
   public void dropTable() {
     sql("DROP TABLE IF EXISTS %s", tableName(tableIdent.name()));
   }
 
+  /** 测试表从目录是否覆盖场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTableFromCatalogHasOverrides() throws Exception {
     Table table = getIcebergTableFromSparkCatalog();
@@ -103,6 +115,7 @@ public class TestSparkCatalogHadoopOverrides extends SparkCatalogTestBase {
         actualCatalogOverride);
   }
 
+  /** ensureroundtripserialized表retainsHadoop配置。 */
   @Test
   public void ensureRoundTripSerializedTableRetainsHadoopConfig() throws Exception {
     Table table = getIcebergTableFromSparkCatalog();
@@ -134,6 +147,7 @@ public class TestSparkCatalogHadoopOverrides extends SparkCatalogTestBase {
         javaSerializedCatalogOverride);
   }
 
+  /** 获取Iceberg表从Spark目录。 */
   @SuppressWarnings("ThrowSpecificity")
   private Table getIcebergTableFromSparkCatalog() throws Exception {
     Identifier identifier = Identifier.of(tableIdent.namespace().levels(), tableIdent.name());

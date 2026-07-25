@@ -21,94 +21,108 @@ package org.apache.iceberg;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.expressions.Term;
 
-/** Methods for building a sort order. */
+/**
+ * 文件级说明：排序序号构建器接口，提供添加排序字段的方法。
+ *
+ * <p>所属模块：iceberg-api（核心接口层）。
+ *
+ * <p>职责：为排序序号（{@link SortOrder}）的构建提供链式 API，支持按字段名或表达式项 （{@link
+ * Term}）添加升序（asc）或降序（desc）排序字段，并可指定空值排序位置。
+ *
+ * <p>设计意图：通过方法重载提供便捷入口——按字段名可自动转换为 {@link Term}，asc/desc 各自 有默认空值位置（asc 默认 NULLS_FIRST，desc 默认
+ * NULLS_LAST），减少调用方样板代码。 泛型参数 {@code <R>} 允许返回具体构建器类型以支持链式调用。
+ *
+ * <p>上下游关系：由 {@link SortOrder#builderFor(Schema)} 等返回； 被 {@link ReplaceSortOrder} 等更新 API 使用。
+ *
+ * @param <R> 链式调用的返回类型
+ */
 public interface SortOrderBuilder<R> {
 
   /**
-   * Add a field to the sort by field name, ascending with nulls first.
+   * 按字段名添加升序排序字段，空值排在最前（NULLS_FIRST）。
    *
-   * @param name a field name
-   * @return this for method chaining
+   * @param name 字段名
+   * @return this，便于链式调用
    */
   default R asc(String name) {
     return asc(Expressions.ref(name), NullOrder.NULLS_FIRST);
   }
 
   /**
-   * Add a field to the sort by field name, ascending with the given null order.
+   * 按字段名添加升序排序字段，指定空值排序位置。
    *
-   * @param name a field name
-   * @param nullOrder a null order (first or last)
-   * @return this for method chaining
+   * @param name 字段名
+   * @param nullOrder 空值排序位置
+   * @return this，便于链式调用
    */
   default R asc(String name, NullOrder nullOrder) {
     return asc(Expressions.ref(name), nullOrder);
   }
 
   /**
-   * Add an expression term to the sort, ascending with nulls first.
+   * 按表达式项添加升序排序字段，空值排在最前（NULLS_FIRST）。
    *
-   * @param term an expression term
-   * @return this for method chaining
+   * @param term 表达式项
+   * @return this，便于链式调用
    */
   default R asc(Term term) {
     return asc(term, NullOrder.NULLS_FIRST);
   }
 
   /**
-   * Add an expression term to the sort, ascending with the given null order.
+   * 按表达式项添加升序排序字段，指定空值排序位置。
    *
-   * @param term an expression term
-   * @param nullOrder a null order (first or last)
-   * @return this for method chaining
+   * @param term 表达式项
+   * @param nullOrder 空值排序位置
+   * @return this，便于链式调用
    */
   R asc(Term term, NullOrder nullOrder);
 
   /**
-   * Add a field to the sort by field name, ascending with nulls first.
+   * 按字段名添加降序排序字段，空值排在最后（NULLS_LAST）。
    *
-   * @param name a field name
-   * @return this for method chaining
+   * @param name 字段名
+   * @return this，便于链式调用
    */
   default R desc(String name) {
     return desc(Expressions.ref(name), NullOrder.NULLS_LAST);
   }
 
   /**
-   * Add a field to the sort by field name, ascending with the given null order.
+   * 按字段名添加降序排序字段，指定空值排序位置。
    *
-   * @param name a field name
-   * @param nullOrder a null order (first or last)
-   * @return this for method chaining
+   * @param name 字段名
+   * @param nullOrder 空值排序位置
+   * @return this，便于链式调用
    */
   default R desc(String name, NullOrder nullOrder) {
     return desc(Expressions.ref(name), nullOrder);
   }
 
   /**
-   * Add an expression term to the sort, ascending with nulls first.
+   * 按表达式项添加降序排序字段，空值排在最后（NULLS_LAST）。
    *
-   * @param term an expression term
-   * @return this for method chaining
+   * @param term 表达式项
+   * @return this，便于链式调用
    */
   default R desc(Term term) {
     return desc(term, NullOrder.NULLS_LAST);
   }
 
   /**
-   * Add an expression term to the sort, ascending with the given null order.
+   * 按表达式项添加降序排序字段，指定空值排序位置。
    *
-   * @param term an expression term
-   * @param nullOrder a null order (first or last)
-   * @return this for method chaining
+   * @param term 表达式项
+   * @param nullOrder 空值排序位置
+   * @return this，便于链式调用
    */
   R desc(Term term, NullOrder nullOrder);
 
   /**
-   * Set case sensitivity of sort column name resolution.
+   * 设置排序列名解析的大小写敏感性。
    *
-   * @param caseSensitive when true, column name resolution is case-sensitive
-   * @return this for method chaining
+   * @param caseSensitive 为 true 时列名解析区分大小写
+   * @return this，便于链式调用
    */
   default R caseSensitive(boolean caseSensitive) {
     throw new UnsupportedOperationException(

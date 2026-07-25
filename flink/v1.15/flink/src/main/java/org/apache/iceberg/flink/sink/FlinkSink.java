@@ -72,6 +72,13 @@ import org.apache.iceberg.util.SerializableSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg-Flink 写入入口，构建写入 Flink DataStream 的算子拓扑。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：配置写入器、分区器、commit 算子，并把 DataStream 写入 Iceberg 表。
+ *
+ * <p>设计意图：构建器模式；上下游：被 FlinkDynamicTableFactory/IcebergTableSink 调用。
+ */
 public class FlinkSink {
   private static final Logger LOG = LoggerFactory.getLogger(FlinkSink.class);
 

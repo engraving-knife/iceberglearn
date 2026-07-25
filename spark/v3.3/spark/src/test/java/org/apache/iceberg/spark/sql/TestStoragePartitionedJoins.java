@@ -45,6 +45,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestStoragePartitionedJoins 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 storage分区连接 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
 
   private static final String OTHER_TABLE_NAME = "other_table";
@@ -82,11 +89,13 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
           SparkSQLProperties.PRESERVE_DATA_GROUPING,
           "true");
 
+  /** 初始化Spark配置。 */
   @BeforeClass
   public static void setupSparkConf() {
     spark.conf().set("spark.sql.shuffle.partitions", "4");
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -101,76 +110,91 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
     checkJoin("byte_col", "TINYINT", "bucket(4, byte_col)");
   }
 
+  /** 测试连接带bucketing上short列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnShortColumn() throws NoSuchTableException {
     checkJoin("short_col", "SMALLINT", "bucket(4, short_col)");
   }
 
+  /** 测试连接带bucketing上int列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnIntColumn() throws NoSuchTableException {
     checkJoin("int_col", "INT", "bucket(16, int_col)");
   }
 
+  /** 测试连接带bucketing上长整型列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnLongColumn() throws NoSuchTableException {
     checkJoin("long_col", "BIGINT", "bucket(16, long_col)");
   }
 
+  /** 测试连接带bucketing上时间戳列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnTimestampColumn() throws NoSuchTableException {
     checkJoin("timestamp_col", "TIMESTAMP", "bucket(16, timestamp_col)");
   }
 
+  /** 测试连接带bucketing上日期列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnDateColumn() throws NoSuchTableException {
     checkJoin("date_col", "DATE", "bucket(8, date_col)");
   }
 
+  /** 测试连接带bucketing上十进制列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnDecimalColumn() throws NoSuchTableException {
     checkJoin("decimal_col", "DECIMAL(20, 2)", "bucket(8, decimal_col)");
   }
 
+  /** 测试连接带bucketing上二进制列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithBucketingOnBinaryColumn() throws NoSuchTableException {
     checkJoin("binary_col", "BINARY", "bucket(8, binary_col)");
   }
 
+  /** 测试连接带years上时间戳列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithYearsOnTimestampColumn() throws NoSuchTableException {
     checkJoin("timestamp_col", "TIMESTAMP", "years(timestamp_col)");
   }
 
+  /** 测试连接带years上日期列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithYearsOnDateColumn() throws NoSuchTableException {
     checkJoin("date_col", "DATE", "years(date_col)");
   }
 
+  /** 测试连接带months上时间戳列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithMonthsOnTimestampColumn() throws NoSuchTableException {
     checkJoin("timestamp_col", "TIMESTAMP", "months(timestamp_col)");
   }
 
+  /** 测试连接带months上日期列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithMonthsOnDateColumn() throws NoSuchTableException {
     checkJoin("date_col", "DATE", "months(date_col)");
   }
 
+  /** 测试连接带days上时间戳列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithDaysOnTimestampColumn() throws NoSuchTableException {
     checkJoin("timestamp_col", "TIMESTAMP", "days(timestamp_col)");
   }
 
+  /** 测试连接带days上日期列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithDaysOnDateColumn() throws NoSuchTableException {
     checkJoin("date_col", "DATE", "days(date_col)");
   }
 
+  /** 测试连接带hours上时间戳列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithHoursOnTimestampColumn() throws NoSuchTableException {
     checkJoin("timestamp_col", "TIMESTAMP", "hours(timestamp_col)");
   }
 
+  /** 测试连接带多个转换类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithMultipleTransformTypes() throws NoSuchTableException {
     String createTableStmt =
@@ -260,6 +284,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试连接带compatible分区规格演进场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithCompatibleSpecEvolution() {
     // create a table with an empty spec
@@ -313,6 +338,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试连接带incompatible分区规格场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithIncompatibleSpecs() {
     sql(
@@ -353,6 +379,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试连接带非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithUnpartitionedTables() {
     sql(
@@ -393,6 +420,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试连接带空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithEmptyTable() {
     sql(
@@ -425,6 +453,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试连接带onesplit表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testJoinsWithOneSplitTables() {
     sql(
@@ -459,6 +488,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试聚合场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregates() throws NoSuchTableException {
     sql(
@@ -488,6 +518,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         tableName(OTHER_TABLE_NAME));
   }
 
+  /** 检查连接。 */
   private void checkJoin(String sourceColumnName, String sourceColumnType, String transform)
       throws NoSuchTableException {
 
@@ -534,6 +565,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
         sourceColumnName);
   }
 
+  /** 断言partitioningaware计划。 */
   private void assertPartitioningAwarePlan(
       int expectedNumShufflesWithSPJ,
       int expectedNumShufflesWithoutSPJ,
@@ -572,6 +604,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
     assertEquals("SPJ should not change query output", rowsWithoutSPJ.get(), rowsWithSPJ.get());
   }
 
+  /** random数据df。 */
   private Dataset<Row> randomDataDF(Schema schema, int numRows) {
     Iterable<InternalRow> rows = RandomData.generateSpark(schema, numRows, 0);
     JavaRDD<InternalRow> rowRDD = sparkContext.parallelize(Lists.newArrayList(rows));
@@ -579,6 +612,7 @@ public class TestStoragePartitionedJoins extends SparkTestBaseWithCatalog {
     return spark.internalCreateDataFrame(JavaRDD.toRDD(rowRDD), rowSparkType, false);
   }
 
+  /** 追加。 */
   private void append(String table, Dataset<Row> df) throws NoSuchTableException {
     // fanout writes are enabled as write-time clustering is not supported without Spark extensions
     df.coalesce(1).writeTo(table).option(SparkWriteOptions.FANOUT_ENABLED, "true").append();

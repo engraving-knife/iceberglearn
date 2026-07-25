@@ -41,6 +41,15 @@ import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 import org.apache.spark.sql.connector.write.RowLevelOperationBuilder;
 import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：行级操作构建器，根据操作类型创建 CoW 或 PositionDelta 操作。
+ *
+ * <p>设计意图：工厂模式，按 Spark 行级操作信息选择对应实现。
+ *
+ * <p>上下游关系：由 SparkTable 实现 SupportsRowLevelOperations 时使用。
+ */
 class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
 
   private final SparkSession spark;
@@ -59,7 +68,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     this.mode = mode(table.properties(), info.command());
     this.isolationLevel = isolationLevel(table.properties(), info.command());
   }
-
+  /** 构建目标对象。 */
   @Override
   public RowLevelOperation build() {
     switch (mode) {
@@ -71,7 +80,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
         throw new IllegalArgumentException("Unsupported operation mode: " + mode);
     }
   }
-
+  /** 执行 mode 相关操作。 */
   private RowLevelOperationMode mode(Map<String, String> properties, Command command) {
     String modeName;
 
@@ -91,7 +100,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
 
     return RowLevelOperationMode.fromName(modeName);
   }
-
+  /** 执行 isolationLevel 相关操作。 */
   private IsolationLevel isolationLevel(Map<String, String> properties, Command command) {
     String levelName;
 

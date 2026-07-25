@@ -26,6 +26,18 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：S3 签名响应（{@link S3SignResponse}）的 JSON 序列化/反序列化工具。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：把签名响应对象与 JSON 互转，字段包括 uri 与 headers（多值）， 供 REST Catalog 解析远程签名服务返回结果。
+ *
+ * <p>设计意图：与 {@link S3SignRequestParser} 对称设计，工具类模式； headers 序列化复用 {@link
+ * S3SignRequestParser#headersToJson} 以保证一致性。
+ *
+ * <p>上下游关系：被 {@link S3ObjectMapper} 注册的序列化器/反序列化器调用。
+ */
 public class S3SignResponseParser {
 
   private static final String URI = "uri";
@@ -33,14 +45,23 @@ public class S3SignResponseParser {
 
   private S3SignResponseParser() {}
 
+  /** 将签名响应序列化为紧凑 JSON 字符串。 */
   public static String toJson(S3SignResponse request) {
     return toJson(request, false);
   }
 
+  /** 将签名响应序列化为 JSON 字符串，pretty 控制是否美化输出。 */
   public static String toJson(S3SignResponse request, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(request, gen), pretty);
   }
 
+  /**
+   * 将签名响应写入 JsonGenerator：写出 uri 与 headers。
+   *
+   * @param response 签名响应
+   * @param gen JSON 生成器
+   * @throws IOException 写入异常
+   */
   public static void toJson(S3SignResponse response, JsonGenerator gen) throws IOException {
     Preconditions.checkArgument(null != response, "Invalid s3 sign response: null");
 
@@ -52,10 +73,17 @@ public class S3SignResponseParser {
     gen.writeEndObject();
   }
 
+  /** 从 JSON 字符串解析出 S3SignResponse。 */
   public static S3SignResponse fromJson(String json) {
     return JsonUtil.parse(json, S3SignResponseParser::fromJson);
   }
 
+  /**
+   * 从 JsonNode 解析出 S3SignResponse：读取 uri 与 headers，构造 ImmutableS3SignResponse。
+   *
+   * @param json JSON 节点
+   * @return 签名响应对象
+   */
   public static S3SignResponse fromJson(JsonNode json) {
     Preconditions.checkArgument(null != json, "Cannot parse s3 sign response from null object");
     Preconditions.checkArgument(

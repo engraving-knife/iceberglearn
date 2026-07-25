@@ -47,39 +47,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A procedure that creates a view for changed rows.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>The procedure removes the carry-over rows by default. If you want to keep them, you can set
- * "remove_carryovers" to be false in the options.
+ * <p>职责：创建变更日志视图的存储过程，为指定表构建可查询的 changelog 视图。
  *
- * <p>The procedure doesn't compute the pre/post update images by default. If you want to compute
- * them, you can set "compute_updates" to be true in the options.
+ * <p>设计意图：基于 SparkChangelogScan 注册临时视图，支持按时间范围查询行级变更。
  *
- * <p>Carry-over rows are the result of a removal and insertion of the same row within an operation
- * because of the copy-on-write mechanism. For example, given a file which contains row1 (id=1,
- * data='a') and row2 (id=2, data='b'). A copy-on-write delete of row2 would require erasing this
- * file and preserving row1 in a new file. The changelog table would report this as (id=1, data='a',
- * op='DELETE') and (id=1, data='a', op='INSERT'), despite it not being an actual change to the
- * table. The procedure finds the carry-over rows and removes them from the result.
- *
- * <p>Pre/post update images are converted from a pair of a delete row and an insert row. Identifier
- * columns are used for determining whether an insert and a delete record refer to the same row. If
- * the two records share the same values for the identity columns they are considered to be before
- * and after states of the same row. You can either set identifier fields in the table schema or
- * input them as the procedure parameters. Here is an example of pre/post update images with an
- * identifier column(id). A pair of a delete row and an insert row with the same id:
- *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='b', op='INSERT')
- * </ul>
- *
- * <p>will be marked as pre/post update images:
- *
- * <ul>
- *   <li>(id=1, data='a', op='UPDATE_BEFORE')
- *   <li>(id=1, data='b', op='UPDATE_AFTER')
- * </ul>
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 public class CreateChangelogViewProcedure extends BaseProcedure {
 
@@ -124,9 +98,10 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
           new StructField[] {
             new StructField("changelog_view", DataTypes.StringType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new BaseProcedure.Builder<CreateChangelogViewProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected CreateChangelogViewProcedure doBuild() {
         return new CreateChangelogViewProcedure(tableCatalog());
@@ -137,17 +112,17 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
   private CreateChangelogViewProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -173,7 +148,7 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
 
     return toOutputRows(viewName);
   }
-
+  /** 执行 computeUpdateImages 相关操作。 */
   private Dataset<Row> computeUpdateImages(String[] identifierColumns, Dataset<Row> df) {
     Preconditions.checkArgument(
         identifierColumns.length > 0,
@@ -188,17 +163,17 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
 
     return applyChangelogIterator(df, repartitionSpec);
   }
-
+  /** 执行 shouldComputeUpdateImages 相关操作。 */
   private boolean shouldComputeUpdateImages(ProcedureInput input) {
     // If the identifier columns are set, we compute pre/post update images by default.
     boolean defaultValue = input.isProvided(IDENTIFIER_COLUMNS_PARAM);
     return input.asBoolean(COMPUTE_UPDATES_PARAM, defaultValue);
   }
-
+  /** 执行 shouldRemoveCarryoverRows 相关操作。 */
   private boolean shouldRemoveCarryoverRows(ProcedureInput input) {
     return input.asBoolean(REMOVE_CARRYOVERS_PARAM, true);
   }
-
+  /** 执行 removeCarryoverRows 相关操作。 */
   private Dataset<Row> removeCarryoverRows(Dataset<Row> df, boolean netChanges) {
     Predicate<String> columnsToKeep;
     if (netChanges) {
@@ -217,7 +192,7 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
         Arrays.stream(df.columns()).filter(columnsToKeep).map(df::col).toArray(Column[]::new);
     return applyCarryoverRemoveIterator(df, repartitionSpec, netChanges);
   }
-
+  /** 执行 identifierColumns 相关操作。 */
   private String[] identifierColumns(ProcedureInput input, Identifier tableIdent) {
     if (input.isProvided(IDENTIFIER_COLUMNS_PARAM)) {
       return input.asStringArray(IDENTIFIER_COLUMNS_PARAM);
@@ -226,23 +201,23 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
       return table.schema().identifierFieldNames().toArray(new String[0]);
     }
   }
-
+  /** 执行 changelogTableIdent 相关操作。 */
   private Identifier changelogTableIdent(Identifier tableIdent) {
     List<String> namespace = Lists.newArrayList();
     namespace.addAll(Arrays.asList(tableIdent.namespace()));
     namespace.add(tableIdent.name());
     return Identifier.of(namespace.toArray(new String[0]), SparkChangelogTable.TABLE_NAME);
   }
-
+  /** 执行 options 相关操作。 */
   private Map<String, String> options(ProcedureInput input) {
     return input.asStringMap(OPTIONS_PARAM, ImmutableMap.of());
   }
-
+  /** 执行 viewName 相关操作。 */
   private String viewName(ProcedureInput input, String tableName) {
     String defaultValue = String.format("`%s_changes`", tableName);
     return input.asString(CHANGELOG_VIEW_PARAM, defaultValue);
   }
-
+  /** 执行 applyChangelogIterator 相关操作。 */
   private Dataset<Row> applyChangelogIterator(Dataset<Row> df, Column[] repartitionSpec) {
     Column[] sortSpec = sortSpec(df, repartitionSpec, false);
     StructType schema = df.schema();
@@ -257,7 +232,7 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
                     ChangelogIterator.computeUpdates(rowIterator, schema, identifierFields),
             RowEncoder.apply(schema));
   }
-
+  /** 执行 applyCarryoverRemoveIterator 相关操作。 */
   private Dataset<Row> applyCarryoverRemoveIterator(
       Dataset<Row> df, Column[] repartitionSpec, boolean netChanges) {
     Column[] sortSpec = sortSpec(df, repartitionSpec, netChanges);
@@ -273,7 +248,7 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
                         : ChangelogIterator.removeCarryovers(rowIterator, schema),
             RowEncoder.apply(schema));
   }
-
+  /** 执行 sortSpec 相关操作。 */
   private static Column[] sortSpec(Dataset<Row> df, Column[] repartitionSpec, boolean netChanges) {
     Column changeType = df.col(MetadataColumns.CHANGE_TYPE.name());
     Column changeOrdinal = df.col(MetadataColumns.CHANGE_ORDINAL.name());
@@ -287,12 +262,12 @@ public class CreateChangelogViewProcedure extends BaseProcedure {
 
     return sortSpec;
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(String viewName) {
     InternalRow row = newInternalRow(UTF8String.fromString(viewName));
     return new InternalRow[] {row};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "CreateChangelogViewProcedure";

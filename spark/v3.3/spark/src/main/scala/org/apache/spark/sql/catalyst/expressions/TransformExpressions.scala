@@ -40,29 +40,63 @@ import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.unsafe.types.UTF8String
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换，表示或转换 Spark 表达式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：类 IcebergTransformExpression。
+ */
 abstract class IcebergTransformExpression
   extends UnaryExpression with CodegenFallback with NullIntolerant {
 
   @transient lazy val icebergInputType: Type = SparkSchemaUtil.convert(child.dataType)
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：类 IcebergTimeTransform。
+ */
 abstract class IcebergTimeTransform
   extends IcebergTransformExpression with ImplicitCastInputTypes {
 
   def transform: function.Function[Any, Integer]
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def nullSafeEval(value: Any): Any = {
     transform(value).toInt
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def dataType: DataType = IntegerType
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def inputTypes: Seq[AbstractDataType] = Seq(TimestampType)
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergYearTransform。
+ */
 case class IcebergYearTransform(child: Expression)
   extends IcebergTimeTransform {
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   @transient lazy val transform: function.Function[Any, Integer] = Transforms.year[Any]().bind(icebergInputType)
 
   override protected def withNewChildInternal(newChild: Expression): Expression = {
@@ -70,9 +104,19 @@ case class IcebergYearTransform(child: Expression)
   }
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergMonthTransform。
+ */
 case class IcebergMonthTransform(child: Expression)
   extends IcebergTimeTransform {
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   @transient lazy val transform: function.Function[Any, Integer] = Transforms.month[Any]().bind(icebergInputType)
 
   override protected def withNewChildInternal(newChild: Expression): Expression = {
@@ -80,9 +124,19 @@ case class IcebergMonthTransform(child: Expression)
   }
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergDayTransform。
+ */
 case class IcebergDayTransform(child: Expression)
   extends IcebergTimeTransform {
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   @transient lazy val transform: function.Function[Any, Integer] = Transforms.day[Any]().bind(icebergInputType)
 
   override protected def withNewChildInternal(newChild: Expression): Expression = {
@@ -90,9 +144,19 @@ case class IcebergDayTransform(child: Expression)
   }
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergHourTransform。
+ */
 case class IcebergHourTransform(child: Expression)
   extends IcebergTimeTransform {
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   @transient lazy val transform: function.Function[Any, Integer] = Transforms.hour[Any]().bind(icebergInputType)
 
   override protected def withNewChildInternal(newChild: Expression): Expression = {
@@ -100,6 +164,12 @@ case class IcebergHourTransform(child: Expression)
   }
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergBucketTransform。
+ */
 case class IcebergBucketTransform(numBuckets: Int, child: Expression) extends IcebergTransformExpression {
 
   @transient lazy val bucketFunc: Any => Int = child.dataType match {
@@ -119,17 +189,35 @@ case class IcebergBucketTransform(numBuckets: Int, child: Expression) extends Ic
       a: Any => t(a).toInt
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def nullSafeEval(value: Any): Any = {
     bucketFunc(value)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def dataType: DataType = IntegerType
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: Expression): Expression = {
     copy(child = newChild)
   }
 }
 
+/**
+ * Spark 表达式与 Iceberg 表达式之间的转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：样例类 IcebergTruncateTransform。
+ */
 case class IcebergTruncateTransform(child: Expression, width: Int) extends IcebergTransformExpression {
 
   @transient lazy val truncateFunc: Any => Any = child.dataType match {
@@ -151,12 +239,24 @@ case class IcebergTruncateTransform(child: Expression, width: Int) extends Icebe
       a: Any => t(a)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override protected def nullSafeEval(value: Any): Any = {
     truncateFunc(value)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def dataType: DataType = child.dataType
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: Expression): Expression = {
     copy(child = newChild)
   }

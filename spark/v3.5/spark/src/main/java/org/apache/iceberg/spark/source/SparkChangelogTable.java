@@ -38,6 +38,20 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * Iceberg 表的 changelog（行变更日志）Spark 视图。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），source 子包。
+ *
+ * <p>职责：把 Iceberg 表包装为只支持批量读的 Spark {@link Table}，暴露其 changelog schema （在原 schema 上附加
+ * _change_type/_change_ordinal/_commit_snapshot 元数据列）， 通过 {@link
+ * SparkScanBuilder#buildChangelogScan} 构造 changelog 扫描。
+ *
+ * <p>设计意图：懒加载 SparkSession、changelog schema 与 Spark schema 避免重复计算； 元数据列通过 SupportsMetadataColumns
+ * 暴露（spec_id、partition、file_path、row_position、is_deleted）。
+ *
+ * <p>上下游关系：被 Spark catalog 在表名后追加 ".changes" 时返回；产出 SparkScan 供读取。
+ */
 public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadataColumns {
 
   public static final String TABLE_NAME = "changes";
@@ -52,16 +66,17 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
   private StructType lazyTableSparkType = null;
   private Schema lazyChangelogSchema = null;
 
+  /** 构造 changelog 表，指定是否在每次构建扫描时急切刷新表元数据。 */
   public SparkChangelogTable(org.apache.iceberg.Table icebergTable, boolean refreshEagerly) {
     this.icebergTable = icebergTable;
     this.refreshEagerly = refreshEagerly;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return icebergTable.name() + "." + TABLE_NAME;
   }
-
+  /** 返回 Schema。 */
   @Override
   public StructType schema() {
     if (lazyTableSparkType == null) {
@@ -70,12 +85,17 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
 
     return lazyTableSparkType;
   }
-
+  /** 返回能力集。 */
   @Override
   public Set<TableCapability> capabilities() {
     return CAPABILITIES;
   }
 
+  /**
+   * 构造扫描 builder。
+   *
+   * <p>逻辑：若 refreshEagerly 则先刷新表；返回匿名 SparkScanBuilder，build() 直接构造 changelog 扫描。
+   */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (refreshEagerly) {
@@ -83,13 +103,14 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     }
 
     return new SparkScanBuilder(spark(), icebergTable, changelogSchema(), options) {
+      /** 构建目标对象。 */
       @Override
       public Scan build() {
         return buildChangelogScan();
       }
     };
   }
-
+  /** 执行 changelogSchema 相关操作。 */
   private Schema changelogSchema() {
     if (lazyChangelogSchema == null) {
       this.lazyChangelogSchema = ChangelogUtil.changelogSchema(icebergTable.schema());
@@ -97,7 +118,7 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
 
     return lazyChangelogSchema;
   }
-
+  /** 执行 spark 相关操作。 */
   private SparkSession spark() {
     if (lazySpark == null) {
       this.lazySpark = SparkSession.active();
@@ -106,6 +127,7 @@ public class SparkChangelogTable implements Table, SupportsRead, SupportsMetadat
     return lazySpark;
   }
 
+  /** 返回 changelog 表暴露的元数据列：spec_id、partition、file_path、row_position、is_deleted。 */
   @Override
   public MetadataColumn[] metadataColumns() {
     DataType sparkPartitionType = SparkSchemaUtil.convert(Partitioning.partitionType(icebergTable));

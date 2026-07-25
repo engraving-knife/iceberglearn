@@ -21,18 +21,27 @@ package org.apache.iceberg.spark.source.metrics;
 import java.text.NumberFormat;
 import org.apache.spark.sql.connector.metric.CustomMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：扫描分片数指标，定义指标名与聚合方式。
+ *
+ * <p>设计意图：实现 Spark CustomMetric，统计实际读取的扫描任务数。
+ *
+ * <p>上下游关系：由 BaseReader 上报；由 Spark UI 展示。
+ */
 public class NumSplits implements CustomMetric {
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "numSplits";
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "number of file splits read";
   }
-
+  /** 执行 aggregateTaskMetrics 相关操作。 */
   @Override
   public String aggregateTaskMetrics(long[] taskMetrics) {
     long sum = initialValue;

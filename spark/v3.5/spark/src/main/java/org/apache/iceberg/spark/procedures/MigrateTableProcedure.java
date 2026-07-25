@@ -34,6 +34,20 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.runtime.BoxedUnit;
 
+/**
+ * Spark 存储过程：把非 Iceberg 表迁移为 Iceberg 表（原地迁移）。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），procedures 子包。对应 {@code system.migrate(table => '...',
+ * properties => ..., drop_backup => ..., backup_table_name => ...)}。
+ *
+ * <p>职责：委托 {@link MigrateTableSparkAction} 把源表（如 Parquet/ORC 外部表）的文件 注册为 Iceberg
+ * 元数据，可选保留备份表与设置表属性。返回迁移的文件数。
+ *
+ * <p>设计意图：作为薄包装层把 Spark 过程参数转换为 MigrateTableSparkAction 的链式调用， 参数 drop_backup 与 backup_table_name
+ * 可选，默认行为保留备份。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册；依赖 {@link SparkActions#migrateTable}。
+ */
 class MigrateTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -49,29 +63,41 @@ class MigrateTableProcedure extends BaseProcedure {
             new StructField("migrated_files_count", DataTypes.LongType, false, Metadata.empty())
           });
 
+  /** 构造过程，绑定所在 catalog。 */
   private MigrateTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /** 返回构造本过程的 builder。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<MigrateTableProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected MigrateTableProcedure doBuild() {
         return new MigrateTableProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行表迁移。
+   *
+   * <p>逻辑：解析表名、可选 properties map、drop_backup、backup_table_name； 构造 MigrateTableSparkAction
+   * 并按参数配置后执行；返回迁移的数据文件数。
+   *
+   * @param args 输入参数行
+   * @return 含迁移文件数的单行结果
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     String tableName = args.getString(0);
@@ -108,7 +134,7 @@ class MigrateTableProcedure extends BaseProcedure {
     MigrateTable.Result result = migrateTableSparkAction.execute();
     return new InternalRow[] {newInternalRow(result.migratedDataFilesCount())};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "MigrateTableProcedure";

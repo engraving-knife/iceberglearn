@@ -28,18 +28,32 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestBatchScans，用于验证 Batch Scans 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Batch Scans 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestBatchScans extends TableTestBase {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：batch scans。 */
   public TestBatchScans(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：data table scan。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataTableScan() {
     table.newFastAppend().appendFile(FILE_A).appendFile(FILE_B).commit();
@@ -71,6 +85,11 @@ public class TestBatchScans extends TableTestBase {
     V2Assert.assertEquals("Files count must match", 3, tg.filesCount());
   }
 
+  /**
+   * 测试场景：files table scan。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFilesTableScan() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -115,6 +134,7 @@ public class TestBatchScans extends TableTestBase {
     }
   }
 
+  /** 辅助方法：plan task groups。 */
   private List<ScanTaskGroup<ScanTask>> planTaskGroups(BatchScan scan) {
     try (CloseableIterable<ScanTaskGroup<ScanTask>> taskGroups = scan.planTasks()) {
       return Lists.newArrayList(taskGroups);
@@ -123,6 +143,7 @@ public class TestBatchScans extends TableTestBase {
     }
   }
 
+  /** 辅助方法：path。 */
   private String path(ScanTask task) {
     return ((ContentScanTask<?>) task).file().path().toString();
   }

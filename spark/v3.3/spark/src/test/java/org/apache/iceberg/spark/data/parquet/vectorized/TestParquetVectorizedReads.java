@@ -54,6 +54,13 @@ import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestParquetVectorizedReads 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Parquet向量化读 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestParquetVectorizedReads extends AvroDataTest {
   private static final int NUM_ROWS = 200_000;
   private static final ByteBuffer fileDek = ByteBuffer.allocate(16);
@@ -62,11 +69,13 @@ public class TestParquetVectorizedReads extends AvroDataTest {
   static final int BATCH_SIZE = 10_000;
   static final Function<GenericData.Record, GenericData.Record> IDENTITY = record -> record;
 
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     writeAndValidate(schema, getNumRows(), 0L, RandomData.DEFAULT_NULL_PERCENTAGE, true);
   }
 
+  /** 写与校验。 */
   private void writeAndValidate(
       Schema schema, int numRecords, long seed, float nullPercentage, boolean reuseContainers)
       throws IOException {
@@ -74,6 +83,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         schema, numRecords, seed, nullPercentage, reuseContainers, BATCH_SIZE, IDENTITY);
   }
 
+  /** 写与校验。 */
   private void writeAndValidate(
       Schema schema,
       int numRecords,
@@ -112,10 +122,12 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     assertRecordsMatch(schema, numRecords, expected, testFile, reuseContainers, batchSize, true);
   }
 
+  /** 获取num行。 */
   protected int getNumRows() {
     return NUM_ROWS;
   }
 
+  /** 生成数据。 */
   Iterable<GenericData.Record> generateData(
       Schema schema,
       int numRecords,
@@ -127,10 +139,12 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     return transform == IDENTITY ? data : Iterables.transform(data, transform);
   }
 
+  /** Parquet写入器。 */
   FileAppender<GenericData.Record> parquetWriter(Schema schema, File testFile) throws IOException {
     return Parquet.write(Files.localOutput(testFile)).schema(schema).named("test").build();
   }
 
+  /** encryptedParquet写入器。 */
   FileAppender<GenericData.Record> encryptedParquetWriter(Schema schema, File testFile)
       throws IOException {
     SecureRandom rand = new SecureRandom();
@@ -144,6 +158,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         .build();
   }
 
+  /** Parquetv2写入器。 */
   FileAppender<GenericData.Record> parquetV2Writer(Schema schema, File testFile)
       throws IOException {
     return Parquet.write(Files.localOutput(testFile))
@@ -153,6 +168,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         .build();
   }
 
+  /** encryptedParquetv2写入器。 */
   FileAppender<GenericData.Record> encryptedParquetV2Writer(Schema schema, File testFile)
       throws IOException {
     SecureRandom rand = new SecureRandom();
@@ -167,6 +183,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         .build();
   }
 
+  /** 断言记录match。 */
   void assertRecordsMatch(
       Schema schema,
       int expectedSize,
@@ -178,6 +195,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     assertRecordsMatch(schema, expectedSize, expected, testFile, reuseContainers, batchSize, false);
   }
 
+  /** 断言记录match。 */
   void assertRecordsMatch(
       Schema schema,
       int expectedSize,
@@ -217,41 +235,49 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     }
   }
 
+  /** 测试数组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testArray() {}
 
+  /** 测试数组的结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testArrayOfStructs() {}
 
+  /** 测试映射场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testMap() {}
 
+  /** 测试numeric映射key场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testNumericMapKey() {}
 
+  /** 测试复合映射key场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testComplexMapKey() {}
 
+  /** 测试映射的结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testMapOfStructs() {}
 
+  /** 测试mixed类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Override
   @Test
   @Ignore
   public void testMixedTypes() {}
 
+  /** 测试嵌套结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   @Override
   public void testNestedStruct() {
@@ -269,6 +295,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
                 null));
   }
 
+  /** 测试mostly空值用于可选字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMostlyNullsForOptionalFields() throws IOException {
     writeAndValidate(
@@ -279,6 +306,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         true);
   }
 
+  /** 测试 testSettingArrowValidityVector 场景：验证 SettingArrowValidityVector 相关操作的行为与结果。 */
   @Test
   public void testSettingArrowValidityVector() throws IOException {
     writeAndValidate(
@@ -289,6 +317,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         true);
   }
 
+  /** 测试向量化读带新建containers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testVectorizedReadsWithNewContainers() throws IOException {
     writeAndValidate(
@@ -299,6 +328,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         false);
   }
 
+  /** 测试向量化读带reallocatedarrowbuffers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testVectorizedReadsWithReallocatedArrowBuffers() throws IOException {
     // With a batch size of 2, 256 bytes are allocated in the VarCharVector. By adding strings of
@@ -322,6 +352,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
         });
   }
 
+  /** 测试读用于类型promoted列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadsForTypePromotedColumns() throws Exception {
     Schema writeSchema =
@@ -349,6 +380,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     assertRecordsMatch(readSchema, 30000, data, dataFile, true, BATCH_SIZE);
   }
 
+  /** 测试supported读用于Parquetv2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSupportedReadsForParquetV2() throws Exception {
     // Float and double column types are written using plain encoding with Parquet V2,
@@ -378,6 +410,7 @@ public class TestParquetVectorizedReads extends AvroDataTest {
     assertRecordsMatch(schema, 30000, data, dataFile, true, BATCH_SIZE, true);
   }
 
+  /** 测试不支持的读用于Parquetv2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnsupportedReadsForParquetV2() throws Exception {
     // Longs, ints, string types etc use delta encoding and which are not supported for vectorized

@@ -27,17 +27,30 @@ import org.apache.iceberg.types.Types.ListType;
 import org.apache.iceberg.types.Types.MapType;
 import org.apache.iceberg.types.Types.StructType;
 
+/**
+ * 列裁剪访问者：按字段 ID 集合裁剪 schema，只保留选中的字段。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#project} 和 {@link TypeUtil#select} 使用）。
+ *
+ * <p>职责：后序遍历类型树，根据 selected 集合裁剪字段。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>selectFullTypes=false（project 模式）：选中 struct 时只保留其选中的子字段， 不选子字段则返回空 struct；不允许显式选择 list/map。
+ *   <li>selectFullTypes=true（select 模式）：选中字段时保留完整子树。
+ *   <li>使用引用相等（==）判断类型是否变化，避免不必要的对象创建。
+ * </ul>
+ */
 class PruneColumns extends TypeUtil.SchemaVisitor<Type> {
   private final Set<Integer> selected;
   private final boolean selectFullTypes;
 
   /**
-   * Visits a schema and returns only the fields selected by the id set.
+   * 构造列裁剪访问者。
    *
-   * <p>When selectFullTypes is false selecting list or map types is undefined and forbidden.
-   *
-   * @param selected ids of elements to return
-   * @param selectFullTypes whether to select all subfields of a selected nested type
+   * @param selected 要保留的字段 ID 集合
+   * @param selectFullTypes 是否保留选中嵌套类型的完整子树
    */
   PruneColumns(Set<Integer> selected, boolean selectFullTypes) {
     Preconditions.checkNotNull(selected, "Selected field ids cannot be null");
@@ -189,11 +202,10 @@ class PruneColumns extends TypeUtil.SchemaVisitor<Type> {
   }
 
   /**
-   * If select full types is disabled we need to recreate the struct with only the selected
-   * subfields. If no subfields are selected we return an empty struct.
+   * 在 selectFullTypes=false 时，用已选子字段重建 struct；无子字段选中则返回空 struct。
    *
-   * @param projectedField subfields already selected in this projection
-   * @return projected struct
+   * @param projectedField 已投影的子字段
+   * @return 投影后的 struct
    */
   private StructType projectSelectedStruct(Type projectedField) {
     Preconditions.checkArgument(projectedField == null || projectedField.isStructType());

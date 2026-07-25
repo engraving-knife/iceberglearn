@@ -29,7 +29,25 @@ import org.apache.iceberg.util.Tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Functionality used by RewriteDataFile Actions from different platforms to handle commits. */
+/**
+ * 数据文件重写动作的提交管理器。
+ *
+ * <p>所属模块：iceberg-core 的 actions 包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将若干 {@link RewriteFileGroup} 的重写结果合并为一次 {@link RewriteFiles} 提交：删除旧数据文件、 添加新数据文件。
+ *   <li>提供提交失败后的文件清理（abort）能力，以及提交或清理的组合入口 {@link #commitOrClean(Set)}。
+ *   <li>提供异步批量提交服务 {@link CommitService}（基于 {@link BaseCommitService}）。
+ * </ul>
+ *
+ * <p>设计意图：把"如何提交重写结果"与"如何执行重写"解耦，使不同平台（Spark/Flink 等）的 RewriteDataFiles 动作复用同一套提交与清理逻辑。通过 {@code
+ * startingSnapshotId} 做乐观锁校验， 可选地使用起始序列号以保证新文件序列号语义。
+ *
+ * <p>上下游关系：被各平台的 {@link RewriteDataFiles} 动作调用；内部使用 {@link Table#newRewrite()} 生成提交操作，依赖 {@link
+ * BaseCommitService} 提供异步提交能力。
+ */
 public class RewriteDataFilesCommitManager {
   private static final Logger LOG = LoggerFactory.getLogger(RewriteDataFilesCommitManager.class);
 
@@ -37,15 +55,28 @@ public class RewriteDataFilesCommitManager {
   private final long startingSnapshotId;
   private final boolean useStartingSequenceNumber;
 
-  // constructor used for testing
+  /** 测试用构造器，以表当前快照作为起始快照。 */
   public RewriteDataFilesCommitManager(Table table) {
     this(table, table.currentSnapshot().snapshotId());
   }
 
+  /**
+   * 构造提交管理器，使用默认的起始序列号策略。
+   *
+   * @param table 目标表
+   * @param startingSnapshotId 用于乐观锁校验的起始快照 ID
+   */
   public RewriteDataFilesCommitManager(Table table, long startingSnapshotId) {
     this(table, startingSnapshotId, RewriteDataFiles.USE_STARTING_SEQUENCE_NUMBER_DEFAULT);
   }
 
+  /**
+   * 构造提交管理器。
+   *
+   * @param table 目标表
+   * @param startingSnapshotId 用于乐观锁校验的起始快照 ID
+   * @param useStartingSequenceNumber 是否使用起始快照的序列号写入新文件
+   */
   public RewriteDataFilesCommitManager(
       Table table, long startingSnapshotId, boolean useStartingSequenceNumber) {
     this.table = table;
@@ -54,10 +85,12 @@ public class RewriteDataFilesCommitManager {
   }
 
   /**
-   * Perform a commit operation on the table adding and removing files as required for this set of
-   * file groups
+   * 将一组文件组的重写结果合并为一次提交：删除被重写的旧数据文件、添加新写入的数据文件。
    *
-   * @param fileGroups fileSets to commit
+   * <p>逻辑：汇总所有组的 rewrittenFiles 与 addedFiles；以 {@code startingSnapshotId} 校验创建 {@link
+   * RewriteFiles}；若启用起始序列号则用起始快照的序列号，否则使用默认序列号语义；最后提交。
+   *
+   * @param fileGroups 待提交的文件组集合
    */
   public void commitFileGroups(Set<RewriteFileGroup> fileGroups) {
     Set<DataFile> rewrittenDataFiles = Sets.newHashSet();
@@ -79,10 +112,11 @@ public class RewriteDataFilesCommitManager {
   }
 
   /**
-   * Clean up a specified file set by removing any files created for that operation, should not
-   * throw any exceptions
+   * 清理指定文件组产生的新文件，不应抛出异常。
    *
-   * @param fileGroup group of files which has already been rewritten
+   * <p>逻辑：遍历 addedFiles 逐个删除，删除失败仅告警不抛出。
+   *
+   * @param fileGroup 已重写的文件组
    */
   public void abortFileGroup(RewriteFileGroup fileGroup) {
     Preconditions.checkState(
@@ -95,6 +129,13 @@ public class RewriteDataFilesCommitManager {
         .run(dataFile -> table.io().deleteFile(dataFile.path().toString()));
   }
 
+  /**
+   * 提交一组文件组，失败时清理已写入的新文件。
+   *
+   * <p>逻辑：尝试提交；遇到 {@link CommitStateUnknownException}（提交状态未知，可能已成功）时不清理 直接抛出；遇到其他异常则清理所有组的新文件后重新抛出。
+   *
+   * @param rewriteGroups 待提交的文件组集合
+   */
   public void commitOrClean(Set<RewriteFileGroup> rewriteGroups) {
     try {
       commitFileGroups(rewriteGroups);
@@ -112,17 +153,18 @@ public class RewriteDataFilesCommitManager {
   }
 
   /**
-   * An async service which allows for committing multiple file groups as their rewrites complete.
-   * The service also allows for partial-progress since commits can fail. Once the service has been
-   * closed no new file groups should not be offered.
+   * 创建一个异步提交服务，支持部分进度：各文件组重写完成后陆续提交，提交失败不影响其他组。
    *
-   * @param rewritesPerCommit number of file groups to include in a commit
-   * @return the service for handling commits
+   * @param rewritesPerCommit 单次提交包含的文件组数量
+   * @return 异步提交服务 {@link CommitService}
    */
   public CommitService service(int rewritesPerCommit) {
     return new CommitService(rewritesPerCommit);
   }
 
+  /**
+   * 数据文件重写的异步提交服务，继承 {@link BaseCommitService}，将提交与清理委托给 外层 {@link RewriteDataFilesCommitManager}。
+   */
   public class CommitService extends BaseCommitService<RewriteFileGroup> {
 
     CommitService(int rewritesPerCommit) {

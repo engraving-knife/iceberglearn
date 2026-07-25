@@ -41,6 +41,14 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestArrayPoolDataIteratorBatcherRowData 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestArrayPoolDataIteratorBatcherRowData 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestArrayPoolDataIteratorBatcherRowData {
 
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
@@ -49,6 +57,7 @@ public class TestArrayPoolDataIteratorBatcherRowData {
   private final GenericAppenderFactory appenderFactory;
   private final DataIteratorBatcher<RowData> batcher;
 
+  /** 辅助方法：TestArrayPoolDataIteratorBatcherRowData，Array Pool Data Iterator Batcher Row Data。 */
   public TestArrayPoolDataIteratorBatcherRowData() {
     Configuration config = new Configuration();
     // set array pool size to 1

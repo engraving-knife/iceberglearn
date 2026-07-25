@@ -32,11 +32,27 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 快照 JSON 序列化与反序列化工具类（iceberg-core 元数据层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link Snapshot} 序列化为 JSON 写入元数据文件；
+ *   <li>从 JSON 反序列化重建 {@link Snapshot} 实例；
+ *   <li>兼容 v1（内嵌 manifest 列表）与 v2（manifest 列表文件引用）两种格式。
+ * </ul>
+ *
+ * <p>设计意图：工具类不可实例化，全部方法为静态方法； 使用 {@link DummyFileIO} 在 v1 格式下惰性获取 manifest 路径，避免不必要的 I/O。
+ *
+ * <p>上下游关系：被 {@link TableMetadataParser} 调用，用于读写元数据 JSON 中的快照条目； 依赖 {@link JsonUtil} 提供 JSON 读写工具。
+ */
 public class SnapshotParser {
 
+  /** 私有构造方法，禁止实例化。 */
   private SnapshotParser() {}
 
-  /** A dummy {@link FileIO} implementation that is only used to retrieve the path */
+  /** 仅用于惰性获取路径的占位 {@link FileIO} 实现，供 v1 快照序列化 manifest 路径使用。 */
   private static final DummyFileIO DUMMY_FILE_IO = new DummyFileIO();
 
   private static final String SEQUENCE_NUMBER = "sequence-number";
@@ -49,6 +65,23 @@ public class SnapshotParser {
   private static final String MANIFEST_LIST = "manifest-list";
   private static final String SCHEMA_ID = "schema-id";
 
+  /**
+   * 将快照写入 JSON 生成器。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>若序列号大于初始值则写入 sequence-number；
+   *   <li>写入 snapshot-id、parent-snapshot-id（若存在）、timestamp-ms；
+   *   <li>若存在 operation，写入 summary 对象，并将 operation 字段单独写入，避免重复；
+   *   <li>优先写入 manifest-list 文件位置；若不存在（v1），则内嵌 manifest 路径数组；
+   *   <li>若 schema-id 非 null 则写入。
+   * </ol>
+   *
+   * @param snapshot 待序列化的快照
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败时抛出
+   */
   static void toJson(Snapshot snapshot, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
     if (snapshot.sequenceNumber() > TableMetadata.INITIAL_SEQUENCE_NUMBER) {
@@ -96,15 +129,47 @@ public class SnapshotParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 将快照序列化为格式化（pretty）JSON 字符串。
+   *
+   * <p>默认 pretty=true 以保持向后兼容。
+   *
+   * @param snapshot 待序列化的快照
+   * @return JSON 字符串
+   */
   public static String toJson(Snapshot snapshot) {
     // Use true as default value of pretty for backwards compatibility
     return toJson(snapshot, true);
   }
 
+  /**
+   * 将快照序列化为 JSON 字符串，可控制是否格式化输出。
+   *
+   * @param snapshot 待序列化的快照
+   * @param pretty 是否格式化输出
+   * @return JSON 字符串
+   */
   public static String toJson(Snapshot snapshot, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(snapshot, gen), pretty);
   }
 
+  /**
+   * 从 JSON 节点反序列化为 {@link Snapshot} 实例。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>校验节点为对象类型；
+   *   <li>解析 sequence-number（缺省为初始值）、snapshot-id、parent-snapshot-id、timestamp-ms；
+   *   <li>解析 summary 对象，将 operation 字段单独提取，其余键值对放入 summary map；
+   *   <li>解析 schema-id（可能为 null）；
+   *   <li>若存在 manifest-list 字段，创建引用 manifest 列表文件的 {@link BaseSnapshot}； 否则回退到 v1 内嵌 manifest
+   *       路径数组模式。
+   * </ol>
+   *
+   * @param node JSON 节点
+   * @return 反序列化得到的 {@link Snapshot}
+   */
   static Snapshot fromJson(JsonNode node) {
     Preconditions.checkArgument(
         node.isObject(), "Cannot parse table version from a non-object: %s", node);
@@ -172,15 +237,31 @@ public class SnapshotParser {
     }
   }
 
+  /**
+   * 从 JSON 字符串反序列化为 {@link Snapshot} 实例。
+   *
+   * @param json JSON 字符串
+   * @return 反序列化得到的 {@link Snapshot}
+   */
   public static Snapshot fromJson(String json) {
     return JsonUtil.parse(json, SnapshotParser::fromJson);
   }
 
   /**
-   * The main purpose of this class is to lazily retrieve the path from a v1 Snapshot that has
-   * manifest lists
+   * 占位 {@link FileIO} 实现（iceberg-core 元数据层内部类）。
+   *
+   * <p>职责：仅在 v1 快照序列化时惰性获取 manifest 文件路径，不提供任何实际 I/O 能力。
+   *
+   * <p>设计意图：v1 快照将 manifest 路径内嵌在 JSON 中，序列化时需通过 {@link Snapshot#allManifests(FileIO)} 获取路径列表，该方法需要
+   * FileIO 参数。 此类仅返回路径而不读取文件，避免不必要的 I/O 操作。
    */
   private static class DummyFileIO implements FileIO {
+    /**
+     * 返回仅支持 location() 的占位 {@link InputFile}。
+     *
+     * @param path 文件路径
+     * @return 占位 InputFile，其 getLength/newStream 会抛出异常
+     */
     @Override
     public InputFile newInputFile(String path) {
       return new InputFile() {
@@ -206,11 +287,13 @@ public class SnapshotParser {
       };
     }
 
+    /** 不支持输出文件创建，抛出 {@link UnsupportedOperationException}。 */
     @Override
     public OutputFile newOutputFile(String path) {
       throw new UnsupportedOperationException();
     }
 
+    /** 不支持文件删除，抛出 {@link UnsupportedOperationException}。 */
     @Override
     public void deleteFile(String path) {
       throw new UnsupportedOperationException();

@@ -70,22 +70,32 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestDeltaTaskWriter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestDeltaTaskWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestDeltaTaskWriter extends TableTestBase {
   private static final int FORMAT_V2 = 2;
 
   private final FileFormat format;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "FileFormat = {0}")
   public static Object[][] parameters() {
     return new Object[][] {{"avro"}, {"orc"}, {"parquet"}};
   }
 
+  /** 辅助方法：TestDeltaTaskWriter，Delta Task Writer。 */
   public TestDeltaTaskWriter(String fileFormat) {
     super(FORMAT_V2);
     this.format = FileFormat.fromString(fileFormat);
   }
 
+  /** 辅助方法：setupTable，setup Table。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -95,14 +105,21 @@ public class TestDeltaTaskWriter extends TableTestBase {
     this.metadataDir = new File(tableDir, "metadata");
   }
 
+  /** 辅助方法：idFieldId，id Field Id。 */
   private int idFieldId() {
     return table.schema().findField("id").fieldId();
   }
 
+  /** 辅助方法：dataFieldId，data Field Id。 */
   private int dataFieldId() {
     return table.schema().findField("data").fieldId();
   }
 
+  /**
+   * 测试场景：Cdc Events。
+   *
+   * <p>验证该方法在 Cdc Events 条件下的行为是否符合预期。
+   */
   private void testCdcEvents(boolean partitioned) throws IOException {
     List<Integer> equalityFieldIds = Lists.newArrayList(idFieldId());
     TaskWriterFactory<RowData> taskWriterFactory = createTaskWriterFactory(equalityFieldIds);
@@ -170,18 +187,33 @@ public class TestDeltaTaskWriter extends TableTestBase {
         actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Unpartitioned。
+   *
+   * <p>验证该方法在 Unpartitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitioned() throws IOException {
     createAndInitTable(false);
     testCdcEvents(false);
   }
 
+  /**
+   * 测试场景：Partitioned。
+   *
+   * <p>验证该方法在 Partitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitioned() throws IOException {
     createAndInitTable(true);
     testCdcEvents(true);
   }
 
+  /**
+   * 测试场景：Write Pure Eq Deletes。
+   *
+   * <p>验证该方法在 Write Pure Eq Deletes 条件下的行为是否符合预期。
+   */
   private void testWritePureEqDeletes(boolean partitioned) throws IOException {
     createAndInitTable(partitioned);
     List<Integer> equalityFieldIds = Lists.newArrayList(idFieldId());
@@ -201,16 +233,31 @@ public class TestDeltaTaskWriter extends TableTestBase {
     Assert.assertEquals("Should have no record", expectedRowSet(), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Unpartitioned Pure Eq Deletes。
+   *
+   * <p>验证该方法在 Unpartitioned Pure Eq Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedPureEqDeletes() throws IOException {
     testWritePureEqDeletes(false);
   }
 
+  /**
+   * 测试场景：Partitioned Pure Eq Deletes。
+   *
+   * <p>验证该方法在 Partitioned Pure Eq Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedPureEqDeletes() throws IOException {
     testWritePureEqDeletes(true);
   }
 
+  /**
+   * 测试场景：Abort。
+   *
+   * <p>验证该方法在 Abort 条件下的行为是否符合预期。
+   */
   private void testAbort(boolean partitioned) throws IOException {
     createAndInitTable(partitioned);
     List<Integer> equalityFieldIds = Lists.newArrayList(idFieldId());
@@ -243,16 +290,31 @@ public class TestDeltaTaskWriter extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Unpartitioned Abort。
+   *
+   * <p>验证该方法在 Unpartitioned Abort 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnpartitionedAbort() throws IOException {
     testAbort(false);
   }
 
+  /**
+   * 测试场景：Partitioned Abort。
+   *
+   * <p>验证该方法在 Partitioned Abort 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedAbort() throws IOException {
     testAbort(true);
   }
 
+  /**
+   * 测试场景：Partitioned Table With Data As Key。
+   *
+   * <p>验证该方法在 Partitioned Table With Data As Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTableWithDataAsKey() throws IOException {
     createAndInitTable(true);
@@ -298,6 +360,11 @@ public class TestDeltaTaskWriter extends TableTestBase {
         actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Partitioned Table With Data And Id As Key。
+   *
+   * <p>验证该方法在 Partitioned Table With Data And Id As Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTableWithDataAndIdAsKey() throws IOException {
     createAndInitTable(true);
@@ -323,6 +390,11 @@ public class TestDeltaTaskWriter extends TableTestBase {
         "Should have expected records", expectedRowSet(createRecord(1, "aaa")), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Equality Column On Custom Precision TS Column。
+   *
+   * <p>验证该方法在 Equality Column On Custom Precision TS Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualityColumnOnCustomPrecisionTSColumn() throws IOException {
     Schema tableSchema =
@@ -379,6 +451,7 @@ public class TestDeltaTaskWriter extends TableTestBase {
     Assertions.assertThat(actualRowSet("*")).isEqualTo(expectedRowSet(expectedRecord));
   }
 
+  /** 辅助方法：commitTransaction，commit Transaction。 */
   private void commitTransaction(WriteResult result) {
     RowDelta rowDelta = table.newRowDelta();
     Arrays.stream(result.dataFiles()).forEach(rowDelta::addRows);
@@ -389,14 +462,17 @@ public class TestDeltaTaskWriter extends TableTestBase {
         .commit();
   }
 
+  /** 辅助方法：expectedRowSet，expected Row Set。 */
   private StructLikeSet expectedRowSet(Record... records) {
     return SimpleDataUtil.expectedRowSet(table, records);
   }
 
+  /** 辅助方法：actualRowSet，actual Row Set。 */
   private StructLikeSet actualRowSet(String... columns) throws IOException {
     return SimpleDataUtil.actualRowSet(table, columns);
   }
 
+  /** 辅助方法：createTaskWriterFactory，create Task Writer Factory。 */
   private TaskWriterFactory<RowData> createTaskWriterFactory(List<Integer> equalityFieldIds) {
     return new RowDataTaskWriterFactory(
         SerializableTable.copyOf(table),
@@ -408,6 +484,7 @@ public class TestDeltaTaskWriter extends TableTestBase {
         false);
   }
 
+  /** 辅助方法：createTaskWriterFactory，create Task Writer Factory。 */
   private TaskWriterFactory<RowData> createTaskWriterFactory(
       RowType flinkType, List<Integer> equalityFieldIds) {
     return new RowDataTaskWriterFactory(
@@ -420,6 +497,7 @@ public class TestDeltaTaskWriter extends TableTestBase {
         true);
   }
 
+  /** 辅助方法：createAndInitTable，create And Init Table。 */
   private void createAndInitTable(boolean partitioned) {
     if (partitioned) {
       this.table = create(SCHEMA, PartitionSpec.builderFor(SCHEMA).identity("data").build());
@@ -430,6 +508,7 @@ public class TestDeltaTaskWriter extends TableTestBase {
     initTable(table);
   }
 
+  /** 辅助方法：initTable，init Table。 */
   private void initTable(TestTables.TestTable testTable) {
     testTable
         .updateProperties()

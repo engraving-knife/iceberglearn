@@ -21,8 +21,20 @@ package org.apache.iceberg.catalog;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestNamespace 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestNamespace 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNamespace {
 
+  /**
+   * 测试场景：With Null And Empty。
+   *
+   * <p>验证该方法在 With Null And Empty 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNullAndEmpty() {
     Assertions.assertThatThrownBy(() -> Namespace.of((String[]) null))
@@ -32,6 +44,11 @@ public class TestNamespace {
     Assertions.assertThat(Namespace.of()).isEqualTo(Namespace.empty());
   }
 
+  /**
+   * 测试场景：Namespace。
+   *
+   * <p>验证该方法在 Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testNamespace() {
     String[] levels = {"a", "b", "c", "d"};
@@ -44,6 +61,11 @@ public class TestNamespace {
     }
   }
 
+  /**
+   * 测试场景：With Null In Level。
+   *
+   * <p>验证该方法在 With Null In Level 条件下的行为是否符合预期。
+   */
   @Test
   public void testWithNullInLevel() {
     Assertions.assertThatThrownBy(() -> Namespace.of("a", null, "b"))
@@ -51,6 +73,11 @@ public class TestNamespace {
         .hasMessage("Cannot create a namespace with a null level");
   }
 
+  /**
+   * 测试场景：Disallows Namespace With Null Byte。
+   *
+   * <p>验证该方法在 Disallows Namespace With Null Byte 条件下的行为是否符合预期。
+   */
   @Test
   public void testDisallowsNamespaceWithNullByte() {
     Assertions.assertThatThrownBy(() -> Namespace.of("ac", "\u0000c", "b"))

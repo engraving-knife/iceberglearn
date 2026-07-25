@@ -28,6 +28,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：Puffin 文件 footer 元数据的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core（Puffin 文件格式读写实现模块）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link FileMetadata}（含其 {@link BlobMetadata} 列表与文件级属性） 序列化为 footer JSON 文本。
+ *   <li>将 footer JSON 解析回 {@link FileMetadata} 内存对象。
+ * </ul>
+ *
+ * <p>设计意图：footer 采用 JSON 编码，字段命名采用 Iceberg 规范的 kebab-case （如 {@code snapshot-id}）；属性仅在非空时输出，减小
+ * footer 体积。 通过 {@link JsonUtil} 统一处理 Jackson 的 IO 与字段取值，避免重复样板代码。
+ *
+ * <p>上下游关系：被 {@link PuffinWriter} 在写 footer 时调用 {@link #toJson}， 被 {@link PuffinReader} 在读 footer
+ * 时调用 {@link #fromJson}。
+ */
 public final class FileMetadataParser {
 
   private FileMetadataParser() {}
@@ -43,18 +61,46 @@ public final class FileMetadataParser {
   private static final String LENGTH = "length";
   private static final String COMPRESSION_CODEC = "compression-codec";
 
+  /**
+   * 将 {@link FileMetadata} 序列化为 JSON 字符串。
+   *
+   * @param fileMetadata 待序列化的文件元数据
+   * @param pretty 是否美化输出
+   * @return footer JSON 文本
+   */
   public static String toJson(FileMetadata fileMetadata, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(fileMetadata, gen), pretty);
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link FileMetadata}。
+   *
+   * @param json footer JSON 文本
+   * @return 解析得到的文件元数据
+   */
   public static FileMetadata fromJson(String json) {
     return JsonUtil.parse(json, FileMetadataParser::fromJson);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link FileMetadata}。
+   *
+   * @param json 已解析的 JSON 节点
+   * @return 文件元数据
+   */
   static FileMetadata fromJson(JsonNode json) {
     return fileMetadataFromJson(json);
   }
 
+  /**
+   * 将 {@link FileMetadata} 写入 {@link JsonGenerator}。
+   *
+   * <p>逻辑：写起始对象 -> 输出 blobs 数组（逐个序列化 {@link BlobMetadata}） -> 属性非空时输出 properties -> 写结束对象。
+   *
+   * @param fileMetadata 待序列化的文件元数据
+   * @param generator Jackson 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(FileMetadata fileMetadata, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
 
@@ -71,6 +117,15 @@ public final class FileMetadataParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link FileMetadata}。
+   *
+   * <p>逻辑：校验 blobs 为数组并逐个解析为 {@link BlobMetadata}；properties 节点存在时 读取为字符串 map，否则置空 map；最终组装为 {@link
+   * FileMetadata}。
+   *
+   * @param json 已解析的 JSON 节点
+   * @return 文件元数据
+   */
   static FileMetadata fileMetadataFromJson(JsonNode json) {
 
     ImmutableList.Builder<BlobMetadata> blobs = ImmutableList.builder();
@@ -90,6 +145,16 @@ public final class FileMetadataParser {
     return new FileMetadata(blobs.build(), properties);
   }
 
+  /**
+   * 将单个 {@link BlobMetadata} 写入 {@link JsonGenerator}。
+   *
+   * <p>逻辑：写起始对象 -> 写 type、fields 数组、snapshot-id、sequence-number、offset、length -> 压缩编码非空时写出 ->
+   * 属性非空时输出 properties -> 写结束对象。仅在字段非空时输出可选字段， 以减小 footer 体积。
+   *
+   * @param blobMetadata 待序列化的 Blob 元信息
+   * @param generator Jackson 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(BlobMetadata blobMetadata, JsonGenerator generator) throws IOException {
     generator.writeStartObject();
 
@@ -113,6 +178,15 @@ public final class FileMetadataParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 从 {@link JsonNode} 解析单个 {@link BlobMetadata}。
+   *
+   * <p>逻辑：按字段名逐一取出 type、fields、snapshot-id、sequence-number、offset、length、 compression-codec（可选）与
+   * properties（可选），组装为 {@link BlobMetadata}。
+   *
+   * @param json 已解析的 JSON 节点
+   * @return Blob 元信息
+   */
   static BlobMetadata blobMetadataFromJson(JsonNode json) {
     String type = JsonUtil.getString(TYPE, json);
     List<Integer> fields = JsonUtil.getIntegerList(FIELDS, json);

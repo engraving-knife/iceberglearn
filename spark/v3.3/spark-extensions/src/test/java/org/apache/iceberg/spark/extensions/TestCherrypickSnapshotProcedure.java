@@ -35,18 +35,28 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchProcedureException;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCherrypickSnapshotProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 cherrypick快照存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCherrypickSnapshotProcedure extends SparkExtensionsTestBase {
 
+  /** 测试cherrypick快照存储过程。 */
   public TestCherrypickSnapshotProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试cherrypick快照使用位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCherrypickSnapshotUsingPositionalArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -84,6 +94,7 @@ public class TestCherrypickSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试cherrypick快照使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCherrypickSnapshotUsingNamedArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -121,6 +132,7 @@ public class TestCherrypickSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试cherrypick快照refreshesrelationcache场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCherrypickSnapshotRefreshesRelationCache() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -157,6 +169,7 @@ public class TestCherrypickSnapshotProcedure extends SparkExtensionsTestBase {
     sql("UNCACHE TABLE tmp");
   }
 
+  /** 测试cherrypickinvalid快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCherrypickInvalidSnapshot() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -168,6 +181,7 @@ public class TestCherrypickSnapshotProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.cherrypick_snapshot('%s', -1L)", catalogName, tableIdent));
   }
 
+  /** 测试invalidcherrypick快照场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidCherrypickSnapshotCases() {
     AssertHelpers.assertThrows(

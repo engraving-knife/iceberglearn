@@ -65,14 +65,23 @@ import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.CalendarInterval;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Parquet 文件的 Spark 读取器构建器，基于 Spark Schema 生成行级读取器。
+ *
+ * <p>设计意图：采用访问者模式按列构建 Parquet 读取器，支持列裁剪与删除行过滤。
+ *
+ * <p>上下游关系：由 RowDataReader / BatchDataReader 等使用。
+ */
 public class SparkParquetReaders {
   private SparkParquetReaders() {}
-
+  /** 执行 buildReader 相关操作。 */
   public static ParquetValueReader<InternalRow> buildReader(
       Schema expectedSchema, MessageType fileSchema) {
     return buildReader(expectedSchema, fileSchema, ImmutableMap.of());
   }
-
+  /** 执行 buildReader 相关操作。 */
   @SuppressWarnings("unchecked")
   public static ParquetValueReader<InternalRow> buildReader(
       Schema expectedSchema, MessageType fileSchema, Map<Integer, ?> idToConstant) {
@@ -93,14 +102,14 @@ public class SparkParquetReaders {
     FallbackReadBuilder(MessageType type, Map<Integer, ?> idToConstant) {
       super(type, idToConstant);
     }
-
+    /** 执行 message 相关操作。 */
     @Override
     public ParquetValueReader<?> message(
         Types.StructType expected, MessageType message, List<ParquetValueReader<?>> fieldReaders) {
       // the top level matches by ID, but the remaining IDs are missing
       return super.struct(expected, message, fieldReaders);
     }
-
+    /** 执行 struct 相关操作。 */
     @Override
     public ParquetValueReader<?> struct(
         Types.StructType ignored, GroupType struct, List<ParquetValueReader<?>> fieldReaders) {
@@ -128,13 +137,13 @@ public class SparkParquetReaders {
       this.type = type;
       this.idToConstant = idToConstant;
     }
-
+    /** 执行 message 相关操作。 */
     @Override
     public ParquetValueReader<?> message(
         Types.StructType expected, MessageType message, List<ParquetValueReader<?>> fieldReaders) {
       return struct(expected, message.asGroupType(), fieldReaders);
     }
-
+    /** 执行 struct 相关操作。 */
     @Override
     public ParquetValueReader<?> struct(
         Types.StructType expected, GroupType struct, List<ParquetValueReader<?>> fieldReaders) {
@@ -192,7 +201,7 @@ public class SparkParquetReaders {
 
       return new InternalRowReader(types, reorderedFields);
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public ParquetValueReader<?> list(
         Types.ListType expectedList, GroupType array, ParquetValueReader<?> elementReader) {
@@ -207,7 +216,7 @@ public class SparkParquetReaders {
       return new ArrayReader<>(
           repeatedD, repeatedR, ParquetValueReaders.option(elementType, elementD, elementReader));
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public ParquetValueReader<?> map(
         Types.MapType expectedMap,
@@ -231,7 +240,7 @@ public class SparkParquetReaders {
           ParquetValueReaders.option(keyType, keyD, keyReader),
           ParquetValueReaders.option(valueType, valueD, valueReader));
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     @SuppressWarnings("checkstyle:CyclomaticComplexity")
     public ParquetValueReader<?> primitive(
@@ -312,7 +321,7 @@ public class SparkParquetReaders {
           throw new UnsupportedOperationException("Unsupported type: " + primitive);
       }
     }
-
+    /** 执行 type 相关操作。 */
     protected MessageType type() {
       return type;
     }
@@ -325,7 +334,7 @@ public class SparkParquetReaders {
       super(desc);
       this.scale = scale;
     }
-
+    /** 读取数据。 */
     @Override
     public Decimal read(Decimal ignored) {
       Binary binary = column.nextBinary();
@@ -342,7 +351,7 @@ public class SparkParquetReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 读取数据。 */
     @Override
     public Decimal read(Decimal ignored) {
       return Decimal.apply(column.nextInteger(), precision, scale);
@@ -358,7 +367,7 @@ public class SparkParquetReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 读取数据。 */
     @Override
     public Decimal read(Decimal ignored) {
       return Decimal.apply(column.nextLong(), precision, scale);
@@ -369,12 +378,12 @@ public class SparkParquetReaders {
     TimestampMillisReader(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 读取数据。 */
     @Override
     public Long read(Long ignored) {
       return readLong();
     }
-
+    /** 执行 readLong 相关操作。 */
     @Override
     public long readLong() {
       return 1000 * column.nextLong();
@@ -386,12 +395,12 @@ public class SparkParquetReaders {
     TimestampInt96Reader(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 读取数据。 */
     @Override
     public Long read(Long ignored) {
       return readLong();
     }
-
+    /** 执行 readLong 相关操作。 */
     @Override
     public long readLong() {
       final ByteBuffer byteBuffer =
@@ -404,7 +413,7 @@ public class SparkParquetReaders {
     StringReader(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 读取数据。 */
     @Override
     public UTF8String read(UTF8String ignored) {
       Binary binary = column.nextBinary();
@@ -422,7 +431,7 @@ public class SparkParquetReaders {
     UUIDReader(ColumnDescriptor desc) {
       super(desc);
     }
-
+    /** 读取数据。 */
     @Override
     @SuppressWarnings("ByteBufferBackingArray")
     public UTF8String read(UTF8String ignored) {
@@ -437,7 +446,7 @@ public class SparkParquetReaders {
     ArrayReader(int definitionLevel, int repetitionLevel, ParquetValueReader<E> reader) {
       super(definitionLevel, repetitionLevel, reader);
     }
-
+    /** 创建 ListData 实例。 */
     @Override
     @SuppressWarnings("unchecked")
     protected ReusableArrayData newListData(ArrayData reuse) {
@@ -450,7 +459,7 @@ public class SparkParquetReaders {
         return new ReusableArrayData();
       }
     }
-
+    /** 返回 Element 属性。 */
     @Override
     @SuppressWarnings("unchecked")
     protected E getElement(ReusableArrayData list) {
@@ -463,7 +472,7 @@ public class SparkParquetReaders {
 
       return value;
     }
-
+    /** 执行 addElement 相关操作。 */
     @Override
     protected void addElement(ReusableArrayData reused, E element) {
       if (writePos >= reused.capacity()) {
@@ -474,7 +483,7 @@ public class SparkParquetReaders {
 
       writePos += 1;
     }
-
+    /** 执行 buildList 相关操作。 */
     @Override
     protected ArrayData buildList(ReusableArrayData list) {
       list.setNumElements(writePos);
@@ -497,7 +506,7 @@ public class SparkParquetReaders {
         ParquetValueReader<V> valueReader) {
       super(definitionLevel, repetitionLevel, keyReader, valueReader);
     }
-
+    /** 创建 MapData 实例。 */
     @Override
     @SuppressWarnings("unchecked")
     protected ReusableMapData newMapData(MapData reuse) {
@@ -510,7 +519,7 @@ public class SparkParquetReaders {
         return new ReusableMapData();
       }
     }
-
+    /** 返回 Pair 属性。 */
     @Override
     @SuppressWarnings("unchecked")
     protected Map.Entry<K, V> getPair(ReusableMapData map) {
@@ -524,7 +533,7 @@ public class SparkParquetReaders {
 
       return kv;
     }
-
+    /** 执行 addPair 相关操作。 */
     @Override
     protected void addPair(ReusableMapData map, K key, V value) {
       if (writePos >= map.capacity()) {
@@ -536,7 +545,7 @@ public class SparkParquetReaders {
 
       writePos += 1;
     }
-
+    /** 执行 buildMap 相关操作。 */
     @Override
     protected MapData buildMap(ReusableMapData map) {
       map.setNumElements(writePos);
@@ -551,7 +560,7 @@ public class SparkParquetReaders {
       super(types, readers);
       this.numFields = readers.size();
     }
-
+    /** 创建 StructData 实例。 */
     @Override
     protected GenericInternalRow newStructData(InternalRow reuse) {
       if (reuse instanceof GenericInternalRow) {
@@ -560,47 +569,47 @@ public class SparkParquetReaders {
         return new GenericInternalRow(numFields);
       }
     }
-
+    /** 返回 Field 属性。 */
     @Override
     protected Object getField(GenericInternalRow intermediate, int pos) {
       return intermediate.genericGet(pos);
     }
-
+    /** 执行 buildStruct 相关操作。 */
     @Override
     protected InternalRow buildStruct(GenericInternalRow struct) {
       return struct;
     }
-
+    /** 执行 set 相关操作。 */
     @Override
     protected void set(GenericInternalRow row, int pos, Object value) {
       row.update(pos, value);
     }
-
+    /** 设置 Null 属性。 */
     @Override
     protected void setNull(GenericInternalRow row, int pos) {
       row.setNullAt(pos);
     }
-
+    /** 设置 Boolean 属性。 */
     @Override
     protected void setBoolean(GenericInternalRow row, int pos, boolean value) {
       row.setBoolean(pos, value);
     }
-
+    /** 设置 Integer 属性。 */
     @Override
     protected void setInteger(GenericInternalRow row, int pos, int value) {
       row.setInt(pos, value);
     }
-
+    /** 设置 Long 属性。 */
     @Override
     protected void setLong(GenericInternalRow row, int pos, long value) {
       row.setLong(pos, value);
     }
-
+    /** 设置 Float 属性。 */
     @Override
     protected void setFloat(GenericInternalRow row, int pos, float value) {
       row.setFloat(pos, value);
     }
-
+    /** 设置 Double 属性。 */
     @Override
     protected void setDouble(GenericInternalRow row, int pos, double value) {
       row.setDouble(pos, value);
@@ -616,37 +625,37 @@ public class SparkParquetReaders {
       this.keys = new ReusableArrayData();
       this.values = new ReusableArrayData();
     }
-
+    /** 执行 grow 相关操作。 */
     private void grow() {
       keys.grow();
       values.grow();
     }
-
+    /** 执行 capacity 相关操作。 */
     private int capacity() {
       return keys.capacity();
     }
-
+    /** 设置 NumElements 属性。 */
     public void setNumElements(int numElements) {
       this.numElements = numElements;
       keys.setNumElements(numElements);
       values.setNumElements(numElements);
     }
-
+    /** 执行 numElements 相关操作。 */
     @Override
     public int numElements() {
       return numElements;
     }
-
+    /** 返回副本。 */
     @Override
     public MapData copy() {
       return new ArrayBasedMapData(keyArray().copy(), valueArray().copy());
     }
-
+    /** 执行 keyArray 相关操作。 */
     @Override
     public ReusableArrayData keyArray() {
       return keys;
     }
-
+    /** 执行 valueArray 相关操作。 */
     @Override
     public ReusableArrayData valueArray() {
       return values;
@@ -658,7 +667,7 @@ public class SparkParquetReaders {
 
     private Object[] values = EMPTY;
     private int numElements = 0;
-
+    /** 执行 grow 相关操作。 */
     private void grow() {
       if (values.length == 0) {
         this.values = new Object[20];
@@ -669,115 +678,115 @@ public class SparkParquetReaders {
         System.arraycopy(old, 0, values, 0, old.length);
       }
     }
-
+    /** 执行 capacity 相关操作。 */
     private int capacity() {
       return values.length;
     }
-
+    /** 设置 NumElements 属性。 */
     public void setNumElements(int numElements) {
       this.numElements = numElements;
     }
-
+    /** 返回值。 */
     @Override
     public Object get(int ordinal, DataType dataType) {
       return values[ordinal];
     }
-
+    /** 执行 numElements 相关操作。 */
     @Override
     public int numElements() {
       return numElements;
     }
-
+    /** 返回副本。 */
     @Override
     public ArrayData copy() {
       return new GenericArrayData(array());
     }
-
+    /** 执行 array 相关操作。 */
     @Override
     public Object[] array() {
       return Arrays.copyOfRange(values, 0, numElements);
     }
-
+    /** 设置 NullAt 属性。 */
     @Override
     public void setNullAt(int i) {
       values[i] = null;
     }
-
+    /** 执行 update 相关操作。 */
     @Override
     public void update(int ordinal, Object value) {
       values[ordinal] = value;
     }
-
+    /** 判断是否 NullAt。 */
     @Override
     public boolean isNullAt(int ordinal) {
       return null == values[ordinal];
     }
-
+    /** 返回 Boolean 属性。 */
     @Override
     public boolean getBoolean(int ordinal) {
       return (boolean) values[ordinal];
     }
-
+    /** 返回 Byte 属性。 */
     @Override
     public byte getByte(int ordinal) {
       return (byte) values[ordinal];
     }
-
+    /** 返回 Short 属性。 */
     @Override
     public short getShort(int ordinal) {
       return (short) values[ordinal];
     }
-
+    /** 返回 Int 属性。 */
     @Override
     public int getInt(int ordinal) {
       return (int) values[ordinal];
     }
-
+    /** 返回 Long 属性。 */
     @Override
     public long getLong(int ordinal) {
       return (long) values[ordinal];
     }
-
+    /** 返回 Float 属性。 */
     @Override
     public float getFloat(int ordinal) {
       return (float) values[ordinal];
     }
-
+    /** 返回 Double 属性。 */
     @Override
     public double getDouble(int ordinal) {
       return (double) values[ordinal];
     }
-
+    /** 返回 Decimal 属性。 */
     @Override
     public Decimal getDecimal(int ordinal, int precision, int scale) {
       return (Decimal) values[ordinal];
     }
-
+    /** 返回 UTF8String 属性。 */
     @Override
     public UTF8String getUTF8String(int ordinal) {
       return (UTF8String) values[ordinal];
     }
-
+    /** 返回 Binary 属性。 */
     @Override
     public byte[] getBinary(int ordinal) {
       return (byte[]) values[ordinal];
     }
-
+    /** 返回 Interval 属性。 */
     @Override
     public CalendarInterval getInterval(int ordinal) {
       return (CalendarInterval) values[ordinal];
     }
-
+    /** 返回 Struct 属性。 */
     @Override
     public InternalRow getStruct(int ordinal, int numFields) {
       return (InternalRow) values[ordinal];
     }
-
+    /** 返回 Array 属性。 */
     @Override
     public ArrayData getArray(int ordinal) {
       return (ArrayData) values[ordinal];
     }
-
+    /** 返回 Map 属性。 */
     @Override
     public MapData getMap(int ordinal) {
       return (MapData) values[ordinal];

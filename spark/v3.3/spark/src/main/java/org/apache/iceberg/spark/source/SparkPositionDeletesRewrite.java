@@ -37,7 +37,6 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.spark.PositionDeletesRewriteCoordinator;
-import org.apache.iceberg.spark.ScanTaskSetManager;
 import org.apache.iceberg.spark.SparkWriteConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -55,12 +54,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * {@link Write} class for rewriting position delete files from Spark. Responsible for creating
- * {@link PositionDeleteBatchWrite}.
+ * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
  *
- * <p>This class is meant to be used for an action to rewrite position delete files. Hence, it
- * assumes all position deletes to rewrite have come from {@link ScanTaskSetManager} and that all
- * have the same partition spec id and partition values.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPositionDeletesRewrite。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
  */
 public class SparkPositionDeletesRewrite implements Write {
 
@@ -108,19 +108,38 @@ public class SparkPositionDeletesRewrite implements Write {
     this.partition = partition;
   }
 
+  /**
+   * 转换为batch。
+   *
+   * @return 结果对象
+   */
   @Override
   public BatchWrite toBatch() {
+    /** 执行该方法的具体逻辑。 */
     return new PositionDeleteBatchWrite();
   }
 
-  /** {@link BatchWrite} class for rewriting position deletes files from Spark */
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 PositionDeleteBatchWrite。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   class PositionDeleteBatchWrite implements BatchWrite {
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param info 参数
+     * @return 结果对象
+     */
     @Override
     public DataWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       // broadcast the table metadata as the writer factory will be sent to executors
       Broadcast<Table> tableBroadcast =
           sparkContext.broadcast(SerializableTableWithSize.copyOf(table));
+      /** 执行该方法的具体逻辑。 */
       return new PositionDeletesWriterFactory(
           tableBroadcast,
           queryId,
@@ -132,17 +151,28 @@ public class SparkPositionDeletesRewrite implements Write {
           partition);
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @param messages 参数
+     */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       PositionDeletesRewriteCoordinator coordinator = PositionDeletesRewriteCoordinator.get();
       coordinator.stageRewrite(table, fileSetId, ImmutableSet.copyOf(files(messages)));
     }
 
+    /**
+     * 中止并回滚当前操作。
+     *
+     * @param messages 参数
+     */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       SparkCleanupUtil.deleteFiles("job abort", table.io(), files(messages));
     }
 
+    /** 执行该方法的具体逻辑。 */
     private List<DeleteFile> files(WriterCommitMessage[] messages) {
       List<DeleteFile> files = Lists.newArrayList();
 
@@ -158,12 +188,13 @@ public class SparkPositionDeletesRewrite implements Write {
   }
 
   /**
-   * Writer factory for position deletes metadata table. Responsible for creating {@link
-   * DeleteWriter}.
+   * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
    *
-   * <p>This writer is meant to be used for an action to rewrite delete files. Hence, it makes an
-   * assumption that all incoming deletes belong to the same partition, and that incoming dataset is
-   * from {@link ScanTaskSetManager}.
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 PositionDeletesWriterFactory。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
    */
   static class PositionDeletesWriterFactory implements DataWriterFactory {
     private final Broadcast<Table> tableBroadcast;
@@ -194,6 +225,13 @@ public class SparkPositionDeletesRewrite implements Write {
       this.partition = partition;
     }
 
+    /**
+     * 创建并返回新实例。
+     *
+     * @param partitionId 参数
+     * @param taskId 参数
+     * @return 结果对象
+     */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
       Table table = tableBroadcast.value();
@@ -221,6 +259,7 @@ public class SparkPositionDeletesRewrite implements Write {
               .positionDeleteSparkType(deleteSparkTypeWithoutRow)
               .build();
 
+      /** 删除数据或文件。 */
       return new DeleteWriter(
           table,
           writerFactoryWithRow,
@@ -232,7 +271,9 @@ public class SparkPositionDeletesRewrite implements Write {
           partition);
     }
 
+    /** 执行该方法的具体逻辑。 */
     private Schema positionDeleteRowSchema() {
+      /** 执行该方法的具体逻辑。 */
       return new Schema(
           writeSchema
               .findField(MetadataColumns.DELETE_FILE_ROW_FIELD_NAME)
@@ -241,6 +282,7 @@ public class SparkPositionDeletesRewrite implements Write {
               .fields());
     }
 
+    /** 删除数据或文件。 */
     private StructType deleteSparkType() {
       return new StructType(
           new StructField[] {
@@ -250,6 +292,7 @@ public class SparkPositionDeletesRewrite implements Write {
           });
     }
 
+    /** 删除数据或文件。 */
     private StructType deleteSparkTypeWithoutRow() {
       return new StructType(
           new StructField[] {
@@ -260,15 +303,11 @@ public class SparkPositionDeletesRewrite implements Write {
   }
 
   /**
-   * Writer for position deletes metadata table.
+   * Iceberg 表在 Spark DataSource V2 中的实现的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
    *
-   * <p>Iceberg specifies delete files schema as having either 'row' as a required field, or omits
-   * 'row' altogether. This is to ensure accuracy of delete file statistics on 'row' column. Hence,
-   * this writer, if receiving source position deletes with null and non-null rows, redirects rows
-   * with null 'row' to one file writer, and non-null 'row' to another file writer.
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DeleteWriter。
    *
-   * <p>This writer is meant to be used for an action to rewrite delete files. Hence, it makes an
-   * assumption that all incoming deletes belong to the same partition.
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
    */
   private static class DeleteWriter implements DataWriter<InternalRow> {
     private final SparkFileWriterFactory writerFactoryWithRow;
@@ -330,6 +369,11 @@ public class SparkPositionDeletesRewrite implements Write {
       this.rowSize = ((StructType) type).size();
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param record 参数
+     */
     @Override
     public void write(InternalRow record) throws IOException {
       String file = record.getString(fileOrdinal);
@@ -344,18 +388,26 @@ public class SparkPositionDeletesRewrite implements Write {
       }
     }
 
+    /**
+     * 提交事务或写入结果。
+     *
+     * @return 结果对象
+     */
     @Override
     public WriterCommitMessage commit() throws IOException {
       close();
+      /** 删除数据或文件。 */
       return new DeleteTaskCommit(allDeleteFiles());
     }
 
+    /** 中止并回滚当前操作。 */
     @Override
     public void abort() throws IOException {
       close();
       SparkCleanupUtil.deleteTaskFiles(io, allDeleteFiles());
     }
 
+    /** 释放底层资源。 */
     @Override
     public void close() throws IOException {
       if (!closed) {
@@ -369,6 +421,7 @@ public class SparkPositionDeletesRewrite implements Write {
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithRow() {
       if (writerWithRow == null) {
         this.writerWithRow =
@@ -378,6 +431,7 @@ public class SparkPositionDeletesRewrite implements Write {
       return writerWithRow;
     }
 
+    /** 执行该方法的具体逻辑。 */
     private ClusteredPositionDeleteWriter<InternalRow> lazyWriterWithoutRow() {
       if (writerWithoutRow == null) {
         this.writerWithoutRow =
@@ -387,6 +441,7 @@ public class SparkPositionDeletesRewrite implements Write {
       return writerWithoutRow;
     }
 
+    /** 执行该方法的具体逻辑。 */
     private List<DeleteFile> allDeleteFiles() {
       List<DeleteFile> allDeleteFiles = Lists.newArrayList();
       if (writerWithRow != null) {
@@ -399,6 +454,13 @@ public class SparkPositionDeletesRewrite implements Write {
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现，实现 DELETE 行级操作。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 DeleteTaskCommit。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   public static class DeleteTaskCommit implements WriterCommitMessage {
     private final DeleteFile[] taskFiles;
 
@@ -406,6 +468,7 @@ public class SparkPositionDeletesRewrite implements Write {
       this.taskFiles = deleteFiles.toArray(new DeleteFile[0]);
     }
 
+    /** 执行该方法的具体逻辑。 */
     DeleteFile[] files() {
       return taskFiles;
     }

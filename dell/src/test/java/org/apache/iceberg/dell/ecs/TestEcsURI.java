@@ -24,8 +24,20 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestEcsURI 的功能。
+ *
+ * <p>所属模块：iceberg-dell。职责：验证 TestEcsURI 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestEcsURI {
 
+  /**
+   * 测试场景：Constructor。
+   *
+   * <p>验证该方法在 Constructor 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructor() {
     assertURI("bucket", "", new EcsURI("ecs://bucket"));
@@ -37,6 +49,11 @@ public class TestEcsURI {
     assertURI("bucket", "a//b", new EcsURI("ecs://bucket//a//b"));
   }
 
+  /**
+   * 测试场景：Constructor With Bucket And Name。
+   *
+   * <p>验证该方法在 Constructor With Bucket And Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructorWithBucketAndName() {
     assertURI("bucket", "", new EcsURI("bucket", ""));
@@ -48,11 +65,17 @@ public class TestEcsURI {
     assertURI("bucket", "a//b", new EcsURI("bucket", "/a//b"));
   }
 
+  /** 辅助方法：assertURI。 */
   private void assertURI(String bucket, String name, EcsURI ecsURI) {
     assertThat(ecsURI.bucket()).as("bucket").isEqualTo(bucket);
     assertThat(ecsURI.name()).as("name").isEqualTo(name);
   }
 
+  /**
+   * 测试场景：Invalid Location。
+   *
+   * <p>验证该方法在 Invalid Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidLocation() {
     Assertions.assertThatThrownBy(() -> new EcsURI("http://bucket/a"))

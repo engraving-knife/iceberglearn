@@ -31,11 +31,13 @@ public class MockDellClientFactory implements DellClientFactory {
   /** Use ID to avoid using client in other instance. */
   private String id;
 
+  /** 辅助方法：ecsS3。 */
   @Override
   public S3Client ecsS3() {
     return EcsS3MockRule.rule(id).client();
   }
 
+  /** 辅助方法：initialize。 */
   @Override
   public void initialize(Map<String, String> properties) {
     this.id = properties.get(ID_KEY);

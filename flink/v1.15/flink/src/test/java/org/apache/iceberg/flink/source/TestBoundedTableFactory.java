@@ -27,8 +27,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Streams;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestBoundedTableFactory 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestBoundedTableFactory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestBoundedTableFactory extends ChangeLogTableTestBase {
 
+  /**
+   * 测试场景：Empty Data Set。
+   *
+   * <p>验证该方法在 Empty Data Set 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyDataSet() {
     String table = name.getMethodName();
@@ -45,6 +57,11 @@ public class TestBoundedTableFactory extends ChangeLogTableTestBase {
         sql("SELECT * FROM %s", table));
   }
 
+  /**
+   * 测试场景：Bounded Table Factory。
+   *
+   * <p>验证该方法在 Bounded Table Factory 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundedTableFactory() {
     String table = name.getMethodName();

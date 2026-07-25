@@ -63,9 +63,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/** Tests for Metrics. */
+/**
+ * 测试类：TestMetrics，用于验证 Metrics 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metrics 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class TestMetrics {
 
+  /** 辅助方法：metrics。 */
   protected TestMetrics(int formatVersion) {
     this.formatVersion = formatVersion;
   }
@@ -116,11 +123,13 @@ public abstract class TestMetrics {
   private final int formatVersion;
   private final byte[] fixed = "abcd".getBytes(StandardCharsets.UTF_8);
 
+  /** 辅助方法：after。 */
   @After
   public void after() {
     TestTables.clearTables();
   }
 
+  /** 辅助方法：create record with float and double。 */
   private static Record createRecordWithFloatAndDouble(float floatValue, double doubleValue) {
     Record record = GenericRecord.create(FLOAT_DOUBLE_ONLY_SCHEMA);
     record.setField("floatCol", floatValue);
@@ -128,24 +137,36 @@ public abstract class TestMetrics {
     return record;
   }
 
+  /** 辅助方法：file format。 */
   public abstract FileFormat fileFormat();
 
+  /** 辅助方法：get metrics。 */
   public abstract Metrics getMetrics(Schema schema, MetricsConfig metricsConfig, Record... records)
       throws IOException;
 
+  /** 辅助方法：get metrics。 */
   public abstract Metrics getMetrics(Schema schema, Record... records) throws IOException;
 
+  /** 辅助方法：get metrics for records with small row groups。 */
   protected abstract Metrics getMetricsForRecordsWithSmallRowGroups(
       Schema schema, OutputFile outputFile, Record... records) throws IOException;
 
+  /** 辅助方法：split count。 */
   public abstract int splitCount(InputFile inputFile) throws IOException;
 
+  /** 辅助方法：supports small row groups。 */
   public boolean supportsSmallRowGroups() {
     return false;
   }
 
+  /** 辅助方法：create output file。 */
   protected abstract OutputFile createOutputFile() throws IOException;
 
+  /**
+   * 测试场景：metrics for repeated values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForRepeatedValues() throws IOException {
     Record record = GenericRecord.create(SIMPLE_SCHEMA);
@@ -180,6 +201,11 @@ public abstract class TestMetrics {
     assertCounts(13, 2L, 0L, metrics);
   }
 
+  /**
+   * 测试场景：metrics for top level fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForTopLevelFields() throws IOException {
     Record firstRecord = GenericRecord.create(SIMPLE_SCHEMA);
@@ -255,6 +281,11 @@ public abstract class TestMetrics {
     }
   }
 
+  /**
+   * 测试场景：metrics for decimals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForDecimals() throws IOException {
     Schema schema =
@@ -278,6 +309,11 @@ public abstract class TestMetrics {
     assertBounds(3, DecimalType.of(22, 2), new BigDecimal("5.80"), new BigDecimal("5.80"), metrics);
   }
 
+  /**
+   * 测试场景：metrics for nested struct fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForNestedStructFields() throws IOException {
     Metrics metrics = getMetrics(NESTED_SCHEMA, buildNestedTestRecord());
@@ -299,6 +335,11 @@ public abstract class TestMetrics {
     assertBounds(7, DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：metrics mode for nested struct fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsModeForNestedStructFields() throws IOException {
     Map<String, String> properties =
@@ -316,6 +357,7 @@ public abstract class TestMetrics {
     assertBounds(3, LongType.get(), 100L, 100L, metrics);
   }
 
+  /** 辅助方法：build nested test record。 */
   private Record buildNestedTestRecord() {
     Record leafStruct = GenericRecord.create(LEAF_STRUCT_TYPE);
     leafStruct.setField("leafLongCol", 20L);
@@ -331,6 +373,11 @@ public abstract class TestMetrics {
     return record;
   }
 
+  /**
+   * 测试场景：metrics for list and map elements。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForListAndMapElements() throws IOException {
     StructType structType =
@@ -371,6 +418,11 @@ public abstract class TestMetrics {
     assertBounds(7, structType, null, null, metrics);
   }
 
+  /**
+   * 测试场景：metrics for null columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForNullColumns() throws IOException {
     Schema schema = new Schema(optional(1, "intCol", IntegerType.get()));
@@ -385,6 +437,11 @@ public abstract class TestMetrics {
     assertBounds(1, IntegerType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：metrics for na n columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForNaNColumns() throws IOException {
     Metrics metrics = getMetrics(FLOAT_DOUBLE_ONLY_SCHEMA, NAN_ONLY_RECORD, NAN_ONLY_RECORD);
@@ -396,6 +453,11 @@ public abstract class TestMetrics {
     assertBounds(2, DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：column bounds with na n value at front。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testColumnBoundsWithNaNValueAtFront() throws IOException {
     Metrics metrics =
@@ -412,6 +474,11 @@ public abstract class TestMetrics {
     assertBounds(2, DoubleType.get(), 3.4D, 7.8D, metrics);
   }
 
+  /**
+   * 测试场景：column bounds with na n value in middle。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testColumnBoundsWithNaNValueInMiddle() throws IOException {
     Metrics metrics =
@@ -428,6 +495,11 @@ public abstract class TestMetrics {
     assertBounds(2, DoubleType.get(), 3.4D, 7.8D, metrics);
   }
 
+  /**
+   * 测试场景：column bounds with na n value at end。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testColumnBoundsWithNaNValueAtEnd() throws IOException {
     Metrics metrics =
@@ -444,6 +516,11 @@ public abstract class TestMetrics {
     assertBounds(2, DoubleType.get(), 3.4D, 7.8D, metrics);
   }
 
+  /**
+   * 测试场景：metrics for top level with multiple row group。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForTopLevelWithMultipleRowGroup() throws Exception {
     Assume.assumeTrue(
@@ -498,6 +575,11 @@ public abstract class TestMetrics {
         6, Types.DecimalType.of(10, 2), new BigDecimal("2.00"), new BigDecimal("201.00"), metrics);
   }
 
+  /**
+   * 测试场景：metrics for nested struct fields with multiple row group。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForNestedStructFieldsWithMultipleRowGroup() throws IOException {
     Assume.assumeTrue(
@@ -549,6 +631,11 @@ public abstract class TestMetrics {
     assertBounds(7, DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：none metrics mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoneMetricsMode() throws IOException {
     Metrics metrics =
@@ -570,6 +657,11 @@ public abstract class TestMetrics {
     assertBounds(7, Types.DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：counts metrics mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCountsMetricsMode() throws IOException {
     Metrics metrics =
@@ -592,6 +684,11 @@ public abstract class TestMetrics {
     assertBounds(7, Types.DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：full metrics mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFullMetricsMode() throws IOException {
     Metrics metrics =
@@ -618,6 +715,11 @@ public abstract class TestMetrics {
     assertBounds(7, Types.DoubleType.get(), null, null, metrics);
   }
 
+  /**
+   * 测试场景：truncate string metrics mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTruncateStringMetricsMode() throws IOException {
     String colName = "str_to_truncate";
@@ -642,6 +744,11 @@ public abstract class TestMetrics {
     assertBounds(1, Types.StringType.get(), expectedMinBound, expectedMaxBound, metrics);
   }
 
+  /**
+   * 测试场景：truncate binary metrics mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTruncateBinaryMetricsMode() throws IOException {
     String colName = "bin_to_truncate";
@@ -666,6 +773,11 @@ public abstract class TestMetrics {
     assertBounds(1, Types.BinaryType.get(), expectedMinBounds, expectedMaxBounds, metrics);
   }
 
+  /**
+   * 测试场景：sorted column metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSortedColumnMetrics() throws IOException {
     File tableDir = temp.newFolder();
@@ -729,6 +841,11 @@ public abstract class TestMetrics {
     assertBounds(8, DateType.get(), 1500, 3000, metrics);
   }
 
+  /**
+   * 测试场景：metrics for sorted nested struct fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetricsForSortedNestedStructFields() throws IOException {
     File tableDir = temp.newFolder();
@@ -760,10 +877,12 @@ public abstract class TestMetrics {
     assertBounds(5, LongType.get(), Long.MAX_VALUE, Long.MAX_VALUE, metrics);
   }
 
+  /** 辅助方法：assert counts。 */
   protected void assertCounts(int fieldId, Long valueCount, Long nullValueCount, Metrics metrics) {
     assertCounts(fieldId, valueCount, nullValueCount, null, metrics);
   }
 
+  /** 辅助方法：assert counts。 */
   protected void assertCounts(
       int fieldId, Long valueCount, Long nullValueCount, Long nanValueCount, Metrics metrics) {
     Map<Integer, Long> valueCounts = metrics.valueCounts();
@@ -774,6 +893,7 @@ public abstract class TestMetrics {
     Assert.assertEquals(nanValueCount, nanValueCounts.get(fieldId));
   }
 
+  /** 辅助方法：assert bounds。 */
   protected <T> void assertBounds(
       int fieldId, Type type, T lowerBound, T upperBound, Metrics metrics) {
     Map<Integer, ByteBuffer> lowerBounds = metrics.lowerBounds();

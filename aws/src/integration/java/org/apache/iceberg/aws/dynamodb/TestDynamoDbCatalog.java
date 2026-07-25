@@ -56,6 +56,13 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
+/**
+ * 文件级说明：TestDynamoDbCatalog 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 dynamodb目录 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestDynamoDbCatalog {
 
   private static final ForkJoinPool POOL = new ForkJoinPool(16);
@@ -68,6 +75,7 @@ public class TestDynamoDbCatalog {
   private static DynamoDbCatalog catalog;
   private static String testBucket;
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeClass
   public static void beforeClass() {
     catalogTableName = genRandomName();
@@ -85,11 +93,17 @@ public class TestDynamoDbCatalog {
             "s3://" + testBucket + "/" + genRandomName()));
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterClass
   public static void afterClass() {
     dynamo.deleteTable(DeleteTableRequest.builder().tableName(catalogTableName).build());
   }
 
+  /**
+   * 测试场景：创建命名空间。
+   *
+   * <p>验证该方法在 创建命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -113,6 +127,11 @@ public class TestDynamoDbCatalog {
         () -> catalog.createNamespace(namespace));
   }
 
+  /**
+   * 测试场景：创建命名空间badname。
+   *
+   * <p>验证该方法在 创建命名空间badname 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateNamespaceBadName() {
     AssertHelpers.assertThrows(
@@ -128,6 +147,11 @@ public class TestDynamoDbCatalog {
         () -> catalog.createNamespace(Namespace.of("a", "b.c")));
   }
 
+  /**
+   * 测试场景：列表sub命名空间。
+   *
+   * <p>验证该方法在 列表sub命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testListSubNamespaces() {
     Namespace parent = Namespace.of(genRandomName());
@@ -140,6 +164,11 @@ public class TestDynamoDbCatalog {
     Assert.assertEquals(4, catalog.listNamespaces(parent).size());
   }
 
+  /**
+   * 测试场景：命名空间属性。
+   *
+   * <p>验证该方法在 命名空间属性 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNamespaceProperties() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -159,6 +188,11 @@ public class TestDynamoDbCatalog {
     Assert.assertEquals(properties, catalog.loadNamespaceMetadata(namespace));
   }
 
+  /**
+   * 测试场景：创建表。
+   *
+   * <p>验证该方法在 创建表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -188,6 +222,11 @@ public class TestDynamoDbCatalog {
         () -> catalog.createTable(tableIdentifier, SCHEMA));
   }
 
+  /**
+   * 测试场景：创建表badname。
+   *
+   * <p>验证该方法在 创建表badname 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableBadName() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -205,6 +244,11 @@ public class TestDynamoDbCatalog {
         () -> catalog.createTable(TableIdentifier.of(namespace, "a.b"), SCHEMA));
   }
 
+  /**
+   * 测试场景：列表表。
+   *
+   * <p>验证该方法在 列表表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testListTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -217,6 +261,11 @@ public class TestDynamoDbCatalog {
     Assert.assertEquals(3, catalog.listTables(namespace).size());
   }
 
+  /**
+   * 测试场景：删除表。
+   *
+   * <p>验证该方法在 删除表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -254,6 +303,11 @@ public class TestDynamoDbCatalog {
                     .build()));
   }
 
+  /**
+   * 测试场景：重命名表。
+   *
+   * <p>验证该方法在 重命名表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRenameTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -306,6 +360,11 @@ public class TestDynamoDbCatalog {
         metadataLocation2);
   }
 
+  /**
+   * 测试场景：更新表。
+   *
+   * <p>验证该方法在 更新表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testUpdateTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -318,6 +377,11 @@ public class TestDynamoDbCatalog {
     Assert.assertEquals(2, table.schema().columns().size());
   }
 
+  /**
+   * 测试场景：并发提交。
+   *
+   * <p>验证该方法在 并发提交 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testConcurrentCommits() throws Exception {
     Namespace namespace = Namespace.of(genRandomName());
@@ -345,6 +409,11 @@ public class TestDynamoDbCatalog {
     Assert.assertEquals(2, table.schema().columns().size());
   }
 
+  /**
+   * 测试场景：删除命名空间。
+   *
+   * <p>验证该方法在 删除命名空间 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropNamespace() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -359,6 +428,11 @@ public class TestDynamoDbCatalog {
     Assert.assertFalse("namespace must not exist", response.hasItem());
   }
 
+  /**
+   * 测试场景：register表。
+   *
+   * <p>验证该方法在 register表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRegisterTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -379,6 +453,11 @@ public class TestDynamoDbCatalog {
     Assertions.assertThat(catalog.dropNamespace(namespace)).isTrue();
   }
 
+  /**
+   * 测试场景：默认warehouse路径带路径。
+   *
+   * <p>验证该方法在 默认warehouse路径带路径 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDefaultWarehousePathWithLocation() {
     String namespaceName = genRandomName();
@@ -394,6 +473,11 @@ public class TestDynamoDbCatalog {
         .isEqualTo(defaultLocation + "/" + tableName);
   }
 
+  /**
+   * 测试场景：register已存在的表。
+   *
+   * <p>验证该方法在 register已存在的表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testRegisterExistingTable() {
     Namespace namespace = Namespace.of(genRandomName());
@@ -409,6 +493,7 @@ public class TestDynamoDbCatalog {
     Assertions.assertThat(catalog.dropNamespace(namespace)).isTrue();
   }
 
+  /** 辅助方法：genRandomName。 */
   private static String genRandomName() {
     return UUID.randomUUID().toString().replace("-", "");
   }

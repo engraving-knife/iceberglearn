@@ -28,7 +28,15 @@ import org.apache.iceberg.data.TestReadProjection;
 import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 
+/**
+ * 文件级说明：测试 TestGenericReadProjection 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericReadProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericReadProjection extends TestReadProjection {
+  /** 辅助方法：writeAndRead。 */
   @Override
   protected Record writeAndRead(String desc, Schema writeSchema, Schema readSchema, Record record)
       throws IOException {

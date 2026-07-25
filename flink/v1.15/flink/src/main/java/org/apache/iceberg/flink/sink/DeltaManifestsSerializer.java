@@ -28,6 +28,13 @@ import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * DeltaManifests 的 Flink 序列化器，用于 checkpoint 持久化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把 DeltaManifests 序列化为字节流以便 checkpoint 存储与恢复。
+ *
+ * <p>设计意图：适配 Flink SimpleVersionedSerializer；上下游：被 Flink 算子状态后端调用。
+ */
 class DeltaManifestsSerializer implements SimpleVersionedSerializer<DeltaManifests> {
   private static final int VERSION_1 = 1;
   private static final int VERSION_2 = 2;

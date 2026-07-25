@@ -34,6 +34,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFunctionCatalog 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 函数目录 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestFunctionCatalog extends SparkTestBaseWithCatalog {
   private static final String[] EMPTY_NAMESPACE = new String[] {};
   private static final String[] SYSTEM_NAMESPACE = new String[] {"system"};
@@ -41,20 +48,24 @@ public class TestFunctionCatalog extends SparkTestBaseWithCatalog {
   private static final String[] DB_NAMESPACE = new String[] {"db"};
   private final FunctionCatalog asFunctionCatalog;
 
+  /** 测试函数目录。 */
   public TestFunctionCatalog() {
     this.asFunctionCatalog = castToFunctionCatalog(catalogName);
   }
 
+  /** 创建默认命名空间。 */
   @Before
   public void createDefaultNamespace() {
     sql("CREATE NAMESPACE IF NOT EXISTS %s", catalogName + ".default");
   }
 
+  /** 删除默认命名空间。 */
   @After
   public void dropDefaultNamespace() {
     sql("DROP NAMESPACE IF EXISTS %s", catalogName + ".default");
   }
 
+  /** 测试列表函数通过目录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testListFunctionsViaCatalog() throws NoSuchNamespaceException {
     Assertions.assertThat(asFunctionCatalog.listFunctions(EMPTY_NAMESPACE))
@@ -75,6 +86,7 @@ public class TestFunctionCatalog extends SparkTestBaseWithCatalog {
         () -> asFunctionCatalog.listFunctions(DB_NAMESPACE));
   }
 
+  /** 测试加载函数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testLoadFunctions() throws NoSuchFunctionException {
     for (String[] namespace : ImmutableList.of(EMPTY_NAMESPACE, SYSTEM_NAMESPACE)) {
@@ -107,6 +119,7 @@ public class TestFunctionCatalog extends SparkTestBaseWithCatalog {
         () -> sql("SELECT undefined_function(1, 2)"));
   }
 
+  /** 测试calling函数在SQLend到end场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallingFunctionInSQLEndToEnd() {
     String buildVersion = IcebergBuild.version();
@@ -134,6 +147,7 @@ public class TestFunctionCatalog extends SparkTestBaseWithCatalog {
         scalarSql("SELECT iceberg_version()"));
   }
 
+  /** 转换到函数目录。 */
   private FunctionCatalog castToFunctionCatalog(String name) {
     return (FunctionCatalog) spark.sessionState().catalogManager().catalog(name);
   }

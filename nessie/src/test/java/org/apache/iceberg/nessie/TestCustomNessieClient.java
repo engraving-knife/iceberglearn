@@ -30,12 +30,25 @@ import org.projectnessie.client.NessieConfigConstants;
 import org.projectnessie.client.api.NessieApi;
 import org.projectnessie.client.http.HttpClientBuilder;
 
+/**
+ * 文件级说明：测试 TestCustomNessieClient 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestCustomNessieClient 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestCustomNessieClient extends BaseTestIceberg {
 
+  /** 辅助方法：TestCustomNessieClient。 */
   public TestCustomNessieClient() {
     super("main");
   }
 
+  /**
+   * 测试场景：No Custom Client。
+   *
+   * <p>验证该方法在 No Custom Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoCustomClient() {
     NessieCatalog catalog = new NessieCatalog();
@@ -50,6 +63,11 @@ public class TestCustomNessieClient extends BaseTestIceberg {
             apiVersion));
   }
 
+  /**
+   * 测试场景：Unnecessary Default Custom Client。
+   *
+   * <p>验证该方法在 Unnecessary Default Custom Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnnecessaryDefaultCustomClient() {
     NessieCatalog catalog = new NessieCatalog();
@@ -66,6 +84,11 @@ public class TestCustomNessieClient extends BaseTestIceberg {
             apiVersion));
   }
 
+  /**
+   * 测试场景：Non Existent Custom Client。
+   *
+   * <p>验证该方法在 Non Existent Custom Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testNonExistentCustomClient() {
     assertThatThrownBy(
@@ -85,6 +108,11 @@ public class TestCustomNessieClient extends BaseTestIceberg {
         .hasMessageContaining("Cannot load Nessie client builder implementation class");
   }
 
+  /**
+   * 测试场景：Custom Client By Impl。
+   *
+   * <p>验证该方法在 Custom Client By Impl 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomClientByImpl() {
     assertThatThrownBy(
@@ -104,6 +132,11 @@ public class TestCustomNessieClient extends BaseTestIceberg {
         .hasMessage("BUILD CALLED");
   }
 
+  /**
+   * 测试场景：Custom Client By Name。
+   *
+   * <p>验证该方法在 Custom Client By Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testCustomClientByName() {
     assertThatThrownBy(
@@ -123,6 +156,11 @@ public class TestCustomNessieClient extends BaseTestIceberg {
         .hasMessage("BUILD CALLED");
   }
 
+  /**
+   * 测试场景：Alternative Initialize With Nulls。
+   *
+   * <p>验证该方法在 Alternative Initialize With Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlternativeInitializeWithNulls() {
     NessieCatalog catalog = new NessieCatalog();
@@ -145,21 +183,25 @@ public class TestCustomNessieClient extends BaseTestIceberg {
   @SuppressWarnings("rawtypes")
   public static final class DummyClientBuilderImpl extends AbstractNessieClientBuilder {
 
+    /** 辅助方法：builder。 */
     @SuppressWarnings("unused")
     public static DummyClientBuilderImpl builder() {
       return new DummyClientBuilderImpl();
     }
 
+    /** 辅助方法：build。 */
     @Override
     public <A extends NessieApi> A build(Class<A> apiContract) {
       throw new RuntimeException("BUILD CALLED");
     }
 
+    /** 辅助方法：name。 */
     @Override
     public String name() {
       return "Dummy";
     }
 
+    /** 辅助方法：priority。 */
     @Override
     public int priority() {
       return 42;

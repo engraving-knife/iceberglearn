@@ -26,39 +26,63 @@ import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewBuilder;
 
-/** A Catalog API for view create, drop, and load operations. */
+/**
+ * 文件级说明：Iceberg 视图（View）目录服务接口。
+ *
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义视图的创建（buildView）、加载（loadView）、删除（dropView）、重命名 （renameView）、列举（listViews）等目录管理操作。
+ *   <li>提供视图存在性判断（viewExists）与缓存失效（invalidateView）等辅助能力。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>与 {@link Catalog} 平行：视图与表是两类对象，独立接口避免方法堆砌，且允许 实现侧仅支持其中一类。
+ *   <li>构建器模式：通过 {@link ViewBuilder}（由 {@link #buildView(TableIdentifier)} 获取）
+ *       配置视图定义、Schema、属性等，统一创建与替换流程。
+ *   <li>两阶段初始化：实现类需有无参构造，引擎先实例化再调用 {@link #initialize(String, Map)} 注入配置。
+ * </ul>
+ *
+ * <p>上下游关系：被 Spark/Flink 等引擎的视图管理模块调用；实现侧依赖 iceberg-api 中的 {@link View}、{@link ViewBuilder} 抽象。
+ */
 public interface ViewCatalog {
 
   /**
-   * Return the name for this catalog.
+   * 返回本 catalog 的名称。
    *
-   * @return this catalog's name
+   * @return catalog 名称
    */
   String name();
 
   /**
-   * Return all the identifiers under this namespace.
+   * 列举指定命名空间下的所有视图标识符。
    *
-   * @param namespace a namespace
-   * @return a list of identifiers for views
-   * @throws NoSuchNamespaceException if the namespace is not found
+   * @param namespace 命名空间
+   * @return 该命名空间下的视图标识符列表
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出
    */
   List<TableIdentifier> listViews(Namespace namespace);
 
   /**
-   * Load a view.
+   * 加载视图。
    *
-   * @param identifier a view identifier
-   * @return instance of {@link View} implementation referred by the identifier
-   * @throws NoSuchViewException if the view does not exist
+   * @param identifier 视图标识符
+   * @return 该标识符对应的 {@link View} 实现实例
+   * @throws NoSuchViewException 当视图不存在时抛出
    */
   View loadView(TableIdentifier identifier);
 
   /**
-   * Check whether view exists.
+   * 判断视图是否存在。
    *
-   * @param identifier a view identifier
-   * @return true if the view exists, false otherwise
+   * <p>逻辑：默认实现尝试 {@link #loadView(TableIdentifier)}，捕获 {@link NoSuchViewException} 时返回 false。
+   *
+   * @param identifier 视图标识符
+   * @return 视图存在返回 true，否则 false
    */
   default boolean viewExists(TableIdentifier identifier) {
     try {
@@ -70,50 +94,47 @@ public interface ViewCatalog {
   }
 
   /**
-   * Instantiate a builder to create or replace a SQL view.
+   * 实例化一个 {@link ViewBuilder}，用于创建或替换 SQL 视图。
    *
-   * @param identifier a view identifier
-   * @return a view builder
+   * @param identifier 视图标识符
+   * @return 视图构建器
    */
   ViewBuilder buildView(TableIdentifier identifier);
 
   /**
-   * Drop a view.
+   * 删除视图。
    *
-   * @param identifier a view identifier
-   * @return true if the view was dropped, false if the view did not exist
+   * @param identifier 视图标识符
+   * @return 视图存在并已删除返回 true，视图不存在返回 false
    */
   boolean dropView(TableIdentifier identifier);
 
   /**
-   * Rename a view.
+   * 重命名视图。
    *
-   * @param from identifier of the view to rename
-   * @param to new view identifier
-   * @throws NoSuchViewException if the "from" view does not exist
-   * @throws AlreadyExistsException if the "to" view already exists
+   * @param from 原视图标识符
+   * @param to 新视图标识符
+   * @throws NoSuchViewException 当 from 视图不存在时抛出
+   * @throws AlreadyExistsException 当 to 视图已存在时抛出
    */
   void renameView(TableIdentifier from, TableIdentifier to);
 
   /**
-   * Invalidate cached view metadata from current catalog.
+   * 使本 catalog 中缓存的视图元数据失效。
    *
-   * <p>If the view is already loaded or cached, drop cached data. If the view does not exist or is
-   * not cached, do nothing.
+   * <p>若视图已被加载或缓存，则丢弃缓存数据；若视图不存在或未被缓存，则不做任何操作。 默认实现为空，子类按需覆盖。
    *
-   * @param identifier a view identifier
+   * @param identifier 视图标识符
    */
   default void invalidateView(TableIdentifier identifier) {}
 
   /**
-   * Initialize a view catalog given a custom name and a map of catalog properties.
+   * 使用自定义名称和属性映射初始化视图 catalog。
    *
-   * <p>A custom view catalog implementation must have a no-arg constructor. A compute engine like
-   * Spark or Flink will first initialize the catalog without any arguments, and then call this
-   * method to complete catalog initialization with properties passed into the engine.
+   * <p>计算引擎（如 Spark/Flink）会先以无参构造实例化 ViewCatalog，再调用本方法注入 引擎传入的 catalog 配置属性。默认实现为空，子类按需覆盖。
    *
-   * @param name a custom name for the catalog
-   * @param properties catalog properties
+   * @param name catalog 自定义名称
+   * @param properties catalog 配置属性
    */
   default void initialize(String name, Map<String, String> properties) {}
 }

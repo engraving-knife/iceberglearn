@@ -24,6 +24,13 @@ import org.apache.spark.sql.catalyst.expressions.AttributeSet
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.util.truncatedString
 
+/**
+ * Spark Catalyst 逻辑计划节点，实现 MERGE INTO 行级操作。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 MergeRows。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 case class MergeRows(
     isSourceRowPresent: Expression,
     isTargetRowPresent: Expression,
@@ -45,10 +52,18 @@ case class MergeRows(
 
   override lazy val references: AttributeSet = child.outputSet
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   override def simpleString(maxFields: Int): String = {
     s"MergeRows${truncatedString(output, "[", ", ", "]", maxFields)}"
   }
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: LogicalPlan): LogicalPlan = {
     copy(child = newChild)
   }

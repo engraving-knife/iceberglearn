@@ -45,21 +45,62 @@ import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.NaNUtil;
 
+/**
+ * 文件级说明：Hive SearchArgument 过滤条件 -> Iceberg Expression 转换器。
+ *
+ * <p>所属模块：iceberg-mr（Hive/MapReduce 集成模块；本类位于 hive 子包，负责把 Hive 下推的 谓词转换为 Iceberg 表达式，供 InputFormat
+ * 做数据跳过 / 文件裁剪）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>解析 Hive {@link SearchArgument} 表达式树，递归翻译为 Iceberg {@link Expression}。
+ *   <li>把 Hive {@link PredicateLeaf} 的各类操作符与字面量映射为 Iceberg 对应表达式与值， 并处理日期/时间戳时区与精度丢失等兼容性问题。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Hive 谓词下推以 {@link SearchArgument} 形式到达，Iceberg 自身有独立的 {@link Expression} 体系；本类做语义等价转换，使
+ *       Iceberg 能利用文件统计信息裁剪数据。
+ *   <li>对 NaN 特殊处理：当 EQUALS 字面量为 NaN 时，Iceberg 用 isNaN 表达式（因为 NaN != NaN）。
+ *   <li>日期/时间戳：Hive 内部使用 java.util.Date 走默认时区，会丢失微秒；这里通过反射读取 PredicateLeafImpl 的 literal 字段（绕过 Kryo
+ *       反序列化的 Date->Timestamp 转换）， 再用 LocalDateTime 等方式还原，避免时区与精度问题。
+ * </ul>
+ *
+ * <p>上下游关系：上游被 HiveIcebergInputFormat / HiveIcebergStorageHandler 调用以应用 Hive 谓词； 下游依赖 iceberg-core
+ * 的 {@link Expressions}、{@link DateTimeUtil}、{@link NaNUtil}。
+ */
 public class HiveIcebergFilterFactory {
 
   private HiveIcebergFilterFactory() {}
 
+  /**
+   * 将 Hive {@link SearchArgument} 转换为 Iceberg {@link Expression}。
+   *
+   * @param sarg Hive 搜索参数对象
+   * @return 等价的 Iceberg 表达式
+   */
   public static Expression generateFilterExpression(SearchArgument sarg) {
     return translate(sarg.getExpression(), sarg.getLeaves());
   }
 
   /**
-   * Recursive method to traverse down the ExpressionTree to evaluate each expression and its leaf
-   * nodes.
+   * 递归遍历 Hive 表达式树并翻译为 Iceberg 表达式。
    *
-   * @param tree Current ExpressionTree where the 'top' node is being evaluated.
-   * @param leaves List of all leaf nodes within the tree.
-   * @return Expression that is translated from the Hive SearchArgument.
+   * <p>逻辑：根据当前节点的 operator 分支处理：
+   *
+   * <ul>
+   *   <li>OR：所有子节点结果用 {@link Expressions#or} 合并，初始为 alwaysFalse。
+   *   <li>AND：所有子节点结果用 {@link Expressions#and} 合并，初始为 alwaysTrue。
+   *   <li>NOT：对唯一子节点结果取反。
+   *   <li>LEAF：根据 leaf 索引取出 {@link PredicateLeaf}，委托给 {@link #translateLeaf}。
+   *   <li>CONSTANT：不支持，抛出异常。
+   * </ul>
+   *
+   * @param tree 当前要翻译的表达式树节点
+   * @param leaves 树中所有叶子节点列表
+   * @return 翻译后的 Iceberg 表达式
    */
   private static Expression translate(ExpressionTree tree, List<PredicateLeaf> leaves) {
     List<ExpressionTree> childNodes = tree.getChildren();
@@ -91,10 +132,13 @@ public class HiveIcebergFilterFactory {
   }
 
   /**
-   * Translate leaf nodes from Hive operator to Iceberg operator.
+   * 把单个 Hive 叶子谓词翻译为 Iceberg 表达式。
    *
-   * @param leaf Leaf node
-   * @return Expression fully translated from Hive PredicateLeaf
+   * <p>逻辑：按 PredicateLeaf.operator 分支：EQUALS（含 NaN 特判）、LESS_THAN、 LESS_THAN_EQUALS、IN、BETWEEN（拆成 >=
+   * 下界 AND <= 上界）、IS_NULL。
+   *
+   * @param leaf Hive 叶子谓词
+   * @return 等价的 Iceberg 表达式
    */
   private static Expression translateLeaf(PredicateLeaf leaf) {
     String column = leaf.getColumnName();
@@ -130,6 +174,22 @@ public class HiveIcebergFilterFactory {
   private static final DynFields.UnboundField<?> LITERAL_FIELD =
       DynFields.builder().hiddenImpl(SearchArgumentImpl.PredicateLeafImpl.class, "literal").build();
 
+  /**
+   * 将 Hive 叶子谓词的字面量转换为 Iceberg 期望的 Java 对象。
+   *
+   * <p>逻辑：按类型分支：
+   *
+   * <ul>
+   *   <li>LONG/BOOLEAN/STRING/FLOAT：直接返回。
+   *   <li>DATE：若字面量是 {@link Date} 走 {@link #daysFromDate}；否则按 {@link Timestamp} 走 {@link
+   *       #daysFromTimestamp}（Hive Kryo 把 Date 转 Timestamp 时会丢微秒）。
+   *   <li>TIMESTAMP：通过反射读取原始 literal 字段，再走 {@link #microsFromTimestamp}。
+   *   <li>DECIMAL：将 {@link HiveDecimalWritable} 转为 {@link BigDecimal} 并保留 scale。
+   * </ul>
+   *
+   * @param leaf Hive 叶子谓词
+   * @return 转换后的字面量值
+   */
   private static Object leafToLiteral(PredicateLeaf leaf) {
     switch (leaf.getType()) {
       case LONG:
@@ -152,6 +212,14 @@ public class HiveIcebergFilterFactory {
     }
   }
 
+  /**
+   * 将 Hive 叶子谓词的字面量列表转换为 Iceberg 期望的对象列表（IN / BETWEEN 用）。
+   *
+   * <p>逻辑：按类型分支处理字面量列表，TIMESTAMP/DATE/DECIMAL 需做与 {@link #leafToLiteral} 相同的转换。
+   *
+   * @param leaf Hive 叶子谓词
+   * @return 转换后的字面量列表
+   */
   private static List<Object> leafToLiteralList(PredicateLeaf leaf) {
     switch (leaf.getType()) {
       case LONG:
@@ -176,6 +244,12 @@ public class HiveIcebergFilterFactory {
     }
   }
 
+  /**
+   * 将 Hive {@link HiveDecimalWritable} 转为 {@link BigDecimal}，并保留原始 scale。
+   *
+   * @param hiveDecimalWritable Hive decimal 可写对象
+   * @return 等价的 BigDecimal（带正确 scale）
+   */
   private static BigDecimal hiveDecimalToBigDecimal(HiveDecimalWritable hiveDecimalWritable) {
     return hiveDecimalWritable
         .getHiveDecimal()

@@ -30,8 +30,17 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 
+/**
+ * 测试类：AvroTestHelpers，用于验证 Avro Test Helpers 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Avro Test Helpers 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 class AvroTestHelpers {
 
+  /** 辅助方法：avro test helpers。 */
   private AvroTestHelpers() {}
 
   static Schema.Field optionalField(int id, String name, Schema schema) {
@@ -104,6 +113,7 @@ class AvroTestHelpers {
     }
   }
 
+  /** 辅助方法：assert equals。 */
   private static void assertEquals(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;

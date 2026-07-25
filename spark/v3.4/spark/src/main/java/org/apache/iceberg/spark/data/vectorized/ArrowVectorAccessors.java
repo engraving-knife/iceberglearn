@@ -25,6 +25,15 @@ import org.apache.spark.sql.vectorized.ArrowColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarArray;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Arrow 向量取值器集合，提供各类型的 Arrow 向量值访问实现。
+ *
+ * <p>设计意图：集中放置具体取值逻辑，供工厂按类型选取。
+ *
+ * <p>上下游关系：由 ArrowVectorAccessorFactory 使用。
+ */
 public class ArrowVectorAccessors {
 
   private static final ArrowVectorAccessorFactory factory = new ArrowVectorAccessorFactory();

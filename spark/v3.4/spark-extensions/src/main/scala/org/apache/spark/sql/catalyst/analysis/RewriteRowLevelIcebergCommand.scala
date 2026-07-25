@@ -35,6 +35,12 @@ import org.apache.spark.sql.connector.write.SupportsDelta
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行级 Iceberg 命令重写规则基类，将行级命令重写为数据替换计划。
+ * <p>设计意图：模板方法模式，子类按操作类型实现具体重写，统一产出 ReplaceIcebergData。
+ * <p>上下游关系：被 RewriteUpdateTable / RewriteMergeIntoTable 继承。
+ */
 
 trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
 
@@ -71,6 +77,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
     val schema = StructType.fromAttributes(projectedOrdinals.map(plan.output(_)))
     ProjectingInternalRow(schema, projectedOrdinals)
   }
+  /** 执行 buildDeltaProjections 相关操作。 */
 
   protected def buildDeltaProjections(
       plan: LogicalPlan,
@@ -120,6 +127,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
 
     ProjectingInternalRow(schema, projectedOrdinals)
   }
+  /** 执行 deltaDeleteOutput 相关操作。 */
 
   protected def deltaDeleteOutput(
       rowAttrs: Seq[Attribute],
@@ -128,6 +136,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
     val deleteRowValues = buildDeltaDeleteRowValues(rowAttrs, rowIdAttrs)
     Seq(Literal(DELETE_OPERATION)) ++ deleteRowValues ++ metadataAttrs
   }
+  /** 执行 deltaInsertOutput 相关操作。 */
 
   protected def deltaInsertOutput(
       rowValues: Seq[Expression],
@@ -135,6 +144,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
     val metadataValues = metadataAttrs.map(attr => Literal(null, attr.dataType))
     Seq(Literal(INSERT_OPERATION)) ++ rowValues ++ metadataValues
   }
+  /** 执行 buildDeltaDeleteRowValues 相关操作。 */
 
   private def buildDeltaDeleteRowValues(
       rowAttrs: Seq[Attribute],
@@ -147,6 +157,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
       case attr => Literal(null, attr.dataType)
     }
   }
+  /** 执行 buildMergingOutput 相关操作。 */
 
   protected def buildMergingOutput(
       outputs: Seq[Seq[Expression]],
@@ -162,6 +173,7 @@ trait RewriteRowLevelIcebergCommand extends RewriteRowLevelCommand {
       AttributeReference(attr.name, attr.dataType, nullabilityMap(index))()
     }
   }
+  /** 执行 resolveRowIdAttrs 相关操作。 */
 
   protected def resolveRowIdAttrs(
       relation: DataSourceV2Relation,

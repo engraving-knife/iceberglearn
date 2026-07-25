@@ -25,6 +25,13 @@ import org.apache.iceberg.SortDirection
 import org.apache.iceberg.SortOrder
 import org.apache.iceberg.expressions.Term
 
+/**
+ * Spark Catalyst 逻辑计划节点，扩展 Spark SQL 解析能力。
+ *
+ * <p>所属模块：iceberg-spark v3.3。
+ * 类型：类 SortOrderParserUtil。
+ * <p>上下游：由解析器构造，被分析/优化规则处理。
+ */
 class SortOrderParserUtil {
 
   def collectSortOrder(tableSchema:Schema, sortOrder: Seq[(Term, SortDirection, NullOrder)]): SortOrder = {

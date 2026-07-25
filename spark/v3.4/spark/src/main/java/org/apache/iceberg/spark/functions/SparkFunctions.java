@@ -25,6 +25,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.functions.UnboundFunction;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg Spark 函数注册表，按名提供各内置标量函数的未绑定实例。
+ *
+ * <p>设计意图：以映射表集中管理函数名到函数实例，供函数目录按需查找。
+ *
+ * <p>上下游关系：由 SparkFunctionCatalog 调用。
+ */
 public class SparkFunctions {
 
   private SparkFunctions() {}
@@ -58,12 +67,12 @@ public class SparkFunctions {
   public static List<String> list() {
     return FUNCTION_NAMES;
   }
-
+  /** 执行 load 相关操作。 */
   public static UnboundFunction load(String name) {
     // function resolution is case-insensitive to match the existing Spark behavior for functions
     return FUNCTIONS.get(name.toLowerCase(Locale.ROOT));
   }
-
+  /** 执行 loadFunctionByClass 相关操作。 */
   public static UnboundFunction loadFunctionByClass(Class<?> functionClass) {
     Class<?> declaringClass = functionClass.getDeclaringClass();
     if (declaringClass == null) {

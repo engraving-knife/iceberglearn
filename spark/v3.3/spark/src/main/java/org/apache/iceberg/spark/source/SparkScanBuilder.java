@@ -75,6 +75,15 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkScanBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class SparkScanBuilder
     implements ScanBuilder,
         SupportsPushDownAggregates,
@@ -126,6 +135,7 @@ public class SparkScanBuilder
     this(spark, table, null, schema, options);
   }
 
+  /** 按条件过滤。 */
   private Expression filterExpression() {
     if (filterExpressions != null) {
       return filterExpressions.stream().reduce(Expressions.alwaysTrue(), Expressions::and);
@@ -133,11 +143,23 @@ public class SparkScanBuilder
     return Expressions.alwaysTrue();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param isCaseSensitive 参数
+   * @return 结果对象
+   */
   public SparkScanBuilder caseSensitive(boolean isCaseSensitive) {
     this.caseSensitive = isCaseSensitive;
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param filters 参数
+   * @return 结果对象
+   */
   @Override
   public Filter[] pushFilters(Filter[] filters) {
     // there are 3 kinds of filters:
@@ -185,15 +207,27 @@ public class SparkScanBuilder
     return postScanFilters.toArray(new Filter[0]);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean unpartitioned() {
     return table.specs().values().stream().noneMatch(PartitionSpec::isPartitioned);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Filter[] pushedFilters() {
     return pushedFilters;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param aggregation 参数
+   * @return 结果对象
+   */
   @Override
   public boolean pushAggregation(Aggregation aggregation) {
     if (!canPushDownAggregation(aggregation)) {
@@ -269,6 +303,7 @@ public class SparkScanBuilder
     return true;
   }
 
+  /** 判断是否能够pushdownaggregation。 */
   private boolean canPushDownAggregation(Aggregation aggregation) {
     if (!(table instanceof BaseTable)) {
       return false;
@@ -294,6 +329,7 @@ public class SparkScanBuilder
     return true;
   }
 
+  /** 读取数据。 */
   private Snapshot readSnapshot() {
     Snapshot snapshot;
     if (readConf.snapshotId() != null) {
@@ -305,6 +341,7 @@ public class SparkScanBuilder
     return snapshot;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean metricsModeSupportsAggregatePushDown(List<BoundAggregate<?, ?>> aggregates) {
     MetricsConfig config = MetricsConfig.forTable(table);
     for (BoundAggregate aggregate : aggregates) {
@@ -340,6 +377,11 @@ public class SparkScanBuilder
     return true;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param requestedSchema 参数
+   */
   @Override
   public void pruneColumns(StructType requestedSchema) {
     StructType requestedProjection =
@@ -360,6 +402,7 @@ public class SparkScanBuilder
         .forEach(metaColumns::add);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Schema schemaWithMetadataColumns() {
     // metadata columns
     List<Types.NestedField> fields =
@@ -373,6 +416,11 @@ public class SparkScanBuilder
     return TypeUtil.join(schema, meta);
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public Scan build() {
     if (localScan != null) {
@@ -382,6 +430,7 @@ public class SparkScanBuilder
     }
   }
 
+  /** 构造并返回目标对象。 */
   private Scan buildBatchScan() {
     Long snapshotId = readConf.snapshotId();
     Long asOfTimestamp = readConf.asOfTimestamp();
@@ -429,6 +478,7 @@ public class SparkScanBuilder
     }
   }
 
+  /** 构造并返回目标对象。 */
   private Scan buildBatchScan(Long snapshotId, Long asOfTimestamp, String branch, String tag) {
     Schema expectedSchema = schemaWithMetadataColumns();
 
@@ -457,9 +507,11 @@ public class SparkScanBuilder
 
     scan = configureSplitPlanning(scan);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkBatchQueryScan(spark, table, scan, readConf, expectedSchema, filterExpressions);
   }
 
+  /** 构造并返回目标对象。 */
   private Scan buildIncrementalAppendScan(long startSnapshotId, Long endSnapshotId) {
     Schema expectedSchema = schemaWithMetadataColumns();
 
@@ -477,9 +529,15 @@ public class SparkScanBuilder
 
     scan = configureSplitPlanning(scan);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkBatchQueryScan(spark, table, scan, readConf, expectedSchema, filterExpressions);
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @SuppressWarnings("CyclomaticComplexity")
   public Scan buildChangelogScan() {
     Preconditions.checkArgument(
@@ -553,10 +611,12 @@ public class SparkScanBuilder
 
     scan = configureSplitPlanning(scan);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkChangelogScan(
         spark, table, scan, readConf, expectedSchema, filterExpressions, emptyScan);
   }
 
+  /** 返回startsnapshotid。 */
   private Long getStartSnapshotId(Long startTimestamp) {
     Snapshot oldestSnapshotAfter = SnapshotUtil.oldestAncestorAfter(table, startTimestamp);
 
@@ -569,6 +629,11 @@ public class SparkScanBuilder
     }
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   public Scan buildMergeOnReadScan() {
     Preconditions.checkArgument(
         readConf.snapshotId() == null && readConf.asOfTimestamp() == null && readConf.tag() == null,
@@ -586,6 +651,7 @@ public class SparkScanBuilder
     Snapshot snapshot = SnapshotUtil.latestSnapshot(table, readConf.branch());
 
     if (snapshot == null) {
+      /** 执行该方法的具体逻辑。 */
       return new SparkBatchQueryScan(
           spark, table, null, readConf, schemaWithMetadataColumns(), filterExpressions);
     }
@@ -610,14 +676,21 @@ public class SparkScanBuilder
 
     scan = configureSplitPlanning(scan);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkBatchQueryScan(
         spark, table, scan, adjustedReadConf, expectedSchema, filterExpressions);
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   public Scan buildCopyOnWriteScan() {
     Snapshot snapshot = SnapshotUtil.latestSnapshot(table, readConf.branch());
 
     if (snapshot == null) {
+      /** 执行该方法的具体逻辑。 */
       return new SparkCopyOnWriteScan(
           spark, table, readConf, schemaWithMetadataColumns(), filterExpressions);
     }
@@ -635,10 +708,12 @@ public class SparkScanBuilder
 
     scan = configureSplitPlanning(scan);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkCopyOnWriteScan(
         spark, table, scan, snapshot, readConf, expectedSchema, filterExpressions);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private <T extends org.apache.iceberg.Scan<T, ?, ?>> T configureSplitPlanning(T scan) {
     T configuredScan = scan;
 
@@ -663,11 +738,21 @@ public class SparkScanBuilder
     return configuredScan;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     return ((SupportsReportStatistics) build()).estimateStatistics();
   }
 
+  /**
+   * 读取数据。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType readSchema() {
     return build().readSchema();

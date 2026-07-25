@@ -52,6 +52,13 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.util.PartitionUtil;
 
 @Internal
+/**
+ * 把 FileScanTask 读取为 Flink RowData 的 FileScanTaskReader 实现。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按文件格式（Parquet/ORC/Avro）读取数据并投影为 RowData。
+ *
+ * <p>设计意图：实现 FileScanTaskReader；被读取算子调用。
+ */
 public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
 
   private final Schema tableSchema;

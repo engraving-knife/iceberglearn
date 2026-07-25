@@ -26,10 +26,13 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 
 /**
- * An implementation of {@link ActionsProvider} for Spark.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>This class is the primary API for interacting with actions in Spark that users should use to
- * instantiate particular actions.
+ * <p>职责：Spark 动作入口，提供创建各类 Iceberg 维护动作（expire/rewrite/delete 等）的工厂方法。
+ *
+ * <p>设计意图：采用工厂模式，按动作类型创建对应 SparkAction 实例。
+ *
+ * <p>上下游关系：由 SparkCatalog / Spark3Util / 用户代码调用；产出各 SparkAction。
  */
 public class SparkActions implements ActionsProvider {
 
@@ -38,15 +41,15 @@ public class SparkActions implements ActionsProvider {
   private SparkActions(SparkSession spark) {
     this.spark = spark;
   }
-
+  /** 返回值。 */
   public static SparkActions get(SparkSession spark) {
     return new SparkActions(spark);
   }
-
+  /** 返回值。 */
   public static SparkActions get() {
     return new SparkActions(SparkSession.active());
   }
-
+  /** 执行 snapshotTable 相关操作。 */
   @Override
   public SnapshotTableSparkAction snapshotTable(String tableIdent) {
     String ctx = "snapshot source";
@@ -56,7 +59,7 @@ public class SparkActions implements ActionsProvider {
     return new SnapshotTableSparkAction(
         spark, catalogAndIdent.catalog(), catalogAndIdent.identifier());
   }
-
+  /** 执行 migrateTable 相关操作。 */
   @Override
   public MigrateTableSparkAction migrateTable(String tableIdent) {
     String ctx = "migrate target";
@@ -66,32 +69,32 @@ public class SparkActions implements ActionsProvider {
     return new MigrateTableSparkAction(
         spark, catalogAndIdent.catalog(), catalogAndIdent.identifier());
   }
-
+  /** 执行 rewriteDataFiles 相关操作。 */
   @Override
   public RewriteDataFilesSparkAction rewriteDataFiles(Table table) {
     return new RewriteDataFilesSparkAction(spark, table);
   }
-
+  /** 执行 deleteOrphanFiles 相关操作。 */
   @Override
   public DeleteOrphanFilesSparkAction deleteOrphanFiles(Table table) {
     return new DeleteOrphanFilesSparkAction(spark, table);
   }
-
+  /** 执行 rewriteManifests 相关操作。 */
   @Override
   public RewriteManifestsSparkAction rewriteManifests(Table table) {
     return new RewriteManifestsSparkAction(spark, table);
   }
-
+  /** 执行 expireSnapshots 相关操作。 */
   @Override
   public ExpireSnapshotsSparkAction expireSnapshots(Table table) {
     return new ExpireSnapshotsSparkAction(spark, table);
   }
-
+  /** 执行 deleteReachableFiles 相关操作。 */
   @Override
   public DeleteReachableFilesSparkAction deleteReachableFiles(String metadataLocation) {
     return new DeleteReachableFilesSparkAction(spark, metadataLocation);
   }
-
+  /** 执行 rewritePositionDeletes 相关操作。 */
   @Override
   public RewritePositionDeleteFilesSparkAction rewritePositionDeletes(Table table) {
     return new RewritePositionDeleteFilesSparkAction(spark, table);

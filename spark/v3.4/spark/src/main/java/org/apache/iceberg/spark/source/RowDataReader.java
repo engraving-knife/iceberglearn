@@ -40,6 +40,15 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：行式数据读取器，读取数据文件并按行输出 InternalRow。
+ *
+ * <p>设计意图：基于 SparkParquetReaders / SparkOrcReader 构建行式读取器，支持列裁剪与删除过滤。
+ *
+ * <p>上下游关系：由 SparkRowReaderFactory 创建；继承 BaseRowReader。
+ */
 class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionReader<InternalRow> {
   private static final Logger LOG = LoggerFactory.getLogger(RowDataReader.class);
 
@@ -66,19 +75,19 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     numSplits = taskGroup.tasks().size();
     LOG.debug("Reading {} file split(s) for table {}", numSplits, table.name());
   }
-
+  /** 执行 currentMetricsValues 相关操作。 */
   @Override
   public CustomTaskMetric[] currentMetricsValues() {
     return new CustomTaskMetric[] {
       new TaskNumSplits(numSplits), new TaskNumDeletes(counter().get())
     };
   }
-
+  /** 执行 referencedFiles 相关操作。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(FileScanTask task) {
     return Stream.concat(Stream.of(task.file()), task.deletes().stream());
   }
-
+  /** 打开资源。 */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     String filePath = task.file().path().toString();
@@ -94,7 +103,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
 
     return deleteFilter.filter(open(task, requiredSchema, idToConstant)).iterator();
   }
-
+  /** 打开资源。 */
   protected CloseableIterable<InternalRow> open(
       FileScanTask task, Schema readSchema, Map<Integer, ?> idToConstant) {
     if (task.isDataTask()) {
@@ -113,7 +122,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
           idToConstant);
     }
   }
-
+  /** 创建 DataIterable 实例。 */
   private CloseableIterable<InternalRow> newDataIterable(DataTask task, Schema readSchema) {
     StructInternalRow row = new StructInternalRow(readSchema.asStruct());
     return CloseableIterable.transform(task.asDataTask().rows(), row::setStruct);

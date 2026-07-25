@@ -44,12 +44,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A Spark function implementation for the Iceberg truncate transform.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>Example usage: {@code SELECT system.truncate(1, 'abc')}, which returns the String 'a'.
+ * <p>职责：Iceberg truncate 转换的 Spark 标量函数，按指定宽度截断字符串或数值。
  *
- * <p>Note that for performance reasons, the given input width is not validated in the
- * implementations used in code-gen. The width must remain non-negative to give meaningful results.
+ * <p>设计意图：实现 Iceberg truncate transform，用于按截断值分区。
+ *
+ * <p>上下游关系：由 SparkFunctions / SparkFunctionCatalog 注册。
  */
 public class TruncateFunction implements UnboundFunction {
 
@@ -58,7 +59,7 @@ public class TruncateFunction implements UnboundFunction {
 
   private static final Set<DataType> SUPPORTED_WIDTH_TYPES =
       ImmutableSet.of(DataTypes.ByteType, DataTypes.ShortType, DataTypes.IntegerType);
-
+  /** 绑定输入类型。 */
   @Override
   public BoundFunction bind(StructType inputType) {
     if (inputType.size() != 2) {
@@ -94,7 +95,7 @@ public class TruncateFunction implements UnboundFunction {
           "Expected truncation col to be tinyint, shortint, int, bigint, decimal, string, or binary");
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return name()
@@ -102,13 +103,14 @@ public class TruncateFunction implements UnboundFunction {
         + "  width :: width for truncation, e.g. truncate(10, 255) -> 250 (must be an integer)\n"
         + "  col :: column to truncate (must be an integer, decimal, string, or binary)";
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "truncate";
   }
 
   public abstract static class TruncateBase<T> implements ScalarFunction<T> {
+    /** 返回名称。 */
     @Override
     public String name() {
       return "truncate";
@@ -116,25 +118,26 @@ public class TruncateFunction implements UnboundFunction {
   }
 
   public static class TruncateTinyInt extends TruncateBase<Byte> {
+    /** 执行 invoke 相关操作。 */
     public static byte invoke(int width, byte value) {
       return TruncateUtil.truncateByte(width, value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.ByteType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.ByteType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(tinyint)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Byte produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -150,22 +153,22 @@ public class TruncateFunction implements UnboundFunction {
     public static short invoke(int width, short value) {
       return TruncateUtil.truncateShort(width, value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.ShortType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.ShortType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(smallint)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Short produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -181,22 +184,22 @@ public class TruncateFunction implements UnboundFunction {
     public static int invoke(int width, int value) {
       return TruncateUtil.truncateInt(width, value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.IntegerType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(int)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -212,22 +215,22 @@ public class TruncateFunction implements UnboundFunction {
     public static long invoke(int width, long value) {
       return TruncateUtil.truncateLong(width, value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.LongType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.LongType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(bigint)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Long produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -247,22 +250,22 @@ public class TruncateFunction implements UnboundFunction {
 
       return value.substring(0, width);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.StringType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.StringType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(string)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public UTF8String produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -283,22 +286,22 @@ public class TruncateFunction implements UnboundFunction {
       return ByteBuffers.toByteArray(
           BinaryUtil.truncateBinaryUnsafe(ByteBuffer.wrap(value), width));
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.BinaryType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.BinaryType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.truncate(binary)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public byte[] produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -327,22 +330,22 @@ public class TruncateFunction implements UnboundFunction {
       return Decimal.apply(
           TruncateUtil.truncateDecimal(BigInteger.valueOf(width), value.toJavaBigDecimal()));
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.createDecimalType(precision, scale)};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.createDecimalType(precision, scale);
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return String.format("iceberg.truncate(decimal(%d,%d))", precision, scale);
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Decimal produceResult(InternalRow input) {
       if (input.isNullAt(WIDTH_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {

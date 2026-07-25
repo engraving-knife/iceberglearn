@@ -48,6 +48,33 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Iceberg 的 Hive SerDe（序列化/反序列化器）实现。
+ *
+ * <p>所属模块：iceberg-mr（Hive/MapReduce 集成模块；本类位于 hive 子包，是 Hive 读写 Iceberg 表 的字段映射枢纽）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>初始化阶段：解析表 schema（优先用户指定，其次从 catalog 加载，最后回退到 Hive DDL schema）， 并按列裁剪生成投影 schema。
+ *   <li>创建 Iceberg 侧 {@link ObjectInspector}，供 Hive 解析读取结果。
+ *   <li>写入路径：把 Hive 行对象通过 {@link Deserializer} 转为 Iceberg {@link Record} 并包装为 {@link Container}。
+ *   <li>读取路径：从 {@link Container} 中取出 Iceberg Record 交回 Hive。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>initialize 会被 Hive 在多处调用（DDL、编译期、执行期），代码中通过 serDeProperties 内容 区分场景：WRITE_KEY
+ *       存在时不做投影下推，读取时按列裁剪。
+ *   <li>同表多次 join 会导致列名重复，需先 distinct 再投影，避免位置错乱。
+ *   <li>deserializers 按 ObjectInspector 缓存，避免重复构建 schema 访问器树。
+ *   <li>schema 加载失败时回退到 Hive 提供的列定义，并通过 autoConversion 做类型兼容转换。
+ * </ul>
+ *
+ * <p>上下游关系：上游由 Hive 执行引擎与 StorageHandler 调用；下游依赖 {@link Catalogs}、 {@link
+ * IcebergObjectInspector}、{@link Deserializer}、{@link HiveSchemaUtil}。
+ */
 public class HiveIcebergSerDe extends AbstractSerDe {
   private static final Logger LOG = LoggerFactory.getLogger(HiveIcebergSerDe.class);
   private static final String LIST_COLUMN_COMMENT = "columns.comments";
@@ -57,6 +84,31 @@ public class HiveIcebergSerDe extends AbstractSerDe {
   private Map<ObjectInspector, Deserializer> deserializers = Maps.newHashMapWithExpectedSize(1);
   private Container<Record> row = new Container<>();
 
+  /**
+   * 初始化 SerDe：解析 schema、计算投影、创建 ObjectInspector。
+   *
+   * <p>Hive 会在多处调用本方法：
+   *
+   * <ul>
+   *   <li>建表时：serDeProperties 中是 HiveDDL 数据，Iceberg 表尚未创建。
+   *   <li>编译期（HiveServer2）：只有表 location/name，需读表数据获取 schema；可能多次调用。
+   *   <li>执行期：serDeProperties 由 StorageHandler.configureInputJobProperties 填充并序列化 分发到
+   *       executor，无需在每个 executor 上重复加载表。
+   * </ul>
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>优先使用 serDeProperties 中的 {@link InputFormatConfig#TABLE_SCHEMA}；否则尝试 {@link
+   *       Catalogs#loadTable} 加载表 schema；都失败则回退到 Hive schema。
+   *   <li>写路径（WRITE_KEY 存在）：投影即全表 schema；读路径：按列裁剪做投影， 且去重后再投影，投影失败则回退全表 schema。
+   *   <li>用 {@link IcebergObjectInspector#create} 创建 ObjectInspector。
+   * </ol>
+   *
+   * @param configuration Hadoop 配置
+   * @param serDeProperties SerDe 属性
+   * @throws SerDeException schema 解析或 inspector 创建失败时抛出
+   */
   @Override
   public void initialize(@Nullable Configuration configuration, Properties serDeProperties)
       throws SerDeException {
@@ -123,11 +175,22 @@ public class HiveIcebergSerDe extends AbstractSerDe {
     }
   }
 
+  /** 返回序列化产物类型，固定为 {@link Container}。 */
   @Override
   public Class<? extends Writable> getSerializedClass() {
     return Container.class;
   }
 
+  /**
+   * 把 Hive 行对象序列化为 {@link Container}（内含 Iceberg Record）。
+   *
+   * <p>逻辑：按 objectInspector 缓存 {@link Deserializer}，命中则复用；否则用 Builder 构建新 deserializer 并缓存。最终调用
+   * {@link Deserializer#deserialize(Object)} 转换并写入复用的 row 容器。
+   *
+   * @param o Hive 行对象
+   * @param objectInspector 行对象对应的 ObjectInspector
+   * @return 包含 Iceberg Record 的 Container
+   */
   @Override
   public Writable serialize(Object o, ObjectInspector objectInspector) {
     Deserializer deserializer = deserializers.get(objectInspector);
@@ -145,31 +208,41 @@ public class HiveIcebergSerDe extends AbstractSerDe {
     return row;
   }
 
+  /** 返回 SerDe 统计信息，当前不实现，返回 null。 */
   @Override
   public SerDeStats getSerDeStats() {
     return null;
   }
 
+  /**
+   * 反序列化读取路径：从 {@link Container} 中取出 Iceberg Record 交回 Hive。
+   *
+   * @param writable Container 包装
+   * @return 内部 Iceberg Record
+   */
   @Override
   public Object deserialize(Writable writable) {
     return ((Container<?>) writable).get();
   }
 
+  /** 返回 Iceberg 侧 ObjectInspector。 */
   @Override
   public ObjectInspector getObjectInspector() {
     return inspector;
   }
 
   /**
-   * Gets the hive schema from the serDeProperties, and throws an exception if it is not provided.
-   * In the later case it adds the previousException as a root cause.
+   * 从 serDeProperties 中解析 Hive schema；若不存在则抛出 SerDeException 并把先前异常作为 cause。
    *
-   * @param serDeProperties The source of the hive schema
-   * @param previousException If we had an exception previously
-   * @param autoConversion When <code>true</code>, convert unsupported types to more permissive
-   *     ones, like tinyint to int
-   * @return The hive schema parsed from the serDeProperties
-   * @throws SerDeException If there is no schema information in the serDeProperties
+   * <p>逻辑：读取 LIST_COLUMNS / LIST_COLUMN_TYPES / columns.comments / COLUMN_NAME_DELIMITER， 用 {@link
+   * HiveSchemaUtil#convert} 转换为 Iceberg schema。autoConversion 控制是否把不支持 的类型转换为更宽松的类型（如 tinyint ->
+   * int）。
+   *
+   * @param serDeProperties Hive schema 来源
+   * @param previousException 之前加载表时的异常，作为新异常的 cause
+   * @param autoConversion true 时做类型自动转换
+   * @return 解析得到的 Hive schema
+   * @throws SerDeException serDeProperties 中无有效 schema 时抛出
    */
   private static Schema hiveSchemaOrThrow(
       Properties serDeProperties, Exception previousException, boolean autoConversion)

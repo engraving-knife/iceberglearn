@@ -19,80 +19,68 @@
 package org.apache.iceberg;
 
 /**
- * API for overwriting files in a table by partition.
+ * 按分区覆写 API：用新数据替换表中某些分区的全部文件（动态分区替换）。
  *
- * <p>This is provided to implement SQL compatible with Hive table operations but is not
- * recommended. Instead, use the {@link OverwriteFiles overwrite API} to explicitly overwrite data.
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
  *
- * <p>The default validation mode is idempotent, meaning the overwrite is correct and should be
- * committed out regardless of other concurrent changes to the table. Alternatively, this API can be
- * configured to validate that no new data or deletes have been applied since a snapshot ID
- * associated when this operation began. This can be done by calling {@link
- * #validateNoConflictingDeletes()}, {@link #validateNoConflictingData()}, to ensure that no
- * conflicting delete files or data files respectively have been written since the snapshot passed
- * to {@link #validateFromSnapshot(long)}.
+ * <p>职责：
  *
- * <p>This API accumulates file additions and produces a new {@link Snapshot} of the table by
- * replacing all files in partitions with new data with the new additions. This operation is used to
- * implement dynamic partition replacement.
+ * <ul>
+ *   <li>累积待新增的 {@link DataFile}。
+ *   <li>提交时把所有"含有新增数据"的分区中的旧文件替换为新文件，生成新快照。
+ *   <li>提供冲突检测与校验配置，保障非幂等替换的隔离性。
+ * </ul>
  *
- * <p>When committing, these changes will be applied to the latest table snapshot. Commit conflicts
- * will be resolved by applying the changes to the new latest snapshot and reattempting the commit.
+ * <p>设计意图：主要用于兼容 Hive 风格的"动态分区插入"语义。默认采用幂等校验模式； 也可通过 {@link #validateNoConflictingDeletes()} 与
+ * {@link #validateNoConflictingData()} 配置为强校验模式，确保自 {@link #validateFromSnapshot(long)}
+ * 起没有冲突的并发删除或新增。 提交冲突时会把变更应用到新的最新快照上重试。
+ *
+ * <p>上下游关系：由 {@link Table#newReplacePartitions()} 创建；下游实现位于 core 模块。 推荐优先使用 {@link OverwriteFiles}
+ * 而非本接口做显式覆写。
  */
 public interface ReplacePartitions extends SnapshotUpdate<ReplacePartitions> {
   /**
-   * Add a {@link DataFile} to the table.
+   * 向表中新增一个数据文件。
    *
-   * @param file a data file
-   * @return this for method chaining
+   * @param file 待新增的数据文件
+   * @return this，便于链式调用
    */
   ReplacePartitions addFile(DataFile file);
 
   /**
-   * Validate that no partitions will be replaced and the operation is append-only.
+   * 校验本次操作不会替换任何分区，即纯追加。
    *
-   * @return this for method chaining
+   * <p>逻辑：提交时校验所有新增文件落入的分区在当前表中尚不存在数据，否则提交失败。 用于在期望"只追加不替换"的场景下防止意外覆写。
+   *
+   * @return this，便于链式调用
    */
   ReplacePartitions validateAppendOnly();
 
   /**
-   * Set the snapshot ID used in validations for this operation.
+   * 设置本操作校验所基于的快照 ID，校验将针对该快照之后的变更进行。
    *
-   * <p>All validations will check changes after this snapshot ID. If this is not called, validation
-   * will occur from the beginning of the table's history.
+   * <p>逻辑：应在提交前调用，把 snapshotId 设为本次操作开始读取表时的快照。若此后有并发操作 在待替换分区内新增/删除文件，校验会检测到并失败。未调用时从表起始快照开始校验。
    *
-   * <p>This method should be called before this operation is committed. If a concurrent operation
-   * committed a data or delta file or removed a data file after the given snapshot ID that might
-   * contain rows matching a partition marked for deletion, validation will detect this and fail.
-   *
-   * @param snapshotId a snapshot ID, it should be set to when this operation started to read the
-   *     table.
-   * @return this for method chaining
+   * @param snapshotId 基准快照 ID（应设为操作开始读取表时的快照）
+   * @return this，便于链式调用
    */
   ReplacePartitions validateFromSnapshot(long snapshotId);
 
   /**
-   * Enables validation that deletes that happened concurrently do not conflict with this commit's
-   * operation.
+   * 启用"并发删除不冲突"校验。
    *
-   * <p>Validating concurrent deletes is required during non-idempotent replace partition
-   * operations. This will check if a concurrent operation deletes data in any of the partitions
-   * being overwritten, as the replace partition must be aborted to avoid undeleting rows that were
-   * removed concurrently.
+   * <p>逻辑：非幂等替换分区操作必需。若并发操作删除了正在被替换的分区中的数据，本次替换必须 中止，否则可能"复活"被并发删除的行。
    *
-   * @return this for method chaining
+   * @return this，便于链式调用
    */
   ReplacePartitions validateNoConflictingDeletes();
 
   /**
-   * Enables validation that data added concurrently does not conflict with this commit's operation.
+   * 启用"并发新增数据不冲突"校验。
    *
-   * <p>Validating concurrent data files is required during non-idempotent replace partition
-   * operations. This will check if a concurrent operation inserts data in any of the partitions
-   * being overwritten, as the replace partition must be aborted to avoid removing rows added
-   * concurrently.
+   * <p>逻辑：非幂等替换分区操作必需。若并发操作在正在被替换的分区中新增了数据，本次替换必须 中止，否则可能误删并发新增的行。
    *
-   * @return this for method chaining
+   * @return this，便于链式调用
    */
   ReplacePartitions validateNoConflictingData();
 }

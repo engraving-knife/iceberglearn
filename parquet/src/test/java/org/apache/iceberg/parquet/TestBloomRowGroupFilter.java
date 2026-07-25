@@ -80,6 +80,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestBloomRowGroupFilter 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestBloomRowGroupFilter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestBloomRowGroupFilter {
 
   private static final Types.StructType structFieldType =
@@ -186,6 +193,7 @@ public class TestBloomRowGroupFilter {
 
   @TempDir private File temp;
 
+  /** 辅助方法：createInputFile。 */
   @BeforeEach
   public void createInputFile() throws IOException {
 
@@ -274,6 +282,11 @@ public class TestBloomRowGroupFilter {
     bloomStore = reader.getBloomFilterDataReader(rowGroupMetadata);
   }
 
+  /**
+   * 测试场景：Not Null。
+   *
+   * <p>验证该方法在 Not Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNull() {
     boolean shouldRead =
@@ -299,6 +312,11 @@ public class TestBloomRowGroupFilter {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Is Null。
+   *
+   * <p>验证该方法在 Is Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNull() {
     boolean shouldRead =
@@ -324,6 +342,11 @@ public class TestBloomRowGroupFilter {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Required Column。
+   *
+   * <p>验证该方法在 Required Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredColumn() {
     boolean shouldRead =
@@ -337,6 +360,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should skip: required columns are always non-null").isFalse();
   }
 
+  /**
+   * 测试场景：Is Na Ns。
+   *
+   * <p>验证该方法在 Is Na Ns 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaNs() {
     boolean shouldRead =
@@ -355,6 +383,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Not Na Ns。
+   *
+   * <p>验证该方法在 Not Na Ns 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaNs() {
     boolean shouldRead =
@@ -373,6 +406,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Starts With。
+   *
+   * <p>验证该方法在 Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStartsWith() {
     boolean shouldRead =
@@ -411,6 +449,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Missing Column。
+   *
+   * <p>验证该方法在 Missing Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingColumn() {
     TestHelpers.assertThrows(
@@ -422,6 +465,11 @@ public class TestBloomRowGroupFilter {
                 .shouldRead(parquetSchema, rowGroupMetadata, bloomStore));
   }
 
+  /**
+   * 测试场景：Column Not In File。
+   *
+   * <p>验证该方法在 Column Not In File 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnNotInFile() {
     Expression[] exprs =
@@ -445,6 +493,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Column Not Bloom Filter Enabled。
+   *
+   * <p>验证该方法在 Column Not Bloom Filter Enabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnNotBloomFilterEnabled() {
     Expression[] exprs =
@@ -462,6 +515,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Missing Stats。
+   *
+   * <p>验证该方法在 Missing Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingStats() {
     boolean shouldRead =
@@ -472,6 +530,11 @@ public class TestBloomRowGroupFilter {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     // this test case must use a real predicate, not alwaysTrue(), otherwise binding will simplify
@@ -484,6 +547,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     // this test case must use a real predicate, not alwaysTrue(), otherwise binding will simplify
@@ -577,6 +645,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should skip: and(false, true, true, true)").isFalse();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     // this test case must use a real predicate, not alwaysTrue(), otherwise binding will simplify
@@ -594,6 +667,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: or(false, true)").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt。
+   *
+   * <p>验证该方法在 Integer Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLt() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -604,6 +682,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Lt Eq。
+   *
+   * <p>验证该方法在 Integer Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLtEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -614,6 +697,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Gt。
+   *
+   * <p>验证该方法在 Integer Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGt() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -624,6 +712,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Gt Eq。
+   *
+   * <p>验证该方法在 Integer Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGtEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -634,6 +727,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Eq。
+   *
+   * <p>验证该方法在 Integer Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -648,6 +746,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Long Eq。
+   *
+   * <p>验证该方法在 Long Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -662,6 +765,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Bytes Eq。
+   *
+   * <p>验证该方法在 Bytes Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testBytesEq() {
     for (int i = 0; i < INT_VALUE_COUNT; i++) {
@@ -682,6 +790,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Int Deciaml Eq。
+   *
+   * <p>验证该方法在 Int Deciaml Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntDeciamlEq() {
     for (int i = 0; i < INT_VALUE_COUNT; i++) {
@@ -698,6 +811,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should not read: decimal outside range").isFalse();
   }
 
+  /**
+   * 测试场景：Long Deciaml Eq。
+   *
+   * <p>验证该方法在 Long Deciaml Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testLongDeciamlEq() {
     for (int i = 0; i < INT_VALUE_COUNT; i++) {
@@ -714,6 +832,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should not read: decimal outside range").isFalse();
   }
 
+  /**
+   * 测试场景：Fixed Deciaml Eq。
+   *
+   * <p>验证该方法在 Fixed Deciaml Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testFixedDeciamlEq() {
     for (int i = 0; i < INT_VALUE_COUNT; i++) {
@@ -730,6 +853,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should not read: decimal outside range").isFalse();
   }
 
+  /**
+   * 测试场景：Double Eq。
+   *
+   * <p>验证该方法在 Double Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -744,6 +872,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Float Eq。
+   *
+   * <p>验证该方法在 Float Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testFloatEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -758,6 +891,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：String Eq。
+   *
+   * <p>验证该方法在 String Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -772,6 +910,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Random Binary Eq。
+   *
+   * <p>验证该方法在 Random Binary Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testRandomBinaryEq() {
     for (int i = 0; i < INT_VALUE_COUNT; i++) {
@@ -791,6 +934,11 @@ public class TestBloomRowGroupFilter {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Boolean Eq。
+   *
+   * <p>验证该方法在 Boolean Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testBooleanEq() {
     boolean shouldRead =
@@ -804,6 +952,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter is not supported for Boolean").isTrue();
   }
 
+  /**
+   * 测试场景：Time Eq。
+   *
+   * <p>验证该方法在 Time Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimeEq() {
     for (int i = -20; i < INT_VALUE_COUNT + 20; i++) {
@@ -819,6 +972,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Date Eq。
+   *
+   * <p>验证该方法在 Date Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateEq() {
     for (int i = -20; i < INT_VALUE_COUNT + 20; i++) {
@@ -834,6 +992,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Timestamp Eq。
+   *
+   * <p>验证该方法在 Timestamp Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampEq() {
     for (int i = -20; i < INT_VALUE_COUNT + 20; i++) {
@@ -849,6 +1012,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Timestamptz Eq。
+   *
+   * <p>验证该方法在 Timestamptz Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestamptzEq() {
     for (int i = -20; i < INT_VALUE_COUNT + 20; i++) {
@@ -864,6 +1032,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Not Eq。
+   *
+   * <p>验证该方法在 Integer Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -874,6 +1047,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEqRewritten() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -884,6 +1062,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：String Not Eq。
+   *
+   * <p>验证该方法在 String Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringNotEq() {
     boolean shouldRead =
@@ -897,6 +1080,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Struct Field Lt。
+   *
+   * <p>验证该方法在 Struct Field Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLt() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -907,6 +1095,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Struct Field Lt Eq。
+   *
+   * <p>验证该方法在 Struct Field Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLtEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -917,6 +1110,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Struct Field Gt。
+   *
+   * <p>验证该方法在 Struct Field Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGt() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -927,6 +1125,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Struct Field Gt Eq。
+   *
+   * <p>验证该方法在 Struct Field Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGtEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -937,6 +1140,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Struct Field Eq。
+   *
+   * <p>验证该方法在 Struct Field Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -951,6 +1159,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Struct Field Not Eq。
+   *
+   * <p>验证该方法在 Struct Field Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldNotEq() {
     for (int i = INT_MIN_VALUE - 20; i < INT_MAX_VALUE + 20; i++) {
@@ -961,6 +1174,11 @@ public class TestBloomRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Case Insensitive。
+   *
+   * <p>验证该方法在 Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitive() {
     // the column name is required. If setting caseSentitive to true, ValidationException: Cannot
@@ -971,6 +1189,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should skip: contains only 'req'").isFalse();
   }
 
+  /**
+   * 测试场景：Missing Bloom Filter For Column。
+   *
+   * <p>验证该方法在 Missing Bloom Filter For Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingBloomFilterForColumn() {
     TestHelpers.assertThrows(
@@ -990,12 +1213,18 @@ public class TestBloomRowGroupFilter {
       super(fileReader, block);
     }
 
+    /** 辅助方法：readBloomFilter。 */
     @Override
     public BloomFilter readBloomFilter(ColumnChunkMetaData meta) {
       return null;
     }
   }
 
+  /**
+   * 测试场景：Integer In。
+   *
+   * <p>验证该方法在 Integer In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerIn() {
     // only one value is present
@@ -1044,6 +1273,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should not read: value outside range").isFalse();
   }
 
+  /**
+   * 测试场景：Other Types In。
+   *
+   * <p>验证该方法在 Other Types In 条件下的行为是否符合预期。
+   */
   @Test
   public void testOtherTypesIn() {
     boolean shouldRead =
@@ -1080,6 +1314,11 @@ public class TestBloomRowGroupFilter {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not In。
+   *
+   * <p>验证该方法在 Integer Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotIn() {
     // only one value is present
@@ -1129,6 +1368,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Other Types Not In。
+   *
+   * <p>验证该方法在 Other Types Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testOtherTypesNotIn() {
     boolean shouldRead =
@@ -1152,6 +1396,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should read: bloom filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Type Conversions。
+   *
+   * <p>验证该方法在 Type Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testTypeConversions() {
     boolean shouldRead =
@@ -1180,6 +1429,11 @@ public class TestBloomRowGroupFilter {
     assertThat(shouldRead).as("Should not read: Long value outside Integer range").isFalse();
   }
 
+  /**
+   * 测试场景：Transform Filter。
+   *
+   * <p>验证该方法在 Transform Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransformFilter() {
     boolean shouldRead =

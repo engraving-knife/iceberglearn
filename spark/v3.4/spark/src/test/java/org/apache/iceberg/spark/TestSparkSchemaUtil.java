@@ -31,6 +31,13 @@ import org.apache.spark.sql.types.StructType;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkSchemaUtil 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark模式工具 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkSchemaUtil {
   private static final Schema TEST_SCHEMA =
       new Schema(
@@ -43,6 +50,7 @@ public class TestSparkSchemaUtil {
           MetadataColumns.FILE_PATH,
           MetadataColumns.ROW_POSITION);
 
+  /** 测试estimatesize最大值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEstimateSizeMaxValue() throws IOException {
     Assert.assertEquals(
@@ -51,6 +59,7 @@ public class TestSparkSchemaUtil {
         SparkSchemaUtil.estimateSize(null, Long.MAX_VALUE));
   }
 
+  /** 测试estimatesize带overflow场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEstimateSizeWithOverflow() throws IOException {
     long tableSize =
@@ -58,12 +67,14 @@ public class TestSparkSchemaUtil {
     Assert.assertEquals("estimateSize handles overflow", Long.MAX_VALUE, tableSize);
   }
 
+  /** 测试 testEstimateSize 场景：验证 EstimateSize 相关操作的行为与结果。 */
   @Test
   public void testEstimateSize() throws IOException {
     long tableSize = SparkSchemaUtil.estimateSize(SparkSchemaUtil.convert(TEST_SCHEMA), 1);
     Assert.assertEquals("estimateSize matches with expected approximation", 24, tableSize);
   }
 
+  /** 测试模式conversion带meta数据列模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSchemaConversionWithMetaDataColumnSchema() {
     StructType structType = SparkSchemaUtil.convert(TEST_SCHEMA_WITH_METADATA_COLS);

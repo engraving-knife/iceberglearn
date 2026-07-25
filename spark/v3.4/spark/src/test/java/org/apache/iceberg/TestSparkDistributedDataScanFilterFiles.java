@@ -31,10 +31,19 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+/**
+ * 文件级说明：测试 TestSparkDistributedDataScanFilterFiles 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkdistributed数据扫描过滤器文件
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkDistributedDataScanFilterFiles
     extends FilterFilesTestBase<BatchScan, ScanTask, ScanTaskGroup<ScanTask>> {
 
+  /** 参数。 */
   @Parameters(name = "formatVersion = {0}, dataMode = {1}, deleteMode = {2}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -54,6 +63,7 @@ public class TestSparkDistributedDataScanFilterFiles
   private final PlanningMode dataMode;
   private final PlanningMode deleteMode;
 
+  /** 测试Sparkdistributed数据扫描过滤器文件。 */
   public TestSparkDistributedDataScanFilterFiles(
       int formatVersion, PlanningMode dataPlanningMode, PlanningMode deletePlanningMode) {
     super(formatVersion);
@@ -61,6 +71,7 @@ public class TestSparkDistributedDataScanFilterFiles
     this.deleteMode = deletePlanningMode;
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkDistributedDataScanFilterFiles.spark =
@@ -71,6 +82,7 @@ public class TestSparkDistributedDataScanFilterFiles
             .getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkDistributedDataScanFilterFiles.spark;
@@ -78,6 +90,7 @@ public class TestSparkDistributedDataScanFilterFiles
     currentSpark.stop();
   }
 
+  /** 新建扫描。 */
   @Override
   protected BatchScan newScan(Table table) {
     table

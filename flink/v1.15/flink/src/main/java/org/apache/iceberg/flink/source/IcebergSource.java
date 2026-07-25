@@ -72,6 +72,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Experimental
+/**
+ * Iceberg-Flink 新版 Source 实现（Flink Source API），集成 enumerator 与 reader。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：配置 SplitAssigner、ReaderFunction、Enumerator，构建 Source 实例。
+ *
+ * <p>设计意图：构建器模式，实现 Flink Source 接口；被 FlinkDynamicTableFactory 调用。
+ */
 public class IcebergSource<T> implements Source<T, IcebergSourceSplit, IcebergEnumeratorState> {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergSource.class);
 

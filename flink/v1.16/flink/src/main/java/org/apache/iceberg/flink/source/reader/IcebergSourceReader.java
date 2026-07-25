@@ -30,6 +30,13 @@ import org.apache.iceberg.flink.source.split.SplitRequestEvent;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 @Internal
+/**
+ * Iceberg 新版 Source 读取器，基于 Flink SourceReaderBase 实现记录读取。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：管理 split 读取、记录发射、checkpoint 状态。
+ *
+ * <p>设计意图：继承 SourceReaderBase；被 Flink Source 框架调用。
+ */
 public class IcebergSourceReader<T>
     extends SingleThreadMultiplexSourceReaderBase<
         RecordAndPosition<T>, T, IcebergSourceSplit, IcebergSourceSplit> {

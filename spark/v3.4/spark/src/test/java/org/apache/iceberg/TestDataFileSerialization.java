@@ -54,6 +54,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestDataFileSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 数据文件序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDataFileSerialization {
 
   private static final Schema DATE_SCHEMA =
@@ -104,6 +111,7 @@ public class TestDataFileSerialization {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试数据文件Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFileKryoSerialization() throws Exception {
     File data = temp.newFile();
@@ -124,6 +132,7 @@ public class TestDataFileSerialization {
     }
   }
 
+  /** 测试数据文件Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFileJavaSerialization() throws Exception {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -142,6 +151,7 @@ public class TestDataFileSerialization {
     }
   }
 
+  /** 测试Parquet写入器split偏移场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testParquetWriterSplitOffsets() throws IOException {
     Iterable<InternalRow> records = RandomData.generateSpark(DATE_SCHEMA, 1, 33L);
@@ -170,6 +180,7 @@ public class TestDataFileSerialization {
     }
   }
 
+  /** 长整型到buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

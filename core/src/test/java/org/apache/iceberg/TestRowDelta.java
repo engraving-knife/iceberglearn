@@ -44,11 +44,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestRowDelta，用于验证 Row Delta 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Row Delta 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestRowDelta extends V2TableTestBase {
 
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "branch = {0}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -56,10 +64,16 @@ public class TestRowDelta extends V2TableTestBase {
     };
   }
 
+  /** 辅助方法：row delta。 */
   public TestRowDelta(String branch) {
     this.branch = branch;
   }
 
+  /**
+   * 测试场景：add delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDeleteFile() {
     SnapshotUpdate rowDelta =
@@ -95,6 +109,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：validate data files exist defaults。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistDefaults() {
     SnapshotUpdate rowDelta1 = table.newAppend().appendFile(FILE_A).appendFile(FILE_B);
@@ -162,6 +181,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：validate data files exist overwrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistOverwrite() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -198,6 +222,11 @@ public class TestRowDelta extends V2TableTestBase {
         latestSnapshot(table, branch).deleteManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：validate data files exist replace partitions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistReplacePartitions() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -234,6 +263,11 @@ public class TestRowDelta extends V2TableTestBase {
         latestSnapshot(table, branch).deleteManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：validate data files exist from snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistFromSnapshot() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -293,6 +327,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：validate data files exist rewrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistRewrite() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -332,6 +371,11 @@ public class TestRowDelta extends V2TableTestBase {
         latestSnapshot(table, branch).deleteManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：validate data files exist validate deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistValidateDeletes() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -369,6 +413,11 @@ public class TestRowDelta extends V2TableTestBase {
         latestSnapshot(table, branch).deleteManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：validate no conflicts。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateNoConflicts() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -407,6 +456,11 @@ public class TestRowDelta extends V2TableTestBase {
         latestSnapshot(table, branch).deleteManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：validate no conflicts from snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateNoConflictsFromSnapshot() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -467,6 +521,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：overwrite with delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteWithDeleteFile() {
     commit(
@@ -516,6 +575,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.DELETED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：replace partitions with delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplacePartitionsWithDeleteFile() {
     commit(
@@ -570,6 +634,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.DELETED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：delete by expression with delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteByExpressionWithDeleteFile() {
     commit(
@@ -614,6 +683,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.DELETED, Status.DELETED));
   }
 
+  /**
+   * 测试场景：delete data file with delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteDataFileWithDeleteFile() {
     commit(table, table.newRowDelta().addRows(FILE_A).addDeletes(FILE_A_DELETES), branch);
@@ -679,6 +753,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：fast append does not remove stale delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFastAppendDoesNotRemoveStaleDeleteFiles() {
     commit(table, table.newRowDelta().addRows(FILE_A).addDeletes(FILE_A_DELETES), branch);
@@ -759,6 +838,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：validate data files exist with conflict detection filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesExistWithConflictDetectionFilter() {
     // change the spec to be partitioned by data
@@ -834,6 +918,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：validate data files do not exist with conflict detection filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testValidateDataFilesDoNotExistWithConflictDetectionFilter() {
     // change the spec to be partitioned by data
@@ -886,6 +975,11 @@ public class TestRowDelta extends V2TableTestBase {
         .hasMessageStartingWith("Cannot commit, missing data files");
   }
 
+  /**
+   * 测试场景：add delete files multiple specs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDeleteFilesMultipleSpecs() {
     // enable partition summaries
@@ -1011,6 +1105,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED));
   }
 
+  /**
+   * 测试场景：manifest merging multiple specs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestMergingMultipleSpecs() {
     // make sure we enable manifest merging
@@ -1090,6 +1189,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：abort multiple specs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAbortMultipleSpecs() {
     // append a partitioned data file
@@ -1135,6 +1239,11 @@ public class TestRowDelta extends V2TableTestBase {
     Assert.assertEquals("Should delete 3 files", 3, deletedFiles.size());
   }
 
+  /**
+   * 测试场景：concurrent conflicting row delta。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingRowDelta() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -1169,6 +1278,11 @@ public class TestRowDelta extends V2TableTestBase {
         .hasMessageStartingWith("Found new conflicting delete files");
   }
 
+  /**
+   * 测试场景：concurrent conflicting row delta without append validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingRowDeltaWithoutAppendValidation() {
     commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -1200,6 +1314,11 @@ public class TestRowDelta extends V2TableTestBase {
         .hasMessageStartingWith("Found new conflicting delete files");
   }
 
+  /**
+   * 测试场景：concurrent non conflicting row delta。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingRowDelta() {
     // change the spec to be partitioned by data
@@ -1278,6 +1397,11 @@ public class TestRowDelta extends V2TableTestBase {
     validateBranchDeleteFiles(table, branch, deleteFile1, deleteFile2);
   }
 
+  /**
+   * 测试场景：concurrent non conflicting row delta and rewrite files with sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingRowDeltaAndRewriteFilesWithSequenceNumber() {
     // change the spec to be partitioned by data
@@ -1328,6 +1452,11 @@ public class TestRowDelta extends V2TableTestBase {
     validateBranchFiles(table, branch, dataFile2);
   }
 
+  /**
+   * 测试场景：row delta and rewrite files merge manifests with sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRowDeltaAndRewriteFilesMergeManifestsWithSequenceNumber() {
     table.updateProperties().set(TableProperties.MANIFEST_MIN_MERGE_COUNT, "1").commit();
@@ -1391,6 +1520,11 @@ public class TestRowDelta extends V2TableTestBase {
         statuses(Status.ADDED, Status.DELETED));
   }
 
+  /**
+   * 测试场景：concurrent conflicting row delta and rewrite files with sequence number。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingRowDeltaAndRewriteFilesWithSequenceNumber() {
     // change the spec to be partitioned by data
@@ -1438,6 +1572,11 @@ public class TestRowDelta extends V2TableTestBase {
         .hasMessageStartingWith("Cannot commit, found new position delete for replaced data file");
   }
 
+  /**
+   * 测试场景：row delta case sensitivity。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRowDeltaCaseSensitivity() {
     commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_A2), branch);

@@ -21,13 +21,31 @@ package org.apache.iceberg.encryption;
 import java.nio.ByteBuffer;
 
 /**
- * Light typedef over a ByteBuffer that indicates that the given bytes represent metadata about an
- * encrypted data file's encryption key.
+ * 文件级说明：加密密钥元数据（不透明字节包装）。
  *
- * <p>This is preferred over passing a ByteBuffer directly in order to be more explicit.
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>以 {@link ByteBuffer} 形式承载文件加密密钥的元数据（如经 KMS 包装后的密钥、 密钥 ID、IV 等实现自定义信息），用于在加密/解密流程中传递。
+ *   <li>提供 {@link #empty()} 空元数据占位与 {@link #copy()} 拷贝能力。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>语义化 typedef：相对于直接传递 ByteBuffer，本接口以类型显式表达“这是密钥元数据”， 避免参数语义混淆。
+ *   <li>不透明性：API 层不规定 buffer 的内部格式，由具体加密实现（如 envelope 加密） 自行解释，从而支持多种加密方案。
+ *   <li>空对象：{@link #EMPTY} 单例表示无密钥元数据（如明文文件），避免 null 检查。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link EncryptedInputFile}、{@link EncryptedOutputFile} 携带； 由 {@link EncryptionManager}
+ * 实现侧生成与解析。
  */
 public interface EncryptionKeyMetadata {
 
+  /** 空密钥元数据单例：buffer 返回 null，copy 返回自身。 */
   EncryptionKeyMetadata EMPTY =
       new EncryptionKeyMetadata() {
         @Override
@@ -41,12 +59,28 @@ public interface EncryptionKeyMetadata {
         }
       };
 
+  /**
+   * 返回空密钥元数据单例。
+   *
+   * @return 空 {@link EncryptionKeyMetadata}
+   */
   static EncryptionKeyMetadata empty() {
     return EMPTY;
   }
 
-  /** Opaque blob representing metadata about a file's encryption key. */
+  /**
+   * 返回表示文件加密密钥元数据的不透明字节缓冲。
+   *
+   * @return 密钥元数据字节缓冲；空元数据返回 null
+   */
   ByteBuffer buffer();
 
+  /**
+   * 返回本密钥元数据的副本（独立缓冲）。
+   *
+   * <p>设计要点：避免多次消费同一缓冲导致 position/limit 互相干扰，调用方拿到独立副本 可自由读取。
+   *
+   * @return 元数据副本
+   */
   EncryptionKeyMetadata copy();
 }

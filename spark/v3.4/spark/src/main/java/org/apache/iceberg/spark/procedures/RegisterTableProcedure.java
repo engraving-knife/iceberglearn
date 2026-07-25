@@ -35,6 +35,15 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：注册表的存储过程，通过已有元数据文件注册一个 Iceberg 表到 catalog。
+ *
+ * <p>设计意图：无需数据拷贝，直接加载已有 metadata.json 注册表。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
+ */
 class RegisterTableProcedure extends BaseProcedure {
   private static final ProcedureParameter[] PARAMETERS =
       new ProcedureParameter[] {
@@ -53,26 +62,27 @@ class RegisterTableProcedure extends BaseProcedure {
   private RegisterTableProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RegisterTableProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RegisterTableProcedure doBuild() {
         return new RegisterTableProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     TableIdentifier tableName =
@@ -102,7 +112,7 @@ class RegisterTableProcedure extends BaseProcedure {
 
     return new InternalRow[] {newInternalRow(currentSnapshotId, totalRecords, totalDataFiles)};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RegisterTableProcedure";

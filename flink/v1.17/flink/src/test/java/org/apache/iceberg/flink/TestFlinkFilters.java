@@ -53,6 +53,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkFilters 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkFilters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkFilters {
 
   private static final TableSchema TABLE_SCHEMA =
@@ -88,6 +95,11 @@ public class TestFlinkFilters {
           Pair.of("field11", DateTimeUtil.microsFromTimestamp(LocalDateTime.now())),
           Pair.of("field12", DateTimeUtil.microsFromInstant(Instant.now())));
 
+  /**
+   * 测试场景：Flink Data Type Equal。
+   *
+   * <p>验证该方法在 Flink Data Type Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testFlinkDataTypeEqual() {
     matchLiteral("field1", 1, 1);
@@ -112,6 +124,11 @@ public class TestFlinkFilters {
     matchLiteral("field12", instant, DateTimeUtil.microsFromInstant(instant));
   }
 
+  /**
+   * 测试场景：Equals。
+   *
+   * <p>验证该方法在 Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testEquals() {
     for (Pair<String, Object> pair : FIELD_VALUE_LIST) {
@@ -132,6 +149,11 @@ public class TestFlinkFilters {
     }
   }
 
+  /**
+   * 测试场景：Equals Na N。
+   *
+   * <p>验证该方法在 Equals Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testEqualsNaN() {
     UnboundPredicate<Float> expected = org.apache.iceberg.expressions.Expressions.isNaN("field3");
@@ -147,6 +169,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Not Equals。
+   *
+   * <p>验证该方法在 Not Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotEquals() {
     for (Pair<String, Object> pair : FIELD_VALUE_LIST) {
@@ -167,6 +194,11 @@ public class TestFlinkFilters {
     }
   }
 
+  /**
+   * 测试场景：Not Equals Na N。
+   *
+   * <p>验证该方法在 Not Equals Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotEqualsNaN() {
     UnboundPredicate<Float> expected = org.apache.iceberg.expressions.Expressions.notNaN("field3");
@@ -184,6 +216,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Greater Than。
+   *
+   * <p>验证该方法在 Greater Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testGreaterThan() {
     UnboundPredicate<Integer> expected =
@@ -200,6 +237,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Greater Than Equals。
+   *
+   * <p>验证该方法在 Greater Than Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testGreaterThanEquals() {
     UnboundPredicate<Integer> expected =
@@ -216,6 +258,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Less Than。
+   *
+   * <p>验证该方法在 Less Than 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThan() {
     UnboundPredicate<Integer> expected =
@@ -232,6 +279,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Less Than Equals。
+   *
+   * <p>验证该方法在 Less Than Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testLessThanEquals() {
     UnboundPredicate<Integer> expected =
@@ -248,6 +300,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual1.get());
   }
 
+  /**
+   * 测试场景：Is Null。
+   *
+   * <p>验证该方法在 Is Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNull() {
     Expression expr = resolve(Expressions.$("field1").isNull());
@@ -257,6 +314,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual.get());
   }
 
+  /**
+   * 测试场景：Is Not Null。
+   *
+   * <p>验证该方法在 Is Not Null 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNotNull() {
     Expression expr = resolve(Expressions.$("field1").isNotNull());
@@ -267,6 +329,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected, actual.get());
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     Expression expr =
@@ -287,6 +354,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected.right(), and.right());
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     Expression expr =
@@ -307,6 +379,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected.right(), or.right());
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     Expression expr =
@@ -326,6 +403,11 @@ public class TestFlinkFilters {
     assertPredicatesMatch(expected.child(), not.child());
   }
 
+  /**
+   * 测试场景：Like。
+   *
+   * <p>验证该方法在 Like 条件下的行为是否符合预期。
+   */
   @Test
   public void testLike() {
     UnboundPredicate<?> expected =
@@ -385,6 +467,7 @@ public class TestFlinkFilters {
     Assert.assertFalse("Conversion should failed", actual.isPresent());
   }
 
+  /** 辅助方法：matchLiteral，match Literal。 */
   @SuppressWarnings("unchecked")
   private <T> void matchLiteral(String fieldName, Object flinkLiteral, T icebergLiteral) {
     Expression expr = resolve(Expressions.$(fieldName).isEqual(Expressions.lit(flinkLiteral)));
@@ -406,9 +489,11 @@ public class TestFlinkFilters {
     Assert.assertTrue("Should match the  literal", predicate.test(icebergLiteral));
   }
 
+  /** 辅助方法：resolve，resolve。 */
   private static Expression resolve(Expression originalExpression) {
     return originalExpression.accept(
         new ApiExpressionDefaultVisitor<Expression>() {
+          /** 辅助方法：visit，visit。 */
           @Override
           public Expression visit(UnresolvedReferenceExpression unresolvedReference) {
             String name = unresolvedReference.getName();
@@ -421,6 +506,7 @@ public class TestFlinkFilters {
             }
           }
 
+          /** 辅助方法：visit，visit。 */
           @Override
           public Expression visit(UnresolvedCallExpression unresolvedCall) {
             List<ResolvedExpression> children =
@@ -431,11 +517,13 @@ public class TestFlinkFilters {
                 unresolvedCall.getFunctionDefinition(), children, DataTypes.STRING());
           }
 
+          /** 辅助方法：visit，visit。 */
           @Override
           public Expression visit(ValueLiteralExpression valueLiteral) {
             return valueLiteral;
           }
 
+          /** 辅助方法：defaultMethod，default Method。 */
           @Override
           protected Expression defaultMethod(Expression expression) {
             throw new UnsupportedOperationException(
@@ -444,6 +532,7 @@ public class TestFlinkFilters {
         });
   }
 
+  /** 辅助方法：assertPredicatesMatch，assert Predicates Match。 */
   private void assertPredicatesMatch(
       org.apache.iceberg.expressions.Expression expected,
       org.apache.iceberg.expressions.Expression actual) {

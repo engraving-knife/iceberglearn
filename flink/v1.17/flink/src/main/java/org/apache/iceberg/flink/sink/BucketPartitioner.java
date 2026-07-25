@@ -23,10 +23,16 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * This partitioner will redirect records to writers deterministically based on the Bucket partition
- * spec. It'll attempt to optimize the file size written depending on whether numPartitions is
- * greater, less or equal than the maxNumBuckets. Note: The current implementation only supports ONE
- * bucket in the partition spec.
+ * 基于 bucket 分区规格的 Flink 分区器，将记录确定性路由到 writer。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），实现 Flink {@link Partitioner}。
+ *
+ * <p>职责：根据 bucket id 与 writer（分区）数量关系，决定记录写入哪个 writer 子任务， 以优化写出文件大小——writer 数 ≤ bucket 数时一个 writer
+ * 负责多个 bucket，反之多个 writer 共享一个 bucket。
+ *
+ * <p>设计意图：注意当前实现仅支持分区规格中包含单个 bucket 字段。通过模运算与轮询偏移， 在不同 writer/bucket 比例下尽量均衡负载并控制文件数量。
+ *
+ * <p>上下游关系：被 {@link FlinkSink} 在 bucket 分布模式下用作 keyBy 后的分区器。
  */
 class BucketPartitioner implements Partitioner<Integer> {
 
@@ -42,21 +48,25 @@ class BucketPartitioner implements Partitioner<Integer> {
   // number of buckets
   private final int[] currentBucketWriterOffset;
 
+  /**
+   * 构造分区器。
+   *
+   * @param partitionSpec 分区规格（须含单个 bucket 字段）
+   */
   BucketPartitioner(PartitionSpec partitionSpec) {
     this.maxNumBuckets = BucketPartitionerUtil.getMaxNumBuckets(partitionSpec);
     this.currentBucketWriterOffset = new int[maxNumBuckets];
   }
 
   /**
-   * Determine the partition id based on the following criteria: If the number of writers <= the
-   * number of buckets, an evenly distributed number of buckets will be assigned to each writer (one
-   * writer -> many buckets). Conversely, if the number of writers > the number of buckets the logic
-   * is handled by the {@link #getPartitionWithMoreWritersThanBuckets
-   * getPartitionWritersGreaterThanBuckets} method.
+   * 根据 bucket id 与分区数计算目标分区（writer）。
    *
-   * @param bucketId the bucketId for each request
-   * @param numPartitions the total number of partitions
-   * @return the partition id (writer) to use for each request
+   * <p>逻辑：writer 数 ≤ bucket 数时，直接取 bucketId % numPartitions（一个 writer 负责多 bucket）； writer 数 >
+   * bucket 数时，委托 {@link #getPartitionWithMoreWritersThanBuckets} 轮询分配。
+   *
+   * @param bucketId 记录的 bucket id
+   * @param numPartitions 总分区（writer）数
+   * @return 目标分区 id
    */
   @Override
   public int partition(Integer bucketId, int numPartitions) {
@@ -72,20 +82,21 @@ class BucketPartitioner implements Partitioner<Integer> {
     }
   }
 
-  /*-
-   * If the number of writers > the number of buckets each partitioner will keep a state of multiple
-   * writers per bucket as evenly as possible, and will round-robin the requests across them, in this
-   * case each writer will target only one bucket at all times (many writers -> one bucket). Example:
-   * Configuration: numPartitions (writers) = 5, maxBuckets = 2
-   * Expected behavior:
-   * - Records for Bucket 0 will be "round robin" between Writers 0, 2 and 4
-   * - Records for Bucket 1 will always use Writer 1 and 3
-   * Notes:
-   * - maxNumWritersPerBucket determines when to reset the currentBucketWriterOffset to 0 for this bucketId
-   * - When numPartitions is not evenly divisible by maxBuckets, some buckets will have one more writer (extraWriter).
-   * In this example Bucket 0 has an "extra writer" to consider before resetting its offset to 0.
+  /**
+   * 当 writer 数量大于 bucket 数量时的分区分配逻辑。
    *
-   * @return the destination partition index (writer subtask id)
+   * <p>逻辑：每个 bucket 维护一个轮询偏移（currentBucketWriterOffset），将该 bucket 的多个 writer 尽量均匀分配并轮询使用，保证每个
+   * writer 始终只写一个 bucket（多 writer → 一 bucket）。 例如 numPartitions=5、maxBuckets=2 时：bucket 0 在 writer
+   * 0/2/4 间轮询，bucket 1 固定用 writer 1/3。
+   *
+   * <p>要点：
+   *
+   * <ul>
+   *   <li>maxNumWritersPerBucket 达到上限时将偏移重置为 0。
+   *   <li>numPartitions 不能被 maxBuckets 整除时，部分 bucket 多分一个 writer（extraWriter）。
+   * </ul>
+   *
+   * @return 目标分区索引（writer 子任务 id）
    */
   private int getPartitionWithMoreWritersThanBuckets(int bucketId, int numPartitions) {
     int currentOffset = currentBucketWriterOffset[bucketId];

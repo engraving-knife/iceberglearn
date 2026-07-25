@@ -33,13 +33,22 @@ import org.junit.After;
 import org.junit.Test;
 import scala.collection.JavaConverters;
 
+/**
+ * 文件级说明：测试 TestSparkReadMetrics 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark读指标 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkReadMetrics extends SparkTestBaseWithCatalog {
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试读指标用于v1表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadMetricsForV1Table() throws NoSuchTableException {
     sql(
@@ -64,6 +73,7 @@ public class TestSparkReadMetrics extends SparkTestBaseWithCatalog {
     Assertions.assertThat(metricsMap.get("totalPlanningDuration").value()).isNotEqualTo(0);
   }
 
+  /** 测试读指标用于v2表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadMetricsForV2Table() throws NoSuchTableException {
     sql(

@@ -23,32 +23,42 @@ import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.Projections;
 
 /**
- * API for deleting files from a table.
+ * 从表中删除文件的 API。
  *
- * <p>This API accumulates file deletions, produces a new {@link Snapshot} of the table, and commits
- * that snapshot as the current.
+ * <p>所属模块：iceberg-api（表更新操作接口层）。
  *
- * <p>When committing, these changes will be applied to the latest table snapshot. Commit conflicts
- * will be resolved by applying the changes to the new latest snapshot and reattempting the commit.
+ * <p>职责：累积文件删除操作，生成新的 {@link Snapshot} 并提交为当前快照。支持按文件路径、 按 {@link DataFile}、按行级 {@link Expression}
+ * 三种方式删除。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>提交时将这些变更应用到最新的表快照；若发生提交冲突，则将变更应用到新的最新快照 并重试，从而实现 OCC（乐观并发控制）语义。
+ *   <li>按行表达式删除时采用两次投影：用 {@link Projections#inclusive(PartitionSpec)} 选出 可能含匹配行的候选文件，再用 {@link
+ *       Projections#strict(PartitionSpec)} 判断文件是否 全部行都匹配，确保仅当文件全部行必然匹配时才删除该文件。
+ * </ul>
+ *
+ * <p>上下游关系：继承 {@link SnapshotUpdate}；由 core 模块实现，被引擎/用户调用以删除数据。
  */
 public interface DeleteFiles extends SnapshotUpdate<DeleteFiles> {
   /**
-   * Delete a file path from the underlying table.
+   * 按完全匹配的文件路径从表中删除文件。
    *
-   * <p>To remove a file from the table, this path must equal a path in the table's metadata. Paths
-   * that are different but equivalent will not be removed. For example, file:/path/file.avro is
-   * equivalent to file:///path/file.avro, but would not remove the latter path from the table.
+   * <p>设计要点：路径必须与表元数据中的路径完全相等，仅等价但不相同的路径不会被删除。 例如 {@code file:/path/file.avro} 与 {@code
+   * file:///path/file.avro} 等价但不会被相互 匹配删除。
    *
-   * @param path a fully-qualified file path to remove from the table
-   * @return this for method chaining
+   * @param path 待删除文件的完全限定路径
+   * @return this，便于链式调用
    */
   DeleteFiles deleteFile(CharSequence path);
 
   /**
-   * Delete a file tracked by a {@link DataFile} from the underlying table.
+   * 按 {@link DataFile} 删除其对应路径的文件。
    *
-   * @param file a DataFile to remove from the table
-   * @return this for method chaining
+   * <p>默认实现：直接委托给 {@link #deleteFile(CharSequence)}，传入文件的 path。
+   *
+   * @param file 待删除的 DataFile
+   * @return this，便于链式调用
    */
   default DeleteFiles deleteFile(DataFile file) {
     deleteFile(file.path());
@@ -56,37 +66,37 @@ public interface DeleteFiles extends SnapshotUpdate<DeleteFiles> {
   }
 
   /**
-   * Delete files that match an {@link Expression} on data rows from the table.
+   * 按行级 {@link Expression} 删除匹配的数据文件。
    *
-   * <p>A file is selected to be deleted by the expression if it could contain any rows that match
-   * the expression (candidate files are selected using an {@link
-   * Projections#inclusive(PartitionSpec) inclusive projection}). These candidate files are deleted
-   * if all of the rows in the file must match the expression (the partition data matches the
-   * expression's {@link Projections#strict(PartitionSpec)} strict projection}). This guarantees
-   * that files are deleted if and only if all rows in the file must match the expression.
+   * <p>逻辑：
    *
-   * <p>Files that may contain some rows that match the expression and some rows that do not will
-   * result in a {@link ValidationException}.
+   * <ul>
+   *   <li>先用 {@link Projections#inclusive(PartitionSpec)} 把行表达式投影到分区级，选出 可能含匹配行的候选文件；
+   *   <li>再用 {@link Projections#strict(PartitionSpec)} 判断文件分区数据是否使整个文件 必然全部匹配，若是则删除该文件。
+   * </ul>
    *
-   * @param expr an expression on rows in the table
-   * @return this for method chaining
-   * @throws ValidationException If a file can contain both rows that match and rows that do not
+   * <p>若某文件可能同时包含匹配与不匹配的行，则抛出 {@link ValidationException}，避免 误删部分数据。
+   *
+   * @param expr 作用于表行的表达式
+   * @return this，便于链式调用
+   * @throws ValidationException 若某文件可能同时包含匹配与不匹配的行
    */
   DeleteFiles deleteFromRowFilter(Expression expr);
 
   /**
-   * Enables or disables case sensitive expression binding for methods that accept expressions.
+   * 启用或关闭表达式绑定的大小写敏感。
    *
-   * @param caseSensitive whether expression binding should be case sensitive
-   * @return this for method chaining
+   * @param caseSensitive 表达式绑定是否大小写敏感
+   * @return this，便于链式调用
    */
   DeleteFiles caseSensitive(boolean caseSensitive);
 
   /**
-   * Enables validation that any files that are part of the deletion still exist when committing the
-   * operation.
+   * 启用校验：提交时确认本次删除涉及的文件仍然存在。
    *
-   * @return this for method chaining
+   * <p>默认实现：抛出 {@link UnsupportedOperationException}，由具体实现类覆盖。
+   *
+   * @return this，便于链式调用
    */
   default DeleteFiles validateFilesExist() {
     throw new UnsupportedOperationException(

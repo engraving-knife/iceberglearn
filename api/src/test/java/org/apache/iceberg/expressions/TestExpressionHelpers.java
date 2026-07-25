@@ -54,9 +54,21 @@ import org.apache.iceberg.types.Types.StructType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExpressionHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestExpressionHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExpressionHelpers {
   private final UnboundPredicate<?> pred = lessThan("x", 7);
 
+  /**
+   * 测试场景：Simplify Or。
+   *
+   * <p>验证该方法在 Simplify Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimplifyOr() {
     assertThat(or(alwaysTrue(), pred))
@@ -70,6 +82,11 @@ public class TestExpressionHelpers {
     assertThat(or(pred, alwaysFalse())).as("pred or alwaysTrue => pred").isEqualTo(pred);
   }
 
+  /**
+   * 测试场景：Simplify And。
+   *
+   * <p>验证该方法在 Simplify And 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimplifyAnd() {
     assertThat(and(alwaysTrue(), pred)).as("alwaysTrue and pred => pred").isEqualTo(pred);
@@ -83,6 +100,11 @@ public class TestExpressionHelpers {
         .isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Simplify Not。
+   *
+   * <p>验证该方法在 Simplify Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimplifyNot() {
     assertThat(not(alwaysTrue())).as("not(alwaysTrue) => alwaysFalse").isEqualTo(alwaysFalse());
@@ -91,6 +113,11 @@ public class TestExpressionHelpers {
     assertThat(not(not(pred))).as("not(not(pred)) => pred").isEqualTo(pred);
   }
 
+  /**
+   * 测试场景：Rewrite Not。
+   *
+   * <p>验证该方法在 Rewrite Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testRewriteNot() {
     StructType struct =
@@ -144,6 +171,11 @@ public class TestExpressionHelpers {
     }
   }
 
+  /**
+   * 测试场景：Transform Expressions。
+   *
+   * <p>验证该方法在 Transform Expressions 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransformExpressions() {
     assertThat(equal(year("ts"), "2019"))
@@ -169,6 +201,11 @@ public class TestExpressionHelpers {
         .hasToString("bucket[16](ref(name=\"id\")) == 12");
   }
 
+  /**
+   * 测试场景：Null Name。
+   *
+   * <p>验证该方法在 Null Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullName() {
     Assertions.assertThatThrownBy(() -> equal((String) null, 5))
@@ -176,6 +213,11 @@ public class TestExpressionHelpers {
         .hasMessage("Name cannot be null");
   }
 
+  /**
+   * 测试场景：Null Value Expr。
+   *
+   * <p>验证该方法在 Null Value Expr 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullValueExpr() {
     Assertions.assertThatThrownBy(() -> equal((UnboundTerm<Integer>) null, 5))
@@ -183,6 +225,11 @@ public class TestExpressionHelpers {
         .hasMessage("Term cannot be null");
   }
 
+  /**
+   * 测试场景：Multi And。
+   *
+   * <p>验证该方法在 Multi And 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultiAnd() {
     Expression expected = and(and(equal("a", 1), equal("b", 2)), equal("c", 3));
@@ -192,6 +239,11 @@ public class TestExpressionHelpers {
     assertThat(actual).hasToString(expected.toString());
   }
 
+  /**
+   * 测试场景：Invalidate Na N Input。
+   *
+   * <p>验证该方法在 Invalidate Na N Input 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidateNaNInput() {
     assertInvalidateNaNThrows(() -> lessThan("a", Double.NaN));
@@ -221,12 +273,14 @@ public class TestExpressionHelpers {
     assertInvalidateNaNThrows(() -> predicate(Expression.Operation.EQ, "a", Double.NaN));
   }
 
+  /** 辅助方法：assertInvalidateNaNThrows。 */
   private void assertInvalidateNaNThrows(Callable<UnboundPredicate<Double>> callable) {
     Assertions.assertThatThrownBy(callable::call)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot create expression literal from NaN");
   }
 
+  /** 辅助方法：self。 */
   private <T> UnboundTerm<T> self(String name) {
     return new UnboundTransform<>(ref(name), Transforms.identity());
   }

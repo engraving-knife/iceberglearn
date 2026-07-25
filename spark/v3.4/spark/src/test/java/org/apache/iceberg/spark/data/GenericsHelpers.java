@@ -51,12 +51,21 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import scala.collection.Seq;
 
+/**
+ * 文件级说明：测试 GenericsHelpers 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 generics辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class GenericsHelpers {
+  /** generics辅助。 */
   private GenericsHelpers() {}
 
   private static final OffsetDateTime EPOCH = Instant.ofEpochMilli(0L).atOffset(ZoneOffset.UTC);
   private static final LocalDate EPOCH_DAY = EPOCH.toLocalDate();
 
+  /** 断言equalssafe。 */
   public static void assertEqualsSafe(Types.StructType struct, Record expected, Row actual) {
     List<Types.NestedField> fields = struct.fields();
     for (int i = 0; i < fields.size(); i += 1) {
@@ -69,6 +78,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalssafe。 */
   private static void assertEqualsSafe(
       Types.ListType list, Collection<?> expected, List<?> actual) {
     Type elementType = list.elementType();
@@ -81,6 +91,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalssafe。 */
   private static void assertEqualsSafe(Types.MapType map, Map<?, ?> expected, Map<?, ?> actual) {
     Type keyType = map.keyType();
     Type valueType = map.valueType();
@@ -104,6 +115,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalssafe。 */
   @SuppressWarnings("unchecked")
   private static void assertEqualsSafe(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
@@ -210,6 +222,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   public static void assertEqualsUnsafe(
       Types.StructType struct, Record expected, InternalRow actual) {
     List<Types.NestedField> fields = struct.fields();
@@ -223,6 +236,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(
       Types.ListType list, Collection<?> expected, ArrayData actual) {
     Type elementType = list.elementType();
@@ -235,6 +249,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(Types.MapType map, Map<?, ?> expected, MapData actual) {
     Type keyType = map.keyType();
     Type valueType = map.valueType();
@@ -253,6 +268,7 @@ public class GenericsHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;

@@ -47,19 +47,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * The IcebergSource loads/writes tables with format "iceberg". It can load paths and tables.
+ * 所属模块：iceberg-spark v3.5
  *
- * <p>How paths/tables are loaded when using spark.read().format("iceberg").load(table)
+ * <p>职责：Iceberg 的 Spark DataSource V2 入口，提供按名/路径加载表的能力。
  *
- * <p>table = "file:///path/to/table" -&gt; loads a HadoopTable at given path table = "tablename"
- * -&gt; loads currentCatalog.currentNamespace.tablename table = "catalog.tablename" -&gt; load
- * "tablename" from the specified catalog. table = "namespace.tablename" -&gt; load
- * "namespace.tablename" from current catalog table = "catalog.namespace.tablename" -&gt;
- * "namespace.tablename" from the specified catalog. table = "namespace1.namespace2.tablename" -&gt;
- * load "namespace1.namespace2.tablename" from current catalog
+ * <p>设计意图：实现 TableProvider，根据标识符创建 SparkTable 或元数据表。
  *
- * <p>The above list is in order of priority. For example: a matching catalog will take priority
- * over any namespace resolution.
+ * <p>上下游关系：由 Spark 在 CREATE TABLE USING iceberg 时加载；产出 SparkTable。
  */
 public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions {
   private static final String DEFAULT_CATALOG_NAME = "default_iceberg";
@@ -74,27 +68,27 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
   private static final String[] EMPTY_NAMESPACE = new String[0];
 
   private static final SparkTableCache TABLE_CACHE = SparkTableCache.get();
-
+  /** 执行 shortName 相关操作。 */
   @Override
   public String shortName() {
     return "iceberg";
   }
-
+  /** 执行 inferSchema 相关操作。 */
   @Override
   public StructType inferSchema(CaseInsensitiveStringMap options) {
     return null;
   }
-
+  /** 执行 inferPartitioning 相关操作。 */
   @Override
   public Transform[] inferPartitioning(CaseInsensitiveStringMap options) {
     return getTable(null, null, options).partitioning();
   }
-
+  /** 执行 supportsExternalMetadata 相关操作。 */
   @Override
   public boolean supportsExternalMetadata() {
     return true;
   }
-
+  /** 返回 Table 属性。 */
   @Override
   public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> options) {
     Spark3Util.CatalogAndIdentifier catalogIdentifier =
@@ -118,7 +112,7 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
     throw new org.apache.iceberg.exceptions.NoSuchTableException(
         "Cannot find table for %s.", ident);
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   private Spark3Util.CatalogAndIdentifier catalogAndIdentifier(CaseInsensitiveStringMap options) {
     Preconditions.checkArgument(
         options.containsKey(SparkReadOptions.PATH), "Cannot open table: path is not set");
@@ -182,11 +176,11 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
       return new Spark3Util.CatalogAndIdentifier(catalogAndIdentifier.catalog(), ident);
     }
   }
-
+  /** 执行 pathWithSelector 相关操作。 */
   private String pathWithSelector(String path, String selector) {
     return (selector == null) ? path : path + "#" + selector;
   }
-
+  /** 执行 identifierWithSelector 相关操作。 */
   private Identifier identifierWithSelector(Identifier ident, String selector) {
     if (selector == null) {
       return ident;
@@ -197,29 +191,29 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
       return Identifier.of(ns, selector);
     }
   }
-
+  /** 执行 extractIdentifier 相关操作。 */
   @Override
   public Identifier extractIdentifier(CaseInsensitiveStringMap options) {
     return catalogAndIdentifier(options).identifier();
   }
-
+  /** 执行 extractCatalog 相关操作。 */
   @Override
   public String extractCatalog(CaseInsensitiveStringMap options) {
     return catalogAndIdentifier(options).catalog().name();
   }
-
+  /** 执行 extractTimeTravelVersion 相关操作。 */
   @Override
   public Optional<String> extractTimeTravelVersion(CaseInsensitiveStringMap options) {
     return Optional.ofNullable(
         PropertyUtil.propertyAsString(options, SparkReadOptions.VERSION_AS_OF, null));
   }
-
+  /** 执行 extractTimeTravelTimestamp 相关操作。 */
   @Override
   public Optional<String> extractTimeTravelTimestamp(CaseInsensitiveStringMap options) {
     return Optional.ofNullable(
         PropertyUtil.propertyAsString(options, SparkReadOptions.TIMESTAMP_AS_OF, null));
   }
-
+  /** 执行 propertyAsLong 相关操作。 */
   private static Long propertyAsLong(CaseInsensitiveStringMap options, String property) {
     String value = options.get(property);
     if (value != null) {
@@ -228,7 +222,7 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
 
     return null;
   }
-
+  /** 执行 setupDefaultSparkCatalogs 相关操作。 */
   private static void setupDefaultSparkCatalogs(SparkSession spark) {
     if (!spark.conf().contains(DEFAULT_CATALOG)) {
       ImmutableMap<String, String> config =

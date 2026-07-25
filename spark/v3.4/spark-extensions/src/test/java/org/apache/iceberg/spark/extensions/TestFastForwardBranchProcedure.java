@@ -34,17 +34,27 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchProcedureException;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFastForwardBranchProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 快速前进分支存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestFastForwardBranchProcedure extends SparkExtensionsTestBase {
+  /** 测试快速前进分支存储过程。 */
   public TestFastForwardBranchProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试快速前进分支使用位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFastForwardBranchUsingPositionalArgs() {
     sql("CREATE TABLE %s (id int NOT NULL, data string) USING iceberg", tableName);
@@ -96,6 +106,7 @@ public class TestFastForwardBranchProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s order by id", tableName));
   }
 
+  /** 测试快速前进分支使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFastForwardBranchUsingNamedArgs() {
     sql("CREATE TABLE %s (id int NOT NULL, data string) USING iceberg", tableName);
@@ -129,6 +140,7 @@ public class TestFastForwardBranchProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s order by id", tableName));
   }
 
+  /** 测试快速前进当target是否非ancestorfails场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFastForwardWhenTargetIsNotAncestorFails() {
     sql("CREATE TABLE %s (id int NOT NULL, data string) USING iceberg", tableName);
@@ -163,6 +175,7 @@ public class TestFastForwardBranchProcedure extends SparkExtensionsTestBase {
         .hasMessage("Cannot fast-forward: main is not an ancestor of testBranch");
   }
 
+  /** 测试invalid快速前进分支场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidFastForwardBranchCases() {
     assertThatThrownBy(

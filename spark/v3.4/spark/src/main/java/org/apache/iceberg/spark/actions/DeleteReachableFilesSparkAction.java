@@ -42,8 +42,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An implementation of {@link DeleteReachableFiles} that uses metadata tables in Spark to determine
- * which files should be deleted.
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：删除可达文件的 Spark 动作，删除指定快照/分支可达的所有文件（用于彻底删除表）。
+ *
+ * <p>设计意图：遍历快照引用的文件清单并删除，用于表删除前的物理文件清理。
+ *
+ * <p>上下游关系：由 SparkActions 创建。
  */
 @SuppressWarnings("UnnecessaryAnonymousClass")
 public class DeleteReachableFilesSparkAction
@@ -64,30 +69,30 @@ public class DeleteReachableFilesSparkAction
     super(spark);
     this.metadataFileLocation = metadataFileLocation;
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected DeleteReachableFilesSparkAction self() {
     return this;
   }
-
+  /** 执行 io 相关操作。 */
   @Override
   public DeleteReachableFilesSparkAction io(FileIO fileIO) {
     this.io = fileIO;
     return this;
   }
-
+  /** 执行 deleteWith 相关操作。 */
   @Override
   public DeleteReachableFilesSparkAction deleteWith(Consumer<String> newDeleteFunc) {
     this.deleteFunc = newDeleteFunc;
     return this;
   }
-
+  /** 执行 executeDeleteWith 相关操作。 */
   @Override
   public DeleteReachableFilesSparkAction executeDeleteWith(ExecutorService executorService) {
     this.deleteExecutorService = executorService;
     return this;
   }
-
+  /** 执行动作并返回结果。 */
   @Override
   public Result execute() {
     Preconditions.checkArgument(io != null, "File IO cannot be null");
@@ -95,7 +100,7 @@ public class DeleteReachableFilesSparkAction
     JobGroupInfo info = newJobGroupInfo("DELETE-REACHABLE-FILES", jobDesc);
     return withJobGroupInfo(info, this::doExecute);
   }
-
+  /** 执行 doExecute 相关操作。 */
   private Result doExecute() {
     TableMetadata metadata = TableMetadataParser.read(io, metadataFileLocation);
 
@@ -111,11 +116,11 @@ public class DeleteReachableFilesSparkAction
       return deleteFiles(reachableFileDS.collectAsList().iterator());
     }
   }
-
+  /** 执行 streamResults 相关操作。 */
   private boolean streamResults() {
     return PropertyUtil.propertyAsBoolean(options(), STREAM_RESULTS, STREAM_RESULTS_DEFAULT);
   }
-
+  /** 执行 reachableFileDS 相关操作。 */
   private Dataset<FileInfo> reachableFileDS(TableMetadata metadata) {
     Table staticTable = newStaticTable(metadata, io);
     return contentFileDS(staticTable)
@@ -124,7 +129,7 @@ public class DeleteReachableFilesSparkAction
         .union(allReachableOtherMetadataFileDS(staticTable))
         .distinct();
   }
-
+  /** 执行 deleteFiles 相关操作。 */
   private DeleteReachableFiles.Result deleteFiles(Iterator<FileInfo> files) {
     DeleteSummary summary;
     if (deleteFunc == null && io instanceof SupportsBulkOperations) {

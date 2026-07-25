@@ -40,10 +40,18 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
 import software.amazon.awssdk.auth.signer.internal.SignerConstant;
 
+/**
+ * 文件级说明：测试 TestRESTSigV4Signer 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestRESTSigV4Signer 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestRESTSigV4Signer {
   private static ClientAndServer mockServer;
   private static HTTPClient client;
 
+  /** 辅助方法：beforeClass。 */
   @BeforeAll
   public static void beforeClass() {
     mockServer = ClientAndServer.startClientAndServer();
@@ -66,17 +74,24 @@ public class TestRESTSigV4Signer {
             .build();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterAll
   public static void afterClass() throws IOException {
     mockServer.stop();
     client.close();
   }
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     mockServer.reset();
   }
 
+  /**
+   * 测试场景：sign Request Without Body。
+   *
+   * <p>验证该方法在 sign Request Without Body 条件下的行为是否符合预期。
+   */
   @Test
   public void signRequestWithoutBody() {
     HttpRequest request =
@@ -104,6 +119,11 @@ public class TestRESTSigV4Signer {
     Assertions.assertThat(response).isNotNull();
   }
 
+  /**
+   * 测试场景：sign Request With Body。
+   *
+   * <p>验证该方法在 sign Request With Body 条件下的行为是否符合预期。
+   */
   @Test
   public void signRequestWithBody() {
     HttpRequest request =

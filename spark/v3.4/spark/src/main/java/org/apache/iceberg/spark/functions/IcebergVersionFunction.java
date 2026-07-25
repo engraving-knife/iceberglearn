@@ -29,10 +29,16 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A function for use in SQL that returns the current Iceberg version, e.g. {@code SELECT
- * system.iceberg_version()} will return a String such as "0.14.0" or "0.15.0-SNAPSHOT"
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：返回当前 Iceberg 版本号的 Spark 标量函数。
+ *
+ * <p>设计意图：提供运行时查询 Iceberg 版本的能力，便于排查环境。
+ *
+ * <p>上下游关系：由 SparkFunctions / SparkFunctionCatalog 注册。
  */
 public class IcebergVersionFunction implements UnboundFunction {
+  /** 绑定输入类型。 */
   @Override
   public BoundFunction bind(StructType inputType) {
     if (inputType.fields().length > 0) {
@@ -42,12 +48,12 @@ public class IcebergVersionFunction implements UnboundFunction {
 
     return new IcebergVersionFunctionImpl();
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return name() + " - Returns the runtime Iceberg version";
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "iceberg_version";
@@ -62,32 +68,32 @@ public class IcebergVersionFunction implements UnboundFunction {
     public static UTF8String invoke() {
       return VERSION;
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[0];
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.StringType;
     }
-
+    /** 判断是否 ResultNullable。 */
     @Override
     public boolean isResultNullable() {
       return false;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg." + name();
     }
-
+    /** 返回名称。 */
     @Override
     public String name() {
       return "iceberg_version";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public UTF8String produceResult(InternalRow input) {
       return invoke();

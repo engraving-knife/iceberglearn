@@ -90,6 +90,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkReaderDeletes 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark读取器删除 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkReaderDeletes extends DeleteReadTests {
 
@@ -100,12 +107,14 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
   private final boolean vectorized;
   private final PlanningMode planningMode;
 
+  /** 测试Spark读取器删除。 */
   public TestSparkReaderDeletes(String format, boolean vectorized, PlanningMode planningMode) {
     this.format = format;
     this.vectorized = vectorized;
     this.planningMode = planningMode;
   }
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}, planningMode = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -116,6 +125,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     };
   }
 
+  /** 启动元存储与Spark。 */
   @BeforeClass
   public static void startMetastoreAndSpark() {
     metastore = new TestHiveMetastore();
@@ -143,6 +153,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     }
   }
 
+  /** 停止元存储与Spark。 */
   @AfterClass
   public static void stopMetastoreAndSpark() throws Exception {
     catalog = null;
@@ -152,6 +163,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     spark = null;
   }
 
+  /** 辅助方法：cleanup。 */
   @After
   @Override
   public void cleanup() throws IOException {
@@ -159,6 +171,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     dropTable("test3");
   }
 
+  /** 创建表。 */
   @Override
   protected Table createTable(String name, Schema schema, PartitionSpec spec) {
     Table table = catalog.createTable(TableIdentifier.of("default", name), schema);
@@ -189,25 +202,30 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     return table;
   }
 
+  /** 删除表。 */
   @Override
   protected void dropTable(String name) {
     catalog.dropTable(TableIdentifier.of("default", name));
   }
 
+  /** 计数删除。 */
   protected boolean countDeletes() {
     return true;
   }
 
+  /** 删除计数。 */
   @Override
   protected long deleteCount() {
     return Long.parseLong(lastExecutedMetricValue(spark, NumDeletes.DISPLAY_STRING));
   }
 
+  /** 行集合。 */
   @Override
   public StructLikeSet rowSet(String name, Table table, String... columns) {
     return rowSet(name, table.schema().select(columns).asStruct(), columns);
   }
 
+  /** 行集合。 */
   public StructLikeSet rowSet(String name, Types.StructType projection, String... columns) {
     Dataset<Row> df =
         spark
@@ -227,6 +245,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     return set;
   }
 
+  /** 测试等值删除带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEqualityDeleteWithFilter() throws IOException {
     String tableName = table.name().substring(table.name().lastIndexOf(".") + 1);
@@ -269,6 +288,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     Assert.assertEquals("Table should contain no rows", 0, actual.size());
   }
 
+  /** 测试读等值删除行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadEqualityDeleteRows() throws IOException {
     Schema deleteSchema1 = table.schema().select("data");
@@ -332,6 +352,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     Assert.assertEquals("deleted row should be matched", expectedRowSet, actualRowSet);
   }
 
+  /** 测试pos删除所有行在批场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPosDeletesAllRowsInBatch() throws IOException {
     // read.parquet.vectorization.batch-size is set to 4, so the 4 rows in the first batch are all
@@ -361,6 +382,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     checkDeleteCount(4L);
   }
 
+  /** 测试pos删除带deleted列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPosDeletesWithDeletedColumn() throws IOException {
     // read.parquet.vectorization.batch-size is set to 4, so the 4 rows in the first batch are all
@@ -391,6 +413,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     checkDeleteCount(4L);
   }
 
+  /** 测试等值删除带deleted列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEqualityDeleteWithDeletedColumn() throws IOException {
     String tableName = table.name().substring(table.name().lastIndexOf(".") + 1);
@@ -421,6 +444,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     checkDeleteCount(3L);
   }
 
+  /** 测试mixedpos与eq删除带deleted列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMixedPosAndEqDeletesWithDeletedColumn() throws IOException {
     Schema dataSchema = table.schema().select("data");
@@ -465,6 +489,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     checkDeleteCount(4L);
   }
 
+  /** 测试过滤器上deleted元数据列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterOnDeletedMetadataColumn() throws IOException {
     List<Pair<CharSequence, Long>> deletes =
@@ -529,6 +554,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     Assert.assertEquals("Table should contain expected row", expectedDeleted, actualDeleted);
   }
 
+  /** 测试是否deleted列无删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIsDeletedColumnWithoutDeleteFile() {
     StructLikeSet expected = expectedRowSet();
@@ -538,6 +564,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     checkDeleteCount(0L);
   }
 
+  /** 测试pos删除上Parquet文件带多个行分组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPosDeletesOnParquetFileWithMultipleRowGroups() throws IOException {
     Assume.assumeTrue(format.equals("parquet"));
@@ -613,18 +640,22 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
           required(2, "data", Types.StringType.get()),
           MetadataColumns.IS_DELETED);
 
+  /** 期望行集合。 */
   private static StructLikeSet expectedRowSet(int... idsToRemove) {
     return expectedRowSet(false, false, idsToRemove);
   }
 
+  /** 期望行集合带删除only。 */
   private static StructLikeSet expectedRowSetWithDeletesOnly(int... idsToRemove) {
     return expectedRowSet(false, true, idsToRemove);
   }
 
+  /** 期望行集合带不存在的删除only。 */
   private static StructLikeSet expectedRowSetWithNonDeletesOnly(int... idsToRemove) {
     return expectedRowSet(true, false, idsToRemove);
   }
 
+  /** 期望行集合。 */
   private static StructLikeSet expectedRowSet(
       boolean removeDeleted, boolean removeNonDeleted, int... idsToRemove) {
     Set<Integer> deletedIds = Sets.newHashSet(ArrayUtil.toIntList(idsToRemove));
@@ -647,6 +678,7 @@ public class TestSparkReaderDeletes extends DeleteReadTests {
     return set;
   }
 
+  /** 记录带deleted列。 */
   @NotNull
   private static List recordsWithDeletedColumn() {
     List records = Lists.newArrayList();

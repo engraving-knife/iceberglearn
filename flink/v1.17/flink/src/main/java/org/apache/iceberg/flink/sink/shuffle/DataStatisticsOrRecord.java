@@ -25,14 +25,16 @@ import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * The wrapper class for data statistics and record. It is the only way for data statistics operator
- * to send global data statistics to custom partitioner to distribute data based on statistics
+ * 数据统计与记录的联合包装类，用于将全局聚合统计从统计算子下发到自定义分区器。
  *
- * <p>DataStatisticsOrRecord contains either data statistics(globally aggregated) or a record. It is
- * sent from {@link DataStatisticsOperator} to partitioner. Once partitioner receives the data
- * statistics, it will use that to decide the coming record should send to which writer subtask.
- * After shuffling, a filter and mapper are required to filter out the data distribution weight,
- * unwrap the object and extract the original record type T.
+ * <p>所属模块：iceberg-flink（sink shuffle 侧）。
+ *
+ * <p>职责：封装"全局统计"或"单条记录"二选一的数据，由 {@link DataStatisticsOperator} 发往分区器； 分区器收到统计后据此决定后续记录路由到哪个 writer
+ * 子任务。
+ *
+ * <p>设计意图：统计与记录复用同一下行通道，下游需配合 filter/mapper 剥离统计权重并还原原始记录类型。 构造时通过异或校验保证两者只能有其一。
+ *
+ * <p>上下游关系：上游为 DataStatisticsOperator，下游为自定义分区器（及随后的 filter/mapper）。
  */
 class DataStatisticsOrRecord<D extends DataStatistics<D, S>, S> implements Serializable {
 
@@ -41,6 +43,7 @@ class DataStatisticsOrRecord<D extends DataStatistics<D, S>, S> implements Seria
   private DataStatistics<D, S> statistics;
   private RowData record;
 
+  /** 私有构造，统计与记录只能有其一（异或校验）。 */
   private DataStatisticsOrRecord(DataStatistics<D, S> statistics, RowData record) {
     Preconditions.checkArgument(
         record != null ^ statistics != null, "DataStatistics or record, not neither or both");
@@ -48,16 +51,19 @@ class DataStatisticsOrRecord<D extends DataStatistics<D, S>, S> implements Seria
     this.record = record;
   }
 
+  /** 创建仅含一条记录的实例。 */
   static <D extends DataStatistics<D, S>, S> DataStatisticsOrRecord<D, S> fromRecord(
       RowData record) {
     return new DataStatisticsOrRecord<>(null, record);
   }
 
+  /** 创建仅含全局统计的实例。 */
   static <D extends DataStatistics<D, S>, S> DataStatisticsOrRecord<D, S> fromDataStatistics(
       DataStatistics<D, S> statistics) {
     return new DataStatisticsOrRecord<>(statistics, null);
   }
 
+  /** 尽量复用已有实例承载记录；不可复用时通过序列化器创建空记录实例。 */
   static <D extends DataStatistics<D, S>, S> DataStatisticsOrRecord<D, S> reuseRecord(
       DataStatisticsOrRecord<D, S> reuse, TypeSerializer<RowData> recordSerializer) {
     if (reuse.hasRecord()) {
@@ -68,6 +74,7 @@ class DataStatisticsOrRecord<D extends DataStatistics<D, S>, S> implements Seria
     }
   }
 
+  /** 尽量复用已有实例承载统计；不可复用时通过序列化器创建空统计实例。 */
   static <D extends DataStatistics<D, S>, S> DataStatisticsOrRecord<D, S> reuseStatistics(
       DataStatisticsOrRecord<D, S> reuse,
       TypeSerializer<DataStatistics<D, S>> statisticsSerializer) {
@@ -79,26 +86,32 @@ class DataStatisticsOrRecord<D extends DataStatistics<D, S>, S> implements Seria
     }
   }
 
+  /** 是否包含全局统计。 */
   boolean hasDataStatistics() {
     return statistics != null;
   }
 
+  /** 是否包含记录。 */
   boolean hasRecord() {
     return record != null;
   }
 
+  /** 返回统计对象。 */
   DataStatistics<D, S> dataStatistics() {
     return statistics;
   }
 
+  /** 设置统计对象。 */
   void dataStatistics(DataStatistics<D, S> newStatistics) {
     this.statistics = newStatistics;
   }
 
+  /** 返回记录。 */
   RowData record() {
     return record;
   }
 
+  /** 设置记录。 */
   void record(RowData newRecord) {
     this.record = newRecord;
   }

@@ -21,8 +21,15 @@ package org.apache.spark.sql.connector.iceberg.write;
 import org.apache.spark.sql.connector.write.BatchWrite;
 import org.apache.spark.sql.connector.write.PhysicalWriteInfo;
 
-/** An interface that defines how to write a delta of rows during batch processing. */
+/**
+ * Spark DataSource V2 连接器扩展的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 DeltaBatchWrite。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface DeltaBatchWrite extends BatchWrite {
+  /** 创建并返回新实例。 */
   @Override
   DeltaWriterFactory createBatchWriterFactory(PhysicalWriteInfo info);
 }

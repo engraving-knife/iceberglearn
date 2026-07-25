@@ -35,10 +35,44 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ByteBuffers;
 import org.apache.iceberg.util.DateTimeUtil;
 
+/**
+ * 文件级说明：Flink {@link RowData} 与 Iceberg 数据类型之间的转换工具类。
+ *
+ * <p>所属模块：iceberg-flink（数据写入子包 data），提供 RowData 相关的静态工具方法。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 Iceberg 常量值转换为 Flink 对应类型（如 BigDecimal → DecimalData）。
+ *   <li>提供 RowData 的克隆方法，支持带额外列（position deletes）的行复制。
+ * </ul>
+ *
+ * <p>设计意图：Flink 内部使用紧凑二进制类型（StringData、DecimalData、TimestampData 等）， Iceberg 使用标准 Java
+ * 类型。本类封装两者之间的转换，使 Iceberg 的常量可直接用于 Flink 计算。
+ *
+ * <p>上下游关系：被 Iceberg Flink sink/source 中需要转换常量或复制行的场景调用。
+ */
 public class RowDataUtil {
 
   private RowDataUtil() {}
 
+  /**
+   * 将 Iceberg 类型的常量值转换为 Flink 对应类型。
+   *
+   * <p>逻辑：按 Iceberg type ID 分支：
+   *
+   * <ul>
+   *   <li>DECIMAL → {@link DecimalData}
+   *   <li>STRING → {@link StringData}（支持 Avro Utf8 输入）
+   *   <li>FIXED/BINARY → byte[]
+   *   <li>TIME → int（毫秒，Iceberg 存微秒故除以 1000）
+   *   <li>TIMESTAMP → {@link TimestampData}
+   * </ul>
+   *
+   * @param type Iceberg 类型
+   * @param value 常量值（Iceberg 标准类型）
+   * @return 转换后的 Flink 类型值，若输入为 null 则返回 null
+   */
   public static Object convertConstant(Type type, Object value) {
     if (value == null) {
       return null;
@@ -73,10 +107,18 @@ public class RowDataUtil {
   }
 
   /**
-   * Similar to the private {@link RowDataSerializer#copyRowData(RowData, RowData)} method. This
-   * skips the check the arity of rowType and from, because the from RowData may contains additional
-   * column for position deletes. Using {@link RowDataSerializer#copy(RowData, RowData)} will fail
-   * the arity check.
+   * 克隆 RowData，类似 {@link RowDataSerializer#copyRowData(RowData, RowData)} 私有方法。
+   *
+   * <p>设计意图：跳过 rowType 与 from 的 arity 检查，因为 from RowData 可能包含额外的 position deletes 列。使用 {@link
+   * RowDataSerializer#copy(RowData, RowData)} 会因 arity 不匹配而失败。
+   *
+   * <p>逻辑：若 reuse 是 GenericRowData 则复用，否则新建；按 rowType 的字段数逐字段复制， 使用各字段的 TypeSerializer 做深拷贝。
+   *
+   * @param from 源 RowData
+   * @param reuse 可复用的 RowData（可为 null 或非 GenericRowData）
+   * @param rowType 行类型
+   * @param fieldSerializers 各字段的 TypeSerializer
+   * @return 克隆后的 GenericRowData
    */
   public static RowData clone(
       RowData from, RowData reuse, RowType rowType, TypeSerializer[] fieldSerializers) {

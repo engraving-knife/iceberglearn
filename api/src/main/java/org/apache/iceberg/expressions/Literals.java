@@ -42,6 +42,28 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ByteBuffers;
 import org.apache.iceberg.util.NaNUtil;
 
+/**
+ * 字面量实现集合：为 Iceberg 各数据类型提供 {@link Literal} 的具体实现与工厂方法。
+ *
+ * <p>所属模块：iceberg-api（表达式体系“值/字面量”分支的实现汇总，包级可见，对外通过 {@link Literal} 接口与 {@link Expressions} 工厂使用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link #from(Object)}：按 Java 类型分发，构造对应类型的字面量。
+ *   <li>提供各类字面量实现（Boolean/Integer/Long/Float/Double/Date/Time/Timestamp/Decimal/
+ *       String/UUID/Fixed/Binary），每个实现支持 {@code to(Type)} 向目标类型转换， 并提供比较器与二进制序列化。
+ *   <li>提供 {@link AboveMax}/{@link BelowMin} 哨兵字面量，表示值越界（用于绑定时常量折叠）。
+ * </ul>
+ *
+ * <p>设计意图：每个字面量是不可变对象，{@code to(Type)} 把“类型转换 + 越界检测”集中在此处， 使 {@link UnboundPredicate#bind}
+ * 能在绑定阶段做常量折叠（如 Long 转 Int 越界返回 aboveMax）。 {@link BaseLiteral} 用双重检查锁缓存 {@code toByteBuffer}
+ * 结果，避免重复序列化。 二进制字面量通过 {@link SerializationProxies} 做序列化替换，保证 ByteBuffer 的可序列化。
+ *
+ * <p>上下游关系：由 {@link Expressions} 工厂与 {@link UnboundPredicate} 构造； 在 {@link UnboundPredicate#bind}
+ * 中经 {@code to(Type)} 转换为目标类型； 被各求值器（{@link Evaluator} 等）通过 {@link Literal#comparator()} 与 {@link
+ * Literal#value()} 使用。
+ */
 class Literals {
   private Literals() {}
 
@@ -49,11 +71,15 @@ class Literals {
   private static final LocalDate EPOCH_DAY = EPOCH.toLocalDate();
 
   /**
-   * Create a {@link Literal} from an Object.
+   * 由任意对象构造对应类型的字面量。
    *
-   * @param value a value
-   * @param <T> Java type of value
-   * @return a Literal for the given value
+   * <p>逻辑：拒绝 null 与 NaN；按 Java 类型分发到对应字面量实现
+   * （Boolean/Integer/Long/Float/Double/CharSequence/UUID/byte[]/ByteBuffer/BigDecimal）； 其余类型抛
+   * {@link IllegalArgumentException}。
+   *
+   * @param value 值
+   * @param <T> 值的 Java 类型
+   * @return 对应字面量
    */
   @SuppressWarnings("unchecked")
   static <T> Literal<T> from(T value) {
@@ -87,16 +113,24 @@ class Literals {
             "Cannot create expression literal from %s: %s", value.getClass().getName(), value));
   }
 
+  /** 返回“超过最大值”哨兵字面量单例（用于绑定时常量折叠）。 */
   @SuppressWarnings("unchecked")
   static <T> AboveMax<T> aboveMax() {
     return AboveMax.INSTANCE;
   }
 
+  /** 返回“低于最小值”哨兵字面量单例（用于绑定时常量折叠）。 */
   @SuppressWarnings("unchecked")
   static <T> BelowMin<T> belowMin() {
     return BelowMin.INSTANCE;
   }
 
+  /**
+   * 字面量抽象基类：持有值并缓存其二进制表示。
+   *
+   * <p>设计意图：{@code byteBuffer} 用 transient volatile + 双重检查锁惰性初始化， 避免每次调用都序列化；equals/hashCode
+   * 基于比较器而非原始 equals，保证 CharSequence 等 类型按值相等。
+   */
   private abstract static class BaseLiteral<T> implements Literal<T> {
     private final T value;
     private transient volatile ByteBuffer byteBuffer = null;
@@ -106,11 +140,19 @@ class Literals {
       this.value = value;
     }
 
+    /** 返回字面量值。 */
     @Override
     public T value() {
       return value;
     }
 
+    /**
+     * 返回值的二进制表示（带双重检查锁的惰性缓存）。
+     *
+     * <p>逻辑：首次调用时按 {@link #typeId()} 与值经 {@link Conversions#toByteBuffer} 序列化并缓存。
+     *
+     * @return 值的 ByteBuffer 表示
+     */
     @Override
     public final ByteBuffer toByteBuffer() {
       if (byteBuffer == null) {
@@ -123,6 +165,7 @@ class Literals {
       return byteBuffer;
     }
 
+    /** 子类提供字面量的类型 id，用于二进制序列化。 */
     protected abstract Type.TypeID typeId();
 
     @Override
@@ -166,6 +209,12 @@ class Literals {
     }
   }
 
+  /**
+   * “超过最大值”哨兵字面量：表示在类型转换时值超过目标类型上界。
+   *
+   * <p>设计意图：作为空对象，使 {@link UnboundPredicate#bind} 能据此做常量折叠 （如 {@code col > aboveMax} 恒假、{@code col
+   * < aboveMax} 恒真），无需特殊 null 处理。
+   */
   static class AboveMax<T> implements Literal<T> {
     private static final AboveMax INSTANCE = new AboveMax();
 
@@ -192,6 +241,12 @@ class Literals {
     }
   }
 
+  /**
+   * “低于最小值”哨兵字面量：表示在类型转换时值低于目标类型下界。
+   *
+   * <p>设计意图：与 {@link AboveMax} 对称，用于绑定时常量折叠 （如 {@code col < belowMin} 恒假、{@code col > belowMin}
+   * 恒真）。
+   */
   static class BelowMin<T> implements Literal<T> {
     private static final BelowMin INSTANCE = new BelowMin();
 
@@ -278,6 +333,16 @@ class Literals {
       super(value);
     }
 
+    /**
+     * 把 Long 字面量转换为目标类型。
+     *
+     * <p>逻辑：转 INTEGER/DATE 时做越界检测（超 Integer.MAX/MIN 返回 aboveMax/belowMin）； 转 LONG 返回自身；转
+     * FLOAT/DOUBLE 做窄化；转 TIME/TIMESTAMP 直接复用值； 转 DECIMAL 按 scale 设置；其余返回 null（不可转换）。
+     *
+     * @param type 目标类型
+     * @param <T> 目标 Java 类型
+     * @return 转换后的字面量，或 aboveMax/belowMin，或 null
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Literal<T> to(Type type) {
@@ -476,6 +541,11 @@ class Literals {
     }
   }
 
+  /**
+   * 字符串字面量：可解析为目标日期/时间/时间戳/UUID/Decimal 等类型。
+   *
+   * <p>设计意图：字符串是引擎侧最通用的字面量载体，故 {@code to(Type)} 承担从字符串到 各时间类型的解析职责，使用 ISO 标准格式。
+   */
   static class StringLiteral extends BaseLiteral<CharSequence> {
     private static final Comparator<CharSequence> CMP =
         Comparators.<CharSequence>nullsFirst().thenComparing(Comparators.charSequences());
@@ -484,6 +554,25 @@ class Literals {
       super(value);
     }
 
+    /**
+     * 把字符串字面量解析并转换为目标类型（支持从字符串到日期/时间/时间戳/UUID/Decimal 等）。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>DATE：按 ISO 本地日期解析，转为自纪元的天数。
+     *   <li>TIME：按 ISO 本地时间解析，转为微秒。
+     *   <li>TIMESTAMP：按是否带时区选择 ISO 偏移时间或本地时间解析，转为自纪元的微秒。
+     *   <li>STRING：返回自身。
+     *   <li>UUID：按 UUID.fromString 解析。
+     *   <li>DECIMAL：按字符串构造 BigDecimal（不改 scale）。
+     *   <li>其余返回 null（不可转换）。
+     * </ul>
+     *
+     * @param type 目标类型
+     * @param <T> 目标 Java 类型
+     * @return 转换后的字面量，或 null
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Literal<T> to(Type type) {

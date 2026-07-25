@@ -20,9 +20,18 @@
 package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Expression
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：Iceberg 行级命令逻辑计划基类，承载目标表与行级操作信息。
+ * <p>设计意图：作为行级命令（UPDATE/DELETE/MERGE）的公共父类，供重写规则识别。
+ * <p>上下游关系：被 UpdateIcebergTable / MergeIntoIcebergTable 等继承。
+ */
 
 trait RowLevelCommand extends Command with SupportsSubquery {
+  /** 执行 condition 相关操作。 */
   def condition: Option[Expression]
+  /** 执行 rewritePlan 相关操作。 */
   def rewritePlan: Option[LogicalPlan]
+  /** 返回带 NewRewritePlan 设置的副本。 */
   def withNewRewritePlan(newRewritePlan: LogicalPlan): RowLevelCommand
 }

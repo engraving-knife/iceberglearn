@@ -27,6 +27,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：测试 TestUtility 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestUtility 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestUtility {
   private static final Logger LOG = LoggerFactory.getLogger(TestUtility.class);
 
@@ -39,8 +46,10 @@ public class TestUtility {
   private static final String ALIYUN_TEST_OSS_ENDPOINT = "ALIYUN_TEST_OSS_ENDPOINT";
   private static final String ALIYUN_TEST_OSS_WAREHOUSE = "ALIYUN_TEST_OSS_WAREHOUSE";
 
+  /** 辅助方法：TestUtility。 */
   private TestUtility() {}
 
+  /** 辅助方法：initialize。 */
   public static AliyunOSSTestRule initialize() {
     AliyunOSSTestRule testRule;
 
@@ -70,30 +79,37 @@ public class TestUtility {
     return testRule;
   }
 
+  /** 辅助方法：accessKeyId。 */
   public static String accessKeyId() {
     return System.getenv(ALIYUN_TEST_ACCESS_KEY_ID);
   }
 
+  /** 辅助方法：accessKeySecret。 */
   public static String accessKeySecret() {
     return System.getenv(ALIYUN_TEST_ACCESS_KEY_SECRET);
   }
 
+  /** 辅助方法：ossEndpoint。 */
   public static String ossEndpoint() {
     return System.getenv(ALIYUN_TEST_OSS_ENDPOINT);
   }
 
+  /** 辅助方法：ossWarehouse。 */
   public static String ossWarehouse() {
     return System.getenv(ALIYUN_TEST_OSS_WAREHOUSE);
   }
 
+  /** 辅助方法：ossBucket。 */
   public static String ossBucket() {
     return ossWarehouseURI().bucket();
   }
 
+  /** 辅助方法：ossKey。 */
   public static String ossKey() {
     return ossWarehouseURI().key();
   }
 
+  /** 辅助方法：ossWarehouseURI。 */
   private static OSSURI ossWarehouseURI() {
     String ossWarehouse = ossWarehouse();
     Preconditions.checkNotNull(

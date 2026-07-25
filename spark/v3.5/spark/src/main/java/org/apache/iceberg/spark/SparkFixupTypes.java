@@ -24,8 +24,17 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 
 /**
- * Some types, like binary and fixed, are converted to the same Spark type. Conversion back can
- * produce only one, which may not be correct.
+ * Spark 类型修正器：处理 Spark -> Iceberg 类型反向转换时的歧义。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：某些 Iceberg 类型（如 binary 与 fixed、string 与 uuid）会被映射为同一个 Spark 类型， 反向转换时只能得到其中一个默认类型。本类根据参考
+ * schema 把这些类型修正回原始 Iceberg 类型。
+ *
+ * <p>设计意图：继承 {@link FixupTypes}，仅覆盖 fixupPrimitive 处理特定类型对
+ * （STRING<-UUID、BINARY<-FIXED、TIMESTAMP<-TIMESTAMP），其余由父类处理。
+ *
+ * <p>上下游关系：被 {@link SparkSchemaUtil} 等在 schema 转换后调用；依赖 iceberg-core 的 TypeUtil。
  */
 class SparkFixupTypes extends FixupTypes {
 
@@ -33,11 +42,13 @@ class SparkFixupTypes extends FixupTypes {
     super(referenceSchema);
   }
 
+  /** 对 schema 做类型修正，参考 referenceSchema 还原原始类型。 */
   static Schema fixup(Schema schema, Schema referenceSchema) {
     return new Schema(
         TypeUtil.visit(schema, new SparkFixupTypes(referenceSchema)).asStructType().fields());
   }
 
+  /** 判断是否需要把 type 修正为 source 类型：STRING<-UUID、BINARY<-FIXED、TIMESTAMP<-TIMESTAMP。 */
   @Override
   protected boolean fixupPrimitive(Type.PrimitiveType type, Type source) {
     switch (type.typeId()) {

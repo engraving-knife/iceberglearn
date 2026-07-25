@@ -26,12 +26,21 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.io.FileWriterFactory;
 import org.apache.iceberg.io.TestWriterMetrics;
 
+/**
+ * 文件级说明：测试 TestFlinkWriterMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkWriterMetrics 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkWriterMetrics extends TestWriterMetrics<RowData> {
 
+  /** 辅助方法：TestFlinkWriterMetrics，Flink Writer Metrics。 */
   public TestFlinkWriterMetrics(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：newWriterFactory，new Writer Factory。 */
   @Override
   protected FileWriterFactory<RowData> newWriterFactory(Table sourceTable) {
     return FlinkFileWriterFactory.builderFor(sourceTable)
@@ -42,6 +51,7 @@ public class TestFlinkWriterMetrics extends TestWriterMetrics<RowData> {
         .build();
   }
 
+  /** 辅助方法：toRow，to Row。 */
   @Override
   protected RowData toRow(Integer id, String data, boolean boolValue, Long longValue) {
     GenericRowData nested = GenericRowData.of(boolValue, longValue);
@@ -49,6 +59,7 @@ public class TestFlinkWriterMetrics extends TestWriterMetrics<RowData> {
     return row;
   }
 
+  /** 辅助方法：toGenericRow，to Generic Row。 */
   @Override
   public RowData toGenericRow(int value, int repeated) {
     GenericRowData row = new GenericRowData(repeated);

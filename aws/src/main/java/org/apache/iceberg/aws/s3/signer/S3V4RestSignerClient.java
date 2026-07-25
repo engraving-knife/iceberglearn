@@ -60,6 +60,33 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.utils.IoUtils;
 
+/**
+ * 通过 REST 远程服务进行 S3 SigV4 签名的签名器实现。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成模块，处于引擎层之下）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>继承 AWS SDK 的 {@link AbstractAws4Signer}，将签名计算委托给远程 REST 签名服务， 而非在本地使用 AWS 凭证计算签名。
+ *   <li>将 S3 请求（method、region、uri、headers、body）封装为 {@link S3SignRequest}， 通过 HTTP POST
+ *       发送给签名服务，获取签名后的 URI 和 headers。
+ *   <li>支持签名结果缓存（30 秒 TTL），减少对签名服务的请求量。
+ *   <li>支持 OAuth2 令牌认证和令牌自动刷新，用于与签名服务的身份验证。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>远程签名场景：当 Iceberg 客户端无法直接访问 AWS 凭证（如通过中间签名服务代理） 时，使用此签名器将签名请求转发给持有凭证的远程服务。
+ *   <li>签名缓存：相同请求（method+region+uri）的签名结果缓存 30 秒，由服务端通过 Cache-Control: private 控制是否可缓存，减少网络往返。
+ *   <li>不支持预签名（presign）和 payload 签名、分块编码，仅支持标准请求签名。
+ *   <li>使用 Immutables 生成不可变实现，静态字段（httpClient、authSessionCache 等） 使用 volatile + DCL 延迟初始化。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link S3FileIOProperties#applySignerConfiguration} 创建并注入到 S3Client 的签名器配置中；通过 {@link
+ * #create(Map)} 工厂方法实例化。
+ */
 @Value.Immutable
 public abstract class S3V4RestSignerClient
     extends AbstractAws4Signer<AwsS3V4SignerParams, Aws4PresignerParams> {
@@ -104,14 +131,14 @@ public abstract class S3V4RestSignerClient
     return properties().getOrDefault(S3_SIGNER_ENDPOINT, S3_SIGNER_DEFAULT_ENDPOINT);
   }
 
-  /** A credential to exchange for a token in the OAuth2 client credentials flow. */
+  /** OAuth2 客户端凭证，用于通过 client credentials flow 换取访问令牌。 */
   @Nullable
   @Value.Lazy
   public String credential() {
     return properties().get(OAuth2Properties.CREDENTIAL);
   }
 
-  /** A Bearer token supplier which will be used for interaction with the server. */
+  /** 与签名服务交互时使用的 Bearer 令牌提供者。 */
   @Value.Default
   public Supplier<String> token() {
     return () -> properties().get(OAuth2Properties.TOKEN);
@@ -187,6 +214,19 @@ public abstract class S3V4RestSignerClient
     return httpClient;
   }
 
+  /**
+   * 获取或创建认证会话。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>若提供了 token，从 authSessionCache 获取或创建基于访问令牌的会话（支持自动刷新）。
+   *   <li>否则若提供了 credential，通过 client credentials flow 换取令牌并创建会话。
+   *   <li>都没有则返回空会话。
+   * </ul>
+   *
+   * @return 认证会话
+   */
   private AuthSession authSession() {
     String token = token().get();
     if (null != token) {
@@ -237,6 +277,7 @@ public abstract class S3V4RestSignerClient
     }
   }
 
+  /** 校验签名服务 URI 已配置（s3.signer.uri 或 catalog URI）。 */
   @Value.Check
   protected void check() {
     Preconditions.checkArgument(
@@ -271,12 +312,35 @@ public abstract class S3V4RestSignerClient
     return UNSIGNED_PAYLOAD;
   }
 
+  /**
+   * 预签名不支持，直接抛出 UnsupportedOperationException。
+   *
+   * @throws UnsupportedOperationException 远程签名不支持预签名
+   */
   @Override
   public SdkHttpFullRequest presign(
       SdkHttpFullRequest request, ExecutionAttributes executionAttributes) {
     throw new UnsupportedOperationException("Pre-signing not allowed.");
   }
 
+  /**
+   * 对 S3 HTTP 请求进行远程签名。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>从 ExecutionAttributes 提取签名参数（region 等），构建 {@link S3SignRequest}。
+   *   <li>计算缓存 Key（method+region+uri），先查缓存命中则直接使用。
+   *   <li>未命中则通过 HTTP POST 将签名请求发送到签名服务端点，携带 OAuth2 认证头， 获取 {@link S3SignResponse}（含签名后的 URI 和
+   *       headers）。
+   *   <li>若服务端返回 Cache-Control: private，则将签名结果缓存。
+   *   <li>用签名后的 URI 和 headers 重建 SdkHttpFullRequest 并返回。
+   * </ol>
+   *
+   * @param request 待签名的 S3 HTTP 请求
+   * @param executionAttributes 执行属性（含签名参数）
+   * @return 签名后的 S3 HTTP 请求
+   */
   @Override
   public SdkHttpFullRequest sign(
       SdkHttpFullRequest request, ExecutionAttributes executionAttributes) {
@@ -334,8 +398,10 @@ public abstract class S3V4RestSignerClient
   }
 
   /**
-   * Only add body for DeleteObjectsRequest. Refer to
-   * https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html#API_DeleteObjects_RequestSyntax
+   * 仅对 DeleteObjectsRequest 提取 body 字符串（该请求通过 POST body 传递待删除对象列表）。
+   *
+   * @param request S3 HTTP 请求
+   * @return body 字符串，非 DeleteObjects 请求返回 null
    */
   private String bodyAsString(SdkHttpFullRequest request) {
     if (isDeleteObjectsRequest(request) && request.contentStreamProvider().isPresent()) {
@@ -354,6 +420,14 @@ public abstract class S3V4RestSignerClient
         && request.rawQueryParameters().containsKey("delete");
   }
 
+  /**
+   * 用签名服务返回的 headers 重建请求头。
+   *
+   * <p>逻辑：移除服务端发送的 Cache-Control 头，用原始请求中的 header 覆盖签名 header， 再将所有 header 写回请求构建器。
+   *
+   * @param signedAndUnsignedHeaders 签名服务返回的 headers
+   * @param mutableRequest 请求构建器
+   */
   private void reconstructHeaders(
       Map<String, List<String>> signedAndUnsignedHeaders,
       SdkHttpFullRequest.Builder mutableRequest) {
@@ -371,6 +445,11 @@ public abstract class S3V4RestSignerClient
     return CACHE_CONTROL_PRIVATE.equals(responseHeaders.get(CACHE_CONTROL));
   }
 
+  /**
+   * 校验签名参数不支持 payload 签名和分块编码。
+   *
+   * @throws UnsupportedOperationException 启用了 payload 签名或分块编码
+   */
   private void checkSignerParams(AwsS3V4SignerParams signerParams) {
     if (signerParams.enablePayloadSigning()) {
       throw new UnsupportedOperationException("Payload signing not supported");
@@ -381,6 +460,7 @@ public abstract class S3V4RestSignerClient
     }
   }
 
+  /** 签名缓存键：由 method、region、uri 组成，用于标识可复用的签名结果。 */
   @Value.Immutable
   interface Key {
     String method();
@@ -398,6 +478,7 @@ public abstract class S3V4RestSignerClient
     }
   }
 
+  /** 签名缓存值：包含签名后的 headers 和 URI。 */
   @Value.Immutable
   interface SignedComponent {
     Map<String, List<String>> headers();
@@ -405,6 +486,12 @@ public abstract class S3V4RestSignerClient
     URI signedURI();
   }
 
+  /**
+   * 静态工厂方法：根据属性创建 S3V4RestSignerClient 实例。
+   *
+   * @param properties 配置属性
+   * @return 签名器实例
+   */
   public static S3V4RestSignerClient create(Map<String, String> properties) {
     return ImmutableS3V4RestSignerClient.builder().properties(properties).build();
   }

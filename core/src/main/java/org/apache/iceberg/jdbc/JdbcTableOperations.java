@@ -44,6 +44,23 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：JDBC 表操作实现，负责通过 JDBC 读写表的当前 metadata。
+ *
+ * <p>所属模块：iceberg-core（jdbc 子包）。职责：继承 {@link BaseMetastoreTableOperations}， 通过 JDBC 数据库表读写 Iceberg
+ * 表的 metadata location（指向 metadata JSON 文件的指针）， 实现表的 commit（乐观锁机制）。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>每次 commit 通过 UPDATE WHERE version = ? 实现乐观锁，检测并发冲突。
+ *   <li>metadata location 变更与表版本号一起原子写入数据库。
+ *   <li>继承 BaseMetastoreTableOperations 复用通用逻辑（刷新、回滚等）。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link JdbcCatalog} 创建；依赖 {@link JdbcClientPool} 执行 SQL； 产出 TableMetadata location 供
+ * {@link org.apache.iceberg.Table} 使用。
+ */
 class JdbcTableOperations extends BaseMetastoreTableOperations {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcTableOperations.class);
@@ -67,6 +84,7 @@ class JdbcTableOperations extends BaseMetastoreTableOperations {
   }
 
   @Override
+  /** 从数据库刷新表的当前 metadata。从 JDBC 数据库读取最新的 metadata location 并加载。 */
   public void doRefresh() {
     Map<String, String> table;
 
@@ -101,6 +119,7 @@ class JdbcTableOperations extends BaseMetastoreTableOperations {
   }
 
   @Override
+  /** 提交表 metadata 变更（乐观锁机制）。通过 UPDATE WHERE version = ? 检测并发冲突。 */
   public void doCommit(TableMetadata base, TableMetadata metadata) {
     boolean newTable = base == null;
     String newMetadataLocation = writeNewMetadataIfRequired(newTable, metadata);
@@ -215,11 +234,21 @@ class JdbcTableOperations extends BaseMetastoreTableOperations {
   }
 
   @Override
+  /**
+   * 返回文件 IO 实例。
+   *
+   * @return FileIO 实例
+   */
   public FileIO io() {
     return fileIO;
   }
 
   @Override
+  /**
+   * 返回表名（用于日志和调试）。
+   *
+   * @return 表名字符串
+   */
   protected String tableName() {
     return tableIdentifier.toString();
   }

@@ -32,6 +32,15 @@ import org.apache.spark.sql.vectorized.ArrowColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarArray;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark 向量化读取 Iceberg 数据的列式访问组件的工厂，负责创建实例。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 ArrowVectorAccessorFactory。
+ *
+ * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 final class ArrowVectorAccessorFactory
     extends GenericArrowVectorAccessorFactory<
         Decimal, UTF8String, ColumnarArray, ArrowColumnVector> {
@@ -44,29 +53,72 @@ final class ArrowVectorAccessorFactory
         ArrayFactoryImpl::new);
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 DecimalFactoryImpl。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static final class DecimalFactoryImpl implements DecimalFactory<Decimal> {
+    /** 返回genericclass。 */
     @Override
     public Class<Decimal> getGenericClass() {
       return Decimal.class;
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param value 参数
+     * @param precision 参数
+     * @param scale 参数
+     * @return 结果对象
+     */
     @Override
     public Decimal ofLong(long value, int precision, int scale) {
       return Decimal.apply(value, precision, scale);
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param value 参数
+     * @param precision 参数
+     * @param scale 参数
+     * @return 结果对象
+     */
     @Override
     public Decimal ofBigDecimal(BigDecimal value, int precision, int scale) {
       return Decimal.apply(value, precision, scale);
     }
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 StringFactoryImpl。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static final class StringFactoryImpl implements StringFactory<UTF8String> {
+    /** 返回genericclass。 */
     @Override
     public Class<UTF8String> getGenericClass() {
       return UTF8String.class;
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param vector 参数
+     * @param rowId 参数
+     * @return 结果对象
+     */
     @Override
     public UTF8String ofRow(VarCharVector vector, int rowId) {
       int start = vector.getStartOffset(rowId);
@@ -76,16 +128,35 @@ final class ArrowVectorAccessorFactory
           null, vector.getDataBuffer().memoryAddress() + start, end - start);
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param vector 参数
+     * @param rowId 参数
+     * @return 结果对象
+     */
     @Override
     public UTF8String ofRow(FixedSizeBinaryVector vector, int rowId) {
       return UTF8String.fromString(UUIDUtil.convert(vector.get(rowId)).toString());
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param bytes 参数
+     * @return 结果对象
+     */
     @Override
     public UTF8String ofBytes(byte[] bytes) {
       return UTF8String.fromBytes(bytes);
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param byteBuffer 参数
+     * @return 结果对象
+     */
     @Override
     public UTF8String ofByteBuffer(ByteBuffer byteBuffer) {
       if (byteBuffer.hasArray()) {
@@ -100,32 +171,74 @@ final class ArrowVectorAccessorFactory
     }
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ArrayFactoryImpl。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static final class ArrayFactoryImpl
       implements ArrayFactory<ArrowColumnVector, ColumnarArray> {
+    /**
+     * 构造实例。
+     *
+     * @param childVector 参数
+     * @return 结果对象
+     */
     @Override
     public ArrowColumnVector ofChild(ValueVector childVector) {
+      /** 执行该方法的具体逻辑。 */
       return new ArrowColumnVector(childVector);
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param vector 参数
+     * @param childData 参数
+     * @param rowId 参数
+     * @return 结果对象
+     */
     @Override
     public ColumnarArray ofRow(ValueVector vector, ArrowColumnVector childData, int rowId) {
       ArrowBuf offsets = vector.getOffsetBuffer();
       int index = rowId * ListVector.OFFSET_WIDTH;
       int start = offsets.getInt(index);
       int end = offsets.getInt(index + ListVector.OFFSET_WIDTH);
+      /** 执行该方法的具体逻辑。 */
       return new ColumnarArray(childData, start, end - start);
     }
   }
 
+  /**
+   * Spark 向量化读取 Iceberg 数据的列式访问组件的工厂，负责创建实例。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 StructChildFactoryImpl。
+   *
+   * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static final class StructChildFactoryImpl
       implements StructChildFactory<ArrowColumnVector> {
+    /** 返回genericclass。 */
     @Override
     public Class<ArrowColumnVector> getGenericClass() {
       return ArrowColumnVector.class;
     }
 
+    /**
+     * 构造实例。
+     *
+     * @param childVector 参数
+     * @return 结果对象
+     */
     @Override
     public ArrowColumnVector of(ValueVector childVector) {
+      /** 执行该方法的具体逻辑。 */
       return new ArrowColumnVector(childVector);
     }
   }

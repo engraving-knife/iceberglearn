@@ -45,6 +45,25 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 import org.joda.time.DateTime;
 
+/**
+ * Spark 集成通用工具类。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>校验分区 transform 是否可用于写入（拒绝 UnknownTransform）。
+ *   <li>从多段标识符解析 catalog 与 identifier（模仿 Spark LookupCatalog）。
+ *   <li>从 SparkSession 提取按 catalog 覆盖的 Hadoop 配置（{@code spark.sql.catalog.$name.hadoop.*}）。
+ *   <li>把分区 Map 过滤器转为 Spark {@link Expression} 列表；提供列名/大小写敏感工具方法。
+ * </ul>
+ *
+ * <p>设计意图：把与 Spark 版本相关或易错的解析逻辑集中托管，便于跨版本维护； Hadoop 配置覆盖镜像了 Spark 全局 {@code spark.hadoop.*}
+ * 机制，但限定到单个 catalog。
+ *
+ * <p>上下游关系：被 Spark catalog、扫描、写入等多处调用；依赖 Spark Catalyst 与 Hadoop Configuration。
+ */
 public class SparkUtil {
   private static final String SPARK_CATALOG_CONF_PREFIX = "spark.sql.catalog";
   // Format string used as the prefix for Spark configuration keys to override Hadoop configuration
@@ -59,10 +78,12 @@ public class SparkUtil {
   private SparkUtil() {}
 
   /**
-   * Check whether the partition transforms in a spec can be used to write data.
+   * 校验分区规格中的 transform 是否都可用于写入。
    *
-   * @param spec a PartitionSpec
-   * @throws UnsupportedOperationException if the spec contains unknown partition transforms
+   * <p>逻辑：若存在 {@link UnknownTransform}，收集其描述并抛出 UnsupportedOperationException。
+   *
+   * @param spec 分区规格
+   * @throws UnsupportedOperationException 含未知 transform 时抛出
    */
   public static void validatePartitionTransforms(PartitionSpec spec) {
     if (spec.fields().stream().anyMatch(field -> field.transform() instanceof UnknownTransform)) {
@@ -79,11 +100,19 @@ public class SparkUtil {
   }
 
   /**
-   * A modified version of Spark's LookupCatalog.CatalogAndIdentifier.unapply Attempts to find the
-   * catalog and identifier a multipart identifier represents
+   * 从多段标识符解析 catalog 与 identifier（模仿 Spark LookupCatalog.CatalogAndIdentifier.unapply）。
    *
-   * @param nameParts Multipart identifier representing a table
-   * @return The CatalogPlugin and Identifier for the table
+   * <p>逻辑：单段时用当前 catalog 与 namespace；多段时尝试把首段当作 catalog 名， 命中则用该 catalog + 后续段为 namespace，未命中则首段作为
+   * namespace 一部分。
+   *
+   * @param nameParts 多段标识符
+   * @param catalogProvider 按名称获取 catalog 的函数
+   * @param identiferProvider 按 namespace+name 构造 identifier 的函数
+   * @param currentCatalog 当前默认 catalog
+   * @param currentNamespace 当前默认 namespace
+   * @param <C> catalog 类型
+   * @param <T> identifier 类型
+   * @return catalog 与 identifier 的 Pair
    */
   public static <C, T> Pair<C, T> catalogAndIdentifier(
       List<String> nameParts,
@@ -115,22 +144,16 @@ public class SparkUtil {
   }
 
   /**
-   * Pulls any Catalog specific overrides for the Hadoop conf from the current SparkSession, which
-   * can be set via `spark.sql.catalog.$catalogName.hadoop.*`
+   * 从 SparkSession 提取指定 catalog 的 Hadoop 配置覆盖。
    *
-   * <p>Mirrors the override of hadoop configurations for a given spark session using
-   * `spark.hadoop.*`.
+   * <p>逻辑：构造前缀 {@code spark.sql.catalog.$catalogName.hadoop.}，遍历 Spark SQLConf 设置， 把匹配前缀的键去掉前缀后设置到新
+   * Hadoop Configuration。
    *
-   * <p>The SparkCatalog allows for hadoop configurations to be overridden per catalog, by setting
-   * them on the SQLConf, where the following will add the property "fs.default.name" with value
-   * "hdfs://hanksnamenode:8020" to the catalog's hadoop configuration. SparkSession.builder()
-   * .config(s"spark.sql.catalog.$catalogName.hadoop.fs.default.name", "hdfs://hanksnamenode:8020")
-   * .getOrCreate()
+   * <p>镜像 Spark 全局 {@code spark.hadoop.*} 覆盖机制，但限定到单个 catalog。
    *
-   * @param spark The current Spark session
-   * @param catalogName Name of the catalog to find overrides for.
-   * @return the Hadoop Configuration that should be used for this catalog, with catalog specific
-   *     overrides applied.
+   * @param spark SparkSession
+   * @param catalogName catalog 名
+   * @return 应用了 catalog 覆盖的 Hadoop Configuration
    */
   public static Configuration hadoopConfCatalogOverrides(SparkSession spark, String catalogName) {
     // Find keys for the catalog intended to be hadoop configurations
@@ -150,18 +173,20 @@ public class SparkUtil {
             });
     return conf;
   }
-
+  /** 执行 hadoopConfPrefixForCatalog 相关操作。 */
   private static String hadoopConfPrefixForCatalog(String catalogName) {
     return String.format(SPARK_CATALOG_HADOOP_CONF_OVERRIDE_FMT_STR, catalogName);
   }
 
   /**
-   * Get a List of Spark filter Expression.
+   * 把分区 Map 过滤器转为 Spark {@link Expression} 列表。
    *
-   * @param schema table schema
-   * @param filters filters in the format of a Map, where key is one of the table column name, and
-   *     value is the specific value to be filtered on the column.
-   * @return a List of filters in the format of Spark Expression.
+   * <p>逻辑：对每个 entry，按列名查 schema 得到类型，构造 BoundReference 与对应类型 Literal， 组成 EqualTo
+   * 表达式；按类型分支解析值；非表列的过滤忽略。
+   *
+   * @param schema 表 schema
+   * @param filters 列名到值的映射
+   * @return Spark Expression 列表
    */
   public static List<Expression> partitionMapToExpression(
       StructType schema, Map<String, String> filters) {
@@ -231,10 +256,12 @@ public class SparkUtil {
     return filterExpressions;
   }
 
+  /** 把 Spark {@link NamedReference} 的字段名数组用点号拼接为列名字符串。 */
   public static String toColumnName(NamedReference ref) {
     return DOT.join(ref.fieldNames());
   }
 
+  /** 读取 Spark 配置 spark.sql.caseSensitive，返回是否大小写敏感。 */
   public static boolean caseSensitive(SparkSession spark) {
     return Boolean.parseBoolean(spark.conf().get("spark.sql.caseSensitive"));
   }

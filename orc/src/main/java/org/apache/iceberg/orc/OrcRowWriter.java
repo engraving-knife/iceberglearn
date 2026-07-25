@@ -24,21 +24,39 @@ import java.util.stream.Stream;
 import org.apache.iceberg.FieldMetrics;
 import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 
-/** Write data value of a schema. */
+/**
+ * ORC 行写入器接口：把一行数据写入 ORC 的 {@link VectorizedRowBatch}。
+ *
+ * <p>所属模块：iceberg-orc。是行级写入的契约，由具体实现把行对象的各字段编码到列向量。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>write：把行数据写入 VectorizedRowBatch。
+ *   <li>writers：返回所有字段写入器，便于外部收集统计。
+ *   <li>metrics：返回各字段的 {@link FieldMetrics} 流（默认空）。
+ * </ul>
+ *
+ * <p>设计意图：把行→列向量的编码逻辑从 ORC Writer 中解耦，使 Iceberg 可插入不同的行模型。
+ *
+ * <p>上下游关系：被 {@link OrcFileAppender} 调用逐行写入；实现类如 {@link
+ * org.apache.iceberg.data.orc.GenericOrcWriter}。
+ */
 public interface OrcRowWriter<T> {
 
   /**
-   * Writes or appends a row to ORC's VectorizedRowBatch.
+   * 把一行数据写入或追加到 ORC 的 VectorizedRowBatch。
    *
-   * @param row the row data value to write.
-   * @param output the VectorizedRowBatch to which the output will be written.
-   * @throws IOException if there's any IO error while writing the data value.
+   * @param row 待写入行数据
+   * @param output 目标 VectorizedRowBatch
+   * @throws IOException 写入时发生 IO 错误
    */
   void write(T row, VectorizedRowBatch output) throws IOException;
 
+  /** 返回所有字段写入器列表，便于外部收集统计与调试。 */
   List<OrcValueWriter<?>> writers();
 
-  /** Returns a stream of {@link FieldMetrics} that this OrcRowWriter keeps track of. */
+  /** 返回此写入器跟踪的 {@link FieldMetrics} 流（默认空，由带统计的 writer 覆写）。 */
   default Stream<FieldMetrics<?>> metrics() {
     return Stream.empty();
   }

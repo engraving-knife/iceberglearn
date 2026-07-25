@@ -18,5 +18,11 @@
  */
 
 package org.apache.spark.sql.catalyst.plans.logical
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：标签选项载体，承载创建标签时的可选参数（如 max-ref-age）。
+ * <p>设计意图：以不可变选项对象集中传递标签创建参数。
+ * <p>上下游关系：由 CreateOrReplaceTag 使用。
+ */
 
 case class TagOptions(snapshotId: Option[Long], snapshotRefRetain: Option[Long])

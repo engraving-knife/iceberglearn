@@ -27,7 +27,10 @@ import org.apache.spark.sql.connector.write.Write
 import org.apache.spark.sql.types.DataType
 
 /**
- * Replace data in an existing table.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：替换 Iceberg 数据的逻辑计划节点，表示用新数据文件替换目标表数据。
+ * <p>设计意图：作为行级命令重写的目标节点，封装数据替换写命令语义。
+ * <p>上下游关系：由 RewriteRowLevelIcebergCommand 创建；由 ReplaceDataExec 执行。
  */
 case class ReplaceIcebergData(
     table: NamedRelation,
@@ -43,6 +46,7 @@ case class ReplaceIcebergData(
     val tableAttrNames = table.output.map(_.name)
     query.output.filter(attr => tableAttrNames.exists(conf.resolver(_, attr.name)))
   }
+  /** 执行 outputResolved 相关操作。 */
 
   override def outputResolved: Boolean = {
     assert(table.resolved && query.resolved,
@@ -62,6 +66,7 @@ case class ReplaceIcebergData(
           (outAttr.nullable || !inAttr.nullable)
       })
   }
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: LogicalPlan): ReplaceIcebergData = {
     copy(query = newChild)

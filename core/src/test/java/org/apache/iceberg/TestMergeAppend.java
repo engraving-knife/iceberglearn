@@ -39,10 +39,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestMergeAppend，用于验证 Merge Append 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Merge Append 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestMergeAppend extends TableTestBase {
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -53,11 +62,17 @@ public class TestMergeAppend extends TableTestBase {
     };
   }
 
+  /** 辅助方法：merge append。 */
   public TestMergeAppend(int formatVersion, String branch) {
     super(formatVersion);
     this.branch = branch;
   }
 
+  /**
+   * 测试场景：empty table append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppend() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -91,6 +106,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：empty table append manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppendManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -128,6 +148,11 @@ public class TestMergeAppend extends TableTestBase {
         committedSnapshot.summary().get("added-data-files"));
   }
 
+  /**
+   * 测试场景：empty table append files and manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testEmptyTableAppendFilesAndManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -172,6 +197,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：append with manifest scan executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendWithManifestScanExecutor() {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -203,6 +233,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertNotNull("Should create a snapshot", snapshot);
   }
 
+  /**
+   * 测试场景：merge with append files and manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergeWithAppendFilesAndManifest() throws IOException {
     // merge all manifests for this test
@@ -241,6 +276,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED, Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：merge with existing manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergeWithExistingManifest() {
     // merge all manifests for this test
@@ -300,6 +340,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED, Status.EXISTING, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：manifest merge min count。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestMergeMinCount() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -404,6 +449,11 @@ public class TestMergeAppend extends TableTestBase {
         snap2.summary().get("added-data-files"));
   }
 
+  /**
+   * 测试场景：manifests merge into one。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestsMergeIntoOne() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -518,6 +568,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.EXISTING, Status.EXISTING, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：manifest do not merge min count。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestDoNotMergeMinCount() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -582,6 +637,11 @@ public class TestMergeAppend extends TableTestBase {
         committed.summary().get("added-data-files"));
   }
 
+  /**
+   * 测试场景：merge with existing manifest after delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergeWithExistingManifestAfterDelete() {
     // merge all manifests for this test
@@ -660,6 +720,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：min merge count。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMinMergeCount() {
     // only merge when there are at least 4 manifests
@@ -716,6 +781,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.EXISTING, Status.EXISTING, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：merge size target with existing manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergeSizeTargetWithExistingManifest() {
     // use a small limit on manifest size to prevent merging
@@ -776,6 +846,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.ADDED));
   }
 
+  /**
+   * 测试场景：changed partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testChangedPartitionSpec() {
     Snapshot snap = commit(table, table.newAppend().appendFile(FILE_A).appendFile(FILE_B), branch);
@@ -842,6 +917,11 @@ public class TestMergeAppend extends TableTestBase {
         lastSnapshot.allManifests(table.io()).get(1));
   }
 
+  /**
+   * 测试场景：changed partition spec merge existing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testChangedPartitionSpecMergeExisting() {
     Snapshot snap1 = commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -909,6 +989,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.EXISTING, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailure() {
     // merge all manifests for this test
@@ -970,6 +1055,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertFalse("Should clean up new manifest", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：append manifest cleanup。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestCleanup() throws IOException {
     // inject 5 failures
@@ -993,6 +1083,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertFalse("Should clean up new manifest", new File(newManifest.path()).exists());
   }
 
+  /**
+   * 测试场景：recovery。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecovery() {
     // merge all manifests for this test
@@ -1065,6 +1160,11 @@ public class TestMergeAppend extends TableTestBase {
         statuses(Status.ADDED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：append manifest with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestWithSnapshotIdInheritance() throws IOException {
     table.updateProperties().set(TableProperties.SNAPSHOT_ID_INHERITANCE_ENABLED, "true").commit();
@@ -1111,6 +1211,11 @@ public class TestMergeAppend extends TableTestBase {
         snapshot.summary().get("total-records"));
   }
 
+  /**
+   * 测试场景：merged append manifest cleanup with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergedAppendManifestCleanupWithSnapshotIdInheritance() throws IOException {
     table.updateProperties().set(TableProperties.SNAPSHOT_ID_INHERITANCE_ENABLED, "true").commit();
@@ -1164,6 +1269,11 @@ public class TestMergeAppend extends TableTestBase {
         "Merged append manifest should be deleted", new File(manifest2.path()).exists());
   }
 
+  /**
+   * 测试场景：append manifest failure with snapshot id inheritance。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppendManifestFailureWithSnapshotIdInheritance() throws IOException {
     table.updateProperties().set(TableProperties.SNAPSHOT_ID_INHERITANCE_ENABLED, "true").commit();
@@ -1191,6 +1301,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertTrue("Append manifest should not be deleted", new File(manifest.path()).exists());
   }
 
+  /**
+   * 测试场景：invalid append manifest。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidAppendManifest() throws IOException {
     Assert.assertEquals("Table should start empty", 0, listManifestFiles().size());
@@ -1216,6 +1331,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertEquals("Last sequence number should be 0", 0, readMetadata().lastSequenceNumber());
   }
 
+  /**
+   * 测试场景：update partition spec field ids for 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdatePartitionSpecFieldIdsForV1Table() {
     TableMetadata base = readMetadata();
@@ -1259,6 +1379,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertEquals(1003, fields.get(3).fieldId());
   }
 
+  /**
+   * 测试场景：manifest entry field ids for changed partition spec for 1 table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestEntryFieldIdsForChangedPartitionSpecForV1Table() {
     Snapshot snap = commit(table, table.newAppend().appendFile(FILE_A), branch);
@@ -1349,6 +1474,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertEquals("data_bucket", field.name());
   }
 
+  /**
+   * 测试场景：default partition summaries。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultPartitionSummaries() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -1373,6 +1503,11 @@ public class TestMergeAppend extends TableTestBase {
     Assert.assertEquals("Should set changed partition count", "1", changedPartitions);
   }
 
+  /**
+   * 测试场景：included partition summaries。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIncludedPartitionSummaries() {
     table.updateProperties().set(TableProperties.WRITE_PARTITION_SUMMARY_LIMIT, "1").commit();
@@ -1408,6 +1543,11 @@ public class TestMergeAppend extends TableTestBase {
         partitionSummary);
   }
 
+  /**
+   * 测试场景：included partition summary limit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIncludedPartitionSummaryLimit() {
     table.updateProperties().set(TableProperties.WRITE_PARTITION_SUMMARY_LIMIT, "1").commit();

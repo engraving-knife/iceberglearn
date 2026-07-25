@@ -37,6 +37,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestSparkParquetWriter 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 SparkParquet写入器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkParquetWriter {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
@@ -83,6 +90,7 @@ public class TestSparkParquetWriter {
                       required(24, "couch rope", Types.IntegerType.get())))),
           optional(2, "slide", Types.StringType.get()));
 
+  /** 测试 testCorrectness 场景：验证 Correctness 相关操作的行为与结果。 */
   @Test
   public void testCorrectness() throws IOException {
     int numRows = 50_000;

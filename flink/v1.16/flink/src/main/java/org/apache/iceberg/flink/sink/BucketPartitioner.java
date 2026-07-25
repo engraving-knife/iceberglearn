@@ -23,10 +23,11 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * This partitioner will redirect records to writers deterministically based on the Bucket partition
- * spec. It'll attempt to optimize the file size written depending on whether numPartitions is
- * greater, less or equal than the maxNumBuckets. Note: The current implementation only supports ONE
- * bucket in the partition spec.
+ * Bucket 分区器，把数据按桶 ID 路由到对应子任务。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按桶编号决定数据分区。
+ *
+ * <p>设计意图：实现 Flink Partitioner；被 FlinkSink 用于分桶写入。
  */
 class BucketPartitioner implements Partitioner<Integer> {
 

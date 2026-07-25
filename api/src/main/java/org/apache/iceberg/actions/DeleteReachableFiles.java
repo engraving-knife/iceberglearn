@@ -24,65 +24,91 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.SupportsBulkOperations;
 
 /**
- * An action that deletes all files referenced by a table metadata file.
+ * 删除某个表元数据文件所引用的全部文件的动作。
  *
- * <p>This action will irreversibly delete all reachable files such as data files, manifests,
- * manifest lists and should be used to clean up the underlying storage once a table is dropped and
- * no longer needed.
+ * <p>所属模块：iceberg-api。继承自 {@link Action}，用于表被删除后的存储层彻底清理。
  *
- * <p>Implementations may use a query engine to distribute parts of work.
+ * <p>职责：根据给定元数据位置，不可逆地删除所有可达文件（数据文件、清单文件、清单列表等）。 适用于表已删除且不再需要时清理底层存储。
+ *
+ * <p>设计意图：与 {@link DeleteOrphanFiles}（基于表对象、扫描存储找孤儿）不同，本动作基于
+ * 一个独立的元数据位置直接删除其可达文件，常用于表已不存在但元数据文件仍残留的场景。实现可 借助查询引擎分布式执行删除工作。
+ *
+ * <p>上下游关系：由引擎模块实现；删除执行依赖 {@link FileIO} 或自定义 deleteFunc；结果通过 {@link Result} 返回各类文件删除计数。
  */
 public interface DeleteReachableFiles
     extends Action<DeleteReachableFiles, DeleteReachableFiles.Result> {
 
   /**
-   * Passes an alternative delete implementation that will be used for files.
+   * 指定用于删除文件的自定义删除函数。
    *
-   * @param deleteFunc a function that will be called to delete files. The function accepts path to
-   *     file as an argument.
-   * @return this for method chaining
+   * @param deleteFunc 接收文件路径的删除函数
+   * @return this，便于链式调用
    */
   DeleteReachableFiles deleteWith(Consumer<String> deleteFunc);
 
   /**
-   * Passes an alternative executor service that will be used for files removal. This service will
-   * only be used if a custom delete function is provided by {@link #deleteWith(Consumer)} or if the
-   * FileIO does not {@link SupportsBulkOperations support bulk deletes}. Otherwise, parallelism
-   * should be controlled by the IO specific {@link SupportsBulkOperations#deleteFiles(Iterable)
-   * deleteFiles} method.
+   * 指定用于删除文件的替代执行器服务。
    *
-   * @param executorService the service to use
-   * @return this for method chaining
+   * <p>仅当通过 {@link #deleteWith(Consumer)} 提供自定义删除函数、或 FileIO 不 {@link SupportsBulkOperations
+   * 支持批量删除}时才会使用该执行器；否则并行度由 IO 专属的 {@link SupportsBulkOperations#deleteFiles(Iterable) deleteFiles}
+   * 控制。
+   *
+   * @param executorService 使用的执行器服务
+   * @return this，便于链式调用
    */
   DeleteReachableFiles executeDeleteWith(ExecutorService executorService);
 
   /**
-   * Set the {@link FileIO} to be used for files removal
+   * 设置用于删除文件的 {@link FileIO}。
    *
-   * @param io FileIO to use for files removal
-   * @return this for method chaining
+   * @param io 用于删除文件的 FileIO
+   * @return this，便于链式调用
    */
   DeleteReachableFiles io(FileIO io);
 
-  /** The action result that contains a summary of the execution. */
+  /** 动作执行结果，包含执行摘要统计。 */
   interface Result {
 
-    /** Returns the number of deleted data files. */
+    /**
+     * 返回已删除的数据文件数量。
+     *
+     * @return 已删除数据文件数
+     */
     long deletedDataFilesCount();
 
-    /** Returns the number of deleted equality delete files. */
+    /**
+     * 返回已删除的等值删除文件数量。
+     *
+     * @return 已删除等值删除文件数
+     */
     long deletedEqualityDeleteFilesCount();
 
-    /** Returns the number of deleted position delete files. */
+    /**
+     * 返回已删除的位置删除文件数量。
+     *
+     * @return 已删除位置删除文件数
+     */
     long deletedPositionDeleteFilesCount();
 
-    /** Returns the number of deleted manifests. */
+    /**
+     * 返回已删除的清单（manifest）文件数量。
+     *
+     * @return 已删除清单文件数
+     */
     long deletedManifestsCount();
 
-    /** Returns the number of deleted manifest lists. */
+    /**
+     * 返回已删除的清单列表（manifest list）数量。
+     *
+     * @return 已删除清单列表数
+     */
     long deletedManifestListsCount();
 
-    /** Returns the number of deleted metadata json, version hint files. */
+    /**
+     * 返回已删除的其他文件数量（metadata json、version hint 等）。
+     *
+     * @return 已删除其他文件数
+     */
     long deletedOtherFilesCount();
   }
 }

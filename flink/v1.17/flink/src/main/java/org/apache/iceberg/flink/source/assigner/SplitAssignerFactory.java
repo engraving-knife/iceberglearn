@@ -22,9 +22,22 @@ import java.io.Serializable;
 import java.util.Collection;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 
+/**
+ * split assigner 的工厂接口。
+ *
+ * <p>所属模块：iceberg-flink（source assigner 侧）。
+ *
+ * <p>职责：定义创建 {@link SplitAssigner} 的契约，支持新建与从状态恢复两种方式。
+ *
+ * <p>设计意图：将 assigner 的实例化抽象为工厂，便于 {@link IcebergSource} 按需替换分配策略 （如简单分配、有序分配等）。
+ *
+ * <p>上下游关系：被 {@link IcebergSource} 持有并调用。
+ */
 public interface SplitAssignerFactory extends Serializable {
 
+  /** 创建全新的 assigner。 */
   SplitAssigner createAssigner();
 
+  /** 从已有 split 状态恢复创建 assigner。 */
   SplitAssigner createAssigner(Collection<IcebergSourceSplitState> assignerState);
 }

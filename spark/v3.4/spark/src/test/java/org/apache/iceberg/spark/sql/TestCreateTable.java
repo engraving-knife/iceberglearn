@@ -38,16 +38,26 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCreateTable 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 创建表 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCreateTable extends SparkCatalogTestBase {
+  /** 测试创建表。 */
   public TestCreateTable(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 删除测试表。 */
   @After
   public void dropTestTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试转换ignore场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTransformIgnoreCase() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -63,6 +73,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertTrue("Table should already exist", validationCatalog.tableExists(tableIdent));
   }
 
+  /** 测试转换singularform场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTransformSingularForm() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -73,6 +84,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertTrue("Table should exist", validationCatalog.tableExists(tableIdent));
   }
 
+  /** 测试转换pluralform场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTransformPluralForm() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -83,6 +95,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertTrue("Table should exist", validationCatalog.tableExists(tableIdent));
   }
 
+  /** 测试创建表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTable() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -104,6 +117,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         table.properties().get(TableProperties.DEFAULT_FILE_FORMAT));
   }
 
+  /** 测试创建表在root命名空间场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableInRootNamespace() {
     Assume.assumeTrue(
@@ -116,6 +130,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     }
   }
 
+  /** 测试创建表使用Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableUsingParquet() {
     Assume.assumeTrue(
@@ -150,6 +165,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         .hasMessage("Unsupported format in USING: crocodile");
   }
 
+  /** 测试创建表分区通过场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTablePartitionedBy() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -186,6 +202,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         table.properties().get(TableProperties.DEFAULT_FILE_FORMAT));
   }
 
+  /** 测试创建表列comments场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableColumnComments() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -211,6 +228,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         table.properties().get(TableProperties.DEFAULT_FILE_FORMAT));
   }
 
+  /** 测试创建表comment场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableComment() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -241,6 +259,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         table.properties().get(TableCatalog.PROP_COMMENT));
   }
 
+  /** 测试创建表路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableLocation() throws Exception {
     Assume.assumeTrue(
@@ -277,6 +296,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertEquals("Should have a custom table location", location, table.location());
   }
 
+  /** 测试创建表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableProperties() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -302,6 +322,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertEquals("Should have property p2", "x", table.properties().get("p2"));
   }
 
+  /** 测试创建表带格式v2through表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateTableWithFormatV2ThroughTableProperty() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -320,6 +341,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
         ((BaseTable) table).operations().current().formatVersion());
   }
 
+  /** 测试upgrade表带格式v2through表属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpgradeTableWithFormatV2ThroughTableProperty() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));
@@ -339,6 +361,7 @@ public class TestCreateTable extends SparkCatalogTestBase {
     Assert.assertEquals("should update table to use format v2", 2, ops.refresh().formatVersion());
   }
 
+  /** 测试downgrade表到格式v1through表属性fails场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDowngradeTableToFormatV1ThroughTablePropertyFails() {
     Assert.assertFalse("Table should not already exist", validationCatalog.tableExists(tableIdent));

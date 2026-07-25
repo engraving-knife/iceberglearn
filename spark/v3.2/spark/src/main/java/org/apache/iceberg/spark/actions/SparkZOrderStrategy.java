@@ -58,6 +58,15 @@ import org.apache.spark.sql.types.StructField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的策略实现，定义文件重写等动作的具体算法。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkZOrderStrategy。
+ *
+ * <p>设计意图：策略模式，可在运行时切换算法实现。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 public class SparkZOrderStrategy extends SparkSortStrategy {
   private static final Logger LOG = LoggerFactory.getLogger(SparkZOrderStrategy.class);
 
@@ -91,6 +100,11 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
   private int maxOutputSize;
   private int varLengthContribution;
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -100,6 +114,12 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
         .build();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteStrategy options(Map<String, String> options) {
     super.options(options);
@@ -124,6 +144,7 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
     return this;
   }
 
+  /** 构造 SparkZOrderStrategy 实例。 */
   public SparkZOrderStrategy(Table table, SparkSession spark, List<String> zOrderColNames) {
     super(table, spark);
 
@@ -154,6 +175,7 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
     this.zOrderColNames = zOrderColNames;
   }
 
+  /** 校验前置条件或参数。 */
   private void validateColumnsExistence(Table table, SparkSession spark, List<String> colNames) {
     boolean caseSensitive = SparkUtil.caseSensitive(spark);
     Schema schema = table.schema();
@@ -169,17 +191,29 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
         });
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "Z-ORDER";
   }
 
+  /** 校验前置条件或参数。 */
   @Override
   protected void validateOptions() {
     // Ignore SortStrategy validation
     return;
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param filesToRewrite 参数
+   * @return 结果对象
+   */
   @Override
   public Set<DataFile> rewriteFiles(List<FileScanTask> filesToRewrite) {
     SparkZOrderUDF zOrderUDF =
@@ -256,6 +290,7 @@ public class SparkZOrderStrategy extends SparkSortStrategy {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected org.apache.iceberg.SortOrder sortOrder() {
     return Z_SORT_ORDER;

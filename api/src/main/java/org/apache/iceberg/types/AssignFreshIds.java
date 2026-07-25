@@ -24,6 +24,16 @@ import java.util.function.Supplier;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 分配新 ID 访问者：为 schema 中所有字段分配全新的字段 ID。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#assignFreshIds} 使用）。
+ *
+ * <p>职责：前序遍历 schema，为每个字段分配新 ID；若提供 baseSchema，则按字段名从 baseSchema 复制已有 ID，保持兼容性。
+ *
+ * <p>设计意图：使用 CustomOrderSchemaVisitor 实现前序遍历（先分配当前层字段 ID， 再递归子类型），保证 ID 分配顺序与字段声明顺序一致。Supplier 懒求值使
+ * ID 分配 在访问子类型前完成。
+ */
 class AssignFreshIds extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final Schema visitingSchema;
   private final Schema baseSchema;
@@ -36,11 +46,11 @@ class AssignFreshIds extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   }
 
   /**
-   * Replaces the ids in a schema with ids from a base schema, or uses nextId to assign a fresh ids.
+   * 构造可从 baseSchema 复制 ID 的分配器。
    *
-   * @param visitingSchema current schema that will have ids replaced (for id to name lookup)
-   * @param baseSchema base schema to assign existing ids from
-   * @param nextId new id assigner
+   * @param visitingSchema 当前 schema（用于 ID→名称查找）
+   * @param baseSchema 提供 已有 ID 的基准 schema
+   * @param nextId 新字段 ID 分配器
    */
   AssignFreshIds(Schema visitingSchema, Schema baseSchema, TypeUtil.NextID nextId) {
     this.visitingSchema = visitingSchema;

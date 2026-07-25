@@ -41,6 +41,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestHelper 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHelper 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHelper {
   private final Configuration conf;
   private final Tables tables;
@@ -52,6 +59,7 @@ public class TestHelper {
 
   private Table table;
 
+  /** 辅助方法：TestHelper。 */
   public TestHelper(
       Configuration conf,
       Tables tables,
@@ -69,15 +77,18 @@ public class TestHelper {
     this.tmp = tmp;
   }
 
+  /** 辅助方法：setTable。 */
   public void setTable(Table table) {
     this.table = table;
     conf.set(InputFormatConfig.TABLE_SCHEMA, SchemaParser.toJson(table.schema()));
   }
 
+  /** 辅助方法：table。 */
   public Table table() {
     return table;
   }
 
+  /** 辅助方法：properties。 */
   public Map<String, String> properties() {
     return ImmutableMap.of(
         TableProperties.DEFAULT_FILE_FORMAT,
@@ -86,41 +97,50 @@ public class TestHelper {
         "true");
   }
 
+  /** 辅助方法：createTable。 */
   public Table createTable(Schema theSchema, PartitionSpec theSpec) {
     Table tbl = tables.create(theSchema, theSpec, properties(), tableIdentifier);
     setTable(tbl);
     return tbl;
   }
 
+  /** 辅助方法：createTable。 */
   public Table createTable() {
     return createTable(schema, spec);
   }
 
+  /** 辅助方法：createUnpartitionedTable。 */
   public Table createUnpartitionedTable() {
     return createTable(schema, PartitionSpec.unpartitioned());
   }
 
+  /** 辅助方法：generateRandomRecords。 */
   public List<Record> generateRandomRecords(int num, long seed) {
     Preconditions.checkNotNull(table, "table not set");
     return generateRandomRecords(table.schema(), num, seed);
   }
 
+  /** 辅助方法：generateRandomRecords。 */
   public static List<Record> generateRandomRecords(Schema schema, int num, long seed) {
     return RandomGenericData.generate(schema, num, seed);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(DataFile... dataFiles) {
     appender().appendToTable(dataFiles);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(StructLike partition, List<Record> records) throws IOException {
     appender().appendToTable(partition, records);
   }
 
+  /** 辅助方法：writeFile。 */
   public DataFile writeFile(StructLike partition, List<Record> records) throws IOException {
     return appender().writeFile(partition, records);
   }
 
+  /** 辅助方法：appender。 */
   private GenericAppenderHelper appender() {
     return new GenericAppenderHelper(table, fileFormat, tmp, conf);
   }
@@ -130,10 +150,12 @@ public class TestHelper {
     private final List<Record> records = new ArrayList<Record>();
     private final Schema schema;
 
+    /** 辅助方法：RecordsBuilder。 */
     private RecordsBuilder(Schema schema) {
       this.schema = schema;
     }
 
+    /** 辅助方法：add。 */
     public RecordsBuilder add(Object... values) {
       Preconditions.checkArgument(schema.columns().size() == values.length);
 
@@ -147,10 +169,12 @@ public class TestHelper {
       return this;
     }
 
+    /** 辅助方法：build。 */
     public List<Record> build() {
       return Collections.unmodifiableList(records);
     }
 
+    /** 辅助方法：newInstance。 */
     public static RecordsBuilder newInstance(Schema schema) {
       return new RecordsBuilder(schema);
     }

@@ -28,10 +28,25 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的工厂，负责创建实例。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkRowReaderFactory。
+ *
+ * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkRowReaderFactory implements PartitionReaderFactory {
 
   SparkRowReaderFactory() {}
 
+  /**
+   * 创建并返回新实例。
+   *
+   * @param inputPartition 参数
+   * @return 结果对象
+   */
   @Override
   public PartitionReader<InternalRow> createReader(InputPartition inputPartition) {
     Preconditions.checkArgument(
@@ -42,12 +57,15 @@ class SparkRowReaderFactory implements PartitionReaderFactory {
     SparkInputPartition partition = (SparkInputPartition) inputPartition;
 
     if (partition.allTasksOfType(FileScanTask.class)) {
+      /** 执行该方法的具体逻辑。 */
       return new RowDataReader(partition);
 
     } else if (partition.allTasksOfType(ChangelogScanTask.class)) {
+      /** 执行该方法的具体逻辑。 */
       return new ChangelogRowReader(partition);
 
     } else if (partition.allTasksOfType(PositionDeletesScanTask.class)) {
+      /** 执行该方法的具体逻辑。 */
       return new PositionDeletesRowReader(partition);
 
     } else {
@@ -56,11 +74,23 @@ class SparkRowReaderFactory implements PartitionReaderFactory {
     }
   }
 
+  /**
+   * 创建并返回新实例。
+   *
+   * @param inputPartition 参数
+   * @return 结果对象
+   */
   @Override
   public PartitionReader<ColumnarBatch> createColumnarReader(InputPartition inputPartition) {
     throw new UnsupportedOperationException("Columnar reads are not supported");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param inputPartition 参数
+   * @return 结果对象
+   */
   @Override
   public boolean supportColumnarReads(InputPartition inputPartition) {
     return false;

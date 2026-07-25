@@ -20,18 +20,36 @@ package org.apache.iceberg.spark.source.metrics;
 
 import org.apache.spark.sql.connector.metric.CustomTaskMetric;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 TaskNumSplits。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class TaskNumSplits implements CustomTaskMetric {
   private final long value;
 
+  /** 构造 TaskNumSplits 实例。 */
   public TaskNumSplits(long value) {
     this.value = value;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return "numSplits";
   }
 
+  /**
+   * 返回当前值。
+   *
+   * @return 结果对象
+   */
   @Override
   public long value() {
     return value;

@@ -28,12 +28,16 @@ import org.apache.spark.sql.types.TimestampNTZType;
 import org.apache.spark.sql.types.TimestampType;
 
 /**
- * A Spark function implementation for the Iceberg hour transform.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>Example usage: {@code SELECT system.hours('source_col')}.
+ * <p>职责：Iceberg hours 转换的 Spark 标量函数，将时间戳值转为自纪元以来的小时数。
+ *
+ * <p>设计意图：实现 Iceberg hours transform，用于按小时分区。
+ *
+ * <p>上下游关系：由 SparkFunctions / SparkFunctionCatalog 注册。
  */
 public class HoursFunction extends UnaryUnboundFunction {
-
+  /** 执行 doBind 相关操作。 */
   @Override
   protected BoundFunction doBind(DataType valueType) {
     if (valueType instanceof TimestampType) {
@@ -45,14 +49,14 @@ public class HoursFunction extends UnaryUnboundFunction {
           "Expected value to be timestamp: " + valueType.catalogString());
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return name()
         + "(col) - Call Iceberg's hour transform\n"
         + "  col :: source column (must be timestamp)";
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "hours";
@@ -63,27 +67,27 @@ public class HoursFunction extends UnaryUnboundFunction {
     public static int invoke(long micros) {
       return DateTimeUtil.microsToHours(micros);
     }
-
+    /** 返回名称。 */
     @Override
     public String name() {
       return "hours";
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.hours(timestamp)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen
@@ -96,27 +100,27 @@ public class HoursFunction extends UnaryUnboundFunction {
     public static int invoke(long micros) {
       return DateTimeUtil.microsToHours(micros);
     }
-
+    /** 返回名称。 */
     @Override
     public String name() {
       return "hours";
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.TimestampNTZType};
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.hours(timestamp_ntz)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in codegen

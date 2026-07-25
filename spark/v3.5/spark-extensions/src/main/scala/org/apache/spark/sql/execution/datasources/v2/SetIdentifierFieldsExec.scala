@@ -26,6 +26,20 @@ import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
 import scala.jdk.CollectionConverters._
 
+/**
+ * 设置标识字段（Identifier Fields）的物理执行节点。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。本类为 Spark V2 命令执行节点，
+ * 负责将 Iceberg 表的标识字段集合整体替换为指定字段列表。
+ *
+ * <p>职责：加载目标 Iceberg 表，调用 updateSchema().setIdentifierFields(...).commit() 完成设置。
+ *
+ * <p>设计意图：标识字段用于 Iceberg 行级 upsert 的主键语义，本节点把 SQL 语义映射到 schema 更新。
+ * 对非 Iceberg 表抛出 UnsupportedOperationException。
+ *
+ * <p>上下游关系：由 {@link org.apache.spark.sql.catalyst.plans.logical.SetIdentifierFields}
+ * 转换而来，操作 {@link org.apache.iceberg.spark.source.SparkTable} 的 schema 更新 API。
+ */
 case class SetIdentifierFieldsExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -34,6 +48,14 @@ case class SetIdentifierFieldsExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行标识字段设置。
+   *
+   * <p>逻辑：加载表并匹配为 {@link SparkTable}，将字段列表转为 Java 集合后调用
+   * updateSchema().setIdentifierFields(...).commit()；非 Iceberg 表抛出异常。
+   *
+   * @return 空行列表（该命令无结果集）
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -47,6 +69,7 @@ case class SetIdentifierFieldsExec(
     Nil
   }
 
+  /** 返回该命令的简要字符串描述，用于 explain 输出。 */
   override def simpleString(maxFields: Int): String = {
     s"SetIdentifierFields ${catalog.name}.${ident.quoted} (${fields.quoted})";
   }

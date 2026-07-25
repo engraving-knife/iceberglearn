@@ -21,7 +21,6 @@ package org.apache.iceberg.flink.source;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
-import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.LocatableInputSplitAssigner;
 import org.apache.flink.api.common.io.RichInputFormat;
 import org.apache.flink.api.common.io.statistics.BaseStatistics;
@@ -37,7 +36,13 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
 import org.apache.iceberg.util.ThreadPools;
 
-/** Flink {@link InputFormat} for Iceberg. */
+/**
+ * Iceberg-Flink 旧版输入格式，基于 Flink InputFormat 读取 Iceberg 数据。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 FlinkInputSplit 读取数据并产出 RowData。
+ *
+ * <p>设计意图：继承 RichInputFormat；被 Flink 旧版 Source 调用。
+ */
 public class FlinkInputFormat extends RichInputFormat<RowData, FlinkInputSplit> {
 
   private static final long serialVersionUID = 1L;

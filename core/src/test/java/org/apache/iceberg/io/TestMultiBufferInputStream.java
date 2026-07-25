@@ -26,6 +26,14 @@ import java.util.List;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestMultiBufferInputStream，用于验证 Multi Buffer Input Stream 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Multi Buffer Input Stream
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
   private static final List<ByteBuffer> DATA =
       Arrays.asList(
@@ -37,11 +45,13 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
           ByteBuffer.wrap(new byte[] {26, 27, 28, 29, 30, 31, 32}),
           ByteBuffer.wrap(new byte[] {33, 34}));
 
+  /** 辅助方法：new stream。 */
   @Override
   protected ByteBufferInputStream newStream() {
     return new MultiBufferInputStream(DATA);
   }
 
+  /** 辅助方法：check original data。 */
   @Override
   protected void checkOriginalData() {
     for (ByteBuffer buffer : DATA) {
@@ -50,6 +60,11 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
     }
   }
 
+  /**
+   * 测试场景：slice data。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   @SuppressWarnings("LocalVariableName")
   public void testSliceData() throws Exception {
@@ -125,6 +140,11 @@ public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
     }
   }
 
+  /**
+   * 测试场景：slice buffers data。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSliceBuffersData() throws Exception {
     ByteBufferInputStream stream = newStream();

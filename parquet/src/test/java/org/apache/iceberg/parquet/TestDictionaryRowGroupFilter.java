@@ -88,6 +88,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestDictionaryRowGroupFilter 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestDictionaryRowGroupFilter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDictionaryRowGroupFilter {
 
   private static final Types.StructType structFieldType =
@@ -160,15 +167,18 @@ public class TestDictionaryRowGroupFilter {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：writerVersions。 */
   @Parameterized.Parameters
   public static List<WriterVersion> writerVersions() {
     return Arrays.asList(PARQUET_1_0, PARQUET_2_0);
   }
 
+  /** 辅助方法：TestDictionaryRowGroupFilter。 */
   public TestDictionaryRowGroupFilter(WriterVersion writerVersion) {
     this.writerVersion = writerVersion;
   }
 
+  /** 辅助方法：createInputFile。 */
   @Before
   public void createInputFile() throws IOException {
     File parquetFile = temp.newFile();
@@ -223,6 +233,11 @@ public class TestDictionaryRowGroupFilter {
     dictionaryStore = reader.getNextDictionaryReader();
   }
 
+  /**
+   * 测试场景：Assumptions。
+   *
+   * <p>验证该方法在 Assumptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testAssumptions() {
     // this case validates that other cases don't need to test expressions with null literals.
@@ -268,6 +283,11 @@ public class TestDictionaryRowGroupFilter {
         () -> notStartsWith("col", null));
   }
 
+  /**
+   * 测试场景：All Nulls。
+   *
+   * <p>验证该方法在 All Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllNulls() {
     boolean shouldRead =
@@ -291,6 +311,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: dictionary filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：No Nulls。
+   *
+   * <p>验证该方法在 No Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoNulls() {
     boolean shouldRead =
@@ -314,6 +339,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: dictionary filter doesn't help").isTrue();
   }
 
+  /**
+   * 测试场景：Required Column。
+   *
+   * <p>验证该方法在 Required Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredColumn() {
     boolean shouldRead =
@@ -327,6 +357,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: required columns are always non-null").isFalse();
   }
 
+  /**
+   * 测试场景：Is Na Ns。
+   *
+   * <p>验证该方法在 Is Na Ns 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaNs() {
     boolean shouldRead =
@@ -345,6 +380,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: no_nans column will not contain NaN").isFalse();
   }
 
+  /**
+   * 测试场景：Not Na Ns。
+   *
+   * <p>验证该方法在 Not Na Ns 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaNs() {
     boolean shouldRead =
@@ -363,6 +403,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: no_nans column will contain non-NaN").isTrue();
   }
 
+  /**
+   * 测试场景：Not Na N On Na Ns And Nulls。
+   *
+   * <p>验证该方法在 Not Na N On Na Ns And Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaNOnNaNsAndNulls() {
     boolean shouldRead =
@@ -394,6 +439,11 @@ public class TestDictionaryRowGroupFilter {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Starts With。
+   *
+   * <p>验证该方法在 Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStartsWith() {
     boolean shouldRead =
@@ -438,6 +488,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: no match in dictionary").isFalse();
   }
 
+  /**
+   * 测试场景：Not Starts With。
+   *
+   * <p>验证该方法在 Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotStartsWith() {
     boolean shouldRead =
@@ -487,6 +542,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: dictionary contains a matching entry").isTrue();
   }
 
+  /**
+   * 测试场景：Missing Column。
+   *
+   * <p>验证该方法在 Missing Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingColumn() {
     TestHelpers.assertThrows(
@@ -498,6 +558,11 @@ public class TestDictionaryRowGroupFilter {
                 .shouldRead(parquetSchema, rowGroupMetadata, dictionaryStore));
   }
 
+  /**
+   * 测试场景：Column Not In File。
+   *
+   * <p>验证该方法在 Column Not In File 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnNotInFile() {
     Expression[] exprs =
@@ -516,6 +581,11 @@ public class TestDictionaryRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Column Fallback Or Not Dictionary Encoded。
+   *
+   * <p>验证该方法在 Column Fallback Or Not Dictionary Encoded 条件下的行为是否符合预期。
+   */
   @Test
   public void testColumnFallbackOrNotDictionaryEncoded() {
     Expression[] exprs =
@@ -533,6 +603,11 @@ public class TestDictionaryRowGroupFilter {
     }
   }
 
+  /**
+   * 测试场景：Missing Stats。
+   *
+   * <p>验证该方法在 Missing Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingStats() {
     boolean shouldRead =
@@ -541,6 +616,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: stats are missing but dictionary is present").isFalse();
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -555,6 +635,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: not(true)").isFalse();
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -584,6 +669,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: and(true, true)").isTrue();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -604,6 +694,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: or(false, true)").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt。
+   *
+   * <p>验证该方法在 Integer Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLt() {
     boolean shouldRead =
@@ -629,6 +724,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt Eq。
+   *
+   * <p>验证该方法在 Integer Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLtEq() {
     boolean shouldRead =
@@ -652,6 +752,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: many possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt。
+   *
+   * <p>验证该方法在 Integer Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGt() {
     boolean shouldRead =
@@ -677,6 +782,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt Eq。
+   *
+   * <p>验证该方法在 Integer Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGtEq() {
     boolean shouldRead =
@@ -700,6 +810,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Eq。
+   *
+   * <p>验证该方法在 Integer Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerEq() {
     boolean shouldRead =
@@ -738,6 +853,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should not read: id above upper bound").isFalse();
   }
 
+  /**
+   * 测试场景：Integer Not Eq。
+   *
+   * <p>验证该方法在 Integer Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEq() {
     boolean shouldRead =
@@ -776,6 +896,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEqRewritten() {
     boolean shouldRead =
@@ -814,6 +939,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：String Not Eq。
+   *
+   * <p>验证该方法在 String Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringNotEq() {
     boolean shouldRead =
@@ -827,6 +957,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: contains only ''").isFalse();
   }
 
+  /**
+   * 测试场景：Struct Field Lt。
+   *
+   * <p>验证该方法在 Struct Field Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLt() {
     boolean shouldRead =
@@ -856,6 +991,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Struct Field Lt Eq。
+   *
+   * <p>验证该方法在 Struct Field Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldLtEq() {
     boolean shouldRead =
@@ -883,6 +1023,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: many possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Struct Field Gt。
+   *
+   * <p>验证该方法在 Struct Field Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGt() {
     boolean shouldRead =
@@ -912,6 +1057,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Struct Field Gt Eq。
+   *
+   * <p>验证该方法在 Struct Field Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldGtEq() {
     boolean shouldRead =
@@ -939,6 +1089,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: may possible ids").isTrue();
   }
 
+  /**
+   * 测试场景：Struct Field Eq。
+   *
+   * <p>验证该方法在 Struct Field Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldEq() {
     boolean shouldRead =
@@ -984,6 +1139,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should not read: id above upper bound").isFalse();
   }
 
+  /**
+   * 测试场景：Struct Field Not Eq。
+   *
+   * <p>验证该方法在 Struct Field Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructFieldNotEq() {
     boolean shouldRead =
@@ -1028,6 +1188,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should read: id above upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Case Insensitive。
+   *
+   * <p>验证该方法在 Case Insensitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitive() {
     boolean shouldRead =
@@ -1036,6 +1201,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should skip: contains only ''").isFalse();
   }
 
+  /**
+   * 测试场景：Missing Dictionary Page For Column。
+   *
+   * <p>验证该方法在 Missing Dictionary Page For Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingDictionaryPageForColumn() {
     TestHelpers.assertThrows(
@@ -1047,6 +1217,11 @@ public class TestDictionaryRowGroupFilter {
                 .shouldRead(parquetSchema, rowGroupMetadata, descriptor -> null));
   }
 
+  /**
+   * 测试场景：Integer In。
+   *
+   * <p>验证该方法在 Integer In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerIn() {
     boolean shouldRead =
@@ -1147,6 +1322,11 @@ public class TestDictionaryRowGroupFilter {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not In。
+   *
+   * <p>验证该方法在 Integer Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotIn() {
     boolean shouldRead =
@@ -1250,6 +1430,11 @@ public class TestDictionaryRowGroupFilter {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Type Promotion。
+   *
+   * <p>验证该方法在 Type Promotion 条件下的行为是否符合预期。
+   */
   @Test
   public void testTypePromotion() {
     Schema promotedSchema = new Schema(required(1, "id", LongType.get()));
@@ -1259,6 +1444,11 @@ public class TestDictionaryRowGroupFilter {
     assertThat(shouldRead).as("Should succeed with promoted schema").isTrue();
   }
 
+  /**
+   * 测试场景：Fixed Len Byte Array。
+   *
+   * <p>验证该方法在 Fixed Len Byte Array 条件下的行为是否符合预期。
+   */
   @Test
   public void testFixedLenByteArray() {
     // This test is to validate the handling of FIXED_LEN_BYTE_ARRAY Parquet type being dictionary
@@ -1287,6 +1477,11 @@ public class TestDictionaryRowGroupFilter {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Transform Filter。
+   *
+   * <p>验证该方法在 Transform Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransformFilter() {
     boolean shouldRead =
@@ -1297,6 +1492,7 @@ public class TestDictionaryRowGroupFilter {
         .isTrue();
   }
 
+  /** 辅助方法：getColumnForName。 */
   private ColumnChunkMetaData getColumnForName(BlockMetaData rowGroup, String columnName) {
     ColumnPath columnPath = ColumnPath.fromDotString(columnName);
     for (ColumnChunkMetaData column : rowGroup.getColumns()) {

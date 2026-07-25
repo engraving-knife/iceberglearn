@@ -41,6 +41,19 @@ import org.apache.spark.sql.connector.write.RowLevelOperation.Command;
 import org.apache.spark.sql.connector.write.RowLevelOperationBuilder;
 import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 
+/**
+ * Spark 行级操作构建器：根据表属性与命令类型构造行级操作（COPY_ON_WRITE 或 MERGE_ON_READ）。
+ *
+ * <p>所属模块：iceberg-spark（source 子包，Spark 数据源行级操作 DELETE/UPDATE/MERGE 入口）。
+ *
+ * <p>职责：解析表属性确定行级操作模式与隔离级别，按模式构造对应的 {@link SparkCopyOnWriteOperation} 或 {@link
+ * SparkPositionDeltaOperation}。
+ *
+ * <p>设计意图：Iceberg 支持 COPY_ON_WRITE 与 MERGE_ON_READ 两种行级操作模式，
+ * 通过表属性按命令（DELETE/UPDATE/MERGE）分别配置；本构建器统一解析属性并选择实现。
+ *
+ * <p>上下游关系：实现 {@link RowLevelOperationBuilder}，由 Spark 行级操作计划阶段调用， 产出行级操作供写入构建器使用。
+ */
 class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
 
   private final SparkSession spark;
@@ -60,6 +73,13 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     this.isolationLevel = isolationLevel(table.properties(), info.command());
   }
 
+  /**
+   * 按操作模式构造成行级操作。
+   *
+   * @return COPY_ON_WRITE 返回 {@link SparkCopyOnWriteOperation}， MERGE_ON_READ 返回 {@link
+   *     SparkPositionDeltaOperation}
+   * @throws IllegalArgumentException 当模式不支持时抛出
+   */
   @Override
   public RowLevelOperation build() {
     switch (mode) {
@@ -72,6 +92,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     }
   }
 
+  /** 按命令类型从表属性解析行级操作模式。 */
   private RowLevelOperationMode mode(Map<String, String> properties, Command command) {
     String modeName;
 
@@ -92,6 +113,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     return RowLevelOperationMode.fromName(modeName);
   }
 
+  /** 按命令类型从表属性解析隔离级别。 */
   private IsolationLevel isolationLevel(Map<String, String> properties, Command command) {
     String levelName;
 

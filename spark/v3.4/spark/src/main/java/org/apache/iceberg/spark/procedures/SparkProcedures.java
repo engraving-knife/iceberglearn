@@ -25,18 +25,27 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：存储过程注册表，按名加载并创建对应 Procedure 实例。
+ *
+ * <p>设计意图：采用工厂模式，按过程名构建过程实例。
+ *
+ * <p>上下游关系：由 SparkCatalog（ProcedureCatalog）调用；由 ResolveProcedures 查找。
+ */
 public class SparkProcedures {
 
   private static final Map<String, Supplier<ProcedureBuilder>> BUILDERS = initProcedureBuilders();
 
   private SparkProcedures() {}
-
+  /** 创建 Builder 实例。 */
   public static ProcedureBuilder newBuilder(String name) {
     // procedure resolution is case insensitive to match the existing Spark behavior for functions
     Supplier<ProcedureBuilder> builderSupplier = BUILDERS.get(name.toLowerCase(Locale.ROOT));
     return builderSupplier != null ? builderSupplier.get() : null;
   }
-
+  /** 执行 initProcedureBuilders 相关操作。 */
   private static Map<String, Supplier<ProcedureBuilder>> initProcedureBuilders() {
     ImmutableMap.Builder<String, Supplier<ProcedureBuilder>> mapBuilder = ImmutableMap.builder();
     mapBuilder.put("rollback_to_snapshot", RollbackToSnapshotProcedure::builder);

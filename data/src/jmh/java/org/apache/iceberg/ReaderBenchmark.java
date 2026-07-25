@@ -43,6 +43,14 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：ReaderBenchmark 性能基准测试。
+ *
+ * <p>所属模块：iceberg-data。职责：对 读取器 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Warmup(iterations = 3)
@@ -67,6 +75,7 @@ public abstract class ReaderBenchmark {
 
   private File testFile;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() throws IOException {
     testFile = Files.createTempFile("perf-bench", null).toFile();
@@ -77,11 +86,17 @@ public abstract class ReaderBenchmark {
     }
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() throws IOException {
     testFile.delete();
   }
 
+  /**
+   * 基准测试场景：读取Iceberg。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIceberg() throws IOException {

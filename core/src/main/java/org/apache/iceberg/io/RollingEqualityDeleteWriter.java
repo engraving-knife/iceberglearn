@@ -28,8 +28,19 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * A rolling equality delete writer that splits incoming deletes into multiple files within one
- * spec/partition based on the target file size.
+ * 文件级说明：equality-delete 滚动写入器。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：继承 {@link RollingFileWriter}，在单个 spec/partition 内按目标文件大小滚动写入 equality-delete 记录，产出多个 {@link
+ * DeleteFile}。
+ *
+ * <p>设计意图：equality-delete 不引用具体数据文件（通过等值字段匹配），因此 addResult 中校验 referencesDataFiles 为
+ * false。newWriter 委托给 {@link FileWriterFactory#newEqualityDeleteWriter}。
+ *
+ * <p>上下游关系：由 {@link ClusteredEqualityDeleteWriter} 作为单分区写入单元创建； 内部使用 {@link EqualityDeleteWriter}。
+ *
+ * @param <T> 行记录类型
  */
 public class RollingEqualityDeleteWriter<T>
     extends RollingFileWriter<T, EqualityDeleteWriter<T>, DeleteWriteResult> {
@@ -37,6 +48,16 @@ public class RollingEqualityDeleteWriter<T>
   private final FileWriterFactory<T> writerFactory;
   private final List<DeleteFile> deleteFiles;
 
+  /**
+   * 构造 equality-delete 滚动写入器并立即打开第一个文件。
+   *
+   * @param writerFactory 写入器工厂
+   * @param fileFactory 输出文件工厂
+   * @param io FileIO 实例
+   * @param targetFileSizeInBytes 目标文件大小
+   * @param spec 分区规格
+   * @param partition 分区值
+   */
   public RollingEqualityDeleteWriter(
       FileWriterFactory<T> writerFactory,
       OutputFileFactory fileFactory,
@@ -50,11 +71,17 @@ public class RollingEqualityDeleteWriter<T>
     openCurrentWriter();
   }
 
+  /** 通过工厂创建 equality-delete 写入器。 */
   @Override
   protected EqualityDeleteWriter<T> newWriter(EncryptedOutputFile file) {
     return writerFactory.newEqualityDeleteWriter(file, spec(), partition());
   }
 
+  /**
+   * 将单个文件的删除文件加入聚合列表。
+   *
+   * @throws IllegalArgumentException 若结果引用了数据文件（equality-delete 不应引用）
+   */
   @Override
   protected void addResult(DeleteWriteResult result) {
     Preconditions.checkArgument(
@@ -62,6 +89,7 @@ public class RollingEqualityDeleteWriter<T>
     deleteFiles.addAll(result.deleteFiles());
   }
 
+  /** 返回所有删除文件的聚合结果。 */
   @Override
   protected DeleteWriteResult aggregatedResult() {
     return new DeleteWriteResult(deleteFiles);

@@ -94,6 +94,15 @@ import scala.Option;
 import scala.collection.JavaConverters;
 import scala.collection.immutable.Seq;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 3.x 兼容工具类，提供将 Spark 对象（Catalog、表、分支、标签、快照等）与 Iceberg 对象互转的大量静态方法。
+ *
+ * <p>设计意图：集中处理 Spark 3 各小版本 API 差异与反射调用，屏蔽版本兼容细节。
+ *
+ * <p>上下游关系：被 SparkCatalog、SparkTable、Procedures 及扩展层广泛调用。
+ */
 public class Spark3Util {
 
   private static final Set<String> RESERVED_PROPERTIES =
@@ -101,7 +110,7 @@ public class Spark3Util {
   private static final Joiner DOT = Joiner.on(".");
 
   private Spark3Util() {}
-
+  /** 设置 Option 属性。 */
   public static CaseInsensitiveStringMap setOption(
       String key, String value, CaseInsensitiveStringMap options) {
     Map<String, String> newOptions = Maps.newHashMap();
@@ -109,7 +118,7 @@ public class Spark3Util {
     newOptions.put(key, value);
     return new CaseInsensitiveStringMap(newOptions);
   }
-
+  /** 执行 rebuildCreateProperties 相关操作。 */
   public static Map<String, String> rebuildCreateProperties(Map<String, String> createProperties) {
     ImmutableMap.Builder<String, String> tableProperties = ImmutableMap.builder();
     createProperties.entrySet().stream()
@@ -209,7 +218,7 @@ public class Spark3Util {
 
     return pendingUpdate;
   }
-
+  /** 应用转换。 */
   private static void apply(UpdateSchema pendingUpdate, TableChange.UpdateColumnPosition update) {
     Preconditions.checkArgument(update.position() != null, "Invalid position: null");
 
@@ -225,7 +234,7 @@ public class Spark3Util {
       throw new IllegalArgumentException("Unknown position for reorder: " + update.position());
     }
   }
-
+  /** 应用转换。 */
   private static void apply(UpdateSchema pendingUpdate, TableChange.AddColumn add) {
     Preconditions.checkArgument(
         add.isNullable(),
@@ -251,20 +260,20 @@ public class Spark3Util {
           add.position());
     }
   }
-
+  /** 转换为 IcebergTable。 */
   public static org.apache.iceberg.Table toIcebergTable(Table table) {
     Preconditions.checkArgument(
         table instanceof SparkTable, "Table %s is not an Iceberg table", table);
     SparkTable sparkTable = (SparkTable) table;
     return sparkTable.table();
   }
-
+  /** 转换为 Ordering。 */
   public static SortOrder[] toOrdering(org.apache.iceberg.SortOrder sortOrder) {
     SortOrderToSpark visitor = new SortOrderToSpark(sortOrder.schema());
     List<SortOrder> ordering = SortOrderVisitor.visit(sortOrder, visitor);
     return ordering.toArray(new SortOrder[0]);
   }
-
+  /** 转换为 Transforms。 */
   public static Transform[] toTransforms(Schema schema, List<PartitionField> fields) {
     SpecTransformToSparkTransform visitor = new SpecTransformToSparkTransform(schema);
 
@@ -298,63 +307,63 @@ public class Spark3Util {
     SpecTransformToSparkTransform(Schema schema) {
       this.quotedNameById = SparkSchemaUtil.indexQuotedNameById(schema);
     }
-
+    /** 执行 identity 相关操作。 */
     @Override
     public Transform identity(String sourceName, int sourceId) {
       return Expressions.identity(quotedName(sourceId));
     }
-
+    /** 执行 bucket 相关操作。 */
     @Override
     public Transform bucket(String sourceName, int sourceId, int numBuckets) {
       return Expressions.bucket(numBuckets, quotedName(sourceId));
     }
-
+    /** 执行 truncate 相关操作。 */
     @Override
     public Transform truncate(String sourceName, int sourceId, int width) {
       NamedReference column = Expressions.column(quotedName(sourceId));
       return Expressions.apply("truncate", Expressions.literal(width), column);
     }
-
+    /** 执行 year 相关操作。 */
     @Override
     public Transform year(String sourceName, int sourceId) {
       return Expressions.years(quotedName(sourceId));
     }
-
+    /** 执行 month 相关操作。 */
     @Override
     public Transform month(String sourceName, int sourceId) {
       return Expressions.months(quotedName(sourceId));
     }
-
+    /** 执行 day 相关操作。 */
     @Override
     public Transform day(String sourceName, int sourceId) {
       return Expressions.days(quotedName(sourceId));
     }
-
+    /** 执行 hour 相关操作。 */
     @Override
     public Transform hour(String sourceName, int sourceId) {
       return Expressions.hours(quotedName(sourceId));
     }
-
+    /** 执行 alwaysNull 相关操作。 */
     @Override
     public Transform alwaysNull(int fieldId, String sourceName, int sourceId) {
       // do nothing for alwaysNull, it doesn't need to be converted to a transform
       return null;
     }
-
+    /** 执行 unknown 相关操作。 */
     @Override
     public Transform unknown(int fieldId, String sourceName, int sourceId, String transform) {
       return Expressions.apply(transform, Expressions.column(quotedName(sourceId)));
     }
-
+    /** 执行 quotedName 相关操作。 */
     private String quotedName(int id) {
       return quotedNameById.get(id);
     }
   }
-
+  /** 转换为 NamedReference。 */
   public static NamedReference toNamedReference(String name) {
     return Expressions.column(name);
   }
-
+  /** 转换为 IcebergTerm。 */
   public static Term toIcebergTerm(Expression expr) {
     if (expr instanceof Transform) {
       Transform transform = (Transform) expr;
@@ -457,7 +466,7 @@ public class Spark3Util {
 
     return builder.build();
   }
-
+  /** 执行 findWidth 相关操作。 */
   @SuppressWarnings("unchecked")
   private static int findWidth(Transform transform) {
     for (Expression expr : transform.arguments()) {
@@ -484,13 +493,13 @@ public class Spark3Util {
 
     throw new IllegalArgumentException("Cannot find width for transform: " + transform.describe());
   }
-
+  /** 执行 leafName 相关操作。 */
   private static String leafName(String[] fieldNames) {
     Preconditions.checkArgument(
         fieldNames.length > 0, "Invalid field name: at least one name is required");
     return fieldNames[fieldNames.length - 1];
   }
-
+  /** 执行 peerName 相关操作。 */
   private static String peerName(String[] fieldNames, String fieldName) {
     if (fieldNames.length > 1) {
       String[] peerNames = Arrays.copyOf(fieldNames, fieldNames.length);
@@ -499,34 +508,34 @@ public class Spark3Util {
     }
     return fieldName;
   }
-
+  /** 执行 parentName 相关操作。 */
   private static String parentName(String[] fieldNames) {
     if (fieldNames.length > 1) {
       return DOT.join(Arrays.copyOfRange(fieldNames, 0, fieldNames.length - 1));
     }
     return null;
   }
-
+  /** 返回描述信息。 */
   public static String describe(List<org.apache.iceberg.expressions.Expression> exprs) {
     return exprs.stream().map(Spark3Util::describe).collect(Collectors.joining(", "));
   }
-
+  /** 返回描述信息。 */
   public static String describe(org.apache.iceberg.expressions.Expression expr) {
     return ExpressionVisitors.visit(expr, DescribeExpressionVisitor.INSTANCE);
   }
-
+  /** 返回描述信息。 */
   public static String describe(Schema schema) {
     return TypeUtil.visit(schema, DescribeSchemaVisitor.INSTANCE);
   }
-
+  /** 返回描述信息。 */
   public static String describe(Type type) {
     return TypeUtil.visit(type, DescribeSchemaVisitor.INSTANCE);
   }
-
+  /** 返回描述信息。 */
   public static String describe(org.apache.iceberg.SortOrder order) {
     return Joiner.on(", ").join(SortOrderVisitor.visit(order, DescribeSortOrderVisitor.INSTANCE));
   }
-
+  /** 执行 extensionsEnabled 相关操作。 */
   public static boolean extensionsEnabled(SparkSession spark) {
     String extensions = spark.conf().get("spark.sql.extensions", "");
     return extensions.contains("IcebergSparkSessionExtensions");
@@ -537,32 +546,32 @@ public class Spark3Util {
     private static final DescribeSchemaVisitor INSTANCE = new DescribeSchemaVisitor();
 
     private DescribeSchemaVisitor() {}
-
+    /** 返回 Schema。 */
     @Override
     public String schema(Schema schema, String structResult) {
       return structResult;
     }
-
+    /** 执行 struct 相关操作。 */
     @Override
     public String struct(Types.StructType struct, List<String> fieldResults) {
       return "struct<" + COMMA.join(fieldResults) + ">";
     }
-
+    /** 执行 field 相关操作。 */
     @Override
     public String field(Types.NestedField field, String fieldResult) {
       return field.name() + ": " + fieldResult + (field.isRequired() ? " not null" : "");
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public String list(Types.ListType list, String elementResult) {
       return "list<" + elementResult + ">";
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public String map(Types.MapType map, String keyResult, String valueResult) {
       return "map<" + keyResult + ", " + valueResult + ">";
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public String primitive(Type.PrimitiveType primitive) {
       switch (primitive.typeId()) {
@@ -601,27 +610,27 @@ public class Spark3Util {
     private static final DescribeExpressionVisitor INSTANCE = new DescribeExpressionVisitor();
 
     private DescribeExpressionVisitor() {}
-
+    /** 执行 alwaysTrue 相关操作。 */
     @Override
     public String alwaysTrue() {
       return "true";
     }
-
+    /** 执行 alwaysFalse 相关操作。 */
     @Override
     public String alwaysFalse() {
       return "false";
     }
-
+    /** 执行 not 相关操作。 */
     @Override
     public String not(String result) {
       return "NOT (" + result + ")";
     }
-
+    /** 执行 and 相关操作。 */
     @Override
     public String and(String leftResult, String rightResult) {
       return "(" + leftResult + " AND " + rightResult + ")";
     }
-
+    /** 执行 or 相关操作。 */
     @Override
     public String or(String leftResult, String rightResult) {
       return "(" + leftResult + " OR " + rightResult + ")";
@@ -667,7 +676,7 @@ public class Spark3Util {
           throw new UnsupportedOperationException("Cannot convert predicate to SQL: " + pred);
       }
     }
-
+    /** 执行 sqlString 相关操作。 */
     private static <T> String sqlString(UnboundTerm<T> term) {
       if (term instanceof org.apache.iceberg.expressions.NamedReference) {
         return term.ref().name();
@@ -678,13 +687,13 @@ public class Spark3Util {
         throw new UnsupportedOperationException("Cannot convert term to SQL: " + term);
       }
     }
-
+    /** 执行 sqlString 相关操作。 */
     private static <T> String sqlString(List<org.apache.iceberg.expressions.Literal<T>> literals) {
       return literals.stream()
           .map(DescribeExpressionVisitor::sqlString)
           .collect(Collectors.joining(", "));
     }
-
+    /** 执行 sqlString 相关操作。 */
     private static String sqlString(org.apache.iceberg.expressions.Literal<?> lit) {
       if (lit.value() instanceof String) {
         return "'" + lit.value() + "'";
@@ -732,13 +741,13 @@ public class Spark3Util {
             catalogName, catalogPlugin.getClass().getName()));
     return ((HasIcebergCatalog) catalogPlugin).icebergCatalog();
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   public static CatalogAndIdentifier catalogAndIdentifier(SparkSession spark, String name)
       throws ParseException {
     return catalogAndIdentifier(
         spark, name, spark.sessionState().catalogManager().currentCatalog());
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   public static CatalogAndIdentifier catalogAndIdentifier(
       SparkSession spark, String name, CatalogPlugin defaultCatalog) throws ParseException {
     ParserInterface parser = spark.sessionState().sqlParser();
@@ -746,13 +755,13 @@ public class Spark3Util {
     List<String> javaMultiPartIdentifier = JavaConverters.seqAsJavaList(multiPartIdentifier);
     return catalogAndIdentifier(spark, javaMultiPartIdentifier, defaultCatalog);
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   public static CatalogAndIdentifier catalogAndIdentifier(
       String description, SparkSession spark, String name) {
     return catalogAndIdentifier(
         description, spark, name, spark.sessionState().catalogManager().currentCatalog());
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   public static CatalogAndIdentifier catalogAndIdentifier(
       String description, SparkSession spark, String name, CatalogPlugin defaultCatalog) {
     try {
@@ -761,7 +770,7 @@ public class Spark3Util {
       throw new IllegalArgumentException("Cannot parse " + description + ": " + name, e);
     }
   }
-
+  /** 执行 catalogAndIdentifier 相关操作。 */
   public static CatalogAndIdentifier catalogAndIdentifier(
       SparkSession spark, List<String> nameParts) {
     return catalogAndIdentifier(
@@ -803,7 +812,7 @@ public class Spark3Util {
             currentNamespace);
     return new CatalogAndIdentifier(catalogIdentifier);
   }
-
+  /** 执行 asTableCatalog 相关操作。 */
   private static TableCatalog asTableCatalog(CatalogPlugin catalog) {
     if (catalog instanceof TableCatalog) {
       return (TableCatalog) catalog;
@@ -829,20 +838,20 @@ public class Spark3Util {
       this.catalog = identifier.first();
       this.identifier = identifier.second();
     }
-
+    /** 执行 catalog 相关操作。 */
     public CatalogPlugin catalog() {
       return catalog;
     }
-
+    /** 返回标识符。 */
     public Identifier identifier() {
       return identifier;
     }
   }
-
+  /** 执行 identifierToTableIdentifier 相关操作。 */
   public static TableIdentifier identifierToTableIdentifier(Identifier identifier) {
     return TableIdentifier.of(Namespace.of(identifier.namespace()), identifier.name());
   }
-
+  /** 执行 quotedFullIdentifier 相关操作。 */
   public static String quotedFullIdentifier(String catalogName, Identifier identifier) {
     List<String> parts =
         ImmutableList.<String>builder()
@@ -933,7 +942,7 @@ public class Spark3Util {
             })
         .collect(Collectors.toList());
   }
-
+  /** 转换为 V1TableIdentifier。 */
   public static org.apache.spark.sql.catalyst.TableIdentifier toV1TableIdentifier(
       Identifier identifier) {
     String[] namespace = identifier.namespace();
@@ -952,7 +961,7 @@ public class Spark3Util {
     private static final DescribeSortOrderVisitor INSTANCE = new DescribeSortOrderVisitor();
 
     private DescribeSortOrderVisitor() {}
-
+    /** 执行 field 相关操作。 */
     @Override
     public String field(
         String sourceName,
@@ -961,7 +970,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("%s %s %s", sourceName, direction, nullOrder);
     }
-
+    /** 执行 bucket 相关操作。 */
     @Override
     public String bucket(
         String sourceName,
@@ -971,7 +980,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("bucket(%s, %s) %s %s", numBuckets, sourceName, direction, nullOrder);
     }
-
+    /** 执行 truncate 相关操作。 */
     @Override
     public String truncate(
         String sourceName,
@@ -981,7 +990,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("truncate(%s, %s) %s %s", sourceName, width, direction, nullOrder);
     }
-
+    /** 执行 year 相关操作。 */
     @Override
     public String year(
         String sourceName,
@@ -990,7 +999,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("years(%s) %s %s", sourceName, direction, nullOrder);
     }
-
+    /** 执行 month 相关操作。 */
     @Override
     public String month(
         String sourceName,
@@ -999,7 +1008,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("months(%s) %s %s", sourceName, direction, nullOrder);
     }
-
+    /** 执行 day 相关操作。 */
     @Override
     public String day(
         String sourceName,
@@ -1008,7 +1017,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("days(%s) %s %s", sourceName, direction, nullOrder);
     }
-
+    /** 执行 hour 相关操作。 */
     @Override
     public String hour(
         String sourceName,
@@ -1017,7 +1026,7 @@ public class Spark3Util {
         NullOrder nullOrder) {
       return String.format("hours(%s) %s %s", sourceName, direction, nullOrder);
     }
-
+    /** 执行 unknown 相关操作。 */
     @Override
     public String unknown(
         String sourceName,

@@ -41,6 +41,13 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.glue.GlueClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * 文件级说明：GlueTestBase 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 Glue 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 @SuppressWarnings({"VisibilityModifier", "HideUtilityClassConstructor"})
 public class GlueTestBase {
 
@@ -75,6 +82,7 @@ public class GlueTestBase {
 
   static final String testBucketPath = "s3://" + testBucketName + "/" + testPathPrefix;
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeClass
   public static void beforeClass() {
     glueCatalog = new GlueCatalog();
@@ -103,16 +111,19 @@ public class GlueTestBase {
         ImmutableMap.of());
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterClass
   public static void afterClass() {
     AwsIntegTestUtil.cleanGlueCatalog(glue, namespaces);
     AwsIntegTestUtil.cleanS3Bucket(s3, testBucketName, testPathPrefix);
   }
 
+  /** 辅助方法：获取randomname。 */
   public static String getRandomName() {
     return UUID.randomUUID().toString().replace("-", "");
   }
 
+  /** 辅助方法：创建命名空间。 */
   public static String createNamespace() {
     String namespace = getRandomName();
     namespaces.add(namespace);
@@ -120,11 +131,13 @@ public class GlueTestBase {
     return namespace;
   }
 
+  /** 辅助方法：创建表。 */
   public static String createTable(String namespace) {
     String tableName = getRandomName();
     return createTable(namespace, tableName);
   }
 
+  /** 辅助方法：创建表。 */
   public static String createTable(String namespace, String tableName) {
     glueCatalog.createTable(TableIdentifier.of(namespace, tableName), schema, partitionSpec);
     return tableName;

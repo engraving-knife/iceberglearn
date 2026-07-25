@@ -18,6 +18,13 @@
  */
 package org.apache.iceberg.flink.source.split;
 
+/**
+ * Iceberg Source 分片状态，记录分片读取进度。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：维护当前分片的已读位置与状态枚举，支持 checkpoint。
+ *
+ * <p>设计意图：可变状态对象；被 SourceReader 维护。
+ */
 public class IcebergSourceSplitState {
   private final IcebergSourceSplit split;
   private final IcebergSourceSplitStatus status;

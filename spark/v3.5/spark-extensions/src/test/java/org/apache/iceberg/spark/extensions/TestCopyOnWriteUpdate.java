@@ -50,8 +50,16 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCopyOnWriteUpdate 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 复制上写更新 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCopyOnWriteUpdate extends TestUpdate {
 
+  /** 测试复制上写更新。 */
   public TestCopyOnWriteUpdate(
       String catalogName,
       String implementation,
@@ -74,12 +82,14 @@ public class TestCopyOnWriteUpdate extends TestUpdate {
         planningMode);
   }
 
+  /** extra表属性。 */
   @Override
   protected Map<String, String> extraTableProperties() {
     return ImmutableMap.of(
         TableProperties.UPDATE_MODE, RowLevelOperationMode.COPY_ON_WRITE.modeName());
   }
 
+  /** 测试更新带并发表刷新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testUpdateWithConcurrentTableRefresh() throws Exception {
     // this test can only be run with Hive tables as it requires a reliable lock
@@ -166,6 +176,7 @@ public class TestCopyOnWriteUpdate extends TestUpdate {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试runtime过滤带reportedpartitioning场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRuntimeFilteringWithReportedPartitioning() {
     createAndInitTable("id INT, dep STRING");

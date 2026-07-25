@@ -40,15 +40,19 @@ import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /**
- * Assigns a rewrite plan for v2 tables that support rewriting data to handle DELETE statements.
+ * Spark Catalyst 分析阶段的规则或检查的写入组件，负责数据写入与提交。
  *
- * If a table implements SupportsDelete and SupportsRowLevelOperations, this rule assigns a rewrite
- * plan but the optimizer will check whether this particular DELETE statement can be handled
- * by simply passing delete filters to the connector. If yes, the optimizer will then discard
- * the rewrite plan.
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 RewriteDeleteFromIcebergTable。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object RewriteDeleteFromIcebergTable extends RewriteRowLevelIcebergCommand {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case d @ DeleteFromIcebergTable(aliasedTable, Some(cond), None) if d.resolved =>
       EliminateSubqueryAliases(aliasedTable) match {
@@ -69,6 +73,10 @@ object RewriteDeleteFromIcebergTable extends RewriteRowLevelIcebergCommand {
   }
 
   // build a rewrite plan for sources that support replacing groups of data (e.g. files, partitions)
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildReplaceDataPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -92,6 +100,10 @@ object RewriteDeleteFromIcebergTable extends RewriteRowLevelIcebergCommand {
   }
 
   // build a rewrite plan for sources that support row deltas
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildWriteDeltaPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,

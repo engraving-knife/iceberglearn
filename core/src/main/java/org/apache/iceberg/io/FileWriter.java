@@ -23,23 +23,29 @@ import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
 
 /**
- * A writer capable of writing files of a single type (i.e. data/delete) to one spec/partition.
+ * 文件级说明：单分区文件写入器接口。
  *
- * <p>As opposed to {@link FileAppender}, this interface should be implemented by classes that not
- * only append records to files but actually produce {@link DataFile}s or {@link DeleteFile}s
- * objects with Iceberg metadata. Implementations may wrap {@link FileAppender}s with extra
- * information such as spec, partition, sort order ID needed to construct {@link DataFile}s or
- * {@link DeleteFile}s.
+ * <p>所属模块：iceberg-core。
  *
- * @param <T> the row type
- * @param <R> the result type
+ * <p>职责：向一个预定义的 spec/partition 写入数据或删除记录，并在关闭后返回包含 Iceberg 元数据 的 {@link DataFile} 或 {@link
+ * DeleteFile}。
+ *
+ * <p>设计意图：与 {@link FileAppender} 不同，FileWriter 不仅追加记录，还负责收集 Iceberg 所需的 文件级元数据（分区、排序序号、指标等），在 close
+ * 后构造可提交的文件对象。实现类通常包装一个 FileAppender 并补充元信息。泛型 R 允许返回不同类型的结果（如 DataWriteResult /
+ * DeleteWriteResult）。
+ *
+ * <p>上下游关系：由 {@link RollingFileWriter}、{@link ClusteredWriter}、{@link FanoutWriter}
+ * 等作为底层写入单元使用；实现类包括 {@link DataWriter} 及各种 delete writer。
+ *
+ * @param <T> 行记录类型
+ * @param <R> 结果类型
  */
 public interface FileWriter<T, R> extends Closeable {
 
   /**
-   * Writes rows to a predefined spec/partition.
+   * 批量写入多行记录到预定义的 spec/partition。
    *
-   * @param rows data or delete records
+   * @param rows 数据或删除记录集合
    */
   default void write(Iterable<T> rows) {
     for (T row : rows) {
@@ -48,24 +54,23 @@ public interface FileWriter<T, R> extends Closeable {
   }
 
   /**
-   * Writes a row to a predefined spec/partition.
+   * 写入单行记录到预定义的 spec/partition。
    *
-   * @param row a data or delete record
+   * @param row 数据或删除记录
    */
   void write(T row);
 
   /**
-   * Returns the number of bytes that were currently written by this writer.
+   * 返回当前写入器已写入的字节数。
    *
-   * @return the number of written bytes
+   * @return 已写入字节数
    */
   long length();
 
   /**
-   * Returns a result that contains information about written {@link DataFile}s or {@link
-   * DeleteFile}s. The result is valid only after the writer is closed.
+   * 返回包含已写文件信息的结果。仅在写入器关闭后有效。
    *
-   * @return the file writer result
+   * @return 文件写入结果
    */
   R result();
 }

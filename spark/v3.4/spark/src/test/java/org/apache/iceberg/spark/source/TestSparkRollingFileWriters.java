@@ -28,12 +28,21 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 文件级说明：测试 TestSparkRollingFileWriters 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkrolling文件写入器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkRollingFileWriters extends TestRollingFileWriters<InternalRow> {
 
+  /** 测试Sparkrolling文件写入器。 */
   public TestSparkRollingFileWriters(FileFormat fileFormat, boolean partitioned) {
     super(fileFormat, partitioned);
   }
 
+  /** 新建写入器factory。 */
   @Override
   protected FileWriterFactory<InternalRow> newWriterFactory(
       Schema dataSchema,
@@ -50,6 +59,7 @@ public class TestSparkRollingFileWriters extends TestRollingFileWriters<Internal
         .build();
   }
 
+  /** 到行。 */
   @Override
   protected InternalRow toRow(Integer id, String data) {
     InternalRow row = new GenericInternalRow(2);

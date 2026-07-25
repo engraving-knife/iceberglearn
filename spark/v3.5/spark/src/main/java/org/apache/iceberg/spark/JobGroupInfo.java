@@ -18,16 +18,25 @@
  */
 package org.apache.iceberg.spark;
 
-/** Captures information about the current job which is used for displaying on the UI */
+/**
+ * 作业组信息，用于在 Spark UI 上展示当前作业。
+ *
+ * <p>所属模块：iceberg-spark。封装 Spark 作业组的 groupId、描述与取消时是否中断等元信息， 供 Iceberg 动作在提交 Spark
+ * 作业前设置作业组，便于追踪与区分。
+ *
+ * <p>设计意图：不可变值对象，简化 {@link org.apache.spark.api.java.JavaSparkContext#setJobGroup} 调用参数传递。
+ */
 public class JobGroupInfo {
   private final String groupId;
   private final String description;
   private final boolean interruptOnCancel;
 
+  /** 以 groupId 与描述构造，默认不中断取消。 */
   public JobGroupInfo(String groupId, String desc) {
     this(groupId, desc, false);
   }
 
+  /** 以 groupId、描述与取消中断标志构造。 */
   public JobGroupInfo(String groupId, String desc, boolean interruptOnCancel) {
     this.groupId = groupId;
     this.description = desc;
@@ -38,10 +47,12 @@ public class JobGroupInfo {
     return groupId;
   }
 
+  /** 返回作业描述。 */
   public String description() {
     return description;
   }
 
+  /** 返回取消作业时是否中断线程。 */
   public boolean interruptOnCancel() {
     return interruptOnCancel;
   }

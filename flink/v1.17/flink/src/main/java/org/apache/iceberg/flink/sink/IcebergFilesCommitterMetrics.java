@@ -24,6 +24,24 @@ import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 
+/**
+ * 文件级说明：Iceberg 文件提交算子的 Flink 指标收集器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 sink 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>记录最近一次 checkpoint 与提交的耗时。
+ *   <li>记录自上次成功提交以来经过的秒数。
+ *   <li>累加已提交的数据文件/删除文件的数量、记录数、字节数。
+ * </ul>
+ *
+ * <p>设计意图：把提交相关的指标统一注册到 Flink MetricGroup 下， 便于通过 Flink Metrics 系统对外暴露，方便运维监控。
+ *
+ * <p>上下游关系：上游为 {@code IcebergFilesCommitter}， 下游为 Flink 的 {@link MetricGroup} 与 {@link
+ * Counter}/{@link Gauge}。
+ */
 class IcebergFilesCommitterMetrics {
   private final AtomicLong lastCheckpointDurationMs = new AtomicLong();
   private final AtomicLong lastCommitDurationMs = new AtomicLong();
@@ -35,6 +53,7 @@ class IcebergFilesCommitterMetrics {
   private final Counter committedDeleteFilesRecordCount;
   private final Counter committedDeleteFilesByteCount;
 
+  /** 构造指标收集器，把所有指标注册到指定 MetricGroup 下，按表名分组。 */
   IcebergFilesCommitterMetrics(MetricGroup metrics, String fullTableName) {
     MetricGroup committerMetrics =
         metrics.addGroup("IcebergFilesCommitter").addGroup("table", fullTableName);
@@ -52,15 +71,17 @@ class IcebergFilesCommitterMetrics {
     this.committedDeleteFilesByteCount = committerMetrics.counter("committedDeleteFilesByteCount");
   }
 
+  /** 更新最近一次 checkpoint 耗时（毫秒）。 */
   void checkpointDuration(long checkpointDurationMs) {
     lastCheckpointDurationMs.set(checkpointDurationMs);
   }
 
+  /** 更新最近一次提交耗时（毫秒）。 */
   void commitDuration(long commitDurationMs) {
     lastCommitDurationMs.set(commitDurationMs);
   }
 
-  /** This is called upon a successful commit. */
+  /** 提交成功后调用，按 {@link CommitSummary} 累加各计数器并刷新提交时间。 */
   void updateCommitSummary(CommitSummary stats) {
     elapsedSecondsSinceLastSuccessfulCommit.refreshLastRecordedTime();
     committedDataFilesCount.inc(stats.dataFilesCount());
@@ -72,8 +93,9 @@ class IcebergFilesCommitterMetrics {
   }
 
   /**
-   * This gauge measures the elapsed time between now and last recorded time set by {@link
-   * ElapsedTimeGauge#refreshLastRecordedTime()}.
+   * 测量自上次记录时间起经过时长的 Gauge。
+   *
+   * <p>逻辑：getValue 时根据 {@link #refreshLastRecordedTime()} 记录的时间点 计算当前与之的差值，并按指定单位返回。
    */
   private static class ElapsedTimeGauge implements Gauge<Long> {
     private final TimeUnit reportUnit;
@@ -84,6 +106,7 @@ class IcebergFilesCommitterMetrics {
       this.lastRecordedTimeNano = System.nanoTime();
     }
 
+    /** 刷新最近一次记录时间，通常在成功提交时调用。 */
     void refreshLastRecordedTime() {
       this.lastRecordedTimeNano = System.nanoTime();
     }

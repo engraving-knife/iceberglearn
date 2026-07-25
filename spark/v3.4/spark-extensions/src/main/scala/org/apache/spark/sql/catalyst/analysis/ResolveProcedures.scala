@@ -37,10 +37,17 @@ import org.apache.spark.sql.connector.catalog.LookupCatalog
 import org.apache.spark.sql.connector.iceberg.catalog.ProcedureCatalog
 import org.apache.spark.sql.connector.iceberg.catalog.ProcedureParameter
 import scala.collection.Seq
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：存储过程解析规则，将未解析的 Call 节点解析为具体 Procedure 实例。
+ * <p>设计意图：在分析阶段按名从 ProcedureCatalog 加载过程并绑定参数。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册；依赖 ProcedureCatalog。
+ */
 
 case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with LookupCatalog {
 
   protected lazy val catalogManager: CatalogManager = spark.sessionState.catalogManager
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case CallStatement(CatalogAndIdentifier(catalog, ident), args) =>
@@ -53,6 +60,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
       val normalizedArgs = normalizeArgs(args)
       Call(procedure, args = buildArgExprs(normalizedParams, normalizedArgs).toSeq)
   }
+  /** 执行 validateParams 相关操作。 */
 
   private def validateParams(params: Seq[ProcedureParameter]): Unit = {
     // should not be any duplicate param names
@@ -72,6 +80,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
       case _ =>
     }
   }
+  /** 执行 buildArgExprs 相关操作。 */
 
   private def buildArgExprs(
       params: Seq[ProcedureParameter],
@@ -109,6 +118,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
 
     argExprs
   }
+  /** 执行 buildNameToArgMap 相关操作。 */
 
   private def buildNameToArgMap(
       params: Seq[ProcedureParameter],
@@ -128,6 +138,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
       buildNameToArgMapUsingPositions(args, params)
     }
   }
+  /** 执行 buildNameToArgMapUsingNames 相关操作。 */
 
   private def buildNameToArgMapUsingNames(
       args: Seq[CallArgument],
@@ -146,6 +157,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
 
     namedArgs.map(arg => arg.name -> arg).toMap
   }
+  /** 执行 buildNameToArgMapUsingPositions 相关操作。 */
 
   private def buildNameToArgMapUsingPositions(
       args: Seq[CallArgument],
@@ -160,6 +172,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
       param.name -> arg
     }.toMap
   }
+  /** 执行 normalizeParams 相关操作。 */
 
   private def normalizeParams(params: Seq[ProcedureParameter]): Seq[ProcedureParameter] = {
     params.map {
@@ -171,6 +184,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
         ProcedureParameter.optional(normalizedName, param.dataType)
     }
   }
+  /** 执行 normalizeArgs 相关操作。 */
 
   private def normalizeArgs(args: Seq[CallArgument]): Seq[CallArgument] = {
     args.map {
@@ -180,6 +194,7 @@ case class ResolveProcedures(spark: SparkSession) extends Rule[LogicalPlan] with
   }
 
   implicit class CatalogHelper(plugin: CatalogPlugin) {
+    /** 执行 asProcedureCatalog 相关操作。 */
     def asProcedureCatalog: ProcedureCatalog = plugin match {
       case procedureCatalog: ProcedureCatalog =>
         procedureCatalog

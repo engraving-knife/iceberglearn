@@ -22,18 +22,47 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * Iceberg 命名空间 / 表标识符与 Snowflake 三级标识符之间的转换工具类。
+ *
+ * <p>所属模块：iceberg-snowflake（Iceberg 与 Snowflake 目录集成模块；本类是 Iceberg 通用 Namespace/TableIdentifier 与
+ * Snowflake 专属 {@link SnowflakeIdentifier} 之间的桥梁）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 Iceberg {@link Namespace}（最多两级）映射为 {@link SnowflakeIdentifier}（ROOT / DATABASE / SCHEMA）。
+ *   <li>将 Iceberg {@link TableIdentifier} 映射为 {@link SnowflakeIdentifier}（TABLE 类型）。
+ *   <li>提供反向转换：Snowflake 标识符还原为 Iceberg Namespace / TableIdentifier。
+ * </ul>
+ *
+ * <p>设计意图：SnowflakeCatalog 仅支持两级命名空间（database.schema），与 Iceberg Namespace
+ * 的层级直接对应。集中所有层级校验与转换逻辑于此类，避免在 catalog 与 client 中重复解析。
+ *
+ * <p>上下游关系：被 {@link SnowflakeCatalog}、{@link SnowflakeTableOperations} 调用； 依赖 iceberg-api 的 {@link
+ * Namespace} 与 {@link TableIdentifier}。
+ */
 class NamespaceHelpers {
+  /** Snowflake 支持的最大命名空间深度（database + schema = 2 级）。 */
   private static final int MAX_NAMESPACE_DEPTH = 2;
+  /** 根命名空间层级（长度为 0，表示账户根）。 */
   private static final int NAMESPACE_ROOT_LEVEL = 0;
+  /** 数据库层级（命名空间长度为 1）。 */
   private static final int NAMESPACE_DB_LEVEL = 1;
+  /** Schema 层级（命名空间长度为 2）。 */
   private static final int NAMESPACE_SCHEMA_LEVEL = 2;
 
   private NamespaceHelpers() {}
 
   /**
-   * Converts a Namespace into a SnowflakeIdentifier representing ROOT, a DATABASE, or a SCHEMA.
+   * 将 Iceberg {@link Namespace} 转换为 {@link SnowflakeIdentifier}。
    *
-   * @throws IllegalArgumentException if the namespace is not a supported depth.
+   * <p>逻辑：按命名空间长度映射——0 级为 ROOT，1 级为 DATABASE，2 级为 SCHEMA； 超过 2 级则抛出 {@link
+   * IllegalArgumentException}，因为 Snowflake 不支持更深的命名空间。
+   *
+   * @param namespace Iceberg 命名空间
+   * @return 对应的 Snowflake 标识符
+   * @throws IllegalArgumentException 命名空间深度超过 {@link #MAX_NAMESPACE_DEPTH}
    */
   public static SnowflakeIdentifier toSnowflakeIdentifier(Namespace namespace) {
     switch (namespace.length()) {
@@ -53,8 +82,14 @@ class NamespaceHelpers {
   }
 
   /**
-   * Converts a TableIdentifier into a SnowflakeIdentifier of type TABLE; the identifier must have
-   * exactly the right namespace depth to represent a fully-qualified Snowflake table identifier.
+   * 将 Iceberg {@link TableIdentifier} 转换为 TABLE 类型的 {@link SnowflakeIdentifier}。
+   *
+   * <p>逻辑：先将其 namespace 部分转换为 Snowflake 标识符，再校验该标识符必须为 SCHEMA 层级 （即表必须位于 database.schema
+   * 下），最后拼上表名构造 TABLE 标识符。
+   *
+   * @param identifier Iceberg 表标识符，其 namespace 必须恰好为两级
+   * @return TABLE 类型的 Snowflake 标识符
+   * @throws IllegalArgumentException namespace 部分不是 SCHEMA 层级
    */
   public static SnowflakeIdentifier toSnowflakeIdentifier(TableIdentifier identifier) {
     SnowflakeIdentifier namespaceScope = toSnowflakeIdentifier(identifier.namespace());
@@ -68,8 +103,13 @@ class NamespaceHelpers {
   }
 
   /**
-   * Converts a SnowflakeIdentifier of type ROOT, DATABASE, or SCHEMA into an equivalent Iceberg
-   * Namespace; throws IllegalArgumentException if not an appropriate type.
+   * 将 ROOT / DATABASE / SCHEMA 类型的 {@link SnowflakeIdentifier} 转换为 Iceberg {@link Namespace}。
+   *
+   * <p>逻辑：ROOT 映射为空命名空间，DATABASE 映射为单级命名空间，SCHEMA 映射为两级命名空间； TABLE 类型不支持转换并抛出异常。
+   *
+   * @param identifier Snowflake 标识符，类型须为 ROOT / DATABASE / SCHEMA
+   * @return 对应的 Iceberg 命名空间
+   * @throws IllegalArgumentException 标识符类型不是 ROOT / DATABASE / SCHEMA
    */
   public static Namespace toIcebergNamespace(SnowflakeIdentifier identifier) {
     switch (identifier.type()) {
@@ -86,8 +126,11 @@ class NamespaceHelpers {
   }
 
   /**
-   * Converts a SnowflakeIdentifier to an equivalent Iceberg TableIdentifier; the identifier must be
-   * of type TABLE.
+   * 将 TABLE 类型的 {@link SnowflakeIdentifier} 转换为 Iceberg {@link TableIdentifier}。
+   *
+   * @param identifier Snowflake 标识符，类型必须为 TABLE
+   * @return 对应的 Iceberg 表标识符（namespace 为 database.schema）
+   * @throws IllegalArgumentException 标识符类型不是 TABLE
    */
   public static TableIdentifier toIcebergTableIdentifier(SnowflakeIdentifier identifier) {
     Preconditions.checkArgument(

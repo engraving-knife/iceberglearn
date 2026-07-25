@@ -21,7 +21,13 @@ package org.apache.iceberg.flink.source.assigner;
 import java.util.Collection;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 
-/** Create simple assigner that hands out splits without any guarantee in order or locality. */
+/**
+ * 简单分片分配器工厂，创建无序分配的 SplitAssigner。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：构造 DefaultSplitAssigner 不设置排序。
+ *
+ * <p>设计意图：实现 SplitAssignerFactory；被 IcebergSource 调用。
+ */
 public class SimpleSplitAssignerFactory implements SplitAssignerFactory {
   public SimpleSplitAssignerFactory() {}
 

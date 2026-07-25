@@ -25,6 +25,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.functions.UnboundFunction;
 
+/**
+ * Iceberg Spark 内置函数注册表。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），functions 子包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>维护 Iceberg 暴露给 Spark SQL 的函数映射（iceberg_version、years、months、days、hours、bucket、truncate）。
+ *   <li>提供按名称（大小写不敏感）加载未绑定函数 {@link UnboundFunction} 的能力。
+ *   <li>提供按函数实现类反查函数（用于 Spark codegen 场景）。
+ * </ul>
+ *
+ * <p>设计意图：用不可变 Map 静态注册所有函数，保证线程安全；函数名小写化以匹配 Spark 大小写不敏感行为； 同时维护 Class -> Function 映射以支持 codegen
+ * 时通过声明类反查。函数通过 system 命名空间访问， 命名空间解析由 BaseCatalog 处理，故 list 只返回名称列表。
+ *
+ * <p>上下游关系：被 Iceberg Spark catalog 调用以加载函数；上游是各 *Function 实现，下游是 Spark SQL 调用方。
+ */
 public class SparkFunctions {
 
   private SparkFunctions() {}
@@ -55,15 +73,26 @@ public class SparkFunctions {
   // catalog name, e.g. my_hadoop_catalog.iceberg_version().
   // As namespace resolution is handled by those rules in BaseCatalog, a list of names
   // alone is returned.
+  /** 返回所有已注册函数名列表（不可变）。 */
   public static List<String> list() {
     return FUNCTION_NAMES;
   }
 
+  /** 按名称加载函数（大小写不敏感），未注册返回 null。 */
   public static UnboundFunction load(String name) {
     // function resolution is case-insensitive to match the existing Spark behavior for functions
     return FUNCTIONS.get(name.toLowerCase(Locale.ROOT));
   }
 
+  /**
+   * 按函数实现类反查未绑定函数。
+   *
+   * <p>逻辑：取 functionClass 的声明类（外部类），在 CLASS_TO_FUNCTIONS 中查找。 用于 Spark codegen 场景通过内部实现类反查到外层
+   * UnboundFunction。
+   *
+   * @param functionClass 函数实现类（通常是 BoundFunction 内部类）
+   * @return 对应的 UnboundFunction，无声明类时返回 null
+   */
   public static UnboundFunction loadFunctionByClass(Class<?> functionClass) {
     Class<?> declaringClass = functionClass.getDeclaringClass();
     if (declaringClass == null) {

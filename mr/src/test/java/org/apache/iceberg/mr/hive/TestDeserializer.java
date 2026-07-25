@@ -39,6 +39,13 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDeserializer 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestDeserializer 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDeserializer {
   private static final Schema CUSTOMER_SCHEMA =
       new Schema(
@@ -52,6 +59,11 @@ public class TestDeserializer {
               PrimitiveObjectInspectorFactory.writableLongObjectInspector,
               PrimitiveObjectInspectorFactory.writableStringObjectInspector));
 
+  /**
+   * 测试场景：Schema Deserialize。
+   *
+   * <p>验证该方法在 Schema Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaDeserialize() {
     StandardStructObjectInspector schemaObjectInspector =
@@ -77,6 +89,11 @@ public class TestDeserializer {
     Assert.assertEquals(expected, actual);
   }
 
+  /**
+   * 测试场景：Struct Deserialize。
+   *
+   * <p>验证该方法在 Struct Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructDeserialize() {
     Deserializer deserializer =
@@ -95,6 +112,11 @@ public class TestDeserializer {
     Assert.assertEquals(expected, actual);
   }
 
+  /**
+   * 测试场景：Map Deserialize。
+   *
+   * <p>验证该方法在 Map Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapDeserialize() {
     Schema schema =
@@ -130,6 +152,11 @@ public class TestDeserializer {
     Assert.assertEquals(expected, actual);
   }
 
+  /**
+   * 测试场景：List Deserialize。
+   *
+   * <p>验证该方法在 List Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testListDeserialize() {
     Schema schema =
@@ -158,6 +185,11 @@ public class TestDeserializer {
     Assert.assertEquals(expected, actual);
   }
 
+  /**
+   * 测试场景：Deserialize Every Supported Type。
+   *
+   * <p>验证该方法在 Deserialize Every Supported Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeserializeEverySupportedType() {
     Assume.assumeFalse(
@@ -178,6 +210,11 @@ public class TestDeserializer {
     HiveIcebergTestUtils.assertEquals(expected, actual);
   }
 
+  /**
+   * 测试场景：Null Deserialize。
+   *
+   * <p>验证该方法在 Null Deserialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullDeserialize() {
     Deserializer deserializer =

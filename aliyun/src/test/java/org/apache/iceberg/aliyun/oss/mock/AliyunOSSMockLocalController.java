@@ -53,16 +53,25 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestController
+/**
+ * 文件级说明：测试 AliyunOSSMockLocalController 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 AliyunOSSMockLocalController 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class AliyunOSSMockLocalController {
   private static final Logger LOG = LoggerFactory.getLogger(AliyunOSSMockLocalController.class);
 
   @Autowired private AliyunOSSMockLocalStore localStore;
 
+  /** 辅助方法：filenameFrom。 */
   private static String filenameFrom(@PathVariable String bucketName, HttpServletRequest request) {
     String requestUri = request.getRequestURI();
     return requestUri.substring(requestUri.indexOf(bucketName) + bucketName.length() + 1);
   }
 
+  /** 辅助方法：putBucket。 */
   @RequestMapping(value = "/{bucketName}", method = RequestMethod.PUT, produces = "application/xml")
   public void putBucket(@PathVariable String bucketName) throws IOException {
     if (localStore.getBucket(bucketName) != null) {
@@ -77,12 +86,14 @@ public class AliyunOSSMockLocalController {
       value = "/{bucketName}",
       method = RequestMethod.DELETE,
       produces = "application/xml")
+  /** 辅助方法：deleteBucket。 */
   public void deleteBucket(@PathVariable String bucketName) throws IOException {
     verifyBucketExistence(bucketName);
 
     localStore.deleteBucket(bucketName);
   }
 
+  /** 辅助方法：putObject。 */
   @RequestMapping(value = "/{bucketName:.+}/**", method = RequestMethod.PUT)
   public ResponseEntity<String> putObject(
       @PathVariable String bucketName, HttpServletRequest request) {
@@ -109,6 +120,7 @@ public class AliyunOSSMockLocalController {
     }
   }
 
+  /** 辅助方法：deleteObject。 */
   @RequestMapping(value = "/{bucketName:.+}/**", method = RequestMethod.DELETE)
   public void deleteObject(@PathVariable String bucketName, HttpServletRequest request) {
     verifyBucketExistence(bucketName);
@@ -116,6 +128,7 @@ public class AliyunOSSMockLocalController {
     localStore.deleteObject(bucketName, filenameFrom(bucketName, request));
   }
 
+  /** 辅助方法：getObjectMeta。 */
   @RequestMapping(value = "/{bucketName:.+}/**", method = RequestMethod.HEAD)
   public ResponseEntity<String> getObjectMeta(
       @PathVariable String bucketName, HttpServletRequest request) {
@@ -135,6 +148,7 @@ public class AliyunOSSMockLocalController {
       value = "/{bucketName:.+}/**",
       method = RequestMethod.GET,
       produces = "application/xml")
+  /** 辅助方法：getObject。 */
   public void getObject(
       @PathVariable String bucketName,
       @RequestHeader(value = "Range", required = false) Range range,
@@ -196,6 +210,7 @@ public class AliyunOSSMockLocalController {
     }
   }
 
+  /** 辅助方法：verifyBucketExistence。 */
   private void verifyBucketExistence(String bucketName) {
     Bucket bucket = localStore.getBucket(bucketName);
     if (bucket == null) {
@@ -204,6 +219,7 @@ public class AliyunOSSMockLocalController {
     }
   }
 
+  /** 辅助方法：verifyObjectExistence。 */
   private ObjectMetadata verifyObjectExistence(String bucketName, String filename) {
     ObjectMetadata objectMetadata = null;
     try {
@@ -223,6 +239,7 @@ public class AliyunOSSMockLocalController {
   @ControllerAdvice
   public static class OSSMockExceptionHandler extends ResponseEntityExceptionHandler {
 
+    /** 辅助方法：handleOSSException。 */
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleOSSException(OssException ex) {
       LOG.info("Responding with status {} - {}, {}", ex.status, ex.code, ex.message);
@@ -244,6 +261,7 @@ public class AliyunOSSMockLocalController {
     private final String code;
     private final String message;
 
+    /** 辅助方法：OssException。 */
     public OssException(final int status, final String code, final String message) {
       super(message);
       this.status = status;
@@ -251,10 +269,12 @@ public class AliyunOSSMockLocalController {
       this.message = message;
     }
 
+    /** 辅助方法：getCode。 */
     public String getCode() {
       return code;
     }
 
+    /** 辅助方法：getMessage。 */
     @Override
     public String getMessage() {
       return message;
@@ -269,10 +289,12 @@ public class AliyunOSSMockLocalController {
     @JsonProperty("Message")
     private String message;
 
+    /** 辅助方法：setCode。 */
     public void setCode(String code) {
       this.code = code;
     }
 
+    /** 辅助方法：setMessage。 */
     public void setMessage(String message) {
       this.message = message;
     }
@@ -369,6 +391,7 @@ public class AliyunOSSMockLocalController {
       return maxCount;
     }
 
+    /** 辅助方法：isMaxLength。 */
     private boolean isMaxLength() {
       return maxCount >= 0 && count >= maxCount;
     }

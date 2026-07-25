@@ -34,6 +34,13 @@ import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.Tasks;
 
+/**
+ * 分区表增量写入器，按分区值路由数据到对应的数据文件。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：缓存行数据、计算分区、按分区切换 TaskWriter。
+ *
+ * <p>设计意图：继承 BaseDeltaTaskWriter；被 RowDataTaskWriterFactory 创建。
+ */
 class PartitionedDeltaWriter extends BaseDeltaTaskWriter {
 
   private final PartitionKey partitionKey;

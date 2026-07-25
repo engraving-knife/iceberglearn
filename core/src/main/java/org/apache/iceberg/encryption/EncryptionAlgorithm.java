@@ -18,26 +18,30 @@
  */
 package org.apache.iceberg.encryption;
 
-/** Algorithm supported for file encryption. */
+/**
+ * 文件加密支持的算法枚举。
+ *
+ * <p>所属模块：iceberg-core 的 encryption 包，定义可用于内容文件加密的对称算法种类。 主要被具备原生加密能力的文件格式（Parquet/ORC）相关参数对象使用，见
+ * {@link NativeFileCryptoParameters}。
+ *
+ * <p>设计意图：不同算法在“机密性 / 完整性 / 性能”之间做不同权衡，由调用方按场景选择； GCM 系列同时提供机密性与完整性，CTR 仅提供机密性但吞吐更高。
+ */
 public enum EncryptionAlgorithm {
   /**
-   * Counter mode (CTR) allows fast encryption with high throughput. It is an encryption only cipher
-   * and does not ensure content integrity. Inputs to CTR cipher are: 1. encryption key 2. a 16-byte
-   * initialization vector (12-byte nonce, 4-byte counter) 3. plaintext data
+   * AES 计数器模式（CTR）：吞吐高、加密速度快，但仅提供机密性、不保证内容完整性。
+   *
+   * <p>CTR Cipher 的输入包括：1) 加密密钥；2) 16 字节初始化向量（12 字节 Nonce + 4 字节计数器）；3) 明文数据。
    */
   AES_CTR,
   /**
-   * Galois/Counter mode (GCM) combines CTR with the new Galois mode of authentication. It not only
-   * ensures data confidentiality, but also ensures data integrity. Inputs to GCM cipher are: 1.
-   * encryption key 2. a 12-byte initialization vector 3. additional authenticated data 4. plaintext
-   * data
+   * AES 伽罗瓦/计数器模式（GCM）：在 CTR 基础上叠加 Galois 认证，同时保证数据机密性与完整性。
+   *
+   * <p>GCM Cipher 的输入包括：1) 加密密钥；2) 12 字节初始化向量；3) 附加认证数据（AAD）；4) 明文数据。
    */
   AES_GCM,
   /**
-   * A combination of GCM and CTR that can be used for file types like Parquet, so that all modules
-   * except pages are encrypted by GCM to ensure integrity, and CTR is used for efficient encryption
-   * of bulk data. The tradeoff is that attackers would be able to tamper page data encrypted with
-   * CTR.
+   * GCM 与 CTR 的混合模式，适用于 Parquet 等文件格式：除 page 外的所有模块用 GCM 加密以保证完整性， page 内批量数据用 CTR
+   * 加密以提升性能。权衡是攻击者可能篡改 CTR 加密的 page 数据。
    */
   AES_GCM_CTR
 }

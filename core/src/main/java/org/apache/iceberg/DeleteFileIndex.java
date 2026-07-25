@@ -62,11 +62,36 @@ import org.apache.iceberg.util.StructLikeWrapper;
 import org.apache.iceberg.util.Tasks;
 
 /**
- * An index of {@link DeleteFile delete files} by sequence number.
+ * 删除文件索引：按序列号组织 {@link DeleteFile}，用于快速查找对某个数据文件生效的删除文件。
  *
- * <p>Use {@link #builderFor(FileIO, Iterable)} to construct an index, and {@link #forDataFile(long,
- * DataFile)} or {@link #forEntry(ManifestEntry)} to get the delete files to apply to a given data
- * file.
+ * <p>所属模块：iceberg-core，是 Iceberg 读取流程中"将删除文件匹配到数据文件"的核心数据结构。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>按 (specId, partition) 维度对删除文件分组，并按 applySequenceNumber 排序。
+ *   <li>区分全局删除（未分区表的等值删除）与分区级删除。
+ *   <li>对每个数据文件，根据其序列号与分区定位需应用的删除文件集合。
+ *   <li>可选地利用列统计（lower/upper bounds）进一步过滤不可能匹配的删除文件，减少 IO。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>序列号过滤：删除文件只对序列号大于等于其 applySequenceNumber 的数据文件生效， 通过 {@link DeleteFileGroup#filter(long)}
+ *       二分查找快速裁剪。
+ *   <li>等值删除的 applySequenceNumber 取 dataSequenceNumber - 1，因为等值删除对同事务内 新增的数据文件不生效；位置删除则取
+ *       dataSequenceNumber 本身。
+ *   <li>列统计过滤（{@link #canContainDeletesForFile(DataFile, IndexedDeleteFile)}）：
+ *       通过比较数据文件与删除文件的列值范围，提前剔除不可能命中数据文件的删除文件。
+ *   <li>{@link StructLikeWrapper} 使用 ThreadLocal 缓存以避免热点分区查找时的对象分配。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@code Builder#build()} 构建，被 {@code ManifestGroup}、 {@link PositionDeletesTable}
+ * 等扫描计划使用，结果交由引擎层应用位置/等值删除。
+ *
+ * <p>使用 {@link #builderFor(FileIO, Iterable)} 构建索引，用 {@link #forDataFile(long, DataFile)} 或 {@link
+ * #forEntry(ManifestEntry)} 获取对某数据文件生效的删除文件。
  */
 class DeleteFileIndex {
   private static final DeleteFile[] NO_DELETES = new DeleteFile[0];
@@ -88,6 +113,14 @@ class DeleteFileIndex {
     this(specs, index(specs, globalSeqs, globalDeletes), index(specs, deletesByPartition), true);
   }
 
+  /**
+   * 内部构造：构建已分组的删除文件索引。
+   *
+   * @param specs 各 specId 对应的分区 spec
+   * @param globalDeletes 全局删除文件组（未分区表的等值删除），可为 null
+   * @param deletesByPartition 按分区分组的删除文件组
+   * @param useColumnStatsFiltering 是否启用列统计过滤
+   */
   private DeleteFileIndex(
       Map<Integer, PartitionSpec> specs,
       DeleteFileGroup globalDeletes,
@@ -103,10 +136,16 @@ class DeleteFileIndex {
     this.useColumnStatsFiltering = useColumnStatsFiltering;
   }
 
+  /** 返回索引是否为空（无任何删除文件）。 */
   public boolean isEmpty() {
     return isEmpty;
   }
 
+  /**
+   * 返回索引中所有被引用的删除文件（全局 + 各分区），用于统计与 IO 计划。
+   *
+   * @return 删除文件可迭代集合
+   */
   public Iterable<DeleteFile> referencedDeleteFiles() {
     Iterable<DeleteFile> deleteFiles = Collections.emptyList();
 
@@ -138,14 +177,43 @@ class DeleteFileIndex {
     return Pair.of(specId, wrapper.get().set(struct));
   }
 
+  /**
+   * 根据数据文件条目（含其序列号）查询需应用的删除文件。
+   *
+   * @param entry 数据文件 manifest 条目
+   * @return 删除文件数组
+   */
   DeleteFile[] forEntry(ManifestEntry<DataFile> entry) {
     return forDataFile(entry.dataSequenceNumber(), entry.file());
   }
 
+  /**
+   * 根据数据文件查询需应用的删除文件，使用文件自身的 dataSequenceNumber。
+   *
+   * @param file 数据文件
+   * @return 删除文件数组
+   */
   DeleteFile[] forDataFile(DataFile file) {
     return forDataFile(file.dataSequenceNumber(), file);
   }
 
+  /**
+   * 根据数据文件与指定序列号查询需应用的删除文件。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>若索引为空，直接返回 {@link #NO_DELETES}。
+   *   <li>计算数据文件分区键，从 {@code deletesByPartition} 取分区级删除组。
+   *   <li>若全局与分区删除均不存在，返回 {@link #NO_DELETES}。
+   *   <li>若启用列统计过滤，调用 {@link #limitWithColumnStatsFiltering}； 否则调用 {@link
+   *       #limitWithoutColumnStatsFiltering} 仅按序列号过滤。
+   * </ul>
+   *
+   * @param sequenceNumber 数据文件序列号
+   * @param file 数据文件
+   * @return 删除文件数组
+   */
   DeleteFile[] forDataFile(long sequenceNumber, DataFile file) {
     if (isEmpty) {
       return NO_DELETES;
@@ -405,14 +473,34 @@ class DeleteFileIndex {
     return indexed;
   }
 
+  /**
+   * 创建基于 manifest 的索引构建器。
+   *
+   * @param io 文件 IO 句柄
+   * @param deleteManifests 删除 manifest 集合
+   * @return 新的 {@link Builder}
+   */
   static Builder builderFor(FileIO io, Iterable<ManifestFile> deleteManifests) {
     return new Builder(io, Sets.newHashSet(deleteManifests));
   }
 
+  /**
+   * 创建基于已有删除文件集合的索引构建器。
+   *
+   * @param deleteFiles 删除文件集合
+   * @return 新的 {@link Builder}
+   */
   static Builder builderFor(Iterable<DeleteFile> deleteFiles) {
     return new Builder(deleteFiles);
   }
 
+  /**
+   * 删除文件索引构建器：配置过滤条件、序列号下限、并发执行等参数后调用 {@link #build()} 构建索引。
+   *
+   * <p>设计意图：支持从 manifest 或直接从删除文件集合两种来源构建；通过 {@link #filterData(Expression)}、{@link
+   * #filterPartitions(Expression)} 等链式方法配置过滤， 构建时并行读取 manifest 并应用 {@link ManifestEvaluator}
+   * 进行分区级裁剪。
+   */
   static class Builder {
     private final FileIO io;
     private final Set<ManifestFile> deleteManifests;
@@ -512,6 +600,20 @@ class DeleteFileIndex {
       return files;
     }
 
+    /**
+     * 构建删除文件索引。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>从 manifest 并行加载删除文件（或直接使用已有集合），按序列号下限过滤。
+     *   <li>按 (specId, partition) 分组，每组按 applySequenceNumber 排序。
+     *   <li>未分区表的等值删除分离为全局删除组；位置删除留在分区组。
+     *   <li>检测是否有列统计可用以决定是否启用列统计过滤。
+     * </ul>
+     *
+     * @return 构建完成的 {@link DeleteFileIndex}
+     */
     DeleteFileIndex build() {
       Iterable<DeleteFile> files = deleteFiles != null ? filterDeleteFiles() : loadDeleteFiles();
 
@@ -623,6 +725,7 @@ class DeleteFileIndex {
     }
   }
 
+  /** 删除文件组：按 applySequenceNumber 排序的 {@link IndexedDeleteFile} 数组， 支持按序列号二分查找过滤。 */
   // a group of indexed delete files sorted by the sequence number they apply to
   private static class DeleteFileGroup {
     private final long[] seqs;
@@ -682,6 +785,12 @@ class DeleteFileIndex {
     }
   }
 
+  /**
+   * 删除文件包装器：缓存已转换的列边界（lower/upper bounds），加速边界比较。
+   *
+   * <p>设计意图：删除文件的列统计以 {@link ByteBuffer} 存储，频繁比较时需反复反序列化； 本类在首次访问时懒转换并缓存，{@code volatile} +
+   * 双重检查锁保证线程安全。 仅在 {@link DeleteFileIndex} 内部使用。
+   */
   // a delete file wrapper that caches the converted boundaries for faster boundary checks
   // this class is not meant to be exposed beyond the delete file index
   private static class IndexedDeleteFile {

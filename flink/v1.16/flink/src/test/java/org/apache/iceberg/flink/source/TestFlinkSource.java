@@ -30,12 +30,20 @@ import org.apache.iceberg.flink.FlinkSchemaUtil;
 import org.apache.iceberg.flink.TestFixtures;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 文件级说明：测试 TestFlinkSource 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkSource 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public abstract class TestFlinkSource extends TestFlinkScan {
 
   TestFlinkSource(String fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：runWithProjection，run With Projection。 */
   @Override
   protected List<Row> runWithProjection(String... projected) throws Exception {
     TableSchema.Builder builder = TableSchema.builder();
@@ -50,6 +58,7 @@ public abstract class TestFlinkSource extends TestFlinkScan {
     return run(FlinkSource.forRowData().project(builder.build()), Maps.newHashMap(), "", projected);
   }
 
+  /** 辅助方法：runWithFilter，run With Filter。 */
   @Override
   protected List<Row> runWithFilter(Expression filter, String sqlFilter, boolean caseSensitive)
       throws Exception {
@@ -60,6 +69,7 @@ public abstract class TestFlinkSource extends TestFlinkScan {
     return run(builder, options, sqlFilter, "*");
   }
 
+  /** 辅助方法：runWithOptions，run With Options。 */
   @Override
   protected List<Row> runWithOptions(Map<String, String> options) throws Exception {
     FlinkSource.Builder builder = FlinkSource.forRowData();
@@ -80,11 +90,13 @@ public abstract class TestFlinkSource extends TestFlinkScan {
     return run(builder, options, "", "*");
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   protected List<Row> run() throws Exception {
     return run(FlinkSource.forRowData(), Maps.newHashMap(), "", "*");
   }
 
+  /** 辅助方法：run，run。 */
   protected abstract List<Row> run(
       FlinkSource.Builder formatBuilder,
       Map<String, String> sqlOptions,

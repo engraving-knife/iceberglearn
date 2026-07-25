@@ -30,15 +30,25 @@ import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 文件级说明：测试 TestSparkAppenderFactory 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Sparkappenderfactory
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkAppenderFactory extends TestAppenderFactory<InternalRow> {
 
   private final StructType sparkType;
 
+  /** 测试Sparkappenderfactory。 */
   public TestSparkAppenderFactory(String fileFormat, boolean partitioned) {
     super(fileFormat, partitioned);
     this.sparkType = SparkSchemaUtil.convert(SCHEMA);
   }
 
+  /** 创建appenderfactory。 */
   @Override
   protected FileAppenderFactory<InternalRow> createAppenderFactory(
       List<Integer> equalityFieldIds, Schema eqDeleteSchema, Schema posDeleteRowSchema) {
@@ -49,6 +59,7 @@ public class TestSparkAppenderFactory extends TestAppenderFactory<InternalRow> {
         .build();
   }
 
+  /** 创建行。 */
   @Override
   protected InternalRow createRow(Integer id, String data) {
     InternalRow row = new GenericInternalRow(2);
@@ -57,6 +68,7 @@ public class TestSparkAppenderFactory extends TestAppenderFactory<InternalRow> {
     return row;
   }
 
+  /** 期望行集合。 */
   @Override
   protected StructLikeSet expectedRowSet(Iterable<InternalRow> rows) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());

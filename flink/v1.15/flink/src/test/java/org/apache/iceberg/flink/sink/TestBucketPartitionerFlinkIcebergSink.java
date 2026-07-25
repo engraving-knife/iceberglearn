@@ -57,6 +57,14 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+/**
+ * 文件级说明：测试 TestBucketPartitionerFlinkIcebergSink 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestBucketPartitionerFlinkIcebergSink 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestBucketPartitionerFlinkIcebergSink {
 
   private static final int NUMBER_TASK_MANAGERS = 1;
@@ -87,6 +95,7 @@ public class TestBucketPartitionerFlinkIcebergSink {
   private StreamExecutionEnvironment env;
   private TableLoader tableLoader;
 
+  /** 辅助方法：setupEnvironment，setup Environment。 */
   private void setupEnvironment(TableSchemaType tableSchemaType) {
     PartitionSpec partitionSpec = tableSchemaType.getPartitionSpec(numBuckets);
     table =
@@ -105,6 +114,7 @@ public class TestBucketPartitionerFlinkIcebergSink {
     tableLoader = catalogExtension.tableLoader();
   }
 
+  /** 辅助方法：appendRowsToTable，append Rows To Table。 */
   private void appendRowsToTable(List<RowData> allRows) throws Exception {
     DataFormatConverters.RowConverter converter =
         new DataFormatConverters.RowConverter(SimpleDataUtil.FLINK_SCHEMA.getFieldDataTypes());
@@ -138,6 +148,11 @@ public class TestBucketPartitionerFlinkIcebergSink {
   @EnumSource(
       value = TableSchemaType.class,
       names = {"ONE_BUCKET", "IDENTITY_AND_BUCKET"})
+  /**
+   * 测试场景：Send Records To All Buckets Evenly。
+   *
+   * <p>验证该方法在 Send Records To All Buckets Evenly 条件下的行为是否符合预期。
+   */
   public void testSendRecordsToAllBucketsEvenly(TableSchemaType tableSchemaType) throws Exception {
     setupEnvironment(tableSchemaType);
     List<RowData> rows = generateTestDataRows();
@@ -173,6 +188,7 @@ public class TestBucketPartitionerFlinkIcebergSink {
     return TestBucketPartitionerUtil.generateRowsForBucketIdRange(numRowsPerBucket, numBuckets);
   }
 
+  /** 辅助方法：extractPartitionResults，extract Partition Results。 */
   private TableTestStats extractPartitionResults(TableSchemaType tableSchemaType)
       throws IOException {
     int totalRecordCount = 0;

@@ -25,6 +25,12 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.plans.logical.TagOptions
 import org.apache.spark.sql.connector.catalog._
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：创建或替换标签的物理执行节点，调用 Iceberg 表管理标签引用。
+ * <p>设计意图：实现 CreateOrReplaceTag 的物理执行。
+ * <p>上下游关系：由 ExtendedDataSourceV2Strategy 从 CreateOrReplaceTag 创建。
+ */
 
 case class CreateOrReplaceTagExec(
     catalog: TableCatalog,
@@ -38,6 +44,7 @@ case class CreateOrReplaceTagExec(
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行任务。 */
 
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
@@ -77,6 +84,7 @@ case class CreateOrReplaceTagExec(
 
     Nil
   }
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"Create tag: $tag for table: ${ident.quoted}"

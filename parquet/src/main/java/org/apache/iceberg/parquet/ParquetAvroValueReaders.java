@@ -51,9 +51,30 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * 文件级说明：基于 Avro Record 的 Parquet 读取器实现。
+ *
+ * <p>所属模块：iceberg-parquet（Avro 适配层，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：将 Parquet 列式数据读取为 Avro {@link Record}，处理 Iceberg 类型与 Avro/Parquet
+ * 类型的映射（decimal、UUID、string、fixed 等）。
+ *
+ * <p>设计意图：通过 {@link ReadBuilder}（继承 TypeWithSchemaVisitor）联合遍历 Iceberg schema 与 Parquet
+ * schema，为每个字段构造对应 Reader。与 BaseParquetReaders 不同，本类面向 Avro 内存模型，使用 AvroSchemaUtil 将 Iceberg 类型转为
+ * Avro schema。
+ *
+ * <p>上下游关系：被 Parquet 写入/读取流程中需要 Avro 模型的场景调用； 依赖 ParquetValueReaders（基础读取器）、AvroSchemaUtil（类型转换）。
+ */
 public class ParquetAvroValueReaders {
   private ParquetAvroValueReaders() {}
 
+  /**
+   * 构造 Avro Record 的 Parquet 读取器。
+   *
+   * @param expectedSchema 期望读取的 Iceberg schema
+   * @param fileSchema Parquet 文件实际 schema
+   * @return 读取结果为 Avro {@link Record} 的读取器
+   */
   @SuppressWarnings("unchecked")
   public static ParquetValueReader<Record> buildReader(
       org.apache.iceberg.Schema expectedSchema, MessageType fileSchema) {
@@ -62,6 +83,11 @@ public class ParquetAvroValueReaders {
             expectedSchema.asStruct(), fileSchema, new ReadBuilder(expectedSchema, fileSchema));
   }
 
+  /**
+   * 读取器构建器：联合遍历 Iceberg schema 与 Parquet schema，按 Avro 模型构造读取器树。
+   *
+   * <p>设计要点：构造时通过 AvroSchemaUtil 将 Iceberg 类型转为 Avro schema， 供 FixedReader 等需要 Avro schema 的读取器使用。
+   */
   private static class ReadBuilder extends TypeWithSchemaVisitor<ParquetValueReader<?>> {
     private final org.apache.iceberg.Schema schema;
     private final Map<org.apache.iceberg.types.Type, Schema> avroSchemas;
@@ -155,6 +181,17 @@ public class ParquetAvroValueReaders {
           ParquetValueReaders.option(valueType, valueD, valueReader));
     }
 
+    /**
+     * 构建原始类型读取器：按 Parquet 逻辑类型/原始类型分派。
+     *
+     * <p>逻辑：处理 UTF8（String/Utf8 区分 map key）、DECIMAL（INT32/INT64/BINARY）、 FIXED_LEN_BYTE_ARRAY（需
+     * Avro schema）、BINARY（Bytes）、INT32→LONG/FLOAT→DOUBLE 转换等。
+     *
+     * @param expected 期望的 Iceberg 原始类型
+     * @param primitive Parquet 原始类型
+     * @return 对应的读取器
+     * @throws UnsupportedOperationException 若类型不受支持
+     */
     @Override
     public ParquetValueReader<?> primitive(
         org.apache.iceberg.types.Type.PrimitiveType expected, PrimitiveType primitive) {
@@ -235,6 +272,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** Decimal 读取器：将 Parquet Binary 转为 {@link BigDecimal}（按 scale 解码）。 */
   static class DecimalReader extends ParquetValueReaders.PrimitiveReader<BigDecimal> {
     private final int scale;
 
@@ -249,6 +287,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** String 读取器：将 Parquet Binary 按 UTF-8 解码为 Java String。 */
   static class StringReader extends ParquetValueReaders.PrimitiveReader<String> {
     StringReader(ColumnDescriptor desc) {
       super(desc);
@@ -260,6 +299,11 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /**
+   * Utf8 读取器：将 Parquet Binary 解码为 Avro {@link Utf8}。
+   *
+   * <p>设计要点：始终拷贝字节到 Utf8 内部数组，避免复用常量 Binary 的 buffer 导致数据损坏。
+   */
   static class Utf8Reader extends ParquetValueReaders.PrimitiveReader<Utf8> {
     Utf8Reader(ColumnDescriptor desc) {
       super(desc);
@@ -287,6 +331,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** UUID 读取器：将 Parquet Binary（16 字节）转为 {@link UUID}。 */
   static class UUIDReader extends ParquetValueReaders.PrimitiveReader<UUID> {
     UUIDReader(ColumnDescriptor desc) {
       super(desc);
@@ -298,6 +343,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** Fixed 读取器：将 Parquet FIXED_LEN_BYTE_ARRAY 读入 Avro {@link Fixed}。 */
   static class FixedReader extends ParquetValueReaders.PrimitiveReader<Fixed> {
     private final Schema schema;
 
@@ -321,6 +367,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** Time 读取器（毫秒）：将毫秒值转为微秒（×1000）。 */
   public static class TimeMillisReader extends UnboxedReader<Long> {
     TimeMillisReader(ColumnDescriptor desc) {
       super(desc);
@@ -332,6 +379,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** Timestamp 读取器（毫秒）：将毫秒值转为微秒（×1000）。 */
   public static class TimestampMillisReader extends UnboxedReader<Long> {
     TimestampMillisReader(ColumnDescriptor desc) {
       super(desc);
@@ -343,6 +391,7 @@ public class ParquetAvroValueReaders {
     }
   }
 
+  /** Avro Record 读取器：将各字段读取器汇聚到 Avro {@link Record}。 */
   static class RecordReader extends StructReader<Record, Record> {
     private final Schema schema;
 

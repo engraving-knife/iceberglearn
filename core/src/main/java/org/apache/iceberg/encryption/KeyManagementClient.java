@@ -23,73 +23,92 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-/** A minimum client interface to connect to a key management service (KMS). */
+/**
+ * 文件级说明：密钥管理服务（KMS）的最小客户端接口。
+ *
+ * <p>所属模块：iceberg-core（加密包），是 envelope 加密方案中与外部 KMS 交互的抽象边界。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>包装（wrap）：用 KMS 中由 ID 引用的主密钥加密数据密钥（DEK）。
+ *   <li>解包（unwrap）：把已包装的 DEK 还原为明文 DEK。
+ *   <li>可选：在 KMS 服务端生成新密钥并直接返回其明文与包装形式。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>实现 {@link Serializable} 与 {@link Closeable}：客户端实例可能被序列化分发到执行节点， 且可能被多个加密管理器共享，需要可关闭以释放资源。
+ *   <li>批量化解耦：本接口只定义单密钥操作，批量优化由 {@link org.apache.iceberg.encryption.EncryptionManager}
+ *       的批量方法在更上层处理，避免 KMS 接口承担过多职责。
+ *   <li>密钥生成能力可选：{@link #supportsKeyGeneration()} 默认 false，不支持时 Iceberg 退化为本地生成密钥再包装。
+ * </ul>
+ *
+ * <p>上下游关系：由具体 KMS 集成模块实现；被 envelope 加密管理器调用完成 DEK 的包装/解包。
+ */
 interface KeyManagementClient extends Serializable, Closeable {
 
   /**
-   * Wrap a secret key, using a wrapping/master key which is stored in KMS and referenced by an ID.
-   * Wrapping means encryption of the secret key with the master key, and adding optional
-   * KMS-specific metadata that allows the KMS to decrypt the secret key in an unwrapping call.
+   * 用 KMS 中由 {@code wrappingKeyId} 引用的主密钥包装（加密）一个数据密钥。
    *
-   * @param key a secret key being wrapped
-   * @param wrappingKeyId a key ID that represents a wrapping key stored in KMS
-   * @return wrapped key material
+   * <p>包装指用主密钥加密数据密钥，并可附加 KMS 特定元数据，使后续 {@link #unwrapKey} 能还原。
+   *
+   * @param key 待包装的数据密钥
+   * @param wrappingKeyId 主密钥（包装密钥）在 KMS 中的标识
+   * @return 已包装的密钥字节
    */
   ByteBuffer wrapKey(ByteBuffer key, String wrappingKeyId);
 
   /**
-   * Some KMS systems support generation of secret keys inside the KMS server.
+   * 是否支持在 KMS 服务端生成密钥。
    *
-   * @return true if KMS server supports key generation and KeyManagementClient implementation is
-   *     interested to leverage this capability. Otherwise, return false - Iceberg will then
-   *     generate secret keys locally (using the SecureRandom mechanism) and call {@link
-   *     #wrapKey(ByteBuffer, String)} to wrap them in KMS.
+   * <p>返回 true 表示实现希望利用 KMS 的密钥生成能力；返回 false 时 Iceberg 会本地生成数据密钥 （用 {@link
+   * java.security.SecureRandom}）再调用 {@link #wrapKey} 包装。
+   *
+   * @return 支持 KMS 端密钥生成返回 true，否则 false
    */
   default boolean supportsKeyGeneration() {
     return false;
   }
 
   /**
-   * Generate a new secret key in the KMS server, and wrap it using a wrapping/master key which is
-   * stored in KMS and referenced by an ID. This method will be called only if supportsKeyGeneration
-   * returns true.
+   * 在 KMS 服务端生成新数据密钥，并用 {@code wrappingKeyId} 引用的主密钥包装。
    *
-   * @param wrappingKeyId a key ID that represents a wrapping key stored in KMS
-   * @return key in two forms: raw, and wrapped with the given wrappingKeyId
+   * <p>仅当 {@link #supportsKeyGeneration()} 返回 true 时才会被调用。
+   *
+   * @param wrappingKeyId 主密钥（包装密钥）在 KMS 中的标识
+   * @return 同时包含明文密钥与已包装密钥的 {@link KeyGenerationResult}
    */
   default KeyGenerationResult generateKey(String wrappingKeyId) {
     throw new UnsupportedOperationException("Key generation is not supported in this KmsClient");
   }
 
   /**
-   * Unwrap a secret key, using a wrapping/master key which is stored in KMS and referenced by an
-   * ID.
+   * 用 KMS 中由 {@code wrappingKeyId} 引用的主密钥解包（解密）一个已包装的数据密钥。
    *
-   * @param wrappedKey wrapped key material (encrypted key and optional KMS metadata, returned by
-   *     the wrapKey method)
-   * @param wrappingKeyId a key ID that represents a wrapping key stored in KMS
-   * @return raw key bytes
+   * @param wrappedKey 已包装的密钥字节（{@link #wrapKey} 的返回值，含密文与可选 KMS 元数据）
+   * @param wrappingKeyId 主密钥（包装密钥）在 KMS 中的标识
+   * @return 明文数据密钥字节
    */
   ByteBuffer unwrapKey(ByteBuffer wrappedKey, String wrappingKeyId);
 
   /**
-   * Initialize the KMS client with given properties.
+   * 用给定属性初始化 KMS 客户端。
    *
-   * @param properties kms client properties
+   * @param properties KMS 客户端配置属性
    */
   void initialize(Map<String, String> properties);
 
   /**
-   * Close KMS Client to release underlying resources, this could be triggered in different threads
-   * when KmsClient is shared by multiple encryption managers.
+   * 关闭 KMS 客户端以释放底层资源。
+   *
+   * <p>当客户端被多个加密管理器共享时，可能在不同的线程中被触发关闭。
    */
   @Override
   default void close() {}
 
-  /**
-   * For KMS systems that support key generation, this class keeps the key generation result - the
-   * raw secret key, and its wrap.
-   */
+  /** 对于支持密钥生成的 KMS，承载生成结果：明文密钥与其包装形式。 */
   class KeyGenerationResult {
     private final ByteBuffer key;
     private final ByteBuffer wrappedKey;
@@ -99,10 +118,12 @@ interface KeyManagementClient extends Serializable, Closeable {
       this.wrappedKey = wrappedKey;
     }
 
+    /** 返回明文数据密钥。 */
     public ByteBuffer key() {
       return key;
     }
 
+    /** 返回已包装的数据密钥。 */
     public ByteBuffer wrappedKey() {
       return wrappedKey;
     }

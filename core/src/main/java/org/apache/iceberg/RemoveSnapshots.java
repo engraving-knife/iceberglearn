@@ -56,6 +56,33 @@ import org.apache.iceberg.util.ThreadPools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 快照过期实现：根据保留策略（年龄、最小数量、ref 年龄）移除不再需要的快照及其文件。
+ *
+ * <p>所属模块：iceberg-core（核心实现层），是 {@link ExpireSnapshots} API 的实现类。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>按 {@code max-snapshot-age-ms}、{@code min-snapshots-to-keep}、{@code max-ref-age-ms} 等表属性与
+ *       ref 配置计算需保留的快照集合。
+ *   <li>识别并移除所有分支/tag 不再引用的快照，更新表元数据。
+ *   <li>提交元数据后，按策略（增量或可达性）清理对应的数据文件、manifest 与 manifest list。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>过期分两阶段：先 {@link #apply()} 计算并提交新元数据（移除快照引用）， 再 {@link #cleanExpiredSnapshots()}
+ *       物理删除文件，保证元数据先行、清理可重试。
+ *   <li>支持增量清理（{@link IncrementalFileCleanup}）与可达性清理（{@link ReachableFileCleanup}）两种策略： 单 ref
+ *       时默认增量；多 ref 时使用可达性清理以保证安全。
+ *   <li>GC 开关：构造方法校验 {@code gc.enabled}，避免误删被其他表引用的文件。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link BaseTable#expireSnapshots()} 创建；底层依赖 {@link TableOperations} 提交元数据，依赖 {@link
+ * FileCleanupStrategy} 执行物理文件删除。
+ */
 @SuppressWarnings("UnnecessaryAnonymousClass")
 class RemoveSnapshots implements ExpireSnapshots {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveSnapshots.class);
@@ -85,6 +112,14 @@ class RemoveSnapshots implements ExpireSnapshots {
   private ExecutorService planExecutorService = ThreadPools.getWorkerPool();
   private Boolean incrementalCleanup;
 
+  /**
+   * 构造方法。
+   *
+   * <p>逻辑：保存 ops 与当前元数据；校验 GC 已启用；从表属性读取默认过期阈值 （maxSnapshotAge、minSnapshots、maxRefAge）。
+   *
+   * @param ops 表操作接口
+   * @throws ValidationException 当 GC 未启用时抛出
+   */
   RemoveSnapshots(TableOperations ops) {
     this.ops = ops;
     this.base = ops.current();
@@ -106,12 +141,14 @@ class RemoveSnapshots implements ExpireSnapshots {
         PropertyUtil.propertyAsLong(base.properties(), MAX_REF_AGE_MS, MAX_REF_AGE_MS_DEFAULT);
   }
 
+  /** 设置是否在过期快照后清理物理文件（默认 true）。 */
   @Override
   public ExpireSnapshots cleanExpiredFiles(boolean clean) {
     this.cleanExpiredFiles = clean;
     return this;
   }
 
+  /** 指定要过期的具体快照 id。 */
   @Override
   public ExpireSnapshots expireSnapshotId(long expireSnapshotId) {
     LOG.info("Expiring snapshot with id: {}", expireSnapshotId);
@@ -119,6 +156,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return this;
   }
 
+  /** 过期时间戳早于指定值的快照。 */
   @Override
   public ExpireSnapshots expireOlderThan(long timestampMillis) {
     LOG.info(
@@ -129,6 +167,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return this;
   }
 
+  /** 每个分支至少保留最近 N 个快照。 */
   @Override
   public ExpireSnapshots retainLast(int numSnapshots) {
     Preconditions.checkArgument(
@@ -139,24 +178,34 @@ class RemoveSnapshots implements ExpireSnapshots {
     return this;
   }
 
+  /** 设置自定义删除回调（替代默认 fileIO.deleteFile）。 */
   @Override
   public ExpireSnapshots deleteWith(Consumer<String> newDeleteFunc) {
     this.deleteFunc = newDeleteFunc;
     return this;
   }
 
+  /** 设置执行删除操作的线程池。 */
   @Override
   public ExpireSnapshots executeDeleteWith(ExecutorService executorService) {
     this.deleteExecutorService = executorService;
     return this;
   }
 
+  /** 设置规划（读取 manifest）使用的线程池。 */
   @Override
   public ExpireSnapshots planWith(ExecutorService executorService) {
     this.planExecutorService = executorService;
     return this;
   }
 
+  /**
+   * 计算过期结果但不提交：返回被移除的快照列表。
+   *
+   * <p>逻辑：调用 {@link #internalApply()} 计算更新后的元数据，对比 before/after 快照列表得到差集。
+   *
+   * @return 被过期的快照列表
+   */
   @Override
   public List<Snapshot> apply() {
     TableMetadata updated = internalApply();
@@ -166,6 +215,13 @@ class RemoveSnapshots implements ExpireSnapshots {
     return removed;
   }
 
+  /**
+   * 计算更新后的表元数据（不提交）。
+   *
+   * <p>逻辑：计算保留的 ref、保留的分支快照、未被引用但未过期的快照； 把其余快照加入 idsToRemove 并从元数据构建器中移除。
+   *
+   * @return 更新后的表元数据
+   */
   private TableMetadata internalApply() {
     this.base = ops.refresh();
     if (base.snapshots().isEmpty()) {
@@ -210,6 +266,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return updatedMetaBuilder.build();
   }
 
+  /** 计算保留的 ref：main 始终保留；其余按 ref 的 maxRefAgeMs 与当前时间比较决定是否保留。 */
   private Map<String, SnapshotRef> computeRetainedRefs(Map<String, SnapshotRef> refs) {
     Map<String, SnapshotRef> retainedRefs = Maps.newHashMap();
     for (Map.Entry<String, SnapshotRef> refEntry : refs.entrySet()) {
@@ -235,6 +292,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return retainedRefs;
   }
 
+  /** 汇总所有分支需保留的快照：对每个分支按其 maxSnapshotAgeMs/minSnapshotsToKeep 配置保留。 */
   private Set<Long> computeAllBranchSnapshotsToRetain(Collection<SnapshotRef> refs) {
     Set<Long> branchSnapshotsToRetain = Sets.newHashSet();
     for (SnapshotRef ref : refs) {
@@ -252,6 +310,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return branchSnapshotsToRetain;
   }
 
+  /** 沿祖先链保留快照：至少保留 minSnapshotsToKeep 个，或时间戳不早于 expireSnapshotsOlderThan 的。 */
   private Set<Long> computeBranchSnapshotsToRetain(
       long snapshot, long expireSnapshotsOlderThan, int minSnapshotsToKeep) {
     Set<Long> idsToRetain = Sets.newHashSet();
@@ -267,6 +326,7 @@ class RemoveSnapshots implements ExpireSnapshots {
     return idsToRetain;
   }
 
+  /** 计算未被任何 ref 引用但仍需保留的快照：未被引用且时间戳不早于默认过期阈值。 */
   private Set<Long> unreferencedSnapshotsToRetain(Collection<SnapshotRef> refs) {
     Set<Long> referencedSnapshots = Sets.newHashSet();
     for (SnapshotRef ref : refs) {
@@ -291,6 +351,14 @@ class RemoveSnapshots implements ExpireSnapshots {
     return snapshotsToRetain;
   }
 
+  /**
+   * 提交快照过期。
+   *
+   * <p>逻辑：使用 {@link Tasks} 重试机制提交 {@link #internalApply()} 计算的元数据； 提交成功后若 cleanExpiredFiles 为
+   * true，则调用 {@link #cleanExpiredSnapshots()} 清理文件。
+   *
+   * @throws CommitFailedException 提交冲突时抛出（会重试）
+   */
   @Override
   public void commit() {
     Tasks.foreach(ops)
@@ -313,11 +381,18 @@ class RemoveSnapshots implements ExpireSnapshots {
     }
   }
 
+  /** 显式指定是否使用增量清理策略。 */
   ExpireSnapshots withIncrementalCleanup(boolean useIncrementalCleanup) {
     this.incrementalCleanup = useIncrementalCleanup;
     return this;
   }
 
+  /**
+   * 执行物理文件清理。
+   *
+   * <p>逻辑：刷新当前元数据；若未显式指定 incrementalCleanup，则单 ref 时默认增量、多 ref 时使用可达性清理； 构造对应 {@link
+   * FileCleanupStrategy} 并执行 cleanFiles。
+   */
   private void cleanExpiredSnapshots() {
     TableMetadata current = ops.refresh();
 

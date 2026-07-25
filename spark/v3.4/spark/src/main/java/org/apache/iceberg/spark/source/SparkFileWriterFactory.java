@@ -44,6 +44,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 文件写入器工厂，创建向数据/删除文件写入内容的 FileWriter。
+ *
+ * <p>设计意图：工厂模式，按文件格式与 Schema 构建对应写入器，集成 SparkFileWriterFactory。
+ *
+ * <p>上下游关系：由 SparkWrite / SparkPositionDeltaWrite 使用。
+ */
 class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
   private StructType dataSparkType;
   private StructType equalityDeleteSparkType;
@@ -81,23 +90,23 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     this.positionDeleteSparkType = positionDeleteSparkType;
     this.writeProperties = writeProperties != null ? writeProperties : ImmutableMap.of();
   }
-
+  /** 执行 builderFor 相关操作。 */
   static Builder builderFor(Table table) {
     return new Builder(table);
   }
-
+  /** 执行 configureDataWrite 相关操作。 */
   @Override
   protected void configureDataWrite(Avro.DataWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(dataSparkType()));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configureEqualityDelete 相关操作。 */
   @Override
   protected void configureEqualityDelete(Avro.DeleteWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(equalityDeleteSparkType()));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configurePositionDelete 相关操作。 */
   @Override
   protected void configurePositionDelete(Avro.DeleteWriteBuilder builder) {
     boolean withRow =
@@ -111,20 +120,20 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
 
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configureDataWrite 相关操作。 */
   @Override
   protected void configureDataWrite(Parquet.DataWriteBuilder builder) {
     builder.createWriterFunc(msgType -> SparkParquetWriters.buildWriter(dataSparkType(), msgType));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configureEqualityDelete 相关操作。 */
   @Override
   protected void configureEqualityDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
         msgType -> SparkParquetWriters.buildWriter(equalityDeleteSparkType(), msgType));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configurePositionDelete 相关操作。 */
   @Override
   protected void configurePositionDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -132,26 +141,26 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.transformPaths(path -> UTF8String.fromString(path.toString()));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configureDataWrite 相关操作。 */
   @Override
   protected void configureDataWrite(ORC.DataWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configureEqualityDelete 相关操作。 */
   @Override
   protected void configureEqualityDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.setAll(writeProperties);
   }
-
+  /** 执行 configurePositionDelete 相关操作。 */
   @Override
   protected void configurePositionDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.transformPaths(path -> UTF8String.fromString(path.toString()));
     builder.setAll(writeProperties);
   }
-
+  /** 执行 dataSparkType 相关操作。 */
   private StructType dataSparkType() {
     if (dataSparkType == null) {
       Preconditions.checkNotNull(dataSchema(), "Data schema must not be null");
@@ -160,7 +169,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
 
     return dataSparkType;
   }
-
+  /** 执行 equalityDeleteSparkType 相关操作。 */
   private StructType equalityDeleteSparkType() {
     if (equalityDeleteSparkType == null) {
       Preconditions.checkNotNull(
@@ -170,7 +179,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
 
     return equalityDeleteSparkType;
   }
-
+  /** 执行 positionDeleteSparkType 相关操作。 */
   private StructType positionDeleteSparkType() {
     if (positionDeleteSparkType == null) {
       // wrap the optional row schema into the position delete schema containing path and position

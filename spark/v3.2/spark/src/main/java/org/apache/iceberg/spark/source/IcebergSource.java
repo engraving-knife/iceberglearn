@@ -43,19 +43,11 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * The IcebergSource loads/writes tables with format "iceberg". It can load paths and tables.
+ * Iceberg 表在 Spark DataSource V2 中的实现。
  *
- * <p>How paths/tables are loaded when using spark.read().format("iceberg").path(table)
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 IcebergSource。
  *
- * <p>table = "file:/path/to/table" -&gt; loads a HadoopTable at given path table = "tablename"
- * -&gt; loads currentCatalog.currentNamespace.tablename table = "catalog.tablename" -&gt; load
- * "tablename" from the specified catalog. table = "namespace.tablename" -&gt; load
- * "namespace.tablename" from current catalog table = "catalog.namespace.tablename" -&gt;
- * "namespace.tablename" from the specified catalog. table = "namespace1.namespace2.tablename" -&gt;
- * load "namespace1.namespace2.tablename" from current catalog
- *
- * <p>The above list is in order of priority. For example: a matching catalog will take priority
- * over any namespace resolution.
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
  */
 public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions {
   private static final String DEFAULT_CATALOG_NAME = "default_iceberg";
@@ -69,26 +61,49 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
 
   private static final SparkTableCache TABLE_CACHE = SparkTableCache.get();
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String shortName() {
     return "iceberg";
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public StructType inferSchema(CaseInsensitiveStringMap options) {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public Transform[] inferPartitioning(CaseInsensitiveStringMap options) {
     return getTable(null, null, options).partitioning();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public boolean supportsExternalMetadata() {
     return true;
   }
 
+  /** 返回table。 */
   @Override
   public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> options) {
     Spark3Util.CatalogAndIdentifier catalogIdentifier =
@@ -113,6 +128,7 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
         "Cannot find table for %s.", ident);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Spark3Util.CatalogAndIdentifier catalogAndIdentifier(CaseInsensitiveStringMap options) {
     Preconditions.checkArgument(options.containsKey("path"), "Cannot open table: path is not set");
     SparkSession spark = SparkSession.active();
@@ -164,10 +180,12 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private String pathWithSelector(String path, String selector) {
     return (selector == null) ? path : path + "#" + selector;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Identifier identifierWithSelector(Identifier ident, String selector) {
     if (selector == null) {
       return ident;
@@ -179,16 +197,29 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public Identifier extractIdentifier(CaseInsensitiveStringMap options) {
     return catalogAndIdentifier(options).identifier();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public String extractCatalog(CaseInsensitiveStringMap options) {
     return catalogAndIdentifier(options).catalog().name();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static Long propertyAsLong(CaseInsensitiveStringMap options, String property) {
     String value = options.get(property);
     if (value != null) {
@@ -198,6 +229,7 @@ public class IcebergSource implements DataSourceRegister, SupportsCatalogOptions
     return null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static void setupDefaultSparkCatalogs(SparkSession spark) {
     if (!spark.conf().contains(DEFAULT_CATALOG)) {
       ImmutableMap<String, String> config =

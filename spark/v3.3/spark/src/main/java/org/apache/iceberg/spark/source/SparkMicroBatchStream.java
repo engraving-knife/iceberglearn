@@ -67,6 +67,13 @@ import org.apache.spark.sql.connector.read.streaming.SupportsAdmissionControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现，处理列式批量数据。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkMicroBatchStream。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissionControl {
   private static final Joiner SLASH = Joiner.on("/");
   private static final Logger LOG = LoggerFactory.getLogger(SparkMicroBatchStream.class);
@@ -115,6 +122,11 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     this.skipOverwrite = readConf.streamingSkipOverwriteSnapshots();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Offset latestOffset() {
     table.refresh();
@@ -128,9 +140,17 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
 
     Snapshot latestSnapshot = table.currentSnapshot();
 
+    /** 执行该方法的具体逻辑。 */
     return new StreamingOffset(latestSnapshot.snapshotId(), addedFilesCount(latestSnapshot), false);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param start 参数
+   * @param end 参数
+   * @return 结果对象
+   */
   @Override
   public InputPartition[] planInputPartitions(Offset start, Offset end) {
     Preconditions.checkArgument(
@@ -175,27 +195,51 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     return partitions;
   }
 
+  /**
+   * 创建并返回新实例。
+   *
+   * @return 结果对象
+   */
   @Override
   public PartitionReaderFactory createReaderFactory() {
+    /** 执行该方法的具体逻辑。 */
     return new SparkRowReaderFactory();
   }
 
+  /**
+   * 执行初始化。
+   *
+   * @return 结果对象
+   */
   @Override
   public Offset initialOffset() {
     return initialOffset;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param json 参数
+   * @return 结果对象
+   */
   @Override
   public Offset deserializeOffset(String json) {
     return StreamingOffset.fromJson(json);
   }
 
+  /**
+   * 提交事务或写入结果。
+   *
+   * @param end 参数
+   */
   @Override
   public void commit(Offset end) {}
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   public void stop() {}
 
+  /** 执行该方法的具体逻辑。 */
   private List<FileScanTask> planFiles(StreamingOffset startOffset, StreamingOffset endOffset) {
     List<FileScanTask> fileScanTasks = Lists.newArrayList();
     StreamingOffset batchStartOffset =
@@ -253,6 +297,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     return fileScanTasks;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean shouldProcess(Snapshot snapshot) {
     String op = snapshot.operation();
     switch (op) {
@@ -282,6 +327,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static StreamingOffset determineStartingOffset(Table table, Long fromTimestamp) {
     if (table.currentSnapshot() == null) {
       return StreamingOffset.START_OFFSET;
@@ -289,6 +335,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
 
     if (fromTimestamp == null) {
       // match existing behavior and start from the oldest snapshot
+      /** 执行该方法的具体逻辑。 */
       return new StreamingOffset(SnapshotUtil.oldestAncestor(table).snapshotId(), 0, false);
     }
 
@@ -299,16 +346,25 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     try {
       Snapshot snapshot = SnapshotUtil.oldestAncestorAfter(table, fromTimestamp);
       if (snapshot != null) {
+        /** 执行该方法的具体逻辑。 */
         return new StreamingOffset(snapshot.snapshotId(), 0, false);
       } else {
         return StreamingOffset.START_OFFSET;
       }
     } catch (IllegalStateException e) {
       // could not determine the first snapshot after the timestamp. use the oldest ancestor instead
+      /** 执行该方法的具体逻辑。 */
       return new StreamingOffset(SnapshotUtil.oldestAncestor(table).snapshotId(), 0, false);
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param startOffset 参数
+   * @param limit 参数
+   * @return 结果对象
+   */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public Offset latestOffset(Offset startOffset, ReadLimit limit) {
@@ -406,6 +462,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     return latestStreamingOffset.equals(startingOffset) ? null : latestStreamingOffset;
   }
 
+  /** 添加元素或项。 */
   private long addedFilesCount(Snapshot snapshot) {
     long addedFilesCount =
         PropertyUtil.propertyAsLong(snapshot.summary(), SnapshotSummary.ADDED_FILES_PROP, -1);
@@ -416,6 +473,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
         : addedFilesCount;
   }
 
+  /** 校验前置条件或参数。 */
   private void validateCurrentSnapshotExists(Snapshot snapshot, StreamingOffset currentOffset) {
     if (snapshot == null) {
       throw new IllegalStateException(
@@ -425,6 +483,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     }
   }
 
+  /** 返回defaultreadlimit。 */
   @Override
   public ReadLimit getDefaultReadLimit() {
     if (maxFilesPerMicroBatch != Integer.MAX_VALUE
@@ -442,6 +501,13 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
     }
   }
 
+  /**
+   * Iceberg 表在 Spark DataSource V2 中的实现。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 InitialOffsetStore。
+   *
+   * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+   */
   private static class InitialOffsetStore {
     private final Table table;
     private final FileIO io;
@@ -455,6 +521,11 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
       this.fromTimestamp = fromTimestamp;
     }
 
+    /**
+     * 执行初始化。
+     *
+     * @return 结果对象
+     */
     public StreamingOffset initialOffset() {
       InputFile inputFile = io.newInputFile(initialOffsetLocation);
       if (inputFile.exists()) {
@@ -470,6 +541,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
       return offset;
     }
 
+    /** 写入数据。 */
     private void writeOffset(StreamingOffset offset, OutputFile file) {
       try (OutputStream outputStream = file.create()) {
         BufferedWriter writer =
@@ -482,6 +554,7 @@ public class SparkMicroBatchStream implements MicroBatchStream, SupportsAdmissio
       }
     }
 
+    /** 读取数据。 */
     private StreamingOffset readOffset(InputFile file) {
       try (InputStream in = file.newStream()) {
         return StreamingOffset.fromJson(in);

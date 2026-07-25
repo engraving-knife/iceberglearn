@@ -31,6 +31,28 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterators;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 按名称索引访问者：遍历 schema 构建字段全名→字段 ID 的映射。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#indexByName}、{@link TypeUtil#indexNameById} 使用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>构建全限定名（如 "a.b.c"）→字段 ID 的映射。
+ *   <li>构建短名（省略 list 的 "element"/map 的 "value" 中间层）→字段 ID 的映射。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>使用 fieldNames 栈维护当前字段路径，beforeField/afterField 压栈/弹栈。
+ *   <li>短名优化：list 元素为 struct 时省略 "element"（如 "locations.latitude" 而非 "locations.element.latitude"），
+ *       使字段名更自然；map value 同理省略 "value"。
+ *   <li>quotingFunc 支持对字段名加引号，用于 SQL 等需要标识符引号的场景。
+ *   <li>重复字段名检测：同名字段抛 ValidationException。
+ * </ul>
+ */
 public class IndexByName extends TypeUtil.SchemaVisitor<Map<String, Integer>> {
   private static final Joiner DOT = Joiner.on(".");
 
@@ -49,13 +71,11 @@ public class IndexByName extends TypeUtil.SchemaVisitor<Map<String, Integer>> {
   }
 
   /**
-   * Returns a mapping from full field name to ID.
+   * 返回全名→字段 ID 的映射，包含不冲突的短名。
    *
-   * <p>Short names for maps and lists are included for any name that does not conflict with a
-   * canonical name. For example, a list, 'l', of structs with field 'x' will produce short name
-   * 'l.x' in addition to canonical name 'l.element.x'.
+   * <p>逻辑：先放入所有全限定名，再加入不与全名冲突的短名。
    *
-   * @return a map from name to field ID
+   * @return 名→字段 ID 映射
    */
   public Map<String, Integer> byName() {
     ImmutableMap.Builder<String, Integer> builder = ImmutableMap.builder();
@@ -68,12 +88,9 @@ public class IndexByName extends TypeUtil.SchemaVisitor<Map<String, Integer>> {
   }
 
   /**
-   * Returns a mapping from field ID to full name.
+   * 返回字段 ID→全限定名的映射（只含规范名，不含短名）。
    *
-   * <p>Canonical names, not short names are returned, for example 'list.element.field' instead of
-   * 'list.field'.
-   *
-   * @return a map from field ID to name
+   * @return 字段 ID→名映射
    */
   public Map<Integer, String> byId() {
     ImmutableMap.Builder<Integer, String> builder = ImmutableMap.builder();

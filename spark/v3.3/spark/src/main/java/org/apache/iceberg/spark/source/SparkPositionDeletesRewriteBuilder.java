@@ -40,12 +40,13 @@ import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Builder class for rewrites of position delete files from Spark. Responsible for creating {@link
- * SparkPositionDeletesRewrite}.
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
  *
- * <p>This class is meant to be used for an action to rewrite delete files. Hence, it makes an
- * assumption that all incoming deletes belong to the same partition, and that incoming dataset is
- * from {@link ScanTaskSetManager}.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkPositionDeletesRewriteBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
  */
 public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
 
@@ -66,6 +67,11 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     this.writeSchema = SparkSchemaUtil.convert(table.schema(), dsSchema, writeConf.caseSensitive());
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public Write build() {
     String fileSetId = writeConf.rewrittenFileSetId();
@@ -86,10 +92,12 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     int specId = specId(fileSetId, tasks);
     StructLike partition = partition(fileSetId, tasks);
 
+    /** 执行该方法的具体逻辑。 */
     return new SparkPositionDeletesRewrite(
         spark, table, writeConf, writeInfo, writeSchema, dsSchema, specId, partition);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int specId(String fileSetId, List<PositionDeletesScanTask> tasks) {
     Set<Integer> specIds = tasks.stream().map(t -> t.spec().specId()).collect(Collectors.toSet());
     Preconditions.checkArgument(
@@ -100,6 +108,7 @@ public class SparkPositionDeletesRewriteBuilder implements WriteBuilder {
     return tasks.get(0).spec().specId();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private StructLike partition(String fileSetId, List<PositionDeletesScanTask> tasks) {
     StructLikeSet partitions = StructLikeSet.create(tasks.get(0).spec().partitionType());
     tasks.stream().map(ContentScanTask::partition).forEach(partitions::add);

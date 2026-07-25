@@ -35,7 +35,19 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestStringLiteralConversions 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestStringLiteralConversions 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestStringLiteralConversions {
+  /**
+   * 测试场景：String To String Literal。
+   *
+   * <p>验证该方法在 String To String Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToStringLiteral() {
     Literal<CharSequence> string = Literal.of("abc");
@@ -44,6 +56,11 @@ public class TestStringLiteralConversions {
         .isSameAs(string);
   }
 
+  /**
+   * 测试场景：String To Date Literal。
+   *
+   * <p>验证该方法在 String To Date Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToDateLiteral() {
     Literal<CharSequence> dateStr = Literal.of("2017-08-18");
@@ -58,6 +75,11 @@ public class TestStringLiteralConversions {
     assertThat((int) date.value()).isEqualTo(avroValue);
   }
 
+  /**
+   * 测试场景：Negative String To Date Literal。
+   *
+   * <p>验证该方法在 Negative String To Date Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeStringToDateLiteral() {
     Literal<CharSequence> dateStr = Literal.of("1969-12-30");
@@ -76,6 +98,11 @@ public class TestStringLiteralConversions {
         .isEqualTo(avroValue);
   }
 
+  /**
+   * 测试场景：String To Time Literal。
+   *
+   * <p>验证该方法在 String To Time Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToTimeLiteral() {
     // use Avro's time conversion to validate the result
@@ -92,6 +119,11 @@ public class TestStringLiteralConversions {
     assertThat((long) time.value()).isEqualTo(avroValue);
   }
 
+  /**
+   * 测试场景：String To Timestamp Literal。
+   *
+   * <p>验证该方法在 String To Timestamp Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToTimestampLiteral() {
     // use Avro's timestamp conversion to validate the result
@@ -132,6 +164,11 @@ public class TestStringLiteralConversions {
         .isEqualTo(avroValue);
   }
 
+  /**
+   * 测试场景：Negative String To Timestamp Literal。
+   *
+   * <p>验证该方法在 Negative String To Timestamp Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeStringToTimestampLiteral() {
     // use Avro's timestamp conversion to validate the result
@@ -178,6 +215,11 @@ public class TestStringLiteralConversions {
         .isEqualTo(-1_000_001);
   }
 
+  /**
+   * 测试场景：Timestamp With Zone Without Zone In Literal。
+   *
+   * <p>验证该方法在 Timestamp With Zone Without Zone In Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithZoneWithoutZoneInLiteral() {
     // Zone must be present in literals when converting to timestamp with zone
@@ -187,6 +229,11 @@ public class TestStringLiteralConversions {
         .hasMessageContaining("could not be parsed");
   }
 
+  /**
+   * 测试场景：Timestamp Without Zone With Zone In Literal。
+   *
+   * <p>验证该方法在 Timestamp Without Zone With Zone In Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithoutZoneWithZoneInLiteral() {
     // Zone must not be present in literals when converting to timestamp without zone
@@ -196,6 +243,11 @@ public class TestStringLiteralConversions {
         .hasMessageContaining("could not be parsed");
   }
 
+  /**
+   * 测试场景：String To UUID Literal。
+   *
+   * <p>验证该方法在 String To UUID Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToUUIDLiteral() {
     UUID expected = UUID.randomUUID();
@@ -205,6 +257,11 @@ public class TestStringLiteralConversions {
     assertThat(uuid.value()).isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：String To Decimal Literal。
+   *
+   * <p>验证该方法在 String To Decimal Literal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringToDecimalLiteral() {
     BigDecimal expected = new BigDecimal("34.560");

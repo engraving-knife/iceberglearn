@@ -25,9 +25,21 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkSourceConfig 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkSourceConfig 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkSourceConfig extends TestFlinkTableSource {
   private static final String TABLE = "test_table";
 
+  /**
+   * 测试场景：Flink Session Config。
+   *
+   * <p>验证该方法在 Flink Session Config 条件下的行为是否符合预期。
+   */
   @Test
   public void testFlinkSessionConfig() {
     getTableEnv().getConfig().set(FlinkReadOptions.STREAMING_OPTION, true);
@@ -37,6 +49,11 @@ public class TestFlinkSourceConfig extends TestFlinkTableSource {
         .hasMessage("Cannot set as-of-timestamp option for streaming reader");
   }
 
+  /**
+   * 测试场景：Flink Hint Config。
+   *
+   * <p>验证该方法在 Flink Hint Config 条件下的行为是否符合预期。
+   */
   @Test
   public void testFlinkHintConfig() {
     List<Row> result =
@@ -46,6 +63,11 @@ public class TestFlinkSourceConfig extends TestFlinkTableSource {
     Assert.assertEquals(3, result.size());
   }
 
+  /**
+   * 测试场景：Read Option Hierarchy。
+   *
+   * <p>验证该方法在 Read Option Hierarchy 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadOptionHierarchy() {
     getTableEnv().getConfig().set(FlinkReadOptions.LIMIT_OPTION, 1L);

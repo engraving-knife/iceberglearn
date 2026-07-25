@@ -38,6 +38,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestFileIOSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 文件io序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestFileIOSerialization {
 
   private static final Configuration CONF = new Configuration();
@@ -63,6 +70,7 @@ public class TestFileIOSerialization {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private Table table;
 
+  /** init表。 */
   @Before
   public void initTable() throws IOException {
     Map<String, String> props = ImmutableMap.of("k1", "v1", "k2", "v2");
@@ -73,6 +81,7 @@ public class TestFileIOSerialization {
     this.table = TABLES.create(SCHEMA, SPEC, SORT_ORDER, props, tableLocation.toString());
   }
 
+  /** 测试Hadoop文件ioKryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHadoopFileIOKryoSerialization() throws IOException {
     FileIO io = table.io();
@@ -87,6 +96,7 @@ public class TestFileIOSerialization {
     Assert.assertEquals("Conf values must be present", "v2", actualConf.get("k2"));
   }
 
+  /** 测试Hadoop文件ioJava序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHadoopFileIOJavaSerialization() throws IOException, ClassNotFoundException {
     FileIO io = table.io();
@@ -101,6 +111,7 @@ public class TestFileIOSerialization {
     Assert.assertEquals("Conf values must be present", "v2", actualConf.get("k2"));
   }
 
+  /** 到映射。 */
   private Map<String, String> toMap(Configuration conf) {
     Map<String, String> map = Maps.newHashMapWithExpectedSize(conf.size());
     conf.forEach(entry -> map.put(entry.getKey(), entry.getValue()));

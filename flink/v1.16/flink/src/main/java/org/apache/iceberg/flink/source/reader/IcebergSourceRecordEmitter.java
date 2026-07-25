@@ -22,6 +22,13 @@ import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 
+/**
+ * Iceberg Source 记录发射器，把读取的记录与位置信息发射到 SourceReader 输出。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装记录与位置，更新状态后发射。
+ *
+ * <p>设计意图：辅助类；被 IcebergSourceReader 调用。
+ */
 final class IcebergSourceRecordEmitter<T>
     implements RecordEmitter<RecordAndPosition<T>, T, IcebergSourceSplit> {
 

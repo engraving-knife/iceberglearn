@@ -42,10 +42,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestRowProjection 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestRowProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestRowProjection {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：writeAndRead，write And Read。 */
   private RowData writeAndRead(String desc, Schema writeSchema, Schema readSchema, RowData row)
       throws IOException {
     File file = temp.newFile(desc + ".avro");
@@ -68,6 +76,11 @@ public class TestRowProjection {
     return Iterables.getOnlyElement(records);
   }
 
+  /**
+   * 测试场景：Full Projection。
+   *
+   * <p>验证该方法在 Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullProjection() throws Exception {
     Schema schema =
@@ -85,6 +98,11 @@ public class TestRowProjection {
     Assert.assertEquals("Should contain the correct data value", cmp, 0);
   }
 
+  /**
+   * 测试场景：Special Character Projection。
+   *
+   * <p>验证该方法在 Special Character Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testSpecialCharacterProjection() throws Exception {
     Schema schema =
@@ -111,6 +129,11 @@ public class TestRowProjection {
         Comparators.charSequences().compare("test", projected.getString(0).toString()));
   }
 
+  /**
+   * 测试场景：Reordered Full Projection。
+   *
+   * <p>验证该方法在 Reordered Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testReorderedFullProjection() throws Exception {
     Schema schema =
@@ -132,6 +155,11 @@ public class TestRowProjection {
     Assert.assertEquals("Should contain the correct 1 value", 34L, projected.getLong(1));
   }
 
+  /**
+   * 测试场景：Reordered Projection。
+   *
+   * <p>验证该方法在 Reordered Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testReorderedProjection() throws Exception {
     Schema schema =
@@ -155,6 +183,11 @@ public class TestRowProjection {
     Assert.assertTrue("Should contain the correct 2 value", projected.isNullAt(2));
   }
 
+  /**
+   * 测试场景：Renamed Added Field。
+   *
+   * <p>验证该方法在 Renamed Added Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenamedAddedField() throws Exception {
     Schema schema =
@@ -179,6 +212,11 @@ public class TestRowProjection {
     Assert.assertTrue("Should contain empty value on new column 4", projected.isNullAt(3));
   }
 
+  /**
+   * 测试场景：Empty Projection。
+   *
+   * <p>验证该方法在 Empty Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyProjection() throws Exception {
     Schema schema =
@@ -194,6 +232,11 @@ public class TestRowProjection {
     Assert.assertEquals(0, projected.getArity());
   }
 
+  /**
+   * 测试场景：Basic Projection。
+   *
+   * <p>验证该方法在 Basic Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicProjection() throws Exception {
     Schema writeSchema =
@@ -218,6 +261,11 @@ public class TestRowProjection {
     Assert.assertEquals("Should contain the correct data value", 0, cmp);
   }
 
+  /**
+   * 测试场景：Rename。
+   *
+   * <p>验证该方法在 Rename 条件下的行为是否符合预期。
+   */
   @Test
   public void testRename() throws Exception {
     Schema writeSchema =
@@ -239,6 +287,11 @@ public class TestRowProjection {
     Assert.assertEquals("Should contain the correct data/renamed value", 0, cmp);
   }
 
+  /**
+   * 测试场景：Nested Struct Projection。
+   *
+   * <p>验证该方法在 Nested Struct Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedStructProjection() throws Exception {
     Schema writeSchema =
@@ -301,6 +354,11 @@ public class TestRowProjection {
         "Should project longitude", -1.539054f, projectedLocation.getFloat(1), 0.000001f);
   }
 
+  /**
+   * 测试场景：Map Projection。
+   *
+   * <p>验证该方法在 Map Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapProjection() throws IOException {
     Schema writeSchema =
@@ -343,6 +401,7 @@ public class TestRowProjection {
     Assert.assertEquals("Should project entire map", properties, projected.getMap(0));
   }
 
+  /** 辅助方法：toStringMap，to String Map。 */
   private Map<String, ?> toStringMap(Map<?, ?> map) {
     Map<String, Object> stringMap = Maps.newHashMap();
     for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -355,6 +414,11 @@ public class TestRowProjection {
     return stringMap;
   }
 
+  /**
+   * 测试场景：Map Of Structs Projection。
+   *
+   * <p>验证该方法在 Map Of Structs Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfStructsProjection() throws IOException {
     Schema writeSchema =
@@ -445,6 +509,11 @@ public class TestRowProjection {
         "L2 should contain latitude", 52.995143f, projectedL2.getFloat(0), 0.000001);
   }
 
+  /**
+   * 测试场景：List Projection。
+   *
+   * <p>验证该方法在 List Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testListProjection() throws IOException {
     Schema writeSchema =
@@ -474,6 +543,11 @@ public class TestRowProjection {
     Assert.assertEquals("Should project entire list", values, projected.getArray(0));
   }
 
+  /**
+   * 测试场景：List Of Structs Projection。
+   *
+   * <p>验证该方法在 List Of Structs Projection 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testListOfStructsProjection() throws IOException {
@@ -551,6 +625,11 @@ public class TestRowProjection {
     Assert.assertTrue("Should project null z", projectedP2.isNullAt(0));
   }
 
+  /**
+   * 测试场景：Added Fields With Required Children。
+   *
+   * <p>验证该方法在 Added Fields With Required Children 条件下的行为是否符合预期。
+   */
   @Test
   public void testAddedFieldsWithRequiredChildren() throws Exception {
     Schema schema = new Schema(Types.NestedField.required(1, "a", Types.LongType.get()));

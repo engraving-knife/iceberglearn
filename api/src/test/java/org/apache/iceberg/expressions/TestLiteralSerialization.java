@@ -26,7 +26,19 @@ import org.apache.iceberg.TestHelpers;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestLiteralSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestLiteralSerialization 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestLiteralSerialization {
+  /**
+   * 测试场景：Literals。
+   *
+   * <p>验证该方法在 Literals 条件下的行为是否符合预期。
+   */
   @Test
   public void testLiterals() throws Exception {
     Literal[] literals =
@@ -52,6 +64,7 @@ public class TestLiteralSerialization {
     }
   }
 
+  /** 辅助方法：checkValue。 */
   private <T> void checkValue(Literal<T> lit) throws Exception {
     Literal<T> copy = TestHelpers.roundTripSerialize(lit);
     assertThat(lit.comparator().compare(lit.value(), copy.value()))

@@ -29,23 +29,18 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * An iterator that finds delete/insert rows which represent an update, and converts them into
- * update records from changelog tables within a single Spark task. It assumes that rows are sorted
- * by identifier columns and change type.
+ * 变更日志更新行计算迭代器。
  *
- * <p>For example, these two rows
+ * <p>所属模块：iceberg-spark。在单个 Spark 任务内，将代表更新操作的"删除+插入"行对识别并 转换为 UPDATE_BEFORE/UPDATE_AFTER
+ * 更新记录。要求输入行已按标识列与变更类型排序。
  *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='b', op='INSERT')
- * </ul>
+ * <p>职责：逐行扫描，当遇到 DELETE 且下一行为相同逻辑行（标识列相同）的 INSERT 时，将二者 标记为一次更新；INSERT 行缓存后于下次返回。
  *
- * <p>will be marked as update-rows:
+ * <p>设计意图：变更日志（CDC）场景下，Iceberg 的 equality delete 与对应 insert 在按标识列
+ * 排序后会相邻出现，本迭代器把它们规整为成对的更新前后镜像，便于下游消费。
  *
- * <ul>
- *   <li>(id=1, data='a', op='UPDATE_BEFORE')
- *   <li>(id=1, data='b', op='UPDATE_AFTER')
- * </ul>
+ * <p>示例：(id=1,data='a',DELETE) 与 (id=1,data='b',INSERT) → (id=1,data='a',UPDATE_BEFORE) 与
+ * (id=1,data='b',UPDATE_AFTER)。
  */
 public class ComputeUpdateIterator extends ChangelogIterator {
 
@@ -54,6 +49,13 @@ public class ComputeUpdateIterator extends ChangelogIterator {
 
   private Row cachedRow = null;
 
+  /**
+   * 构造迭代器。
+   *
+   * @param rowIterator 已按标识列与变更类型排序的行迭代器
+   * @param rowType 行结构类型
+   * @param identifierFields 标识列名数组
+   */
   ComputeUpdateIterator(Iterator<Row> rowIterator, StructType rowType, String[] identifierFields) {
     super(rowIterator, rowType);
     this.identifierFieldIdx =
@@ -61,6 +63,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     this.identifierFields = identifierFields;
   }
 
+  /** 是否还有下一行：有缓存行或底层迭代器有剩余即返回 true。 */
   @Override
   public boolean hasNext() {
     if (cachedRow != null) {
@@ -69,6 +72,12 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     return rowIterator().hasNext();
   }
 
+  /**
+   * 返回下一行。
+   *
+   * <p>逻辑：若缓存的为 UPDATE_AFTER 行则直接返回；否则取当前行，若其为 DELETE 且仍有下一行， 读取下一行并缓存；当两行为同一逻辑行（标识列相同）时，校验下一行必须为
+   * INSERT， 将当前行改写为 UPDATE_BEFORE、缓存行改写为 UPDATE_AFTER。最终返回当前行。
+   */
   @Override
   public Row next() {
     // if there is an updated cached row, return it directly
@@ -100,6 +109,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     return currentRow;
   }
 
+  /** 原地修改行中指定列为新值：GenericRow 直接改数组，其它行重建为 RowFactory.create。 */
   private Row modify(Row row, int valueIndex, Object value) {
     if (row instanceof GenericRow) {
       GenericRow genericRow = (GenericRow) row;
@@ -115,10 +125,12 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     }
   }
 
+  /** 判断缓存行是否为 UPDATE_AFTER（需优先返回）。 */
   private boolean cachedUpdateRecord() {
     return cachedRow != null && changeType(cachedRow).equals(UPDATE_AFTER);
   }
 
+  /** 取当前行：有缓存则返回并清空缓存，否则取底层迭代器下一行。 */
   private Row currentRow() {
     if (cachedRow != null) {
       Row row = cachedRow;
@@ -129,6 +141,7 @@ public class ComputeUpdateIterator extends ChangelogIterator {
     }
   }
 
+  /** 判断两行是否为同一逻辑行（所有标识列值均相同）。 */
   private boolean sameLogicalRow(Row currentRow, Row nextRow) {
     for (int idx : identifierFieldIdx) {
       if (isDifferentValue(currentRow, nextRow, idx)) {

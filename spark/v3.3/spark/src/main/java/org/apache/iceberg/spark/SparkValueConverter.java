@@ -32,15 +32,24 @@ import org.apache.iceberg.util.ByteBuffers;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.util.DateTimeUtils;
 
-/** A utility class that converts Spark values to Iceberg's internal representation. */
+/**
+ * Iceberg Spark 集成相关组件，负责类型或表达式转换。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkValueConverter。
+ *
+ * <p>设计意图：适配器模式，桥接两套 API。
+ */
 public class SparkValueConverter {
 
+  /** 构造 SparkValueConverter 实例。 */
   private SparkValueConverter() {}
 
+  /** 把输入转换为另一种表示。 */
   public static Record convert(Schema schema, Row row) {
     return convert(schema.asStruct(), row);
   }
 
+  /** 把输入转换为另一种表示。 */
   public static Object convert(Type type, Object object) {
     if (object == null) {
       return null;
@@ -93,6 +102,7 @@ public class SparkValueConverter {
     }
   }
 
+  /** 把输入转换为另一种表示。 */
   private static Record convert(Types.StructType struct, Row row) {
     if (row == null) {
       return null;
@@ -122,6 +132,7 @@ public class SparkValueConverter {
     return record;
   }
 
+  /** 把输入转换为另一种表示。 */
   public static Object convertToSpark(Type type, Object object) {
     if (object == null) {
       return null;

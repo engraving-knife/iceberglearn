@@ -38,7 +38,15 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.SpecializedGetters;
 
-/** This class acts as an adaptor from an OrcFileAppender to a FileAppender&lt;InternalRow&gt;. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Iceberg ORC 文件的 Spark 写入器，将 Spark InternalRow 写为 ORC 行。
+ *
+ * <p>设计意图：基于 SparkOrcValueWriters 构建按列写入器。
+ *
+ * <p>上下游关系：由 SparkAppenderFactory 在写出 ORC 文件时使用。
+ */
 public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
 
   private final InternalRowWriter writer;
@@ -51,18 +59,18 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
     writer =
         (InternalRowWriter) OrcSchemaWithTypeVisitor.visit(iSchema, orcSchema, new WriteBuilder());
   }
-
+  /** 写入数据。 */
   @Override
   public void write(InternalRow value, VectorizedRowBatch output) {
     Preconditions.checkArgument(value != null, "value must not be null");
     writer.writeRow(value, output);
   }
-
+  /** 执行 writers 相关操作。 */
   @Override
   public List<OrcValueWriter<?>> writers() {
     return writer.writers();
   }
-
+  /** 执行 metrics 相关操作。 */
   @Override
   public Stream<FieldMetrics<?>> metrics() {
     return writer.metrics();
@@ -70,7 +78,7 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
 
   private static class WriteBuilder extends OrcSchemaWithTypeVisitor<OrcValueWriter<?>> {
     private WriteBuilder() {}
-
+    /** 执行 record 相关操作。 */
     @Override
     public OrcValueWriter<?> record(
         Types.StructType iStruct,
@@ -79,19 +87,19 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         List<OrcValueWriter<?>> fields) {
       return new InternalRowWriter(fields, record.getChildren());
     }
-
+    /** 执行 list 相关操作。 */
     @Override
     public OrcValueWriter<?> list(
         Types.ListType iList, TypeDescription array, OrcValueWriter<?> element) {
       return SparkOrcValueWriters.list(element, array.getChildren());
     }
-
+    /** 执行 map 相关操作。 */
     @Override
     public OrcValueWriter<?> map(
         Types.MapType iMap, TypeDescription map, OrcValueWriter<?> key, OrcValueWriter<?> value) {
       return SparkOrcValueWriters.map(key, value, map.getChildren());
     }
-
+    /** 执行 primitive 相关操作。 */
     @Override
     public OrcValueWriter<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (primitive.getCategory()) {
@@ -141,13 +149,13 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         fieldGetters.add(createFieldGetter(orcType));
       }
     }
-
+    /** 返回值。 */
     @Override
     protected Object get(InternalRow struct, int index) {
       return fieldGetters.get(index).getFieldOrNull(struct, index);
     }
   }
-
+  /** 执行 createFieldGetter 相关操作。 */
   static FieldGetter<?> createFieldGetter(TypeDescription fieldType) {
     final FieldGetter<?> fieldGetter;
     switch (fieldType.getCategory()) {

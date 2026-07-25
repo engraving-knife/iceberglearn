@@ -29,7 +29,19 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestMiscLiteralConversions 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestMiscLiteralConversions 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestMiscLiteralConversions {
+  /**
+   * 测试场景：Identity Conversions。
+   *
+   * <p>验证该方法在 Identity Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityConversions() {
     List<Pair<Literal<?>, Type>> pairs =
@@ -62,6 +74,11 @@ public class TestMiscLiteralConversions {
     }
   }
 
+  /**
+   * 测试场景：Binary To Fixed。
+   *
+   * <p>验证该方法在 Binary To Fixed 条件下的行为是否符合预期。
+   */
   @Test
   public void testBinaryToFixed() {
     Literal<ByteBuffer> lit = Literal.of(ByteBuffer.wrap(new byte[] {0, 1, 2}));
@@ -79,6 +96,11 @@ public class TestMiscLiteralConversions {
         .isNull();
   }
 
+  /**
+   * 测试场景：Fixed To Binary。
+   *
+   * <p>验证该方法在 Fixed To Binary 条件下的行为是否符合预期。
+   */
   @Test
   public void testFixedToBinary() {
     Literal<ByteBuffer> lit = Literal.of(new byte[] {0, 1, 2});
@@ -89,6 +111,11 @@ public class TestMiscLiteralConversions {
         .isEqualTo(lit.value().duplicate());
   }
 
+  /**
+   * 测试场景：Invalid Boolean Conversions。
+   *
+   * <p>验证该方法在 Invalid Boolean Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidBooleanConversions() {
     testInvalidConversions(
@@ -108,6 +135,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Integer Conversions。
+   *
+   * <p>验证该方法在 Invalid Integer Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidIntegerConversions() {
     testInvalidConversions(
@@ -122,6 +154,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Long Conversions。
+   *
+   * <p>验证该方法在 Invalid Long Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidLongConversions() {
     testInvalidConversions(
@@ -133,6 +170,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Float Conversions。
+   *
+   * <p>验证该方法在 Invalid Float Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidFloatConversions() {
     testInvalidConversions(
@@ -150,6 +192,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Double Conversions。
+   *
+   * <p>验证该方法在 Invalid Double Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidDoubleConversions() {
     testInvalidConversions(
@@ -167,6 +214,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Date Conversions。
+   *
+   * <p>验证该方法在 Invalid Date Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidDateConversions() {
     testInvalidConversions(
@@ -186,6 +238,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Time Conversions。
+   *
+   * <p>验证该方法在 Invalid Time Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidTimeConversions() {
     testInvalidConversions(
@@ -205,6 +262,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Timestamp Conversions。
+   *
+   * <p>验证该方法在 Invalid Timestamp Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidTimestampConversions() {
     testInvalidConversions(
@@ -222,6 +284,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Decimal Conversions。
+   *
+   * <p>验证该方法在 Invalid Decimal Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidDecimalConversions() {
     testInvalidConversions(
@@ -241,6 +308,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid String Conversions。
+   *
+   * <p>验证该方法在 Invalid String Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidStringConversions() {
     // Strings can be used for types that are difficult to construct, like decimal or timestamp,
@@ -256,6 +328,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid UUID Conversions。
+   *
+   * <p>验证该方法在 Invalid UUID Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidUUIDConversions() {
     testInvalidConversions(
@@ -275,6 +352,11 @@ public class TestMiscLiteralConversions {
         Types.BinaryType.get());
   }
 
+  /**
+   * 测试场景：Invalid Fixed Conversions。
+   *
+   * <p>验证该方法在 Invalid Fixed Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidFixedConversions() {
     testInvalidConversions(
@@ -294,6 +376,11 @@ public class TestMiscLiteralConversions {
         Types.FixedType.ofLength(1));
   }
 
+  /**
+   * 测试场景：Invalid Binary Conversions。
+   *
+   * <p>验证该方法在 Invalid Binary Conversions 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidBinaryConversions() {
     testInvalidConversions(
@@ -313,6 +400,11 @@ public class TestMiscLiteralConversions {
         Types.FixedType.ofLength(1));
   }
 
+  /**
+   * 测试场景：Invalid Conversions。
+   *
+   * <p>验证该方法在 Invalid Conversions 条件下的行为是否符合预期。
+   */
   private void testInvalidConversions(Literal<?> lit, Type... invalidTypes) {
     for (Type type : invalidTypes) {
       assertThat(lit.to(type))
@@ -322,6 +414,7 @@ public class TestMiscLiteralConversions {
   }
 
   private static class Pair<X, Y> {
+    /** 辅助方法：of。 */
     public static <X, Y> Pair<X, Y> of(X first, Y second) {
       return new Pair<>(first, second);
     }
@@ -329,15 +422,18 @@ public class TestMiscLiteralConversions {
     private final X first;
     private final Y second;
 
+    /** 辅助方法：Pair。 */
     private Pair(X first, Y second) {
       this.first = first;
       this.second = second;
     }
 
+    /** 辅助方法：first。 */
     public X first() {
       return first;
     }
 
+    /** 辅助方法：second。 */
     public Y second() {
       return second;
     }

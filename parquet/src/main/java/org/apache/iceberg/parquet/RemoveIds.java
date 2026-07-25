@@ -26,6 +26,18 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
+/**
+ * 文件级说明：从 Parquet schema 中移除所有字段 ID 的访问器。
+ *
+ * <p>所属模块：iceberg-parquet（schema 处理工具，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：遍历 Parquet schema 树，重建一棵不带字段 ID 的等价 schema 树。
+ *
+ * <p>设计意图：某些 Parquet 读取器（如旧版 Hive/Spark）不支持字段 ID， 写入时需要移除 ID 以保证兼容性。通过 ParquetTypeVisitor 遍历并重建类型树，
+ * 保留原始类型信息（原始类型名、逻辑类型、repetition、长度等）但去掉 ID。
+ *
+ * <p>上下游关系：被 Parquet 写入流程在需要时调用；依赖 ParquetTypeVisitor（遍历框架）。
+ */
 public class RemoveIds extends ParquetTypeVisitor<Type> {
 
   @Override
@@ -77,6 +89,12 @@ public class RemoveIds extends ParquetTypeVisitor<Type> {
         .named(primitive.getName());
   }
 
+  /**
+   * 移除 Parquet MessageType 中所有字段的 ID。
+   *
+   * @param type 带 ID 的 Parquet schema
+   * @return 不带 ID 的 Parquet schema
+   */
   public static MessageType removeIds(MessageType type) {
     return (MessageType) ParquetTypeVisitor.visit(type, new RemoveIds());
   }

@@ -27,6 +27,13 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.LocalScan;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkLocalScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkLocalScan implements LocalScan {
 
   private final Table table;
@@ -42,21 +49,37 @@ class SparkLocalScan implements LocalScan {
     this.filterExpressions = filterExpressions;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] rows() {
     return rows;
   }
 
+  /**
+   * 读取数据。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType readSchema() {
     return readSchema;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return String.format("%s [filters=%s]", table, Spark3Util.describe(filterExpressions));
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(

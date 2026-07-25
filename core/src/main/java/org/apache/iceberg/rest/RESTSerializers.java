@@ -59,10 +59,35 @@ import org.apache.iceberg.rest.responses.ErrorResponseParser;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：REST Catalog 自定义 Jackson 序列化器/反序列化器集合。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 序列化基础设施）。
+ *
+ * <p>职责：为 Iceberg 核心类型（{@link TableMetadata}、{@link MetadataUpdate}、 {@link
+ * UpdateRequirement}、{@link ErrorResponse}、{@link Namespace}、{@link TableIdentifier}） 提供 JSON
+ * 序列化与反序列化支持，并通过 {@link #registerAll} 统一注册到 ObjectMapper。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>这些核心类型没有直接的 Jackson 注解，需要自定义序列化器来控制 JSON 格式。
+ *   <li>每个类型提供 Serializer 和 Deserializer 一对，分别继承 JsonSerializer/JsonDeserializer。
+ *   <li>UpdateRequirement 的旧版（已废弃）和新版（{@link org.apache.iceberg.UpdateRequirement}） 分别注册，用于向后兼容。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link RESTObjectMapper#mapper()} 调用 {@link #registerAll} 注册。
+ */
 public class RESTSerializers {
 
+  /** 私有构造函数，禁止实例化工具类。 */
   private RESTSerializers() {}
 
+  /**
+   * 将所有自定义序列化器/反序列化器注册到指定的 ObjectMapper。
+   *
+   * @param mapper 待注册的 ObjectMapper
+   */
   public static void registerAll(ObjectMapper mapper) {
     SimpleModule module = new SimpleModule();
     module
@@ -105,7 +130,13 @@ public class RESTSerializers {
     mapper.registerModule(module);
   }
 
-  /** @deprecated will be removed in 1.5.0, use {@link UpdateReqDeserializer} instead. */
+  /**
+   * 旧版 {@link UpdateRequirement} 的反序列化器（已废弃）。
+   *
+   * <p>通过 {@link UpdateRequirementParser#fromJson} 解析 JSON 节点。
+   *
+   * @deprecated 将在 1.5.0 移除，请使用 {@link UpdateReqDeserializer}。
+   */
   @Deprecated
   public static class UpdateRequirementDeserializer extends JsonDeserializer<UpdateRequirement> {
     @Override
@@ -116,7 +147,13 @@ public class RESTSerializers {
     }
   }
 
-  /** @deprecated will be removed in 1.5.0, use {@link UpdateReqSerializer} instead. */
+  /**
+   * 旧版 {@link UpdateRequirement} 的序列化器（已废弃）。
+   *
+   * <p>通过 {@link UpdateRequirementParser#toJson} 写出 JSON。
+   *
+   * @deprecated 将在 1.5.0 移除，请使用 {@link UpdateReqSerializer}。
+   */
   @Deprecated
   public static class UpdateRequirementSerializer extends JsonSerializer<UpdateRequirement> {
     @Override
@@ -127,6 +164,11 @@ public class RESTSerializers {
     }
   }
 
+  /**
+   * 新版 {@link org.apache.iceberg.UpdateRequirement} 的反序列化器。
+   *
+   * <p>读取 JSON 树并委托 {@link org.apache.iceberg.UpdateRequirementParser#fromJson} 解析。
+   */
   static class UpdateReqDeserializer
       extends JsonDeserializer<org.apache.iceberg.UpdateRequirement> {
     @Override
@@ -137,6 +179,11 @@ public class RESTSerializers {
     }
   }
 
+  /**
+   * 新版 {@link org.apache.iceberg.UpdateRequirement} 的序列化器。
+   *
+   * <p>委托 {@link org.apache.iceberg.UpdateRequirementParser#toJson} 写出 JSON。
+   */
   static class UpdateReqSerializer extends JsonSerializer<org.apache.iceberg.UpdateRequirement> {
     @Override
     public void serialize(
@@ -148,6 +195,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link TableMetadata} 的反序列化器，委托 {@link TableMetadataParser#fromJson} 解析 JSON 节点。 */
   public static class TableMetadataDeserializer extends JsonDeserializer<TableMetadata> {
     @Override
     public TableMetadata deserialize(JsonParser p, DeserializationContext context)
@@ -157,6 +205,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link TableMetadata} 的序列化器，委托 {@link TableMetadataParser#toJson} 写出 JSON。 */
   public static class TableMetadataSerializer extends JsonSerializer<TableMetadata> {
     @Override
     public void serialize(TableMetadata metadata, JsonGenerator gen, SerializerProvider serializers)
@@ -165,6 +214,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link MetadataUpdate} 的反序列化器，委托 {@link MetadataUpdateParser#fromJson} 解析 JSON 节点。 */
   public static class MetadataUpdateDeserializer extends JsonDeserializer<MetadataUpdate> {
     @Override
     public MetadataUpdate deserialize(JsonParser p, DeserializationContext ctxt)
@@ -174,6 +224,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link MetadataUpdate} 的序列化器，委托 {@link MetadataUpdateParser#toJson} 写出 JSON。 */
   public static class MetadataUpdateSerializer extends JsonSerializer<MetadataUpdate> {
     @Override
     public void serialize(MetadataUpdate value, JsonGenerator gen, SerializerProvider serializers)
@@ -182,6 +233,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link ErrorResponse} 的反序列化器，委托 {@link ErrorResponseParser#fromJson} 解析 JSON 节点。 */
   public static class ErrorResponseDeserializer extends JsonDeserializer<ErrorResponse> {
     @Override
     public ErrorResponse deserialize(JsonParser p, DeserializationContext context)
@@ -191,6 +243,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link ErrorResponse} 的序列化器，委托 {@link ErrorResponseParser#toJson} 写出 JSON。 */
   public static class ErrorResponseSerializer extends JsonSerializer<ErrorResponse> {
     @Override
     public void serialize(
@@ -200,6 +253,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link Namespace} 的反序列化器，将 JSON 数组读取为层级字符串数组并构建命名空间。 */
   public static class NamespaceDeserializer extends JsonDeserializer<Namespace> {
     @Override
     public Namespace deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
@@ -208,6 +262,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link Namespace} 的序列化器，将命名空间层级写为 JSON 字符串数组。 */
   public static class NamespaceSerializer extends JsonSerializer<Namespace> {
     @Override
     public void serialize(Namespace namespace, JsonGenerator gen, SerializerProvider serializers)
@@ -217,6 +272,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link TableIdentifier} 的反序列化器，委托 {@link TableIdentifierParser#fromJson} 解析。 */
   public static class TableIdentifierDeserializer extends JsonDeserializer<TableIdentifier> {
     @Override
     public TableIdentifier deserialize(JsonParser p, DeserializationContext context)
@@ -226,6 +282,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link TableIdentifier} 的序列化器，委托 {@link TableIdentifierParser#toJson} 写出 JSON。 */
   public static class TableIdentifierSerializer extends JsonSerializer<TableIdentifier> {
     @Override
     public void serialize(
@@ -235,6 +292,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link Schema} 的反序列化器，委托 {@link SchemaParser#fromJson} 解析 JSON 节点。 */
   public static class SchemaDeserializer extends JsonDeserializer<Schema> {
     @Override
     public Schema deserialize(JsonParser p, DeserializationContext context) throws IOException {
@@ -243,6 +301,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link Schema} 的序列化器，委托 {@link SchemaParser#toJson} 写出 JSON。 */
   public static class SchemaSerializer extends JsonSerializer<Schema> {
     @Override
     public void serialize(Schema schema, JsonGenerator gen, SerializerProvider serializers)
@@ -251,6 +310,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UnboundPartitionSpec} 的序列化器，委托 {@link PartitionSpecParser#toJson} 写出 JSON。 */
   public static class UnboundPartitionSpecSerializer extends JsonSerializer<UnboundPartitionSpec> {
     @Override
     public void serialize(
@@ -260,6 +320,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UnboundPartitionSpec} 的反序列化器，委托 {@link PartitionSpecParser#fromJson} 解析。 */
   public static class UnboundPartitionSpecDeserializer
       extends JsonDeserializer<UnboundPartitionSpec> {
     @Override
@@ -270,6 +331,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UnboundSortOrder} 的序列化器，委托 {@link SortOrderParser#toJson} 写出 JSON。 */
   public static class UnboundSortOrderSerializer extends JsonSerializer<UnboundSortOrder> {
     @Override
     public void serialize(
@@ -279,6 +341,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UnboundSortOrder} 的反序列化器，委托 {@link SortOrderParser#fromJson} 解析。 */
   public static class UnboundSortOrderDeserializer extends JsonDeserializer<UnboundSortOrder> {
     @Override
     public UnboundSortOrder deserialize(JsonParser p, DeserializationContext context)
@@ -288,6 +351,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link OAuthTokenResponse} 的序列化器，委托 {@link OAuth2Util#tokenResponseToJson} 写出 JSON。 */
   public static class OAuthTokenResponseSerializer extends JsonSerializer<OAuthTokenResponse> {
     @Override
     public void serialize(
@@ -297,6 +361,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link OAuthTokenResponse} 的反序列化器，委托 {@link OAuth2Util#tokenResponseFromJson} 解析。 */
   public static class OAuthTokenResponseDeserializer extends JsonDeserializer<OAuthTokenResponse> {
     @Override
     public OAuthTokenResponse deserialize(JsonParser p, DeserializationContext context)
@@ -306,6 +371,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link ReportMetricsRequest} 的泛型序列化器，委托 {@link ReportMetricsRequestParser#toJson} 写出 JSON。 */
   public static class ReportMetricsRequestSerializer<T extends ReportMetricsRequest>
       extends JsonSerializer<T> {
     @Override
@@ -315,6 +381,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link ReportMetricsRequest} 的泛型反序列化器，委托 {@link ReportMetricsRequestParser#fromJson} 解析。 */
   public static class ReportMetricsRequestDeserializer<T extends ReportMetricsRequest>
       extends JsonDeserializer<T> {
     @Override
@@ -324,6 +391,10 @@ public class RESTSerializers {
     }
   }
 
+  /**
+   * {@link CommitTransactionRequest} 的序列化器，委托 {@link CommitTransactionRequestParser#toJson} 写出
+   * JSON。
+   */
   public static class CommitTransactionRequestSerializer
       extends JsonSerializer<CommitTransactionRequest> {
     @Override
@@ -334,6 +405,9 @@ public class RESTSerializers {
     }
   }
 
+  /**
+   * {@link CommitTransactionRequest} 的反序列化器，委托 {@link CommitTransactionRequestParser#fromJson} 解析。
+   */
   public static class CommitTransactionRequestDeserializer
       extends JsonDeserializer<CommitTransactionRequest> {
     @Override
@@ -344,6 +418,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UpdateTableRequest} 的序列化器，委托 {@link UpdateTableRequestParser#toJson} 写出 JSON。 */
   public static class UpdateTableRequestSerializer extends JsonSerializer<UpdateTableRequest> {
     @Override
     public void serialize(
@@ -353,6 +428,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link UpdateTableRequest} 的反序列化器，委托 {@link UpdateTableRequestParser#fromJson} 解析。 */
   public static class UpdateTableRequestDeserializer extends JsonDeserializer<UpdateTableRequest> {
     @Override
     public UpdateTableRequest deserialize(JsonParser p, DeserializationContext context)
@@ -362,6 +438,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link RegisterTableRequest} 的泛型序列化器，委托 {@link RegisterTableRequestParser#toJson} 写出 JSON。 */
   public static class RegisterTableRequestSerializer<T extends RegisterTableRequest>
       extends JsonSerializer<T> {
     @Override
@@ -371,6 +448,7 @@ public class RESTSerializers {
     }
   }
 
+  /** {@link RegisterTableRequest} 的泛型反序列化器，委托 {@link RegisterTableRequestParser#fromJson} 解析。 */
   public static class RegisterTableRequestDeserializer<T extends RegisterTableRequest>
       extends JsonDeserializer<T> {
     @Override

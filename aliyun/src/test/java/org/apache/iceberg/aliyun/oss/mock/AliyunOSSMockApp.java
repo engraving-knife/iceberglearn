@@ -49,6 +49,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
       "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration"
     })
 @ComponentScan
+/**
+ * 文件级说明：测试 AliyunOSSMockApp 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 AliyunOSSMockApp 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class AliyunOSSMockApp {
 
   static final String PROP_ROOT_DIR = "root-dir";
@@ -60,6 +67,7 @@ public class AliyunOSSMockApp {
 
   @Autowired private ConfigurableApplicationContext context;
 
+  /** 辅助方法：start。 */
   public static AliyunOSSMockApp start(Map<String, Object> properties, String... args) {
     Map<String, Object> defaults = Maps.newHashMap();
     defaults.put(PROP_HTTP_PORT, PORT_HTTP_PORT_DEFAULT);
@@ -81,6 +89,7 @@ public class AliyunOSSMockApp {
     return ctx.getBean(AliyunOSSMockApp.class);
   }
 
+  /** 辅助方法：stop。 */
   public void stop() {
     SpringApplication.exit(context, () -> 0);
   }
@@ -118,6 +127,7 @@ public class AliyunOSSMockApp {
     private static final Pattern REQUESTED_RANGE_PATTERN =
         Pattern.compile("^bytes=((\\d*)-(\\d*))((,\\d*-\\d*)*)");
 
+    /** 辅助方法：convert。 */
     @Override
     public Range convert(String rangeString) {
       Preconditions.checkNotNull(rangeString, "Range value should not be null.");

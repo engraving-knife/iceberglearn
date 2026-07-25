@@ -21,27 +21,29 @@ package org.apache.iceberg;
 import java.util.List;
 
 /**
- * Represents a statistics file in the Puffin format, that can be used to read table data more
- * efficiently.
+ * 表示一个 Puffin 格式的统计文件，可用于更高效地读取表数据。
  *
- * <p>Statistics are informational. A reader can choose to ignore statistics information. Statistics
- * support is not required to read the table correctly.
+ * <p>所属模块：iceberg-api（表元数据抽象层）。
+ *
+ * <p>职责：描述一个持久化在 Puffin 文件中的统计信息文件，包括其来源快照 ID、文件路径、 文件大小、Puffin footer 大小，以及文件内包含的 blob 元数据列表。
+ *
+ * <p>设计意图：统计信息是"信息性"的，读取方可选择忽略；统计支持不是正确读取表的前提。 通过本接口将统计文件与表快照关联，便于按快照查找统计。
+ *
+ * <p>上下游关系：被表元数据持有；由 {@link UpdateStatistics} 更新；被查询优化读取。
  */
 public interface StatisticsFile {
-  /** ID of the Iceberg table's snapshot the statistics were computed from. */
+  /** 返回计算该统计所基于的 Iceberg 表快照 ID。 */
   long snapshotId();
 
-  /**
-   * Returns fully qualified path to the file, suitable for constructing a Hadoop Path. Never null.
-   */
+  /** 返回统计文件的完全限定路径，可用于构造 Hadoop Path，永不返回 null。 */
   String path();
 
-  /** Size of the file */
+  /** 返回统计文件大小（字节）。 */
   long fileSizeInBytes();
 
-  /** Size of the Puffin footer. */
+  /** 返回 Puffin footer 的大小（字节）。 */
   long fileFooterSizeInBytes();
 
-  /** List of statistics contained in the file. Never null. */
+  /** 返回文件中包含的统计 blob 元数据列表，永不返回 null。 */
   List<BlobMetadata> blobMetadata();
 }

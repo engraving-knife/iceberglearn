@@ -40,6 +40,15 @@ import org.apache.spark.sql.connector.distributions.OrderedDistribution;
 import org.apache.spark.sql.connector.expressions.SortOrder;
 import org.apache.spark.sql.internal.SQLConf;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkShufflingDataRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
 
   /**
@@ -57,12 +66,19 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
 
   private double compressionFactor;
 
+  /** 构造 SparkShufflingDataRewriter 实例。 */
   protected SparkShufflingDataRewriter(SparkSession spark, Table table) {
     super(spark, table);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract Dataset<Row> sortedDF(Dataset<Row> df, List<FileScanTask> group);
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -71,12 +87,23 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
         .build();
   }
 
+  /**
+   * 执行初始化。
+   *
+   * @param options 参数
+   */
   @Override
   public void init(Map<String, String> options) {
     super.init(options);
     this.compressionFactor = compressionFactor(options);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param groupId 参数
+   * @param group 参数
+   */
   @Override
   public void doRewrite(String groupId, List<FileScanTask> group) {
     // the number of shuffle partition controls the number of output files
@@ -101,6 +128,7 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
         .save(groupId);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Dataset<Row> sort(Dataset<Row> df, org.apache.iceberg.SortOrder sortOrder) {
     SortOrder[] ordering = SparkDistributionAndOrderingUtil.convert(sortOrder);
     OrderedDistribution distribution = Distributions.ordered(ordering);
@@ -111,6 +139,7 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
     return new Dataset<>(spark(), sortPlan, df.encoder());
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected org.apache.iceberg.SortOrder outputSortOrder(
       List<FileScanTask> group, org.apache.iceberg.SortOrder sortOrder) {
     boolean includePartitionColumns = !group.get(0).spec().equals(table().spec());
@@ -123,11 +152,13 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private long numShufflePartitions(List<FileScanTask> group) {
     long numOutputFiles = numOutputFiles((long) (inputSize(group) * compressionFactor));
     return Math.max(1, numOutputFiles);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private double compressionFactor(Map<String, String> options) {
     double value =
         PropertyUtil.propertyAsDouble(options, COMPRESSION_FACTOR, COMPRESSION_FACTOR_DEFAULT);

@@ -30,13 +30,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that applies changes in a given snapshot and creates a new snapshot which will be set
- * as the current snapshot in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>职责：拣选快照的存储过程，将指定快照的变更应用到当前分支。
  *
- * @see org.apache.iceberg.ManageSnapshots#cherrypick(long)
+ * <p>设计意图：通过 Iceberg cherry-pick 操作将另一分支/快照的提交应用到目标表。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class CherrypickSnapshotProcedure extends BaseProcedure {
 
@@ -52,9 +52,10 @@ class CherrypickSnapshotProcedure extends BaseProcedure {
             new StructField("source_snapshot_id", DataTypes.LongType, false, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<CherrypickSnapshotProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected CherrypickSnapshotProcedure doBuild() {
         return new CherrypickSnapshotProcedure(tableCatalog());
@@ -65,17 +66,17 @@ class CherrypickSnapshotProcedure extends BaseProcedure {
   private CherrypickSnapshotProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -92,7 +93,7 @@ class CherrypickSnapshotProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "CherrypickSnapshotProcedure";

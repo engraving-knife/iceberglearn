@@ -24,6 +24,15 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 重分配文档访问者：按字段 ID 从源 schema 复制字段文档到目标 schema。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#reassignDoc} 使用）。
+ *
+ * <p>职责：前序遍历目标 schema，按字段 ID 从 docSourceSchema 查找对应字段的文档并复制。
+ *
+ * <p>设计意图：按字段 ID（而非名称）匹配，保证即使字段重命名也能正确复制文档； 源 schema 中找不到的字段 ID 抛 NullPointerException。
+ */
 class ReassignDoc extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final Schema docSourceSchema;
 

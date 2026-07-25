@@ -26,6 +26,13 @@ import org.apache.iceberg.types.Types.NestedField;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestPartitionSpecValidation 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestPartitionSpecValidation 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestPartitionSpecValidation {
   private static final Schema SCHEMA =
       new Schema(
@@ -36,6 +43,11 @@ public class TestPartitionSpecValidation {
           NestedField.required(5, "another_d", Types.TimestampType.withZone()),
           NestedField.required(6, "s", Types.StringType.get()));
 
+  /**
+   * 测试场景：Multiple Timestamp Partitions。
+   *
+   * <p>验证该方法在 Multiple Timestamp Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleTimestampPartitions() {
     Assertions.assertThatThrownBy(
@@ -89,6 +101,11 @@ public class TestPartitionSpecValidation {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  /**
+   * 测试场景：Multiple Date Partitions。
+   *
+   * <p>验证该方法在 Multiple Date Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleDatePartitions() {
     Assertions.assertThatThrownBy(
@@ -120,6 +137,11 @@ public class TestPartitionSpecValidation {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  /**
+   * 测试场景：Multiple Timestamp Partitions With Different Source Columns。
+   *
+   * <p>验证该方法在 Multiple Timestamp Partitions With Different Source Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleTimestampPartitionsWithDifferentSourceColumns() {
     PartitionSpec.builderFor(SCHEMA).year("ts").year("another_ts").build();
@@ -134,6 +156,11 @@ public class TestPartitionSpecValidation {
     PartitionSpec.builderFor(SCHEMA).hour("ts").hour("another_ts").build();
   }
 
+  /**
+   * 测试场景：Multiple Date Partitions With Different Source Columns。
+   *
+   * <p>验证该方法在 Multiple Date Partitions With Different Source Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleDatePartitionsWithDifferentSourceColumns() {
     PartitionSpec.builderFor(SCHEMA).year("d").year("another_d").build();
@@ -148,6 +175,11 @@ public class TestPartitionSpecValidation {
     PartitionSpec.builderFor(SCHEMA).hour("d").hour("another_d").build();
   }
 
+  /**
+   * 测试场景：Multiple Identity Partitions。
+   *
+   * <p>验证该方法在 Multiple Identity Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleIdentityPartitions() {
     PartitionSpec.builderFor(SCHEMA).year("d").identity("id").identity("d").identity("s").build();
@@ -171,6 +203,11 @@ public class TestPartitionSpecValidation {
         .hasMessageContaining("Cannot use partition name more than once");
   }
 
+  /**
+   * 测试场景：Setting Partition Transforms With Custom Target Names。
+   *
+   * <p>验证该方法在 Setting Partition Transforms With Custom Target Names 条件下的行为是否符合预期。
+   */
   @Test
   public void testSettingPartitionTransformsWithCustomTargetNames() {
     assertThat(
@@ -218,6 +255,12 @@ public class TestPartitionSpecValidation {
         .isEqualTo("custom_truncate");
   }
 
+  /**
+   * 测试场景：Setting Partition Transforms With Custom Target Names That Already Exist。
+   *
+   * <p>验证该方法在 Setting Partition Transforms With Custom Target Names That Already Exist
+   * 条件下的行为是否符合预期。
+   */
   @Test
   public void testSettingPartitionTransformsWithCustomTargetNamesThatAlreadyExist() {
     Assertions.assertThatThrownBy(() -> PartitionSpec.builderFor(SCHEMA).year("ts", "another_ts"))
@@ -253,6 +296,11 @@ public class TestPartitionSpecValidation {
             "Cannot create identity partition sourced from different field in schema: another_ts");
   }
 
+  /**
+   * 测试场景：Missing Source Column。
+   *
+   * <p>验证该方法在 Missing Source Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingSourceColumn() {
     Assertions.assertThatThrownBy(() -> PartitionSpec.builderFor(SCHEMA).year("missing").build())
@@ -287,6 +335,11 @@ public class TestPartitionSpecValidation {
         .hasMessage("Cannot find source column: missing");
   }
 
+  /**
+   * 测试场景：Auto Setting Partition Field Ids。
+   *
+   * <p>验证该方法在 Auto Setting Partition Field Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testAutoSettingPartitionFieldIds() {
     PartitionSpec spec =
@@ -304,6 +357,11 @@ public class TestPartitionSpecValidation {
     assertThat(spec.lastAssignedFieldId()).isEqualTo(1003);
   }
 
+  /**
+   * 测试场景：Add Partition Fields With Field Ids。
+   *
+   * <p>验证该方法在 Add Partition Fields With Field Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testAddPartitionFieldsWithFieldIds() {
     PartitionSpec spec =
@@ -319,6 +377,11 @@ public class TestPartitionSpecValidation {
     assertThat(spec.lastAssignedFieldId()).isEqualTo(1006);
   }
 
+  /**
+   * 测试场景：Add Partition Fields With And Without Field Ids。
+   *
+   * <p>验证该方法在 Add Partition Fields With And Without Field Ids 条件下的行为是否符合预期。
+   */
   @Test
   public void testAddPartitionFieldsWithAndWithoutFieldIds() {
     PartitionSpec spec =

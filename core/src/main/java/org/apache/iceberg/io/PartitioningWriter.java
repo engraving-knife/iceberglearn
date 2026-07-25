@@ -19,40 +19,40 @@
 package org.apache.iceberg.io;
 
 import java.io.Closeable;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.StructLike;
 
 /**
- * A writer capable of writing files of a single type (i.e. data/delete) to multiple specs and
- * partitions.
+ * 文件级说明：多分区文件写入器接口。
  *
- * <p>As opposed to {@link FileWriter}, this interface should be implemented by writers that are not
- * limited to writing to a single spec/partition. Implementations may internally use {@link
- * FileWriter}s for writing to a single spec/partition.
+ * <p>所属模块：iceberg-core。
  *
- * <p>Note that this writer can be used both for partitioned and unpartitioned tables.
+ * <p>职责：向多个不同的 spec/partition 写入数据或删除记录，并在关闭后返回聚合结果。
  *
- * @param <T> the row type
- * @param <R> the result type
+ * <p>设计意图：与 {@link FileWriter} 不同，本接口不限于单个 spec/partition，每条记录写入时 需显式指定目标 spec 和 partition。实现类（如
+ * {@link ClusteredWriter}、{@link FanoutWriter}） 内部通常为每个 spec/partition 维护一个 FileWriter。
+ *
+ * <p>上下游关系：由 {@link BasePositionDeltaWriter} 作为 data/delete 写入器使用； 实现类包括 {@link ClusteredWriter} 和
+ * {@link FanoutWriter} 两大系列。
+ *
+ * @param <T> 行记录类型
+ * @param <R> 结果类型
  */
 public interface PartitioningWriter<T, R> extends Closeable {
 
   /**
-   * Writes a row to the provided spec/partition.
+   * 将一行记录写入指定的 spec/partition。
    *
-   * @param row a data or delete record
-   * @param spec a partition spec
-   * @param partition a partition or null if the spec is unpartitioned
+   * @param row 数据或删除记录
+   * @param spec 分区规格
+   * @param partition 分区值，spec 为非分区表时传 null
    */
   void write(T row, PartitionSpec spec, StructLike partition);
 
   /**
-   * Returns a result that contains information about written {@link DataFile}s or {@link
-   * DeleteFile}s. The result is valid only after the writer is closed.
+   * 返回包含已写文件信息的结果。仅在写入器关闭后有效。
    *
-   * @return the writer result
+   * @return 写入结果
    */
   R result();
 }

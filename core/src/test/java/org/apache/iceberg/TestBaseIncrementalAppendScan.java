@@ -23,17 +23,32 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：TestBaseIncrementalAppendScan，用于验证 Base Incremental Append Scan 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Base Incremental Append Scan
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestBaseIncrementalAppendScan
     extends ScanTestBase<IncrementalAppendScan, FileScanTask, CombinedScanTask> {
+  /** 辅助方法：base incremental append scan。 */
   public TestBaseIncrementalAppendScan(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：new scan。 */
   @Override
   protected IncrementalAppendScan newScan() {
     return table.newIncrementalAppendScan();
   }
 
+  /**
+   * 测试场景：from snapshot inclusive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFromSnapshotInclusive() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -51,6 +66,11 @@ public class TestBaseIncrementalAppendScan
     Assert.assertEquals(3, Iterables.size(scanWithToSnapshot.planFiles()));
   }
 
+  /**
+   * 测试场景：from snapshot inclusive with non existing ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromSnapshotInclusiveWithNonExistingRef() {
     Assertions.assertThatThrownBy(() -> newScan().fromSnapshotInclusive("nonExistingRef"))
@@ -58,6 +78,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage("Cannot find ref: nonExistingRef");
   }
 
+  /**
+   * 测试场景：from snapshot inclusive with tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromSnapshotInclusiveWithTag() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -84,6 +109,11 @@ public class TestBaseIncrementalAppendScan
     Assertions.assertThat(scanWithToSnapshot.planFiles()).hasSize(3);
   }
 
+  /**
+   * 测试场景：from snapshot inclusive with branch should fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromSnapshotInclusiveWithBranchShouldFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -101,6 +131,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage(String.format("Ref %s is not a tag", branchName));
   }
 
+  /**
+   * 测试场景：use branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUseBranch() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -158,6 +193,11 @@ public class TestBaseIncrementalAppendScan
     Assertions.assertThat(scan5.planFiles()).hasSize(1);
   }
 
+  /**
+   * 测试场景：use branch with tag should fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUseBranchWithTagShouldFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -171,6 +211,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage(String.format("Ref %s is not a branch", tagSnapshotAName));
   }
 
+  /**
+   * 测试场景：use branch with invalid snapshot should fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUseBranchWithInvalidSnapshotShouldFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -208,6 +253,11 @@ public class TestBaseIncrementalAppendScan
                 snapshotMainBId, snapshotBranchBId));
   }
 
+  /**
+   * 测试场景：use branch with non existing ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUseBranchWithNonExistingRef() {
     Assertions.assertThatThrownBy(() -> newScan().useBranch("nonExistingRef"))
@@ -215,6 +265,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage("Cannot find ref: nonExistingRef");
   }
 
+  /**
+   * 测试场景：from snapshot exclusive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFromSnapshotExclusive() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -232,6 +287,11 @@ public class TestBaseIncrementalAppendScan
     Assert.assertEquals(1, Iterables.size(scanWithToSnapshot.planFiles()));
   }
 
+  /**
+   * 测试场景：from snapshot exclusive for expired parent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFromSnapshotExclusiveForExpiredParent() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -252,6 +312,11 @@ public class TestBaseIncrementalAppendScan
     Assert.assertEquals(1, Iterables.size(scanWithToSnapshot.planFiles()));
   }
 
+  /**
+   * 测试场景：from snapshot exclusive with non existing ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromSnapshotExclusiveWithNonExistingRef() {
     Assertions.assertThatThrownBy(() -> newScan().fromSnapshotExclusive("nonExistingRef"))
@@ -259,6 +324,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage("Cannot find ref: nonExistingRef");
   }
 
+  /**
+   * 测试场景：from snapshot exclusive with tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFromSnapshotExclusiveWithTag() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -285,6 +355,11 @@ public class TestBaseIncrementalAppendScan
     Assertions.assertThat(scanWithToSnapshot.planFiles()).hasSize(2);
   }
 
+  /**
+   * 测试场景：from snapshot exclusive with branch should fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromSnapshotExclusiveWithBranchShouldFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -297,6 +372,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage(String.format("Ref %s is not a tag", branchName));
   }
 
+  /**
+   * 测试场景：to snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testToSnapshot() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -310,6 +390,11 @@ public class TestBaseIncrementalAppendScan
     Assert.assertEquals(2, Iterables.size(scan.planFiles()));
   }
 
+  /**
+   * 测试场景：to snapshot with tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testToSnapshotWithTag() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -345,6 +430,11 @@ public class TestBaseIncrementalAppendScan
     Assertions.assertThat(scan2.planFiles()).hasSize(3);
   }
 
+  /**
+   * 测试场景：to snapshot with non existing ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testToSnapshotWithNonExistingRef() {
     Assertions.assertThatThrownBy(() -> newScan().toSnapshot("nonExistingRef"))
@@ -352,6 +442,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage("Cannot find ref: nonExistingRef");
   }
 
+  /**
+   * 测试场景：to snapshot with branch should fail。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testToSnapshotWithBranchShouldFail() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -366,6 +461,11 @@ public class TestBaseIncrementalAppendScan
         .hasMessage(String.format("Ref %s is not a tag", branchName));
   }
 
+  /**
+   * 测试场景：multiple root snapshots。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleRootSnapshots() throws Exception {
     table.newFastAppend().appendFile(FILE_A).commit();

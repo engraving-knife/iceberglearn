@@ -26,8 +26,16 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.CloseableIterator;
 
 /**
- * A vectorized implementation of the Iceberg reader that iterates over the table scan. See {@link
- * ArrowReader} for details.
+ * 文件级说明：Iceberg 表扫描的向量化可迭代读取实现。
+ *
+ * <p>所属模块：iceberg-arrow（表扫描向量化读取的入口适配）。
+ *
+ * <p>职责：包装 {@link ArrowReader}，规划扫描任务并以默认或指定批大小、容器复用策略 产出 {@link ColumnarBatch} 的可关闭迭代器。
+ *
+ * <p>设计意图：作为 {@link ArrowReader} 的便捷封装，提供默认批大小（2^16）与非复用容器的 开箱即用配置；实现 {@link CloseableIterable}
+ * 以纳入资源管理，关闭时同时关闭任务规划 清单与数据文件。
+ *
+ * <p>上下游关系：上游为 {@link TableScan}；内部委托 {@link ArrowReader}；下游被引擎迭代消费。
  */
 public class VectorizedTableScanIterable extends CloseableGroup
     implements CloseableIterable<ColumnarBatch> {
@@ -38,18 +46,20 @@ public class VectorizedTableScanIterable extends CloseableGroup
   private final CloseableIterable<CombinedScanTask> tasks;
 
   /**
-   * Create a new instance using default values for {@code batchSize} and {@code reuseContainers}.
-   * The {@code batchSize} is set to {@link #BATCH_SIZE_IN_NUM_ROWS} and {@code reuseContainers} is
-   * set to {@code false}.
+   * 使用默认批大小（{@link #BATCH_SIZE_IN_NUM_ROWS}）且不复用容器构造实例。
+   *
+   * @param scan 表扫描
    */
   public VectorizedTableScanIterable(TableScan scan) {
     this(scan, BATCH_SIZE_IN_NUM_ROWS, false);
   }
 
   /**
-   * Create a new instance.
+   * 构造实例，详见 {@link ArrowReader#ArrowReader(TableScan, int, boolean)}。
    *
-   * <p>See {@link ArrowReader#ArrowReader(TableScan, int, boolean)} for details.
+   * @param scan 表扫描
+   * @param batchSize 批大小
+   * @param reuseContainers 是否复用容器
    */
   public VectorizedTableScanIterable(TableScan scan, int batchSize, boolean reuseContainers) {
     this.reader = new ArrowReader(scan, batchSize, reuseContainers);
@@ -58,6 +68,11 @@ public class VectorizedTableScanIterable extends CloseableGroup
   }
 
   @Override
+  /**
+   * 返回列式批次的可关闭迭代器，并将其纳入本组的资源管理。
+   *
+   * @return 列式批次迭代器
+   */
   public CloseableIterator<ColumnarBatch> iterator() {
     CloseableIterator<ColumnarBatch> iter = reader.open(tasks);
     addCloseable(iter);
@@ -65,6 +80,11 @@ public class VectorizedTableScanIterable extends CloseableGroup
   }
 
   @Override
+  /**
+   * 关闭任务规划清单与数据文件资源。
+   *
+   * @throws IOException 关闭异常
+   */
   public void close() throws IOException {
     tasks.close(); // close manifests from scan planning
     super.close(); // close data files

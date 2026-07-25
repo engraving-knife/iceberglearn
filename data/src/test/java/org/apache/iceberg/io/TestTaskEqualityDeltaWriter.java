@@ -55,6 +55,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestTaskEqualityDeltaWriter 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestTaskEqualityDeltaWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTaskEqualityDeltaWriter extends TableTestBase {
   private static final int FORMAT_V2 = 2;
   private static final long TARGET_FILE_SIZE = 128 * 1024 * 1024L;
@@ -67,16 +74,19 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
   private int idFieldId;
   private int dataFieldId;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat = {0}")
   public static Object[][] parameters() {
     return new Object[][] {{"avro"}, {"orc"}, {"parquet"}};
   }
 
+  /** 辅助方法：TestTaskEqualityDeltaWriter。 */
   public TestTaskEqualityDeltaWriter(String fileFormat) {
     super(FORMAT_V2);
     this.format = FileFormat.fromString(fileFormat);
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -94,10 +104,16 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
     table.updateProperties().defaultFormat(format).commit();
   }
 
+  /** 辅助方法：createRecord。 */
   private Record createRecord(Integer id, String data) {
     return gRecord.copy("id", id, "data", data);
   }
 
+  /**
+   * 测试场景：Pure Insert。
+   *
+   * <p>验证该方法在 Pure Insert 条件下的行为是否符合预期。
+   */
   @Test
   public void testPureInsert() throws IOException {
     List<Integer> eqDeleteFieldIds = Lists.newArrayList(idFieldId, dataFieldId);
@@ -134,6 +150,11 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         "Should have expected records", expectedRowSet(expected), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Insert Duplicated Key。
+   *
+   * <p>验证该方法在 Insert Duplicated Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testInsertDuplicatedKey() throws IOException {
     List<Integer> equalityFieldIds = Lists.newArrayList(idFieldId);
@@ -193,6 +214,11 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         readRecordsAsList(posDeleteSchema, posDeleteFile.path()));
   }
 
+  /**
+   * 测试场景：Upsert Same Row。
+   *
+   * <p>验证该方法在 Upsert Same Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertSameRow() throws IOException {
     List<Integer> eqDeleteFieldIds = Lists.newArrayList(idFieldId, dataFieldId);
@@ -237,6 +263,11 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         "Should have no record", expectedRowSet(ImmutableList.of()), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Upsert Data。
+   *
+   * <p>验证该方法在 Upsert Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertData() throws IOException {
     List<Integer> eqDeleteFieldIds = Lists.newArrayList(dataFieldId);
@@ -321,6 +352,11 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         readRecordsAsList(posDeleteSchema, posDeleteFile.path()));
   }
 
+  /**
+   * 测试场景：Upsert Data With Full Row Schema。
+   *
+   * <p>验证该方法在 Upsert Data With Full Row Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpsertDataWithFullRowSchema() throws IOException {
     List<Integer> eqDeleteFieldIds = Lists.newArrayList(dataFieldId);
@@ -404,6 +440,7 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         readRecordsAsList(posDeleteSchema, posDeleteFile.path()));
   }
 
+  /** 辅助方法：commitTransaction。 */
   private void commitTransaction(WriteResult result) {
     RowDelta rowDelta = table.newRowDelta();
     Arrays.stream(result.dataFiles()).forEach(rowDelta::addRows);
@@ -415,12 +452,14 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
         .commit();
   }
 
+  /** 辅助方法：expectedRowSet。 */
   private StructLikeSet expectedRowSet(Iterable<Record> records) {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     records.forEach(set::add);
     return set;
   }
 
+  /** 辅助方法：actualRowSet。 */
   private StructLikeSet actualRowSet(String... columns) throws IOException {
     StructLikeSet set = StructLikeSet.create(table.schema().asStruct());
     try (CloseableIterable<Record> reader = IcebergGenerics.read(table).select(columns).build()) {
@@ -466,6 +505,7 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
   private static class GenericTaskDeltaWriter extends BaseTaskWriter<Record> {
     private final GenericEqualityDeltaWriter deltaWriter;
 
+    /** 辅助方法：GenericTaskDeltaWriter。 */
     private GenericTaskDeltaWriter(
         Schema schema,
         Schema deleteSchema,
@@ -479,11 +519,13 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
       this.deltaWriter = new GenericEqualityDeltaWriter(null, schema, deleteSchema);
     }
 
+    /** 辅助方法：write。 */
     @Override
     public void write(Record row) throws IOException {
       deltaWriter.write(row);
     }
 
+    /** 辅助方法：delete。 */
     public void delete(Record row) throws IOException {
       deltaWriter.delete(row);
     }
@@ -493,22 +535,26 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
       deltaWriter.deleteKey(key);
     }
 
+    /** 辅助方法：close。 */
     @Override
     public void close() throws IOException {
       deltaWriter.close();
     }
 
     private class GenericEqualityDeltaWriter extends BaseEqualityDeltaWriter {
+      /** 辅助方法：GenericEqualityDeltaWriter。 */
       private GenericEqualityDeltaWriter(
           PartitionKey partition, Schema schema, Schema eqDeleteSchema) {
         super(partition, schema, eqDeleteSchema);
       }
 
+      /** 辅助方法：asStructLike。 */
       @Override
       protected StructLike asStructLike(Record row) {
         return row;
       }
 
+      /** 辅助方法：asStructLikeKey。 */
       @Override
       protected StructLike asStructLikeKey(Record data) {
         return data;
@@ -516,6 +562,7 @@ public class TestTaskEqualityDeltaWriter extends TableTestBase {
     }
   }
 
+  /** 辅助方法：readRecordsAsList。 */
   private List<Record> readRecordsAsList(Schema schema, CharSequence path) throws IOException {
     CloseableIterable<Record> iterable;
 

@@ -43,6 +43,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 测试类：TestManifestCaching，用于验证 Manifest Caching 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Manifest Caching 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestManifestCaching {
 
   // Schema passed to create tables
@@ -56,6 +64,11 @@ public class TestManifestCaching {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：plan with cache。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPlanWithCache() throws Exception {
     Map<String, String> properties =
@@ -93,6 +106,11 @@ public class TestManifestCaching {
     ManifestFiles.dropCache(table.io());
   }
 
+  /**
+   * 测试场景：plan with small cache。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPlanWithSmallCache() throws Exception {
     Map<String, String> properties =
@@ -119,6 +137,11 @@ public class TestManifestCaching {
     ManifestFiles.dropCache(scan.table().io());
   }
 
+  /**
+   * 测试场景：unique cache。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUniqueCache() throws Exception {
     Map<String, String> properties1 =
@@ -147,6 +170,11 @@ public class TestManifestCaching {
     ManifestFiles.dropCache(table2.io());
   }
 
+  /**
+   * 测试场景：recreate cache。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRecreateCache() throws Exception {
     Map<String, String> properties =
@@ -165,6 +193,11 @@ public class TestManifestCaching {
     ManifestFiles.dropCache(table.io());
   }
 
+  /**
+   * 测试场景：weak file io reference clean up。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWeakFileIOReferenceCleanUp() {
     Cache<FileIO, ContentCache> manifestCache =
@@ -199,11 +232,7 @@ public class TestManifestCaching {
     Assert.assertEquals(maxIO - 2, manifestCache.stats().evictionCount());
   }
 
-  /**
-   * Helper to get existing or insert new {@link ContentCache} into the given manifestCache.
-   *
-   * @return an existing or new {@link ContentCache} associated with given io.
-   */
+  /** 辅助方法：content cache。 */
   private static ContentCache contentCache(Cache<FileIO, ContentCache> manifestCache, FileIO io) {
     return manifestCache.get(
         io,
@@ -214,6 +243,7 @@ public class TestManifestCaching {
                 ManifestFiles.cacheMaxContentLength(fileIO)));
   }
 
+  /** 辅助方法：cache enabled hadoop file io。 */
   private FileIO cacheEnabledHadoopFileIO() {
     Map<String, String> properties =
         ImmutableMap.of(
@@ -226,6 +256,7 @@ public class TestManifestCaching {
     return io;
   }
 
+  /** 辅助方法：create table。 */
   private Table createTable(Map<String, String> properties) throws Exception {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
     return hadoopCatalog(properties)
@@ -234,6 +265,7 @@ public class TestManifestCaching {
         .create();
   }
 
+  /** 辅助方法：hadoop catalog。 */
   private HadoopCatalog hadoopCatalog(Map<String, String> catalogProperties) throws IOException {
     HadoopCatalog hadoopCatalog = new HadoopCatalog();
     hadoopCatalog.setConf(new Configuration());
@@ -246,6 +278,7 @@ public class TestManifestCaching {
     return hadoopCatalog;
   }
 
+  /** 辅助方法：append files。 */
   private void appendFiles(Iterable<DataFile> files, Table table) {
     for (DataFile file : files) {
       AppendFiles appendFile = table.newAppend();
@@ -254,10 +287,12 @@ public class TestManifestCaching {
     }
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(int numFiles, long sizeInBytes) {
     return newFiles(numFiles, sizeInBytes, FileFormat.PARQUET, 1);
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(
       int numFiles, long sizeInBytes, FileFormat fileFormat, int numOffset) {
     List<DataFile> files = Lists.newArrayList();
@@ -267,6 +302,7 @@ public class TestManifestCaching {
     return files;
   }
 
+  /** 辅助方法：new file。 */
   private DataFile newFile(long sizeInBytes, FileFormat fileFormat, int numOffsets) {
     String fileName = UUID.randomUUID().toString();
     DataFiles.Builder builder =

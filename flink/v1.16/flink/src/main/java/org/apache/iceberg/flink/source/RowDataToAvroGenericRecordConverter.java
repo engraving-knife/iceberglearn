@@ -38,6 +38,13 @@ import org.apache.iceberg.flink.FlinkSchemaUtil;
  * implements {@link Serializable} interface.
  */
 @Internal
+/**
+ * RowData 转 Avro GenericRecord 的转换函数。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把 Flink RowData 转为 Avro GenericRecord 以支持 Avro 输出。
+ *
+ * <p>设计意图：适配器（Function）；被需要 Avro 输出的算子调用。
+ */
 public class RowDataToAvroGenericRecordConverter implements Function<RowData, GenericRecord> {
   private final RowDataToAvroConverters.RowDataToAvroConverter converter;
   private final Schema avroSchema;

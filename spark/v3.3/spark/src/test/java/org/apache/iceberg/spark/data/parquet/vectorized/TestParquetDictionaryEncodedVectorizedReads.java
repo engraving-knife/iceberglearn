@@ -36,8 +36,17 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestParquetDictionaryEncodedVectorizedReads 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Parquetdictionary编码向量化读
+ * 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestParquetDictionaryEncodedVectorizedReads extends TestParquetVectorizedReads {
 
+  /** 生成数据。 */
   @Override
   Iterable<GenericData.Record> generateData(
       Schema schema,
@@ -53,8 +62,10 @@ public class TestParquetDictionaryEncodedVectorizedReads extends TestParquetVect
   @Test
   @Override
   @Ignore // Ignored since this code path is already tested in TestParquetVectorizedReads
+  /** 测试向量化读带新建containers场景：验证该方法在对应输入下的行为与断言结果。 */
   public void testVectorizedReadsWithNewContainers() throws IOException {}
 
+  /** 测试mixeddictionary不存在的dictionary读场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMixedDictionaryNonDictionaryReads() throws IOException {
     Schema schema = new Schema(SUPPORTED_PRIMITIVES.fields());

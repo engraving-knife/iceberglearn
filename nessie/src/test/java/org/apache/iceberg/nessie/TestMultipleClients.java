@@ -40,12 +40,20 @@ import org.junit.jupiter.api.Test;
 import org.projectnessie.client.ext.NessieClientFactory;
 import org.projectnessie.client.ext.NessieClientUri;
 
+/**
+ * 文件级说明：测试 TestMultipleClients 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestMultipleClients 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestMultipleClients extends BaseTestIceberg {
 
   private static final String BRANCH = "multiple-clients-test";
   private static final Schema schema =
       new Schema(Types.StructType.of(required(1, "id", Types.LongType.get())).fields());
 
+  /** 辅助方法：TestMultipleClients。 */
   public TestMultipleClients() {
     super(BRANCH);
   }
@@ -53,6 +61,7 @@ public class TestMultipleClients extends BaseTestIceberg {
   // another client that connects to the same nessie server.
   NessieCatalog anotherCatalog;
 
+  /** 辅助方法：beforeEach。 */
   @Override
   @BeforeEach
   public void beforeEach(NessieClientFactory clientFactory, @NessieClientUri URI nessieUri)
@@ -61,11 +70,17 @@ public class TestMultipleClients extends BaseTestIceberg {
     anotherCatalog = initCatalog(branch);
   }
 
+  /** 辅助方法：afterEach。 */
   @AfterEach
   public void afterEach() throws Exception {
     anotherCatalog.close();
   }
 
+  /**
+   * 测试场景：List Namespaces。
+   *
+   * <p>验证该方法在 List Namespaces 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaces() {
     catalog.createNamespace(Namespace.of("db1"), Collections.emptyMap());
@@ -80,6 +95,11 @@ public class TestMultipleClients extends BaseTestIceberg {
         .containsExactlyInAnyOrder(Namespace.of("db1"), Namespace.of("db2"));
   }
 
+  /**
+   * 测试场景：Load Namespace Metadata。
+   *
+   * <p>验证该方法在 Load Namespace Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadNamespaceMetadata() {
     catalog.createNamespace(Namespace.of("namespace1"), Collections.emptyMap());
@@ -96,6 +116,11 @@ public class TestMultipleClients extends BaseTestIceberg {
         .containsExactly(entry);
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() {
     createTable(TableIdentifier.parse("foo.tbl1"), schema);
@@ -113,6 +138,11 @@ public class TestMultipleClients extends BaseTestIceberg {
             TableIdentifier.parse("foo.tbl1"), TableIdentifier.parse("foo.tbl2"));
   }
 
+  /**
+   * 测试场景：Commits。
+   *
+   * <p>验证该方法在 Commits 条件下的行为是否符合预期。
+   */
   @Test
   public void testCommits() {
     TableIdentifier identifier = TableIdentifier.parse("foo.tbl1");
@@ -130,6 +160,11 @@ public class TestMultipleClients extends BaseTestIceberg {
     Assertions.assertThat(anotherCatalog.loadTable(identifier).schema().columns()).hasSize(5);
   }
 
+  /**
+   * 测试场景：Concurrent Commits With Refresh。
+   *
+   * <p>验证该方法在 Concurrent Commits With Refresh 条件下的行为是否符合预期。
+   */
   @Test
   public void testConcurrentCommitsWithRefresh() {
     TableIdentifier identifier = TableIdentifier.parse("foo.tbl1");

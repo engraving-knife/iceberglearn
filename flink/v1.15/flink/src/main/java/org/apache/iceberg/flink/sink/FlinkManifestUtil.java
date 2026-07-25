@@ -35,6 +35,13 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * Flink 清单文件工具类，提供 manifest 文件的序列化与路径生成方法。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：构造 DeltaManifests 对应的 manifest 文件路径与输出。
+ *
+ * <p>设计意图：工具类 + 静态方法；被 IcebergStreamWriter/IcebergFilesCommitter 调用。
+ */
 class FlinkManifestUtil {
   private static final int FORMAT_V2 = 2;
   private static final Long DUMMY_SNAPSHOT_ID = 0L;

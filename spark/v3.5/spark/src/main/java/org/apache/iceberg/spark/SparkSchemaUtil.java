@@ -44,19 +44,38 @@ import org.apache.spark.sql.catalog.Column;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructType;
 
-/** Helper methods for working with Spark/Hive metadata. */
+/**
+ * Spark 与 Iceberg 之间的 Schema/类型转换与元数据工具类。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>Spark StructType/DataType 与 Iceberg Schema/Type 互转（含字段 ID 重新分配与歧义类型修正）。
+ *   <li>基于 Spark 表元数据构造 Iceberg Schema 与 PartitionSpec（identity 分区）。
+ *   <li>按 Spark 投影与过滤器裁剪 Iceberg Schema 列。
+ *   <li>估算表大小、校验元数据列名冲突、生成带反引号的字段名索引。
+ * </ul>
+ *
+ * <p>设计意图：集中所有 Spark-Iceberg schema 转换逻辑，避免散落；通过 {@link SparkTypeVisitor} / {@link TypeToSparkType}
+ * 访问者模式做类型映射；歧义类型（UUID/Fixed）用 {@link SparkFixupTypes} 借参考 schema 修正；字段 ID 通过 {@link
+ * TypeUtil#reassignIds} 对齐已有 schema。
+ *
+ * <p>上下游关系：被 Spark 读写路径、catalog、procedures 等广泛调用；依赖 iceberg-core 的 TypeUtil 与 Spark SQL types。
+ */
 public class SparkSchemaUtil {
   private SparkSchemaUtil() {}
 
   /**
-   * Returns a {@link Schema} for the given table with fresh field ids.
+   * 为指定 Spark 表构造带新鲜字段 ID 的 Iceberg {@link Schema}。
    *
-   * <p>This creates a Schema for an existing table by looking up the table's schema with Spark and
-   * converting that schema. Spark/Hive partition columns are included in the schema.
+   * <p>逻辑：通过 Spark 查表得到 StructType，用 {@link SparkTypeVisitor} + {@link SparkTypeToType} 转换为 Iceberg
+   * Schema（包含 Spark/Hive 分区列）。
    *
-   * @param spark a Spark session
-   * @param name a table name and (optional) database
-   * @return a Schema for the table, if found
+   * @param spark SparkSession
+   * @param name 表名（可选含库名）
+   * @return 表对应的 Iceberg Schema
    */
   public static Schema schemaForTable(SparkSession spark, String name) {
     StructType sparkType = spark.table(name).schema();
@@ -65,15 +84,15 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Returns a {@link PartitionSpec} for the given table.
+   * 为指定 Spark 表构造 Iceberg {@link PartitionSpec}。
    *
-   * <p>This creates a partition spec for an existing table by looking up the table's schema and
-   * creating a spec with identity partitions for each partition column.
+   * <p>逻辑：解析表名得到 db/table；用 {@link #schemaForTable} 得到 schema； 调 {@link #identitySpec} 对每个分区列创建
+   * identity 分区；无分区列返回 unpartitioned。
    *
-   * @param spark a Spark session
-   * @param name a table name and (optional) database
-   * @return a PartitionSpec for the table
-   * @throws AnalysisException if thrown by the Spark catalog
+   * @param spark SparkSession
+   * @param name 表名（可选含库名）
+   * @return 表对应的 PartitionSpec
+   * @throws AnalysisException Spark catalog 抛出时透传
    */
   public static PartitionSpec specForTable(SparkSession spark, String name)
       throws AnalysisException {
@@ -87,42 +106,23 @@ public class SparkSchemaUtil {
     return spec == null ? PartitionSpec.unpartitioned() : spec;
   }
 
-  /**
-   * Convert a {@link Schema} to a {@link DataType Spark type}.
-   *
-   * @param schema a Schema
-   * @return the equivalent Spark type
-   * @throws IllegalArgumentException if the type cannot be converted to Spark
-   */
+  /** 把 Iceberg {@link Schema} 转为 Spark {@link StructType}。 */
   public static StructType convert(Schema schema) {
     return (StructType) TypeUtil.visit(schema, new TypeToSparkType());
   }
 
-  /**
-   * Convert a {@link Type} to a {@link DataType Spark type}.
-   *
-   * @param type a Type
-   * @return the equivalent Spark type
-   * @throws IllegalArgumentException if the type cannot be converted to Spark
-   */
+  /** 把 Iceberg {@link Type} 转为 Spark {@link DataType}。 */
   public static DataType convert(Type type) {
     return TypeUtil.visit(type, new TypeToSparkType());
   }
 
   /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} with new field ids.
+   * 把 Spark {@link StructType} 转为带新鲜字段 ID 的 Iceberg {@link Schema}。
    *
-   * <p>This conversion assigns fresh ids.
+   * <p>歧义类型（如 UUID/Fixed）会转为默认类型；如需按参考 schema 还原，使用 {@link #convert(Schema, StructType)}。
    *
-   * <p>Some data types are represented as the same Spark type. These are converted to a default
-   * type.
-   *
-   * <p>To convert using a reference schema for field ids and ambiguous types, use {@link
-   * #convert(Schema, StructType)}.
-   *
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted
+   * @param sparkType Spark StructType
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convert(StructType sparkType) {
     Type converted = SparkTypeVisitor.visit(sparkType, new SparkTypeToType(sparkType));
@@ -130,54 +130,38 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Convert a Spark {@link DataType struct} to a {@link Type} with new field ids.
+   * 把 Spark {@link DataType} 转为带新鲜字段 ID 的 Iceberg {@link Type}。
    *
-   * <p>This conversion assigns fresh ids.
-   *
-   * <p>Some data types are represented as the same Spark type. These are converted to a default
-   * type.
-   *
-   * <p>To convert using a reference schema for field ids and ambiguous types, use {@link
-   * #convert(Schema, StructType)}.
-   *
-   * @param sparkType a Spark DataType
-   * @return the equivalent Type
-   * @throws IllegalArgumentException if the type cannot be converted
+   * @param sparkType Spark DataType
+   * @return 等价的 Iceberg Type
    */
   public static Type convert(DataType sparkType) {
     return SparkTypeVisitor.visit(sparkType, new SparkTypeToType());
   }
 
   /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
+   * 基于 baseSchema 把 Spark StructType 转为 Iceberg Schema（大小写敏感）。
    *
-   * <p>This conversion does not assign new ids; it uses ids from the base schema.
+   * <p>逻辑：先转为带新鲜 ID 的 type，再用 {@link TypeUtil#reassignIds} 按 baseSchema 重分配 ID， 最后用 {@link
+   * SparkFixupTypes#fixup} 修正歧义类型。字段顺序/可空性以 sparkType 为准。
    *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
+   * @param baseSchema 参考 schema（提供字段 ID）
+   * @param sparkType Spark StructType
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convert(Schema baseSchema, StructType sparkType) {
     return convert(baseSchema, sparkType, true);
   }
 
   /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
+   * 基于 baseSchema 把 Spark StructType 转为 Iceberg Schema，可配置大小写敏感。
    *
-   * <p>This conversion does not assign new ids; it uses ids from the base schema.
+   * <p>逻辑：转 type -> reassignIds（按 caseSensitive）-> SparkFixupTypes.fixup 修正歧义类型。
    *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @param caseSensitive when false, the case of schema fields is ignored
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
+   * @param baseSchema 参考 schema
+   * @param sparkType Spark StructType
+   * @param caseSensitive false 时忽略字段名大小写
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convert(Schema baseSchema, StructType sparkType, boolean caseSensitive) {
     // convert to a type with fresh ids
@@ -190,35 +174,25 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
+   * 基于 baseSchema 转换，对 baseSchema 中不存在的字段分配新 ID（大小写敏感）。
    *
-   * <p>This conversion will assign new ids for fields that are not found in the base schema.
-   *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
+   * @param baseSchema 参考 schema
+   * @param sparkType Spark StructType
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convertWithFreshIds(Schema baseSchema, StructType sparkType) {
     return convertWithFreshIds(baseSchema, sparkType, true);
   }
 
   /**
-   * Convert a Spark {@link StructType struct} to a {@link Schema} based on the given schema.
+   * 基于 baseSchema 转换，对不存在字段分配新 ID，可配置大小写敏感。
    *
-   * <p>This conversion will assign new ids for fields that are not found in the base schema.
+   * <p>逻辑：转 type -> {@link TypeUtil#reassignOrRefreshIds} -> SparkFixupTypes.fixup。
    *
-   * <p>Data types, field order, and nullability will match the spark type. This conversion may
-   * return a schema that is not compatible with base schema.
-   *
-   * @param baseSchema a Schema on which conversion is based
-   * @param sparkType a Spark StructType
-   * @param caseSensitive when false, case of field names in schema is ignored
-   * @return the equivalent Schema
-   * @throws IllegalArgumentException if the type cannot be converted or there are missing ids
+   * @param baseSchema 参考 schema
+   * @param sparkType Spark StructType
+   * @param caseSensitive false 时忽略字段名大小写
+   * @return 等价的 Iceberg Schema
    */
   public static Schema convertWithFreshIds(
       Schema baseSchema, StructType sparkType, boolean caseSensitive) {
@@ -233,15 +207,13 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
+   * 按 Spark 投影裁剪 Schema 列（不重排）。
    *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
+   * <p>逻辑：用 {@link PruneColumnsWithoutReordering} 访问 schema，只保留 requestedType 投影的列。
    *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
+   * @param schema 原 schema
+   * @param requestedType Spark 投影类型
+   * @return 裁剪后的 schema
    */
   public static Schema prune(Schema schema, StructType requestedType) {
     return new Schema(
@@ -252,19 +224,14 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
+   * 按 Spark 投影裁剪 Schema 列，并保证过滤器引用的列也被投影。
    *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
+   * <p>逻辑：用 {@link Binder#boundReferences} 收集 filters 引用的字段 ID，并入裁剪访问者。
    *
-   * <p>The filters list of {@link Expression} is used to ensure that columns referenced by filters
-   * are projected.
-   *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @param filters a list of filters
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
+   * @param schema 原 schema
+   * @param requestedType Spark 投影类型
+   * @param filters 过滤器列表
+   * @return 裁剪后的 schema
    */
   public static Schema prune(Schema schema, StructType requestedType, List<Expression> filters) {
     Set<Integer> filterRefs = Binder.boundReferences(schema.asStruct(), filters, true);
@@ -276,19 +243,13 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Prune columns from a {@link Schema} using a {@link StructType Spark type} projection.
+   * 按 Spark 投影裁剪 Schema 列，单个过滤器，可配置大小写敏感。
    *
-   * <p>This requires that the Spark type is a projection of the Schema. Nullability and types must
-   * match.
-   *
-   * <p>The filters list of {@link Expression} is used to ensure that columns referenced by filters
-   * are projected.
-   *
-   * @param schema a Schema
-   * @param requestedType a projection of the Spark representation of the Schema
-   * @param filter a filters
-   * @return a Schema corresponding to the Spark projection
-   * @throws IllegalArgumentException if the Spark type does not match the Schema
+   * @param schema 原 schema
+   * @param requestedType Spark 投影类型
+   * @param filter 单个过滤器
+   * @param caseSensitive false 时忽略字段名大小写
+   * @return 裁剪后的 schema
    */
   public static Schema prune(
       Schema schema, StructType requestedType, Expression filter, boolean caseSensitive) {
@@ -302,6 +263,7 @@ public class SparkSchemaUtil {
             .fields());
   }
 
+  /** 从 Spark Column 集合中筛出分区列，构造 identity 分区规格。 */
   private static PartitionSpec identitySpec(Schema schema, Collection<Column> columns) {
     List<String> names = Lists.newArrayList();
     for (Column column : columns) {
@@ -313,6 +275,7 @@ public class SparkSchemaUtil {
     return identitySpec(schema, names);
   }
 
+  /** 按分区列名列表构造 identity 分区规格，无分区列返回 null。 */
   private static PartitionSpec identitySpec(Schema schema, List<String> partitionNames) {
     if (partitionNames == null || partitionNames.isEmpty()) {
       return null;
@@ -327,11 +290,13 @@ public class SparkSchemaUtil {
   }
 
   /**
-   * Estimate approximate table size based on Spark schema and total records.
+   * 根据 Spark schema 默认大小与总记录数估算表大小。
+   *
+   * <p>逻辑：tableSchema.defaultSize() * totalRecords，溢出返回 Long.MAX_VALUE。
    *
    * @param tableSchema Spark schema
-   * @param totalRecords total records in the table
-   * @return approximate size based on table schema
+   * @param totalRecords 总记录数
+   * @return 估算大小
    */
   public static long estimateSize(StructType tableSchema, long totalRecords) {
     if (totalRecords == Long.MAX_VALUE) {
@@ -347,6 +312,15 @@ public class SparkSchemaUtil {
     return result;
   }
 
+  /**
+   * 校验 readSchema 中没有与 Iceberg 元数据列名冲突的表列。
+   *
+   * <p>逻辑：找出 readSchema 中既是元数据列名又在 tableSchema 中存在的列名， 若有则抛出 {@link ValidationException} 提示用 ALTER
+   * TABLE 重命名。
+   *
+   * @param tableSchema 表 schema
+   * @param readSchema 读取 schema
+   */
   public static void validateMetadataColumnReferences(Schema tableSchema, Schema readSchema) {
     List<String> conflictingColumnNames =
         readSchema.columns().stream()
@@ -363,6 +337,14 @@ public class SparkSchemaUtil {
         conflictingColumnNames);
   }
 
+  /**
+   * 生成字段 ID -> 反引号引用名的映射。
+   *
+   * <p>逻辑：用反引号包裹字段名并转义内部反引号（` -> ``），通过 {@link TypeUtil#indexQuotedNameById} 构造。
+   *
+   * @param schema 表 schema
+   * @return 字段 ID 到引用名的映射
+   */
   public static Map<Integer, String> indexQuotedNameById(Schema schema) {
     Function<String, String> quotingFunc = name -> String.format("`%s`", name.replace("`", "``"));
     return TypeUtil.indexQuotedNameById(schema.asStruct(), quotingFunc);

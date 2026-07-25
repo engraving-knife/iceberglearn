@@ -58,8 +58,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
+/**
+ * 测试类：TestHadoopCommits，用于验证 Hadoop Commits 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Hadoop Commits 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestHadoopCommits extends HadoopTableTestBase {
 
+  /**
+   * 测试场景：create table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTable() throws Exception {
     PartitionSpec expectedSpec = PartitionSpec.builderFor(TABLE_SCHEMA).bucket("data", 16).build();
@@ -85,6 +98,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(manifests).as("Should contain 0 Avro manifest files").isEmpty();
   }
 
+  /**
+   * 测试场景：schema update。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSchemaUpdate() throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();
@@ -107,6 +125,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(manifests).as("Should contain 0 Avro manifest files").isEmpty();
   }
 
+  /**
+   * 测试场景：schema update complex type。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSchemaUpdateComplexType() throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();
@@ -155,6 +178,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(manifests).as("Should contain 0 Avro manifest files").isEmpty();
   }
 
+  /**
+   * 测试场景：schema update identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSchemaUpdateIdentifierFields() throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();
@@ -181,6 +209,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
         .isEqualTo(updatedSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：failed commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailedCommit() throws Exception {
     // apply the change to metadata without committing
@@ -200,6 +233,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(manifests).as("Should contain 0 Avro manifest files").isEmpty();
   }
 
+  /**
+   * 测试场景：stale metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testStaleMetadata() throws Exception {
     Table tableCopy = TABLES.load(tableLocation);
@@ -233,6 +271,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(manifests).as("Should contain 0 Avro manifest files").isEmpty();
   }
 
+  /**
+   * 测试场景：stale version hint。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testStaleVersionHint() throws Exception {
     Table stale = TABLES.load(tableLocation);
@@ -264,6 +307,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
         .isEqualTo(UPDATED_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：fast append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFastAppend() throws Exception {
     // first append
@@ -300,6 +348,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
         .hasSize(2);
   }
 
+  /**
+   * 测试场景：merge append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMergeAppend() throws Exception {
     testFastAppend(); // create 2 compatible manifest files that will be merged
@@ -323,6 +376,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
         .hasSize(1);
   }
 
+  /**
+   * 测试场景：rename return false。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameReturnFalse() throws Exception {
     FileSystem mockFs = mock(FileSystem.class);
@@ -331,6 +389,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     testRenameWithFileSystem(mockFs);
   }
 
+  /**
+   * 测试场景：rename throw。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameThrow() throws Exception {
     FileSystem mockFs = mock(FileSystem.class);
@@ -340,8 +403,9 @@ public class TestHadoopCommits extends HadoopTableTestBase {
   }
 
   /**
-   * Test rename during {@link HadoopTableOperations#commit(TableMetadata, TableMetadata)} with the
-   * provided {@link FileSystem} object. The provided FileSystem will be injected for commit call.
+   * 测试场景：rename with file system。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
    */
   private void testRenameWithFileSystem(FileSystem mockFs) throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();
@@ -379,6 +443,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
         .isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：can read old compressed manifest files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCanReadOldCompressedManifestFiles() throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();
@@ -404,6 +473,11 @@ public class TestHadoopCommits extends HadoopTableTestBase {
     Assertions.assertThat(tasks).as("Should scan 1 files").hasSize(1);
   }
 
+  /**
+   * 测试场景：concurrent fast appends。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentFastAppends(@TempDir File dir) throws Exception {
     Assertions.assertThat(version(1)).as("Should create v1 metadata").exists().isFile();

@@ -39,6 +39,26 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
+/**
+ * 文件级说明：向量化 Parquet 读取器，按批次（batch）读取数据。
+ *
+ * <p>所属模块：iceberg-parquet（向量化读取入口，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：与 {@link ParquetReader} 类似，但按批次（而非逐行）读取数据， 适配向量化执行引擎（如 Spark Vectorized Parquet
+ * Reader），减少方法调用开销。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>批量读取：每次 next() 读取最多 batchSize 条记录，通过 VectorizedReader 一次处理多行。
+ *   <li>行组级列元数据：传递 ColumnChunkMetaData 给读取器，支持列级过滤（如字典过滤）。
+ *   <li>与 ParquetReader 共享 ReadConf 结构，但使用 vectorizedModel 而非普通 model。
+ * </ul>
+ *
+ * <p>上下游关系：被各引擎的向量化读取流程调用；依赖 ParquetFileReader、VectorizedReader。
+ *
+ * @param <T> 读取的批次类型
+ */
 public class VectorizedParquetReader<T> extends CloseableGroup implements CloseableIterable<T> {
   private final InputFile input;
   private final Schema expectedSchema;
@@ -50,6 +70,19 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
   private final int batchSize;
   private final NameMapping nameMapping;
 
+  /**
+   * 构造向量化读取器。
+   *
+   * @param input 输入文件
+   * @param expectedSchema 期望 schema（支持投影）
+   * @param options Parquet 读取选项
+   * @param readerFunc 构造向量化读取器的函数
+   * @param nameMapping 字段名→ID 映射
+   * @param filter 过滤表达式（alwaysTrue 替换为 null）
+   * @param reuseContainers 是否复用容器
+   * @param caseSensitive 大小写敏感
+   * @param maxRecordsPerBatch 每批次最大记录数
+   */
   public VectorizedParquetReader(
       InputFile input,
       Schema expectedSchema,
@@ -74,6 +107,7 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
 
   private ReadConf conf = null;
 
+  /** 延迟初始化读取配置（与 ParquetReader.init 类似）。 */
   private ReadConf init() {
     if (conf == null) {
       ReadConf readConf =
@@ -94,6 +128,7 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
     return conf;
   }
 
+  /** 创建批次迭代器。 */
   @Override
   public CloseableIterator<T> iterator() {
     FileIterator<T> iter = new FileIterator<>(init());
@@ -101,6 +136,12 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
     return iter;
   }
 
+  /**
+   * 向量化文件迭代器：逐行组读取，每次 next() 返回一个批次。
+   *
+   * <p>设计要点：advance() 跳过过滤行组并设置行组信息（含列元数据）； next() 计算本批次可读记录数（不超过行组剩余和 batchSize），通过 model.read
+   * 批量读取。
+   */
   private static class FileIterator<T> implements CloseableIterator<T> {
     private final ParquetFileReader reader;
     private final boolean[] shouldSkip;
@@ -132,6 +173,14 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
       return valuesRead < totalValues;
     }
 
+    /**
+     * 读取下一批记录。
+     *
+     * <p>逻辑：若当前行组已读完则 advance()；计算本批次记录数（min(行组剩余, batchSize)）； 通过 model.read 批量读取。
+     *
+     * @return 批次数据
+     * @throws NoSuchElementException 若无更多数据
+     */
     @Override
     public T next() {
       if (!hasNext()) {
@@ -153,6 +202,11 @@ public class VectorizedParquetReader<T> extends CloseableGroup implements Closea
       return last;
     }
 
+    /**
+     * 推进到下一个未跳过的行组，设置页面源和列元数据。
+     *
+     * <p>逻辑：跳过 shouldSkip 标记的行组，读取下一个行组的 PageReadStore， 调用 model.setRowGroupInfo 传递页面源、列元数据和行起始位置。
+     */
     private void advance() {
       while (shouldSkip[nextRowGroup]) {
         nextRowGroup += 1;

@@ -59,10 +59,12 @@ public class EcsS3MockRule implements TestRule {
   private S3Client client;
   private boolean bucketCreated;
 
+  /** 辅助方法：create。 */
   public static EcsS3MockRule create() {
     return new EcsS3MockRule(true);
   }
 
+  /** 辅助方法：manualCreateBucket。 */
   public static EcsS3MockRule manualCreateBucket() {
     return new EcsS3MockRule(false);
   }
@@ -76,13 +78,16 @@ public class EcsS3MockRule implements TestRule {
     return rule;
   }
 
+  /** 辅助方法：EcsS3MockRule。 */
   public EcsS3MockRule(boolean autoCreateBucket) {
     this.autoCreateBucket = autoCreateBucket;
   }
 
+  /** 辅助方法：apply。 */
   @Override
   public Statement apply(Statement base, Description description) {
     return new Statement() {
+      /** 辅助方法：evaluate。 */
       @Override
       public void evaluate() throws Throwable {
         initialize();
@@ -95,6 +100,7 @@ public class EcsS3MockRule implements TestRule {
     };
   }
 
+  /** 辅助方法：initialize。 */
   private void initialize() {
     bucket = "test-" + UUID.randomUUID();
     if (System.getenv(DellProperties.ECS_S3_ENDPOINT) == null) {
@@ -122,6 +128,7 @@ public class EcsS3MockRule implements TestRule {
     }
   }
 
+  /** 辅助方法：cleanUp。 */
   private void cleanUp() {
     if (mock) {
       // clean up
@@ -135,12 +142,14 @@ public class EcsS3MockRule implements TestRule {
     client().destroy();
   }
 
+  /** 辅助方法：createBucket。 */
   public void createBucket() {
     // create test bucket for this unit test
     client().createBucket(bucket);
     bucketCreated = true;
   }
 
+  /** 辅助方法：deleteBucket。 */
   private void deleteBucket() {
     if (!client().bucketExists(bucket)) {
       return;
@@ -163,18 +172,22 @@ public class EcsS3MockRule implements TestRule {
     client().deleteBucket(bucket);
   }
 
+  /** 辅助方法：clientProperties。 */
   public Map<String, String> clientProperties() {
     return clientProperties;
   }
 
+  /** 辅助方法：client。 */
   public S3Client client() {
     return client;
   }
 
+  /** 辅助方法：bucket。 */
   public String bucket() {
     return bucket;
   }
 
+  /** 辅助方法：randomObjectName。 */
   public String randomObjectName() {
     return "test-" + ID.getAndIncrement() + "-" + UUID.randomUUID();
   }

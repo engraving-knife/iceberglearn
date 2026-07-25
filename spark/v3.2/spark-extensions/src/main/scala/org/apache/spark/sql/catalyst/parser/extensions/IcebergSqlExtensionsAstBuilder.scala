@@ -63,13 +63,28 @@ import org.apache.spark.sql.connector.expressions.LiteralValue
 import org.apache.spark.sql.connector.expressions.Transform
 import scala.jdk.CollectionConverters._
 
+/**
+ * 文件级说明：IcebergSqlExtensionsAstBuilder —— Iceberg Spark SQL 扩展的类。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：类 IcebergSqlExtensionsAstBuilder。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
+ */
 class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergSqlExtensionsBaseVisitor[AnyRef] {
 
+  /**
+   * toBuffer：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def toBuffer[T](list: java.util.List[T]): scala.collection.mutable.Buffer[T] = list.asScala
+  /**
+   * toSeq：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def toSeq[T](list: java.util.List[T]): Seq[T] = toBuffer(list).toSeq
 
   /**
-   * Create a [[CallStatement]] for a stored procedure call.
+   * visitCall：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitCall(ctx: CallContext): CallStatement = withOrigin(ctx) {
     val name = toSeq(ctx.multipartIdentifier.parts).map(_.getText)
@@ -78,7 +93,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an ADD PARTITION FIELD logical command.
+   * visitAddPartitionField：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitAddPartitionField(ctx: AddPartitionFieldContext): AddPartitionField = withOrigin(ctx) {
     AddPartitionField(
@@ -88,7 +103,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create a DROP PARTITION FIELD logical command.
+   * visitDropPartitionField：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitDropPartitionField(ctx: DropPartitionFieldContext): DropPartitionField = withOrigin(ctx) {
     DropPartitionField(
@@ -97,7 +112,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create a CREATE OR REPLACE BRANCH logical command.
+   * visitCreateOrReplaceBranch：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitCreateOrReplaceBranch(ctx: CreateOrReplaceBranchContext): CreateOrReplaceBranch = withOrigin(ctx) {
     val createOrReplaceBranchClause = ctx.createReplaceBranchClause()
@@ -137,7 +152,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an CREATE OR REPLACE TAG logical command.
+   * visitCreateOrReplaceTag：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitCreateOrReplaceTag(ctx: CreateOrReplaceTagContext): CreateOrReplaceTag = withOrigin(ctx) {
     val createTagClause = ctx.createReplaceTagClause()
@@ -168,21 +183,21 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an DROP BRANCH logical command.
+   * visitDropBranch：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitDropBranch(ctx: DropBranchContext): DropBranch = withOrigin(ctx) {
     DropBranch(typedVisit[Seq[String]](ctx.multipartIdentifier), ctx.identifier().getText, ctx.EXISTS() != null)
   }
 
   /**
-   * Create an DROP TAG logical command.
+   * visitDropTag：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitDropTag(ctx: DropTagContext): DropTag = withOrigin(ctx) {
     DropTag(typedVisit[Seq[String]](ctx.multipartIdentifier), ctx.identifier().getText, ctx.EXISTS() != null)
   }
 
   /**
-   * Create an REPLACE PARTITION FIELD logical command.
+   * visitReplacePartitionField：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitReplacePartitionField(ctx: ReplacePartitionFieldContext): ReplacePartitionField = withOrigin(ctx) {
     ReplacePartitionField(
@@ -193,7 +208,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an SET IDENTIFIER FIELDS logical command.
+   * visitSetIdentifierFields：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitSetIdentifierFields(ctx: SetIdentifierFieldsContext): SetIdentifierFields = withOrigin(ctx) {
     SetIdentifierFields(
@@ -202,7 +217,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an DROP IDENTIFIER FIELDS logical command.
+   * visitDropIdentifierFields：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitDropIdentifierFields(ctx: DropIdentifierFieldsContext): DropIdentifierFields = withOrigin(ctx) {
     DropIdentifierFields(
@@ -211,7 +226,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create a [[SetWriteDistributionAndOrdering]] for changing the write distribution and ordering.
+   * visitSetWriteDistributionAndOrdering：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitSetWriteDistributionAndOrdering(
       ctx: SetWriteDistributionAndOrderingContext): SetWriteDistributionAndOrdering = {
@@ -242,6 +257,9 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     SetWriteDistributionAndOrdering(tableName, distributionMode, ordering)
   }
 
+  /**
+   * toDistributionAndOrderingSpec：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def toDistributionAndOrderingSpec(
       writeSpec: WriteSpecContext): (WriteDistributionSpecContext, WriteOrderingSpecContext) = {
 
@@ -260,7 +278,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an order field.
+   * visitOrderField：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitOrderField(ctx: OrderFieldContext): (Term, SortDirection, NullOrder) = {
     val term = Spark3Util.toIcebergTerm(typedVisit[Transform](ctx.transform))
@@ -274,14 +292,14 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create an IdentityTransform for a column reference.
+   * visitIdentityTransform：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitIdentityTransform(ctx: IdentityTransformContext): Transform = withOrigin(ctx) {
     IdentityTransform(FieldReference(typedVisit[Seq[String]](ctx.multipartIdentifier())))
   }
 
   /**
-   * Create a named Transform from argument expressions.
+   * visitApplyTransform：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitApplyTransform(ctx: ApplyTransformContext): Transform = withOrigin(ctx) {
     val args = toSeq(ctx.arguments).map(typedVisit[expressions.Expression])
@@ -289,7 +307,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create a transform argument from a column reference or a constant.
+   * visitTransformArgument：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitTransformArgument(ctx: TransformArgumentContext): expressions.Expression = withOrigin(ctx) {
     val reference = Option(ctx.multipartIdentifier())
@@ -303,18 +321,21 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Return a multi-part identifier as Seq[String].
+   * visitMultipartIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitMultipartIdentifier(ctx: MultipartIdentifierContext): Seq[String] = withOrigin(ctx) {
     toSeq(ctx.parts).map(_.getText)
   }
 
+  /**
+   * visitSingleOrder：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def visitSingleOrder(ctx: SingleOrderContext): Seq[(Term, SortDirection, NullOrder)] = withOrigin(ctx) {
     toSeq(ctx.order.fields).map(typedVisit[(Term, SortDirection, NullOrder)])
   }
 
   /**
-   * Create a positional argument in a stored procedure call.
+   * visitPositionalArgument：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitPositionalArgument(ctx: PositionalArgumentContext): CallArgument = withOrigin(ctx) {
     val expr = typedVisit[Expression](ctx.expression)
@@ -322,7 +343,7 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
   }
 
   /**
-   * Create a named argument in a stored procedure call.
+   * visitNamedArgument：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def visitNamedArgument(ctx: NamedArgumentContext): CallArgument = withOrigin(ctx) {
     val name = ctx.identifier.getText
@@ -330,14 +351,23 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     NamedArgument(name, expr)
   }
 
+  /**
+   * visitSingleStatement：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def visitSingleStatement(ctx: SingleStatementContext): LogicalPlan = withOrigin(ctx) {
     visit(ctx.statement).asInstanceOf[LogicalPlan]
   }
 
+  /**
+   * visitConstant：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   def visitConstant(ctx: ConstantContext): Literal = {
     delegate.parseExpression(ctx.getText).asInstanceOf[Literal]
   }
 
+  /**
+   * visitExpression：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def visitExpression(ctx: ExpressionContext): Expression = {
     // reconstruct the SQL string and parse it using the main Spark parser
     // while we can avoid the logic to build Spark expressions, we still have to parse them
@@ -347,6 +377,9 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     delegate.parseExpression(sqlString)
   }
 
+  /**
+   * reconstructSqlString：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def reconstructSqlString(ctx: ParserRuleContext): String = {
     toBuffer(ctx.children).map {
       case c: ParserRuleContext => reconstructSqlString(c)
@@ -354,6 +387,9 @@ class IcebergSqlExtensionsAstBuilder(delegate: ParserInterface) extends IcebergS
     }.mkString(" ")
   }
 
+  /**
+   * typedVisit：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def typedVisit[T](ctx: ParseTree): T = {
     ctx.accept(this).asInstanceOf[T]
   }

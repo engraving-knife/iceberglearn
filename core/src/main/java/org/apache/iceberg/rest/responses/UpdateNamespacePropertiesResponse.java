@@ -26,7 +26,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.rest.RESTResponse;
 
-/** A REST response to a request to set and/or remove properties on a namespace. */
+/**
+ * 文件级说明：更新命名空间属性的 REST 响应模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：返回属性更新的结果摘要，包括实际更新（updated）、实际移除（removed）和 待移除但不存在（missing）三组键列表。
+ *
+ * <p>设计意图：使调用方了解属性更新的实际效果，特别是哪些 removals 指定的键实际不存在。 使用 Builder 模式保证不可变性。
+ */
 public class UpdateNamespacePropertiesResponse implements RESTResponse {
 
   // List of namespace property keys that were removed

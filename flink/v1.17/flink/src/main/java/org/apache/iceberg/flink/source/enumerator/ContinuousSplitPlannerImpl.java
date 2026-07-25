@@ -39,6 +39,24 @@ import org.apache.iceberg.util.ThreadPools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 连续模式下 split 规划器实现，负责初始与增量 split 发现。
+ *
+ * <p>所属模块：iceberg-flink（source enumerator 侧），实现 {@link ContinuousSplitPlanner}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>首次规划：按 {@link StreamingStartingStrategy} 确定起始快照并发现初始 split。
+ *   <li>增量规划：从上次消费位置到当前快照，发现新增 append 的 split。
+ *   <li>受 maxPlanningSnapshotCount 限制单次规划的快照数量，避免单次规划过多。
+ * </ul>
+ *
+ * <p>设计意图：每次规划前 refresh 表以感知新快照；线程池可独享或共享（threadName 为 null 时用共享池）。
+ *
+ * <p>上下游关系：被 {@link ContinuousIcebergEnumerator} 调用；上游依赖 {@link FlinkSplitPlanner} 与 {@link
+ * SnapshotUtil}。
+ */
 @Internal
 public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ContinuousSplitPlannerImpl.class);
@@ -50,9 +68,11 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
   private final TableLoader tableLoader;
 
   /**
-   * @param tableLoader A cloned tableLoader.
-   * @param threadName thread name prefix for worker pool to run the split planning. If null, a
-   *     shared worker pool will be used.
+   * 构造规划器。
+   *
+   * @param tableLoader 克隆的表加载器
+   * @param scanContext 扫描上下文
+   * @param threadName 规划线程池名前缀；为 null 时使用共享线程池
    */
   public ContinuousSplitPlannerImpl(
       TableLoader tableLoader, ScanContext scanContext, String threadName) {
@@ -68,6 +88,7 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
                 "iceberg-plan-worker-pool-" + threadName, scanContext.planParallelism());
   }
 
+  /** 关闭独享线程池与表加载器（共享池不关闭）。 */
   @Override
   public void close() throws IOException {
     if (!isSharedPool) {
@@ -76,6 +97,12 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
     tableLoader.close();
   }
 
+  /**
+   * 规划 split：刷新表后，依据是否有 lastPosition 走增量或初始发现。
+   *
+   * @param lastPosition 上次消费位置（首次为 null）
+   * @return 枚举结果
+   */
   @Override
   public ContinuousEnumerationResult planSplits(IcebergEnumeratorPosition lastPosition) {
     table.refresh();
@@ -86,6 +113,11 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
     }
   }
 
+  /**
+   * 在 lastConsumedSnapshotId 到 currentSnapshot 之间，按 maxPlanningSnapshotCount 截取本次规划的上界快照。
+   *
+   * <p>逻辑：快照按提交历史逆序排列，超出数量上限时取较早的快照作为本次上界。
+   */
   private Snapshot toSnapshotInclusive(
       Long lastConsumedSnapshotId, Snapshot currentSnapshot, int maxPlanningSnapshotCount) {
     // snapshots are in reverse order (latest snapshot first)
@@ -102,6 +134,11 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
     }
   }
 
+  /**
+   * 增量发现 split。
+   *
+   * <p>逻辑：表为空或当前快照已枚举时返回空结果；否则按 toSnapshotInclusive 截取上界， 用 appendsBetween 扫描新增文件并规划 split，返回新位置。
+   */
   private ContinuousEnumerationResult discoverIncrementalSplits(
       IcebergEnumeratorPosition lastPosition) {
     Snapshot currentSnapshot = table.currentSnapshot();
@@ -140,14 +177,10 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
   }
 
   /**
-   * Discovery initial set of splits based on {@link StreamingStartingStrategy}.
-   * <li>{@link ContinuousEnumerationResult#splits()} should contain initial splits discovered from
-   *     table scan for {@link StreamingStartingStrategy#TABLE_SCAN_THEN_INCREMENTAL}. For all other
-   *     strategies, splits collection should be empty.
-   * <li>{@link ContinuousEnumerationResult#toPosition()} points to the starting position for the
-   *     next incremental split discovery with exclusive behavior. Meaning files committed by the
-   *     snapshot from the position in {@code ContinuousEnumerationResult} won't be included in the
-   *     next incremental scan.
+   * 根据 {@link StreamingStartingStrategy} 发现初始 split。
+   *
+   * <p>逻辑：TABLE_SCAN_THEN_INCREMENTAL 先做批量扫描产出初始 split，后续增量从起始快照排他消费； 其余策略不产出初始 split，通过父快照 id
+   * 实现起始快照的包含语义。
    */
   private ContinuousEnumerationResult discoverInitialSplits() {
     Optional<Snapshot> startSnapshotOptional = startSnapshot(table, scanContext);
@@ -200,12 +233,10 @@ public class ContinuousSplitPlannerImpl implements ContinuousSplitPlanner {
   }
 
   /**
-   * Calculate the starting snapshot based on the {@link StreamingStartingStrategy} defined in
-   * {@code ScanContext}.
+   * 根据策略计算起始快照。
    *
-   * <p>If the {@link StreamingStartingStrategy} is not {@link
-   * StreamingStartingStrategy#TABLE_SCAN_THEN_INCREMENTAL}, the start snapshot should be consumed
-   * inclusively.
+   * <p>逻辑：按 {@link StreamingStartingStrategy} 分发——最新/最早快照、按 id 或按时间戳定位； 非
+   * TABLE_SCAN_THEN_INCREMENTAL 时起始快照按包含语义消费。
    */
   @VisibleForTesting
   static Optional<Snapshot> startSnapshot(Table table, ScanContext scanContext) {

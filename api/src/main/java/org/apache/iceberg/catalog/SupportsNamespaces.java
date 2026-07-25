@@ -27,132 +27,137 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
 /**
- * Catalog methods for working with namespaces.
+ * 文件级说明：支持命名空间（Namespace）管理的 Catalog 扩展接口。
  *
- * <p>If an object such as a table, view, or function exists, its parent namespaces must also exist
- * and must be returned by the discovery methods {@link #listNamespaces()} and {@link
- * #listNamespaces(Namespace namespace)}.
+ * <p>所属模块：iceberg-api（核心 API 抽象层）。
  *
- * <p>Catalog implementations are not required to maintain the existence of namespaces independent
- * of objects in a namespace. For example, a function catalog that loads functions using reflection
- * and uses Java packages as namespaces is not required to support the methods to create, alter, or
- * drop a namespace. Implementations are allowed to discover the existence of objects or namespaces
- * without throwing {@link NoSuchNamespaceException} when no namespace is found.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义命名空间的创建（createNamespace）、列举（listNamespaces）、删除（dropNamespace）、
+ *       属性加载/设置/移除（loadNamespaceMetadata/setProperties/removeProperties）等操作。
+ *   <li>为 {@link Catalog} 实现提供“是否支持命名空间”这一可选能力的契约。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>能力混合接口：Catalog 通过实现本接口声明支持命名空间管理，未实现则视为不支持， 避免在 Catalog 主接口中堆砌与命名空间相关的方法。
+ *   <li>命名空间与对象存在性解耦：约定若表/视图/函数存在，则其各级父命名空间也必须 存在并能被发现；但实现可不维护独立于对象的命名空间，且允许在不抛 {@link
+ *       NoSuchNamespaceException} 的情况下发现对象。
+ *   <li>可选操作：createNamespace/setProperties 等可抛 {@link UnsupportedOperationException}
+ *       以声明本实现不支持该能力（如基于反射的函数 catalog 以 Java 包为命名空间）。
+ * </ul>
+ *
+ * <p>上下游关系：由支持命名空间的 Catalog 实现（如 HiveCatalog、JdbcCatalog、REST catalog 等） 实现；上层引擎通过 instanceof
+ * 判断并调用以完成命名空间管理。
  */
 public interface SupportsNamespaces {
   /**
-   * Create a namespace in the catalog.
+   * 创建命名空间（不带属性）。
    *
-   * @param namespace a namespace. {@link Namespace}.
-   * @throws AlreadyExistsException If the namespace already exists
-   * @throws UnsupportedOperationException If create is not a supported operation
+   * @param namespace 命名空间
+   * @throws AlreadyExistsException 当命名空间已存在时抛出
+   * @throws UnsupportedOperationException 当实现不支持创建命名空间时抛出
    */
   default void createNamespace(Namespace namespace) {
     createNamespace(namespace, ImmutableMap.of());
   }
 
   /**
-   * Create a namespace in the catalog.
+   * 创建命名空间（带属性）。
    *
-   * @param namespace a multi-part namespace
-   * @param metadata a string Map of properties for the given namespace
-   * @throws AlreadyExistsException If the namespace already exists
-   * @throws UnsupportedOperationException If create is not a supported operation
+   * @param namespace 多级命名空间
+   * @param metadata 命名空间属性映射
+   * @throws AlreadyExistsException 当命名空间已存在时抛出
+   * @throws UnsupportedOperationException 当实现不支持创建命名空间时抛出
    */
   void createNamespace(Namespace namespace, Map<String, String> metadata);
 
   /**
-   * List top-level namespaces from the catalog.
+   * 列举顶层命名空间。
    *
-   * <p>If an object such as a table, view, or function exists, its parent namespaces must also
-   * exist and must be returned by this discovery method. For example, if table a.b.t exists, this
-   * method must return ["a"] in the result array.
+   * <p>若某对象（表/视图/函数）存在，其各级父命名空间也必须存在并被本方法返回。 例如存在表 a.b.t 时，本方法须返回 ["a"]。
    *
-   * @return a List of namespace {@link Namespace} names
+   * @return 顶层命名空间列表
    */
   default List<Namespace> listNamespaces() {
     return listNamespaces(Namespace.empty());
   }
 
   /**
-   * List child namespaces from the namespace.
+   * 列举指定命名空间的子命名空间。
    *
-   * <p>For two existing tables named 'a.b.c.table' and 'a.b.d.table', this method returns:
-   *
-   * <ul>
-   *   <li>Given: {@code Namespace.empty()}
-   *   <li>Returns: {@code Namespace.of("a")}
-   * </ul>
+   * <p>例如对已存在的表 a.b.c.table 与 a.b.d.table：
    *
    * <ul>
-   *   <li>Given: {@code Namespace.of("a")}
-   *   <li>Returns: {@code Namespace.of("a", "b")}
+   *   <li>传入 {@code Namespace.empty()} 返回 {@code Namespace.of("a")}
+   *   <li>传入 {@code Namespace.of("a")} 返回 {@code Namespace.of("a","b")}
+   *   <li>传入 {@code Namespace.of("a","b")} 返回 {@code Namespace.of("a","b","c")} 与 {@code
+   *       Namespace.of("a","b","d")}
+   *   <li>传入 {@code Namespace.of("a","b","c")} 返回空列表（无子命名空间）
    * </ul>
    *
-   * <ul>
-   *   <li>Given: {@code Namespace.of("a", "b")}
-   *   <li>Returns: {@code Namespace.of("a", "b", "c")} and {@code Namespace.of("a", "b", "d")}
-   * </ul>
-   *
-   * <ul>
-   *   <li>Given: {@code Namespace.of("a", "b", "c")}
-   *   <li>Returns: empty list, because there are no child namespaces
-   * </ul>
-   *
-   * @return a List of child {@link Namespace} names from the given namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
+   * @param namespace 父命名空间
+   * @return 子命名空间列表
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
    */
   List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException;
 
   /**
-   * Load metadata properties for a namespace.
+   * 加载命名空间的元数据属性。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @return a string map of properties for the given namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
+   * @param namespace 命名空间
+   * @return 命名空间属性映射
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
    */
   Map<String, String> loadNamespaceMetadata(Namespace namespace) throws NoSuchNamespaceException;
 
   /**
-   * Drop a namespace. If the namespace exists and was dropped, this will return true.
+   * 删除命名空间。命名空间存在并已删除返回 true。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @return true if the namespace was dropped, false otherwise.
-   * @throws NamespaceNotEmptyException If the namespace is not empty
+   * @param namespace 命名空间
+   * @return 已删除返回 true，否则 false
+   * @throws NamespaceNotEmptyException 当命名空间非空时抛出
    */
   boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException;
 
   /**
-   * Set a collection of properties on a namespace in the catalog.
+   * 批量设置命名空间属性。
    *
-   * <p>Properties that are not in the given map are not modified or removed by this method.
+   * <p>未出现在给定映射中的属性不会被修改或移除。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @param properties a collection of metadata to apply to the namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
-   * @throws UnsupportedOperationException If namespace properties are not supported
+   * @param namespace 命名空间
+   * @param properties 待设置的属性
+   * @return 成功设置返回 true
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
+   * @throws UnsupportedOperationException 当实现不支持命名空间属性时抛出
    */
   boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException;
 
   /**
-   * Remove a set of property keys from a namespace in the catalog.
+   * 批量移除命名空间属性键。
    *
-   * <p>Properties that are not in the given set are not modified or removed by this method.
+   * <p>未出现在给定集合中的属性不会被修改或移除。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @param properties a collection of metadata to apply to the namespace
-   * @throws NoSuchNamespaceException If the namespace does not exist (optional)
-   * @throws UnsupportedOperationException If namespace properties are not supported
+   * @param namespace 命名空间
+   * @param properties 待移除的属性键集合
+   * @return 成功移除返回 true
+   * @throws NoSuchNamespaceException 当命名空间不存在时抛出（可选）
+   * @throws UnsupportedOperationException 当实现不支持命名空间属性时抛出
    */
   boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException;
 
   /**
-   * Checks whether the Namespace exists.
+   * 判断命名空间是否存在。
    *
-   * @param namespace a namespace. {@link Namespace}
-   * @return true if the Namespace exists, false otherwise
+   * <p>逻辑：默认实现尝试 {@link #loadNamespaceMetadata(Namespace)}，捕获 {@link NoSuchNamespaceException} 时返回
+   * false。
+   *
+   * @param namespace 命名空间
+   * @return 存在返回 true，否则 false
    */
   default boolean namespaceExists(Namespace namespace) {
     try {

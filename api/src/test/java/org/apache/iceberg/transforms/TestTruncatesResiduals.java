@@ -38,6 +38,13 @@ import org.apache.iceberg.expressions.UnboundPredicate;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestTruncatesResiduals 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestTruncatesResiduals 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestTruncatesResiduals {
 
   /**
@@ -81,6 +88,11 @@ public class TestTruncatesResiduals {
     assertThat(unbound.literal().value()).isEqualTo(predicate.literal().value());
   }
 
+  /**
+   * 测试场景：Integer Truncate Transform Residuals。
+   *
+   * <p>验证该方法在 Integer Truncate Transform Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerTruncateTransformResiduals() {
     Schema schema = new Schema(Types.NestedField.optional(50, "value", Types.IntegerType.get()));
@@ -142,6 +154,11 @@ public class TestTruncatesResiduals {
     assertResidualValue(spec, notEqual("value", 99), 80, Expression.Operation.TRUE);
   }
 
+  /**
+   * 测试场景：String Truncate Transform Residuals。
+   *
+   * <p>验证该方法在 String Truncate Transform Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testStringTruncateTransformResiduals() {
     Schema schema = new Schema(Types.NestedField.optional(50, "value", Types.StringType.get()));

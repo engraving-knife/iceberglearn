@@ -36,9 +36,13 @@ import org.apache.spark.sql.catalyst.trees.TreePattern.IF
 import org.apache.spark.sql.types.BooleanType
 
 /**
- * A rule similar to SimplifyConditionalsInPredicate in Spark but applies to Iceberg row-level commands.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：扩展的谓词条件简化优化规则，在 Iceberg 行级命令上下文中简化条件表达式。
+ * <p>设计意图：继承 Spark 原生优化并扩展到 Iceberg 命令，减少冗余条件。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan.transformWithPruning(
     _.containsAnyPattern(CASE_WHEN, IF)) {
@@ -52,6 +56,7 @@ object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
         matchedActions = simplifyConditional(matchedActions),
         notMatchedActions = simplifyConditional(notMatchedActions))
   }
+  /** 执行 simplifyConditional 相关操作。 */
 
   private def simplifyConditional(e: Expression): Expression = e match {
     case And(left, right) => And(simplifyConditional(left), simplifyConditional(right))
@@ -77,6 +82,7 @@ object ExtendedSimplifyConditionalsInPredicate extends Rule[LogicalPlan] {
         s"but got the type `${e.dataType.catalogString}` in `${e.sql}`.")
       e
   }
+  /** 执行 simplifyConditional 相关操作。 */
 
   private def simplifyConditional(mergeActions: Seq[MergeAction]): Seq[MergeAction] = {
     mergeActions.map {

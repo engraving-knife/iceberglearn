@@ -35,7 +35,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestPositionFilter，用于验证 Position Filter 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Position Filter 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestPositionFilter {
+  /**
+   * 测试场景：position file filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionFileFilter() {
     List<StructLike> positionDeletes =
@@ -70,6 +83,11 @@ public class TestPositionFilter {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：position merging。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionMerging() {
     List<StructLike> positionDeletes1 =
@@ -103,6 +121,11 @@ public class TestPositionFilter {
         .containsExactly(0L, 3L, 3L, 9L, 16L, 19L, 19L, 22L, 22L, 56L, 63L, 70L, 91L);
   }
 
+  /**
+   * 测试场景：position stream row filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionStreamRowFilter() {
     CloseableIterable<StructLike> rows =
@@ -130,6 +153,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(1L, 2L, 5L, 6L, 8L));
   }
 
+  /**
+   * 测试场景：position stream row delete marker。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionStreamRowDeleteMarker() {
     CloseableIterable<StructLike> rows =
@@ -162,6 +190,11 @@ public class TestPositionFilter {
             Lists.newArrayList(true, false, false, true, true, false, false, true, false, true));
   }
 
+  /**
+   * 测试场景：position stream row filter with duplicates。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionStreamRowFilterWithDuplicates() {
     CloseableIterable<StructLike> rows =
@@ -189,6 +222,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(1L, 2L, 5L, 6L, 8L));
   }
 
+  /**
+   * 测试场景：position stream row filter with row gaps。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionStreamRowFilterWithRowGaps() {
     // test the case where row position is greater than the delete position
@@ -207,6 +245,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(5L, 6L));
   }
 
+  /**
+   * 测试场景：combined position stream row filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCombinedPositionStreamRowFilter() {
     CloseableIterable<StructLike> positionDeletes1 =
@@ -252,6 +295,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(1L, 2L, 5L, 6L, 8L));
   }
 
+  /**
+   * 测试场景：position set row filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionSetRowFilter() {
     CloseableIterable<StructLike> rows =
@@ -280,6 +328,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(1L, 2L, 5L, 6L, 8L));
   }
 
+  /**
+   * 测试场景：combined position set row filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCombinedPositionSetRowFilter() {
     CloseableIterable<StructLike> positionDeletes1 =
@@ -326,6 +379,11 @@ public class TestPositionFilter {
         .containsExactlyElementsOf(Lists.newArrayList(1L, 2L, 5L, 6L, 8L));
   }
 
+  /**
+   * 测试场景：close position stream row delete marker。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testClosePositionStreamRowDeleteMarker() {
     List<Long> deletes = Lists.newArrayList(1L, 2L);
@@ -354,6 +412,11 @@ public class TestPositionFilter {
     assertThat(deletePositions.isClosed).isTrue();
   }
 
+  /**
+   * 测试场景：delete marker file closed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteMarkerFileClosed() {
 
@@ -395,30 +458,36 @@ public class TestPositionFilter {
       this.iterable = iterable;
     }
 
+    /** 辅助方法：is closed。 */
     public boolean isClosed() {
       return isClosed.get();
     }
 
+    /** 辅助方法：close。 */
     @Override
     public void close() throws IOException {
       isClosed.set(true);
     }
 
+    /** 辅助方法：iterator。 */
     @Override
     public CloseableIterator<E> iterator() {
       Iterator<E> it = iterable.iterator();
       return new CloseableIterator<E>() {
 
+        /** 辅助方法：has next。 */
         @Override
         public boolean hasNext() {
           return it.hasNext();
         }
 
+        /** 辅助方法：next。 */
         @Override
         public E next() {
           return it.next();
         }
 
+        /** 辅助方法：close。 */
         @Override
         public void close() {
           isClosed.set(true);

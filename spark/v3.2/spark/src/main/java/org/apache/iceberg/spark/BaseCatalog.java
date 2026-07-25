@@ -33,6 +33,13 @@ import org.apache.spark.sql.connector.catalog.functions.UnboundFunction;
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 import org.apache.spark.sql.connector.iceberg.catalog.ProcedureCatalog;
 
+/**
+ * Iceberg Spark 集成相关组件，实现 Spark 目录服务以加载和管理 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseCatalog。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ */
 abstract class BaseCatalog
     implements StagingTableCatalog,
         ProcedureCatalog,
@@ -40,6 +47,12 @@ abstract class BaseCatalog
         HasIcebergCatalog,
         FunctionCatalog {
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @return 结果对象
+   */
   @Override
   public Procedure loadProcedure(Identifier ident) throws NoSuchProcedureException {
     String[] namespace = ident.namespace();
@@ -54,9 +67,16 @@ abstract class BaseCatalog
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     throw new NoSuchProcedureException(ident);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param namespace 参数
+   * @return 结果对象
+   */
   @Override
   public Identifier[] listFunctions(String[] namespace) throws NoSuchNamespaceException {
     if (namespace.length == 0 || isSystemNamespace(namespace)) {
@@ -67,9 +87,16 @@ abstract class BaseCatalog
       return new Identifier[0];
     }
 
+    /** 执行该方法的具体逻辑。 */
     throw new NoSuchNamespaceException(namespace);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param ident 参数
+   * @return 结果对象
+   */
   @Override
   public UnboundFunction loadFunction(Identifier ident) throws NoSuchFunctionException {
     String[] namespace = ident.namespace();
@@ -86,9 +113,11 @@ abstract class BaseCatalog
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     throw new NoSuchFunctionException(ident);
   }
 
+  /** 判断是否systemnamespace。 */
   private static boolean isSystemNamespace(String[] namespace) {
     return namespace.length == 1 && namespace[0].equalsIgnoreCase("system");
   }

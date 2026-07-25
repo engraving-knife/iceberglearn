@@ -20,37 +20,43 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 
 import org.apache.spark.sql.types.DataType;
 
-/** An input parameter of a {@link Procedure stored procedure}. */
+/**
+ * 存储过程（{@link Procedure}）的输入参数接口。
+ *
+ * <p>所属模块：iceberg-spark（位于 Spark connector iceberg catalog 包）。定义存储过程参数的 名称、类型与是否必填，供过程声明与调用绑定使用。
+ *
+ * <p>设计意图：通过静态工厂方法 {@link #required}/{@link #optional} 构造，隐藏实现类 ProcedureParameterImpl，便于后续扩展参数表示。
+ */
 public interface ProcedureParameter {
 
   /**
-   * Creates a required input parameter.
+   * 构造必填输入参数。
    *
-   * @param name the name of the parameter
-   * @param dataType the type of the parameter
-   * @return the constructed stored procedure parameter
+   * @param name 参数名
+   * @param dataType 参数类型
+   * @return 构造的存储过程参数
    */
   static ProcedureParameter required(String name, DataType dataType) {
     return new ProcedureParameterImpl(name, dataType, true);
   }
 
   /**
-   * Creates an optional input parameter.
+   * 构造可选输入参数。
    *
-   * @param name the name of the parameter.
-   * @param dataType the type of the parameter.
-   * @return the constructed optional stored procedure parameter
+   * @param name 参数名
+   * @param dataType 参数类型
+   * @return 构造的可选存储过程参数
    */
   static ProcedureParameter optional(String name, DataType dataType) {
     return new ProcedureParameterImpl(name, dataType, false);
   }
 
-  /** Returns the name of this parameter. */
+  /** 返回参数名。 */
   String name();
 
-  /** Returns the type of this parameter. */
+  /** 返回参数类型。 */
   DataType dataType();
 
-  /** Returns true if this parameter is required. */
+  /** 返回该参数是否必填。 */
   boolean required();
 }

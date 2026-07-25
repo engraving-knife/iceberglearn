@@ -28,7 +28,19 @@ import org.apache.iceberg.io.CloseableIterator;
 import org.apache.spark.rdd.InputFileBlockHolder;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * 读取 equality 删除文件并应用为行的读取器。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。继承 {@link RowDataReader}，针对 equality 删除 读取数据文件并借助 {@link
+ * SparkDeleteFilter} 找出被 equality 删除的行。
+ *
+ * <p>设计意图：equality 删除以"按字段值匹配"方式标记删除行，读取时需将删除条件与数据行连接； 本类封装该连接逻辑并维护 Spark input file 信息以支持
+ * filename() 函数。
+ *
+ * <p>上下游关系：由 {@link RowDataReaderFactory} 在遇到 equality 删除时构造。
+ */
 public class EqualityDeleteRowReader extends RowDataReader {
+  /** 以组合扫描任务等参数构造，委托给父类。 */
   public EqualityDeleteRowReader(
       CombinedScanTask task,
       Table table,
@@ -38,6 +50,12 @@ public class EqualityDeleteRowReader extends RowDataReader {
     super(table, task, tableSchema, expectedSchema, caseSensitive);
   }
 
+  /**
+   * 打开单个文件扫描任务。
+   *
+   * <p>逻辑：构建 {@link SparkDeleteFilter}，取所需 schema 与常量映射，设置 Spark input file 块， 读取数据后返回匹配 equality
+   * 删除的行迭代器。
+   */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     SparkDeleteFilter matches =

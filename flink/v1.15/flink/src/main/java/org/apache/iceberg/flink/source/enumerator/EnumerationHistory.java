@@ -27,6 +27,13 @@ import org.apache.flink.annotation.VisibleForTesting;
  * count per every non-empty enumeration.
  */
 @ThreadSafe
+/**
+ * 枚举历史记录，保存最近若干次枚举结果用于回溯与诊断。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：维护有限长度的历史队列，支持查询最近枚举。
+ *
+ * <p>设计意图：辅助类；被 enumerator 使用。
+ */
 class EnumerationHistory {
 
   private final int[] history;

@@ -45,6 +45,15 @@ import org.apache.spark.sql.catalyst.expressions.JoinedRow;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：变更日志读取器，读取数据与删除文件并输出带变更类型的 changelog 行。
+ *
+ * <p>设计意图：通过 ChangelogIterator 合并变更，并经 carryover 迭代器清理过渡行。
+ *
+ * <p>上下游关系：由 CreateChangelogViewProcedure / SparkChangelogScan 使用；继承 BaseBatchReader。
+ */
 class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
     implements PartitionReader<InternalRow> {
 
@@ -70,7 +79,7 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
         ChangelogUtil.dropChangelogMetadata(expectedSchema),
         caseSensitive);
   }
-
+  /** 打开资源。 */
   @Override
   protected CloseableIterator<InternalRow> open(ChangelogScanTask task) {
     JoinedRow cdcRow = new JoinedRow();
@@ -82,7 +91,7 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
 
     return cdcRows.iterator();
   }
-
+  /** 执行 changelogMetadata 相关操作。 */
   private static InternalRow changelogMetadata(ChangelogScanTask task) {
     InternalRow metadataRow = new GenericInternalRow(3);
 
@@ -92,7 +101,7 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
 
     return metadataRow;
   }
-
+  /** 执行 openChangelogScanTask 相关操作。 */
   private CloseableIterable<InternalRow> openChangelogScanTask(ChangelogScanTask task) {
     if (task instanceof AddedRowsScanTask) {
       return openAddedRowsScanTask((AddedRowsScanTask) task);
@@ -114,13 +123,13 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
     SparkDeleteFilter deletes = new SparkDeleteFilter(filePath, task.deletes(), counter());
     return deletes.filter(rows(task, deletes.requiredSchema()));
   }
-
+  /** 执行 openDeletedDataFileScanTask 相关操作。 */
   private CloseableIterable<InternalRow> openDeletedDataFileScanTask(DeletedDataFileScanTask task) {
     String filePath = task.file().path().toString();
     SparkDeleteFilter deletes = new SparkDeleteFilter(filePath, task.existingDeletes(), counter());
     return deletes.filter(rows(task, deletes.requiredSchema()));
   }
-
+  /** 执行 rows 相关操作。 */
   private CloseableIterable<InternalRow> rows(ContentScanTask<DataFile> task, Schema readSchema) {
     Map<Integer, ?> idToConstant = constantsMap(task, readSchema);
 
@@ -140,7 +149,7 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
         readSchema,
         idToConstant);
   }
-
+  /** 执行 referencedFiles 相关操作。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(ChangelogScanTask task) {
     if (task instanceof AddedRowsScanTask) {
@@ -157,13 +166,13 @@ class ChangelogRowReader extends BaseRowReader<ChangelogScanTask>
           "Unsupported changelog scan task type: " + task.getClass().getName());
     }
   }
-
+  /** 执行 deletedDataFileScanTaskFiles 相关操作。 */
   private static Stream<ContentFile<?>> deletedDataFileScanTaskFiles(DeletedDataFileScanTask task) {
     DataFile file = task.file();
     List<DeleteFile> existingDeletes = task.existingDeletes();
     return Stream.concat(Stream.of(file), existingDeletes.stream());
   }
-
+  /** 执行 addedRowsScanTaskFiles 相关操作。 */
   private static Stream<ContentFile<?>> addedRowsScanTaskFiles(AddedRowsScanTask task) {
     DataFile file = task.file();
     List<DeleteFile> deletes = task.deletes();

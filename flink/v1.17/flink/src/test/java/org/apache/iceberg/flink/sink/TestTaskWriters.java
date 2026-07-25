@@ -47,6 +47,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestTaskWriters 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestTaskWriters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestTaskWriters {
   private static final Configuration CONF = new Configuration();
@@ -54,6 +61,7 @@ public class TestTaskWriters {
 
   @Rule public final TemporaryFolder tempFolder = new TemporaryFolder();
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "format = {0}, partitioned = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -71,11 +79,13 @@ public class TestTaskWriters {
 
   private Table table;
 
+  /** 辅助方法：TestTaskWriters，Task Writers。 */
   public TestTaskWriters(String format, boolean partitioned) {
     this.format = FileFormat.fromString(format);
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     File folder = tempFolder.newFolder();
@@ -84,6 +94,11 @@ public class TestTaskWriters {
     table = SimpleDataUtil.createTable(folder.getAbsolutePath(), props, partitioned);
   }
 
+  /**
+   * 测试场景：Write Zero Record。
+   *
+   * <p>验证该方法在 Write Zero Record 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteZeroRecord() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(TARGET_FILE_SIZE)) {
@@ -101,6 +116,11 @@ public class TestTaskWriters {
     }
   }
 
+  /**
+   * 测试场景：Close Twice。
+   *
+   * <p>验证该方法在 Close Twice 条件下的行为是否符合预期。
+   */
   @Test
   public void testCloseTwice() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(TARGET_FILE_SIZE)) {
@@ -120,6 +140,11 @@ public class TestTaskWriters {
     }
   }
 
+  /**
+   * 测试场景：Abort。
+   *
+   * <p>验证该方法在 Abort 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbort() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(TARGET_FILE_SIZE)) {
@@ -139,6 +164,11 @@ public class TestTaskWriters {
     }
   }
 
+  /**
+   * 测试场景：Complete Files。
+   *
+   * <p>验证该方法在 Complete Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompleteFiles() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(TARGET_FILE_SIZE)) {
@@ -176,6 +206,11 @@ public class TestTaskWriters {
     }
   }
 
+  /**
+   * 测试场景：Rolling With Target File Size。
+   *
+   * <p>验证该方法在 Rolling With Target File Size 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingWithTargetFileSize() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(4)) {
@@ -206,6 +241,11 @@ public class TestTaskWriters {
     }
   }
 
+  /**
+   * 测试场景：Random Data。
+   *
+   * <p>验证该方法在 Random Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testRandomData() throws IOException {
     try (TaskWriter<RowData> taskWriter = createTaskWriter(TARGET_FILE_SIZE)) {
@@ -227,6 +267,7 @@ public class TestTaskWriters {
     }
   }
 
+  /** 辅助方法：createTaskWriter，create Task Writer。 */
   private TaskWriter<RowData> createTaskWriter(long targetFileSize) {
     TaskWriterFactory<RowData> taskWriterFactory =
         new RowDataTaskWriterFactory(

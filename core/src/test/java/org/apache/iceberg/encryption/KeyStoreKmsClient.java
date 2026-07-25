@@ -34,8 +34,12 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
 /**
- * KMS client demo class, based on the Java KeyStore API that reads keys from standard PKCS12
- * keystore files. Not for use in production.
+ * 测试类：KeyStoreKmsClient，用于验证 Key Store Kms Client 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Key Store Kms Client 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
  */
 public class KeyStoreKmsClient extends MemoryMockKMS {
 
@@ -47,18 +51,21 @@ public class KeyStoreKmsClient extends MemoryMockKMS {
   // In this class, the password is passed as a system environment variable.
   public static final String KEYSTORE_PASSWORD_ENV_VAR = "KEYSTORE_PASSWORD";
 
+  /** 辅助方法：wrap key。 */
   @Override
   public ByteBuffer wrapKey(ByteBuffer key, String wrappingKeyId) {
     // keytool keeps key names in lower case
     return super.wrapKey(key, wrappingKeyId.toLowerCase());
   }
 
+  /** 辅助方法：unwrap key。 */
   @Override
   public ByteBuffer unwrapKey(ByteBuffer wrappedKey, String wrappingKeyId) {
     // keytool keeps key names in lower case
     return super.unwrapKey(wrappedKey, wrappingKeyId.toLowerCase());
   }
 
+  /** 辅助方法：initialize。 */
   @Override
   public void initialize(Map<String, String> properties) {
     String keystorePath = properties.get(KEYSTORE_FILE_PATH_PROP);

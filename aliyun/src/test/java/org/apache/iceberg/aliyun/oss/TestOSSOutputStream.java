@@ -43,6 +43,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：测试 TestOSSOutputStream 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 TestOSSOutputStream 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOSSOutputStream extends AliyunOSSTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TestOSSOutputStream.class);
 
@@ -56,8 +63,14 @@ public class TestOSSOutputStream extends AliyunOSSTestBase {
       new AliyunProperties(
           ImmutableMap.of(AliyunProperties.OSS_STAGING_DIRECTORY, tmpDir.toString()));
 
+  /** 辅助方法：TestOSSOutputStream。 */
   public TestOSSOutputStream() throws IOException {}
 
+  /**
+   * 测试场景：Write。
+   *
+   * <p>验证该方法在 Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testWrite() throws IOException {
     OSSURI uri = randomURI();
@@ -76,6 +89,7 @@ public class TestOSSOutputStream extends AliyunOSSTestBase {
     }
   }
 
+  /** 辅助方法：writeAndVerify。 */
   private void writeAndVerify(OSS mock, OSSURI uri, byte[] data, boolean arrayWrite)
       throws IOException {
     LOG.info(
@@ -114,10 +128,12 @@ public class TestOSSOutputStream extends AliyunOSSTestBase {
         Files.list(Paths.get(props.ossStagingDirectory())).count());
   }
 
+  /** 辅助方法：randomURI。 */
   private OSSURI randomURI() {
     return new OSSURI(location(String.format("%s.dat", UUID.randomUUID())));
   }
 
+  /** 辅助方法：data256。 */
   private byte[] data256() {
     byte[] data = new byte[256];
     for (int i = 0; i < 256; i++) {
@@ -126,12 +142,14 @@ public class TestOSSOutputStream extends AliyunOSSTestBase {
     return data;
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：ossDataContent。 */
   private byte[] ossDataContent(OSSURI uri, int dataSize) throws IOException {
     try (InputStream is = ossClient.getObject(uri.bucket(), uri.key()).getObjectContent()) {
       byte[] actual = new byte[dataSize];

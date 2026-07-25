@@ -71,21 +71,31 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestRemoveOrphanFilesProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 移除孤儿文件存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试移除孤儿文件存储过程。 */
   public TestRemoveOrphanFilesProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s PURGE", tableName);
     sql("DROP TABLE IF EXISTS p PURGE");
   }
 
+  /** 测试移除孤儿文件在空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesInEmptyTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -97,6 +107,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Should have no rows", ImmutableList.of(), sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试移除孤儿文件在数据folder场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesInDataFolder() throws IOException {
     if (catalogName.equals("testhadoop")) {
@@ -160,6 +171,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试移除孤儿文件dryrun场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesDryRun() throws IOException {
     if (catalogName.equals("testhadoop")) {
@@ -220,6 +232,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试移除孤儿文件gcdisabled场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesGCDisabled() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -236,6 +249,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
     sql("ALTER TABLE %s SET TBLPROPERTIES ('%s' 'true')", tableName, GC_ENABLED);
   }
 
+  /** 测试移除孤儿文件wap场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWap() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -255,6 +269,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
     assertEquals("Should be no orphan files", ImmutableList.of(), output);
   }
 
+  /** 测试invalid移除孤儿文件场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidRemoveOrphanFilesCases() {
     AssertHelpers.assertThrows(
@@ -288,6 +303,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.remove_orphan_files('')", catalogName));
   }
 
+  /** 测试并发移除孤儿文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testConcurrentRemoveOrphanFiles() throws IOException {
     if (catalogName.equals("testhadoop")) {
@@ -346,6 +362,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试并发移除孤儿文件带invalidinput场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testConcurrentRemoveOrphanFilesWithInvalidInput() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -409,6 +426,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
                 catalogName, tableIdent, tempViewName));
   }
 
+  /** 测试移除孤儿文件带删除文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWithDeleteFiles() throws Exception {
     sql(
@@ -461,6 +479,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试移除孤儿文件带statistic文件场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesWithStatisticFiles() throws Exception {
     sql(
@@ -541,6 +560,7 @@ public class TestRemoveOrphanFilesProcedure extends SparkExtensionsTestBase {
     Assertions.assertThat(statsLocation.exists()).as("stats file should be deleted").isFalse();
   }
 
+  /** 测试移除孤儿文件存储过程带prefix模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveOrphanFilesProcedureWithPrefixMode()
       throws NoSuchTableException, ParseException, IOException {

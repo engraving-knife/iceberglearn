@@ -53,6 +53,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestStreamingMonitorFunction 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestStreamingMonitorFunction 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestStreamingMonitorFunction extends TableTestBase {
 
@@ -63,15 +71,18 @@ public class TestStreamingMonitorFunction extends TableTestBase {
   private static final FileFormat DEFAULT_FORMAT = FileFormat.PARQUET;
   private static final long WAIT_TIME_MILLIS = 10 * 1000L;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "FormatVersion={0}")
   public static Iterable<Object[]> parameters() {
     return ImmutableList.of(new Object[] {1}, new Object[] {2});
   }
 
+  /** 辅助方法：TestStreamingMonitorFunction，Streaming Monitor Function。 */
   public TestStreamingMonitorFunction(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setupTable，setup Table。 */
   @Before
   @Override
   public void setupTable() throws IOException {
@@ -83,6 +94,7 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     table = create(SCHEMA, PartitionSpec.unpartitioned());
   }
 
+  /** 辅助方法：runSourceFunctionInTask，run Source Function In Task。 */
   private void runSourceFunctionInTask(
       TestSourceContext sourceContext, StreamingMonitorFunction function) {
     Thread task =
@@ -97,6 +109,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     task.start();
   }
 
+  /**
+   * 测试场景：Consume Without Start Snapshot Id。
+   *
+   * <p>验证该方法在 Consume Without Start Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeWithoutStartSnapshotId() throws Exception {
     List<List<Record>> recordsList = generateRecordsAndCommitTxn(10);
@@ -124,6 +141,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Consume From Start Snapshot Id。
+   *
+   * <p>验证该方法在 Consume From Start Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFromStartSnapshotId() throws Exception {
     // Commit the first five transactions.
@@ -161,6 +183,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Consume From Start Tag。
+   *
+   * <p>验证该方法在 Consume From Start Tag 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeFromStartTag() throws Exception {
     // Commit the first five transactions.
@@ -197,6 +224,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Checkpoint Restore。
+   *
+   * <p>验证该方法在 Checkpoint Restore 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointRestore() throws Exception {
     List<List<Record>> recordsList = generateRecordsAndCommitTxn(10);
@@ -251,6 +283,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：Invalid Max Planning Snapshot Count。
+   *
+   * <p>验证该方法在 Invalid Max Planning Snapshot Count 条件下的行为是否符合预期。
+   */
   @Test
   public void testInvalidMaxPlanningSnapshotCount() {
     ScanContext scanContext1 =
@@ -284,6 +321,11 @@ public class TestStreamingMonitorFunction extends TableTestBase {
         });
   }
 
+  /**
+   * 测试场景：Consume With Max Planning Snapshot Count。
+   *
+   * <p>验证该方法在 Consume With Max Planning Snapshot Count 条件下的行为是否符合预期。
+   */
   @Test
   public void testConsumeWithMaxPlanningSnapshotCount() throws Exception {
     generateRecordsAndCommitTxn(10);
@@ -335,6 +377,7 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     }
   }
 
+  /** 辅助方法：generateRecordsAndCommitTxn，generate Records And Commit Txn。 */
   private List<List<Record>> generateRecordsAndCommitTxn(int commitTimes) throws IOException {
     List<List<Record>> expectedRecords = Lists.newArrayList();
     for (int i = 0; i < commitTimes; i++) {
@@ -347,16 +390,19 @@ public class TestStreamingMonitorFunction extends TableTestBase {
     return expectedRecords;
   }
 
+  /** 辅助方法：writeRecords，write Records。 */
   private void writeRecords(List<Record> records) throws IOException {
     GenericAppenderHelper appender = new GenericAppenderHelper(table, DEFAULT_FORMAT, temp);
     appender.appendToTable(records);
   }
 
+  /** 辅助方法：createFunction，create Function。 */
   private StreamingMonitorFunction createFunction(ScanContext scanContext) {
     return new StreamingMonitorFunction(
         TestTableLoader.of(tableDir.getAbsolutePath()), scanContext);
   }
 
+  /** 辅助方法：createHarness，create Harness。 */
   private AbstractStreamOperatorTestHarness<FlinkInputSplit> createHarness(
       StreamingMonitorFunction function) throws Exception {
     StreamSource<FlinkInputSplit, StreamingMonitorFunction> streamSource =
@@ -373,31 +419,38 @@ public class TestStreamingMonitorFunction extends TableTestBase {
       this.latch = latch;
     }
 
+    /** 辅助方法：collect，collect。 */
     @Override
     public void collect(FlinkInputSplit element) {
       splits.add(element);
       latch.countDown();
     }
 
+    /** 辅助方法：collectWithTimestamp，collect With Timestamp。 */
     @Override
     public void collectWithTimestamp(FlinkInputSplit element, long timestamp) {
       collect(element);
     }
 
+    /** 辅助方法：emitWatermark，emit Watermark。 */
     @Override
     public void emitWatermark(Watermark mark) {}
 
+    /** 辅助方法：markAsTemporarilyIdle，mark As Temporarily Idle。 */
     @Override
     public void markAsTemporarilyIdle() {}
 
+    /** 辅助方法：getCheckpointLock，get Checkpoint Lock。 */
     @Override
     public Object getCheckpointLock() {
       return checkpointLock;
     }
 
+    /** 辅助方法：close，close。 */
     @Override
     public void close() {}
 
+    /** 辅助方法：toRows，to Rows。 */
     private List<Row> toRows() throws IOException {
       FlinkInputFormat format =
           FlinkSource.forRowData()

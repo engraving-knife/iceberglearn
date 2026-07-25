@@ -41,6 +41,7 @@ public interface AliyunOSSTestRule extends TestRule {
   @Override
   default Statement apply(Statement base, Description description) {
     return new Statement() {
+      /** 辅助方法：evaluate。 */
       @Override
       public void evaluate() throws Throwable {
         start();

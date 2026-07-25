@@ -50,9 +50,21 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestProjection 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestProjection {
   private static final Schema SCHEMA = new Schema(optional(16, "id", Types.LongType.get()));
 
+  /**
+   * 测试场景：Identity Projection。
+   *
+   * <p>验证该方法在 Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testIdentityProjection() {
     List<UnboundPredicate<?>> predicates =
@@ -90,6 +102,11 @@ public class TestProjection {
     }
   }
 
+  /**
+   * 测试场景：Case Insensitive Identity Projection。
+   *
+   * <p>验证该方法在 Case Insensitive Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveIdentityProjection() {
     List<UnboundPredicate<?>> predicates =
@@ -127,6 +144,11 @@ public class TestProjection {
     }
   }
 
+  /**
+   * 测试场景：Case Sensitive Identity Projection。
+   *
+   * <p>验证该方法在 Case Sensitive Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveIdentityProjection() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("id").build();
@@ -136,6 +158,11 @@ public class TestProjection {
         .hasMessageContaining("Cannot find field 'ID' in struct");
   }
 
+  /**
+   * 测试场景：Strict Identity Projection。
+   *
+   * <p>验证该方法在 Strict Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictIdentityProjection() {
     List<UnboundPredicate<?>> predicates =
@@ -173,6 +200,11 @@ public class TestProjection {
     }
   }
 
+  /**
+   * 测试场景：Case Insensitive Strict Identity Projection。
+   *
+   * <p>验证该方法在 Case Insensitive Strict Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveStrictIdentityProjection() {
     List<UnboundPredicate<?>> predicates =
@@ -210,6 +242,11 @@ public class TestProjection {
     }
   }
 
+  /**
+   * 测试场景：Case Sensitive Strict Identity Projection。
+   *
+   * <p>验证该方法在 Case Sensitive Strict Identity Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveStrictIdentityProjection() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("id").build();
@@ -219,6 +256,11 @@ public class TestProjection {
         .hasMessageContaining("Cannot find field 'ID' in struct");
   }
 
+  /**
+   * 测试场景：Bad Spark Partition Filter。
+   *
+   * <p>验证该方法在 Bad Spark Partition Filter 条件下的行为是否符合预期。
+   */
   @Test
   public void testBadSparkPartitionFilter() {
     // this tests a case that results in a full table scan in Spark with Hive tables. because the
@@ -263,6 +305,11 @@ public class TestProjection {
     assertThat(dateint3.literal().value()).as("Should be dateint=20180417").isEqualTo(20180417);
   }
 
+  /**
+   * 测试场景：Projection Names。
+   *
+   * <p>验证该方法在 Projection Names 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testProjectionNames() {

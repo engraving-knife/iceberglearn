@@ -33,6 +33,11 @@ import org.junit.jupiter.api.Test;
  * operation can be used: a &lt; b is equivalent to compare(a, b) &lt; 0.
  */
 public class TestBinaryComparator {
+  /**
+   * 测试场景：Binary Unsigned Comparator。
+   *
+   * <p>验证该方法在 Binary Unsigned Comparator 条件下的行为是否符合预期。
+   */
   @Test
   public void testBinaryUnsignedComparator() {
     // b1 < b2 because comparison is unsigned, and -1 has msb set
@@ -46,6 +51,11 @@ public class TestBinaryComparator {
         .isLessThan(0);
   }
 
+  /**
+   * 测试场景：Fixed Unsigned Comparator。
+   *
+   * <p>验证该方法在 Fixed Unsigned Comparator 条件下的行为是否符合预期。
+   */
   @Test
   public void testFixedUnsignedComparator() {
     // b1 < b2 because comparison is unsigned, and -1 has msb set
@@ -60,6 +70,11 @@ public class TestBinaryComparator {
         .isLessThan(0);
   }
 
+  /**
+   * 测试场景：Null Handling。
+   *
+   * <p>验证该方法在 Null Handling 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHandling() {
     ByteBuffer buf = ByteBuffer.allocate(0);

@@ -18,7 +18,14 @@
  */
 package org.apache.iceberg.flink.source;
 
-/** Starting strategy for streaming execution. */
+/**
+ * 流式读取启动策略枚举，定义从哪个位置开始增量读取。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定义 TABLE_SCAN_THEN_INCREMENTAL/INCREMENTAL_FROM_LATEST_SNAPSHOT
+ * 等策略。
+ *
+ * <p>设计意图：枚举；被 StreamingMonitorFunction 使用。
+ */
 public enum StreamingStartingStrategy {
   /**
    * Do a regular table scan then switch to the incremental mode.

@@ -22,47 +22,54 @@ import java.util.Map;
 import org.apache.iceberg.catalog.ViewCatalog;
 
 /**
- * A builder used to create or replace a SQL {@link View}.
+ * 用于创建或替换 SQL {@link View} 的构建器。
  *
- * <p>Call {@link ViewCatalog#buildView} to create a new builder.
+ * <p>所属模块：iceberg-api。继承自 {@link VersionBuilder}，在版本内容配置基础上增加属性设置与 创建/替换/创建或替换三种提交动作。
+ *
+ * <p>职责：链式配置视图 schema、SQL 表示、默认 catalog/namespace 及属性，然后通过 create、 replace、createOrReplace 之一提交。
+ *
+ * <p>设计意图：将视图的"构建"与"提交语义"分离——配置阶段不产生副作用，提交阶段才决定是新建、 替换还是 upsert。调用 {@link ViewCatalog#buildView}
+ * 可创建一个新的构建器实例。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.catalog.ViewCatalog#buildView} 创建；提交后产出 {@link View}。
  */
 public interface ViewBuilder extends VersionBuilder<ViewBuilder> {
 
   /**
-   * Add key/value properties to the view.
+   * 为视图添加一组键值对属性。
    *
-   * @param properties key/value properties
-   * @return this for method chaining
+   * @param properties 键值对属性
+   * @return this，便于链式调用
    */
   ViewBuilder withProperties(Map<String, String> properties);
 
   /**
-   * Add a key/value property to the view.
+   * 为视图添加单个键值对属性。
    *
-   * @param key a key
-   * @param value a value
-   * @return this for method chaining
+   * @param key 属性键
+   * @param value 属性值
+   * @return this，便于链式调用
    */
   ViewBuilder withProperty(String key, String value);
 
   /**
-   * Create the view.
+   * 创建视图。
    *
-   * @return the view created
+   * @return 创建出的视图
    */
   View create();
 
   /**
-   * Replace the view.
+   * 替换视图。
    *
-   * @return the {@link View} replaced
+   * @return 替换后的 {@link View}
    */
   View replace();
 
   /**
-   * Create or replace the view.
+   * 创建或替换视图（若存在则替换，否则创建）。
    *
-   * @return the {@link View} created or replaced
+   * @return 创建或替换后的 {@link View}
    */
   View createOrReplace();
 }

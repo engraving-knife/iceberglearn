@@ -23,6 +23,13 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 @Internal
+/**
+ * IcebergSourceSplit 的 Flink 序列化器，用于 checkpoint 持久化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把分片序列化为字节流以便存储与恢复。
+ *
+ * <p>设计意图：实现 SimpleVersionedSerializer；被 Flink Source 框架调用。
+ */
 public class IcebergSourceSplitSerializer implements SimpleVersionedSerializer<IcebergSourceSplit> {
   private static final int VERSION = 2;
 

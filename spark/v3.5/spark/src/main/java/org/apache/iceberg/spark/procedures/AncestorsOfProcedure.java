@@ -32,6 +32,18 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Spark 存储过程：查询指定快照的所有祖先快照（含其本身）的 ID 与时间戳。
+ *
+ * <p>所属模块：iceberg-spark（procedures 子包，通过 Spark CALL 语句暴露表维护与查询能力）。
+ *
+ * <p>职责：接收表名与可选快照 ID，返回从该快照到表根的所有祖先快照列表， 每条记录包含快照 ID 与提交时间戳。未指定快照 ID 时默认使用当前快照。
+ *
+ * <p>设计意图：以存储过程形式暴露 Iceberg 快照谱系查询能力，结果以行集合返回便于在 SQL 中使用。 继承 {@link BaseProcedure} 复用参数解析与表加载逻辑。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册，经 ResolveProcedures 规则绑定后调用， 内部使用 {@link
+ * SnapshotUtil#ancestorIdsBetween} 计算祖先。
+ */
 public class AncestorsOfProcedure extends BaseProcedure {
 
   private static final ProcedureParameter TABLE_PARAM =
@@ -52,26 +64,36 @@ public class AncestorsOfProcedure extends BaseProcedure {
   private AncestorsOfProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 执行 builder 相关操作。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new Builder<AncestorsOfProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected AncestorsOfProcedure doBuild() {
         return new AncestorsOfProcedure(tableCatalog());
       }
     };
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行祖先快照查询。
+   *
+   * <p>逻辑：解析表名与可选快照 ID，加载表；快照 ID 为空时取当前快照； 通过 {@link SnapshotUtil#ancestorIdsBetween} 收集祖先快照
+   * ID，转换为输出行。
+   *
+   * @param args 调用参数行
+   * @return 祖先快照信息行数组（snapshot_id, timestamp）
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -93,12 +115,12 @@ public class AncestorsOfProcedure extends BaseProcedure {
 
     return toOutputRow(icebergTable, snapshotIds);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "AncestorsOf";
   }
-
+  /** 转换为 OutputRow。 */
   private InternalRow[] toOutputRow(Table table, List<Long> snapshotIds) {
     if (snapshotIds.isEmpty()) {
       return new InternalRow[0];

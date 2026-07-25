@@ -86,6 +86,15 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：位置增量写入实现，将 delete+insert 增量写为数据与删除文件。
+ *
+ * <p>设计意图：实现 Spark Write，协调数据文件与 position-delete 文件的写出与提交。
+ *
+ * <p>上下游关系：由 SparkPositionDeltaWriteBuilder 创建。
+ */
 class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrdering {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkPositionDeltaWrite.class);
@@ -129,29 +138,29 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
     this.context = new Context(dataSchema, writeConf, info, writeRequirements);
     this.writeProperties = writeConf.writeProperties();
   }
-
+  /** 执行 requiredDistribution 相关操作。 */
   @Override
   public Distribution requiredDistribution() {
     return writeRequirements.distribution();
   }
-
+  /** 执行 distributionStrictlyRequired 相关操作。 */
   @Override
   public boolean distributionStrictlyRequired() {
     return false;
   }
-
+  /** 执行 requiredOrdering 相关操作。 */
   @Override
   public SortOrder[] requiredOrdering() {
     return writeRequirements.ordering();
   }
-
+  /** 转换为 Batch。 */
   @Override
   public DeltaBatchWrite toBatch() {
     return new PositionDeltaBatchWrite();
   }
 
   private class PositionDeltaBatchWrite implements DeltaBatchWrite {
-
+    /** 执行 createBatchWriterFactory 相关操作。 */
     @Override
     public DeltaWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       // broadcast the table metadata as the writer factory will be sent to executors
@@ -159,7 +168,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
           sparkContext.broadcast(SerializableTableWithSize.copyOf(table));
       return new PositionDeltaWriteFactory(tableBroadcast, command, context, writeProperties);
     }
-
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       RowDelta rowDelta = table.newRowDelta();
@@ -227,7 +236,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
         commitOperation(rowDelta, commitMsg);
       }
     }
-
+    /** 执行 conflictDetectionFilter 相关操作。 */
     private Expression conflictDetectionFilter(SparkBatchQueryScan queryScan) {
       Expression filter = Expressions.alwaysTrue();
 
@@ -237,7 +246,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
 
       return filter;
     }
-
+    /** 中止写入并清理。 */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       if (cleanupOnAbort) {
@@ -246,7 +255,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
         LOG.warn("Skipping cleanup of written files");
       }
     }
-
+    /** 执行 files 相关操作。 */
     private List<ContentFile<?>> files(WriterCommitMessage[] messages) {
       List<ContentFile<?>> files = Lists.newArrayList();
 
@@ -260,7 +269,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
 
       return files;
     }
-
+    /** 执行 commitOperation 相关操作。 */
     private void commitOperation(SnapshotUpdate<?> operation, String description) {
       LOG.info("Committing {} to table {}", description, table);
       if (applicationId != null) {
@@ -340,7 +349,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       this.context = context;
       this.writeProperties = writeProperties;
     }
-
+    /** 执行 createWriter 相关操作。 */
     @Override
     public DeltaWriter<InternalRow> createWriter(int partitionId, long taskId) {
       Table table = tableBroadcast.value();
@@ -382,12 +391,12 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
   }
 
   private abstract static class BaseDeltaWriter implements DeltaWriter<InternalRow> {
-
+    /** 执行 initPartitionRowWrapper 相关操作。 */
     protected InternalRowWrapper initPartitionRowWrapper(Types.StructType partitionType) {
       StructType sparkPartitionType = (StructType) SparkSchemaUtil.convert(partitionType);
       return new InternalRowWrapper(sparkPartitionType);
     }
-
+    /** 执行 buildPartitionProjections 相关操作。 */
     protected Map<Integer, StructProjection> buildPartitionProjections(
         Types.StructType partitionType, Map<Integer, PartitionSpec> specs) {
       Map<Integer, StructProjection> partitionProjections = Maps.newHashMap();
@@ -484,7 +493,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       positionDelete.set(file, position, null);
       delegate.write(positionDelete, spec, partitionProjection);
     }
-
+    /** 执行 update 相关操作。 */
     @Override
     public void update(InternalRow metadata, InternalRow id, InternalRow row) {
       throw new UnsupportedOperationException(
@@ -588,7 +597,7 @@ class SparkPositionDeltaWrite implements DeltaWrite, RequiresDistributionAndOrde
       WriteResult result = delegate.result();
       SparkCleanupUtil.deleteTaskFiles(io, files(result));
     }
-
+    /** 执行 files 相关操作。 */
     private List<ContentFile<?>> files(WriteResult result) {
       List<ContentFile<?>> files = Lists.newArrayList();
       files.addAll(Arrays.asList(result.dataFiles()));

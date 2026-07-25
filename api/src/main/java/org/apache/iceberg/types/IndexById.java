@@ -23,6 +23,13 @@ import java.util.Map;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 按 ID 索引访问者：遍历 schema 构建字段 ID→NestedField 的映射。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#indexById} 使用）。
+ *
+ * <p>职责：后序遍历类型树，收集 struct 字段、list 元素、map key/value 的 ID→字段映射。
+ */
 class IndexById extends TypeUtil.SchemaVisitor<Map<Integer, Types.NestedField>> {
   private final Map<Integer, Types.NestedField> index = Maps.newHashMap();
 

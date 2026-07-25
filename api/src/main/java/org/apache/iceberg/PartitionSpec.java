@@ -43,10 +43,22 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.StructType;
 
 /**
- * Represents how to produce partition data for a table.
+ * 表示表的分区数据如何生成。
  *
- * <p>Partition data is produced by transforming columns in a table. Each column transform is
- * represented by a named {@link PartitionField}.
+ * <p>所属模块：iceberg-api（分区抽象层）。
+ *
+ * <p>职责：定义一组 {@link PartitionField}（源字段 + Transform），描述如何由表中的列变换 得到分区值；提供分区类型、分区到路径、按源字段查询分区字段等能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>分区字段 ID 从 1000 起分配，全表所有 spec 共享同一 ID 空间。
+ *   <li>fields 以数组形式持久化以保证 DataFile schema 顺序稳定；多个派生视图
+ *       （fieldList、fieldsBySourceId、partitionType、javaClasses）均为 transient + 双检锁懒加载，避免序列化体积并支持并发安全。
+ *   <li>通过 {@link #compatibleWith(PartitionSpec)} 在忽略字段 ID 的情况下判断两个 spec 是否结构等价，用于演化兼容判断。
+ * </ul>
+ *
+ * <p>上下游关系：由表元数据持有；被扫描规划、文件写入、分区值计算等模块使用。
  */
 public class PartitionSpec implements Serializable {
   // IDs for partition fields start at 1000
@@ -71,33 +83,41 @@ public class PartitionSpec implements Serializable {
     this.lastAssignedFieldId = lastAssignedFieldId;
   }
 
-  /** Returns the {@link Schema} for this spec. */
+  /** 返回本 spec 关联的表 {@link Schema}。 */
   public Schema schema() {
     return schema;
   }
 
-  /** Returns the ID of this spec. */
+  /** 返回本 spec 的 ID。 */
   public int specId() {
     return specId;
   }
 
-  /** Returns the list of {@link PartitionField partition fields} for this spec. */
+  /** 返回本 spec 的分区字段列表（不可变视图）。 */
   public List<PartitionField> fields() {
     return lazyFieldList();
   }
 
+  /** 是否存在有效分区字段（非 void transform）。 */
   public boolean isPartitioned() {
     return fields.length > 0 && fields().stream().anyMatch(f -> !f.transform().isVoid());
   }
 
+  /** 是否未分区。 */
   public boolean isUnpartitioned() {
     return !isPartitioned();
   }
 
+  /** 返回本 spec 已分配的最大分区字段 ID。 */
   int lastAssignedFieldId() {
     return lastAssignedFieldId;
   }
 
+  /**
+   * 将本 spec 转换为未绑定形式 {@link UnboundPartitionSpec}，便于序列化/跨 schema 传输。
+   *
+   * <p>逻辑：以 specId 构造 builder，逐个字段写入 transform 字符串、sourceId、fieldId、name。
+   */
   public UnboundPartitionSpec toUnbound() {
     UnboundPartitionSpec.Builder builder = UnboundPartitionSpec.builder().withSpecId(specId);
 
@@ -110,16 +130,21 @@ public class PartitionSpec implements Serializable {
   }
 
   /**
-   * Returns the {@link PartitionField field} that partitions the given source field
+   * 返回按指定源字段 ID 分区的所有 {@link PartitionField}。
    *
-   * @param fieldId a field id from the source schema
-   * @return the {@link PartitionField field} that partitions the given source field
+   * @param fieldId 源 schema 中的字段 ID
+   * @return 该源字段对应的分区字段列表
    */
   public List<PartitionField> getFieldsBySourceId(int fieldId) {
     return lazyFieldsBySourceId().get(fieldId);
   }
 
-  /** Returns a {@link StructType} for partition data defined by this spec. */
+  /**
+   * 返回本 spec 定义的分区数据 {@link StructType}。
+   *
+   * <p>逻辑：双检锁懒构建。遍历每个分区字段，由其 transform 的 getResultType 计算结果类型， 组装为 optional NestedField 列表后构造
+   * StructType。
+   */
   public StructType partitionType() {
     if (lazyPartitionType == null) {
       synchronized (this) {
@@ -140,6 +165,12 @@ public class PartitionSpec implements Serializable {
     return lazyPartitionType;
   }
 
+  /**
+   * 返回各分区字段对应的 Java 类型数组。
+   *
+   * <p>逻辑：双检锁懒构建。对每个字段，若 transform 是 {@link UnknownTransform} 则用 Object， 否则由 transform 的
+   * getResultType 推导 javaClass。
+   */
   public Class<?>[] javaClasses() {
     if (lazyJavaClasses == null) {
       synchronized (this) {
@@ -164,11 +195,13 @@ public class PartitionSpec implements Serializable {
     return lazyJavaClasses;
   }
 
+  /** 按位置与 Java 类型从 {@link StructLike} 中取分区值。 */
   @SuppressWarnings("unchecked")
   private <T> T get(StructLike data, int pos, Class<?> javaClass) {
     return data.get(pos, (Class<T>) javaClass);
   }
 
+  /** 对分区值字符串做 URL 编码，避免出现路径非法字符。 */
   private String escape(String string) {
     try {
       return URLEncoder.encode(string, "UTF-8");
@@ -177,6 +210,14 @@ public class PartitionSpec implements Serializable {
     }
   }
 
+  /**
+   * 将分区数据元组转换为分区路径字符串（如 {@code fieldA=valA/fieldB=valB}）。
+   *
+   * <p>逻辑：遍历各分区字段，用其 transform 把分区值转为人类可读字符串，再 URL 编码， 以 {@code name=value} 形式拼接，多字段间用 "/" 分隔。
+   *
+   * @param data 分区数据元组
+   * @return 分区路径字符串
+   */
   public String partitionToPath(StructLike data) {
     StringBuilder sb = new StringBuilder();
     Class<?>[] javaClasses = javaClasses();
@@ -195,12 +236,12 @@ public class PartitionSpec implements Serializable {
   }
 
   /**
-   * Returns true if this spec is equivalent to the other, with partition field ids ignored. That
-   * is, if both specs have the same number of fields, field order, field name, source columns, and
-   * transforms.
+   * 判断本 spec 与另一个 spec 是否结构兼容（忽略分区字段 ID）。
    *
-   * @param other another PartitionSpec
-   * @return true if the specs have the same fields, source columns, and transforms.
+   * <p>逻辑：若 equals 直接返回 true；否则要求字段数相同，且对应字段的 sourceId、 transform 字符串、name 全部相等。
+   *
+   * @param other 另一个 PartitionSpec
+   * @return 若字段数、顺序、名称、源列、transform 均相同则返回 true
    */
   public boolean compatibleWith(PartitionSpec other) {
     if (equals(other)) {
@@ -224,6 +265,7 @@ public class PartitionSpec implements Serializable {
     return true;
   }
 
+  /** 相等性：specId 相同且 fields 数组内容相同。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -244,6 +286,7 @@ public class PartitionSpec implements Serializable {
     return 31 * Integer.hashCode(specId) + Arrays.hashCode(fields);
   }
 
+  /** 双检锁懒构建字段列表的不可变视图。 */
   private List<PartitionField> lazyFieldList() {
     if (fieldList == null) {
       synchronized (this) {
@@ -255,6 +298,7 @@ public class PartitionSpec implements Serializable {
     return fieldList;
   }
 
+  /** 双检锁懒构建 sourceId -> 分区字段列表 的 Multimap。 */
   private ListMultimap<Integer, PartitionField> lazyFieldsBySourceId() {
     if (fieldsBySourceId == null) {
       synchronized (this) {
@@ -274,9 +318,9 @@ public class PartitionSpec implements Serializable {
   }
 
   /**
-   * Returns the source field ids for identity partitions.
+   * 返回所有 identity transform 分区字段对应的源字段 ID 集合。
    *
-   * @return a set of source ids for the identity partitions.
+   * @return identity 分区字段的源 ID 集合
    */
   public Set<Integer> identitySourceIds() {
     Set<Integer> sourceIds = Sets.newHashSet();
@@ -308,9 +352,9 @@ public class PartitionSpec implements Serializable {
       new PartitionSpec(new Schema(), 0, ImmutableList.of(), unpartitionedLastAssignedId());
 
   /**
-   * Returns a spec for unpartitioned tables.
+   * 返回未分区表的 spec 单例。
    *
-   * @return a partition spec with no partitions
+   * @return 不含任何分区字段的 spec
    */
   public static PartitionSpec unpartitioned() {
     return UNPARTITIONED_SPEC;
@@ -321,19 +365,20 @@ public class PartitionSpec implements Serializable {
   }
 
   /**
-   * Creates a new {@link Builder partition spec builder} for the given {@link Schema}.
+   * 为给定 {@link Schema} 创建分区 spec 构建器。
    *
-   * @param schema a schema
-   * @return a partition spec builder for the given schema
+   * @param schema 表 schema
+   * @return 分区 spec 构建器
    */
   public static Builder builderFor(Schema schema) {
     return new Builder(schema);
   }
 
   /**
-   * Used to create valid {@link PartitionSpec partition specs}.
+   * 用于构造合法 {@link PartitionSpec} 的构建器。
    *
-   * <p>Call {@link #builderFor(Schema)} to create a new builder.
+   * <p>设计意图：提供 identity/year/month/day/hour/bucket/truncate/alwaysNull 等常见 transform
+   * 的便捷方法，统一处理分区名冲突校验、字段 ID 自增分配、冗余分区检测。通过 {@link #builderFor(Schema)} 创建实例。
    */
   public static class Builder {
     private final Schema schema;
@@ -350,6 +395,7 @@ public class PartitionSpec implements Serializable {
       this.schema = schema;
     }
 
+    /** 自增分配下一个分区字段 ID。 */
     private int nextFieldId() {
       return lastAssignedFieldId.incrementAndGet();
     }
@@ -358,11 +404,26 @@ public class PartitionSpec implements Serializable {
       checkAndAddPartitionName(name, null);
     }
 
+    /** 控制是否校验分区名与 schema 字段名冲突。 */
     Builder checkConflicts(boolean check) {
       checkConflicts = check;
       return this;
     }
 
+    /**
+     * 校验并登记分区名。
+     *
+     * <p>逻辑：
+     *
+     * <ul>
+     *   <li>identity 场景（sourceColumnId 非 null）允许分区名与 schema 字段同名，但要求 源字段一致；
+     *   <li>其他 transform 不允许分区名与 schema 字段同名；
+     *   <li>禁止空/null 名与重复名。
+     * </ul>
+     *
+     * @param name 分区名
+     * @param sourceColumnId 源字段 ID，identity 时传入；其他 transform 传 null
+     */
     private void checkAndAddPartitionName(String name, Integer sourceColumnId) {
       Types.NestedField schemaField = schema.findField(name);
       if (checkConflicts) {
@@ -390,6 +451,11 @@ public class PartitionSpec implements Serializable {
       partitionNames.add(name);
     }
 
+    /**
+     * 检测冗余分区：同一 sourceId + transform dedupName 只能出现一次。
+     *
+     * @param field 待检测的分区字段
+     */
     private void checkForRedundantPartitions(PartitionField field) {
       Map.Entry<Integer, String> dedupKey =
           new AbstractMap.SimpleEntry<>(field.sourceId(), field.transform().dedupName());
@@ -402,11 +468,13 @@ public class PartitionSpec implements Serializable {
       dedupFields.put(dedupKey, field);
     }
 
+    /** 设置 spec ID。 */
     public Builder withSpecId(int newSpecId) {
       this.specId = newSpecId;
       return this;
     }
 
+    /** 按名称查找源列，找不到则抛异常。 */
     private Types.NestedField findSourceColumn(String sourceName) {
       Types.NestedField sourceColumn = schema.findField(sourceName);
       Preconditions.checkArgument(
@@ -414,6 +482,7 @@ public class PartitionSpec implements Serializable {
       return sourceColumn;
     }
 
+    /** 添加一个 identity 分区字段（指定源名与目标名）。 */
     Builder identity(String sourceName, String targetName) {
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
       checkAndAddPartitionName(targetName, sourceColumn.fieldId());
@@ -425,10 +494,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 identity 分区字段，目标名与源名相同。 */
     public Builder identity(String sourceName) {
       return identity(sourceName, sourceName);
     }
 
+    /** 添加一个 year 分区字段（指定源名与目标名）。 */
     public Builder year(String sourceName, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -439,10 +510,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 year 分区字段，目标名为 源名_year。 */
     public Builder year(String sourceName) {
       return year(sourceName, sourceName + "_year");
     }
 
+    /** 添加一个 month 分区字段（指定源名与目标名）。 */
     public Builder month(String sourceName, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -453,10 +526,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 month 分区字段，目标名为 源名_month。 */
     public Builder month(String sourceName) {
       return month(sourceName, sourceName + "_month");
     }
 
+    /** 添加一个 day 分区字段（指定源名与目标名）。 */
     public Builder day(String sourceName, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -467,10 +542,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 day 分区字段，目标名为 源名_day。 */
     public Builder day(String sourceName) {
       return day(sourceName, sourceName + "_day");
     }
 
+    /** 添加一个 hour 分区字段（指定源名与目标名）。 */
     public Builder hour(String sourceName, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -481,10 +558,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 hour 分区字段，目标名为 源名_hour。 */
     public Builder hour(String sourceName) {
       return hour(sourceName, sourceName + "_hour");
     }
 
+    /** 添加一个 bucket 分区字段（指定源名、桶数、目标名）。 */
     public Builder bucket(String sourceName, int numBuckets, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -494,10 +573,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 bucket 分区字段，目标名为 源名_bucket。 */
     public Builder bucket(String sourceName, int numBuckets) {
       return bucket(sourceName, numBuckets, sourceName + "_bucket");
     }
 
+    /** 添加一个 truncate 分区字段（指定源名、截断宽度、目标名）。 */
     public Builder truncate(String sourceName, int width, String targetName) {
       checkAndAddPartitionName(targetName);
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
@@ -507,10 +588,12 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 truncate 分区字段，目标名为 源名_trunc。 */
     public Builder truncate(String sourceName, int width) {
       return truncate(sourceName, width, sourceName + "_trunc");
     }
 
+    /** 添加一个 alwaysNull 分区字段（用于占位/演化场景，指定源名与目标名）。 */
     public Builder alwaysNull(String sourceName, String targetName) {
       Types.NestedField sourceColumn = findSourceColumn(sourceName);
       checkAndAddPartitionName(
@@ -521,6 +604,7 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /** 添加一个 alwaysNull 分区字段，目标名为 源名_null。 */
     public Builder alwaysNull(String sourceName) {
       return alwaysNull(sourceName, sourceName + "_null");
     }
@@ -531,6 +615,11 @@ public class PartitionSpec implements Serializable {
       return add(sourceId, nextFieldId(), name, transform);
     }
 
+    /**
+     * 添加一个分区字段，显式指定字段 ID。
+     *
+     * <p>逻辑：校验分区名后构造 PartitionField 加入列表，并用 Math.max 更新 lastAssignedFieldId 以保证后续分配不冲突。
+     */
     Builder add(int sourceId, int fieldId, String name, Transform<?, ?> transform) {
       checkAndAddPartitionName(name, sourceId);
       fields.add(new PartitionField(sourceId, fieldId, name, transform));
@@ -538,17 +627,32 @@ public class PartitionSpec implements Serializable {
       return this;
     }
 
+    /**
+     * 构建并校验分区 spec。
+     *
+     * <p>逻辑：先调用 {@link #buildUnchecked()} 构造，再调用 {@link #checkCompatibility} 校验 各字段 transform
+     * 与源类型兼容。
+     */
     public PartitionSpec build() {
       PartitionSpec spec = buildUnchecked();
       checkCompatibility(spec, schema);
       return spec;
     }
 
+    /** 不做兼容性校验直接构造 spec，供内部使用。 */
     PartitionSpec buildUnchecked() {
       return new PartitionSpec(schema, specId, fields, lastAssignedFieldId.get());
     }
   }
 
+  /**
+   * 校验 spec 中每个分区字段的 transform 与源类型兼容。
+   *
+   * <p>逻辑：对每个字段，若 transform 是 alwaysNull（void）则跳过；否则校验源类型存在、 是基本类型、且 transform 可作用于该类型。
+   *
+   * @param spec 待校验的 spec
+   * @param schema 表 schema
+   */
   static void checkCompatibility(PartitionSpec spec, Schema schema) {
     for (PartitionField field : spec.fields) {
       Type sourceType = schema.findType(field.sourceId());
@@ -574,6 +678,12 @@ public class PartitionSpec implements Serializable {
     }
   }
 
+  /**
+   * 判断 spec 的分区字段 ID 是否从 {@code PARTITION_DATA_ID_START} 起连续递增。
+   *
+   * @param spec 待检查的 spec
+   * @return 字段 ID 连续递增则返回 true
+   */
   static boolean hasSequentialIds(PartitionSpec spec) {
     for (int i = 0; i < spec.fields.length; i += 1) {
       if (spec.fields[i].fieldId() != PARTITION_DATA_ID_START + i) {

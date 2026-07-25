@@ -34,12 +34,22 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.UUIDUtil;
 
+/**
+ * 把 Flink {@link RowData} 包装为 Iceberg {@link StructLike}。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按字段位置访问 RowData 并转换为 Iceberg 期望的 Java 类型， 供 {@link
+ * org.apache.iceberg.expressions.Evaluator} 等使用。
+ *
+ * <p>设计意图：适配器模式——为每个字段预编译 PositionalGetter，避免每次访问都反射。 上下游：被 {@link FlinkSourceFilter}、{@link
+ * org.apache.iceberg.flink.data.RowDataUtil} 等使用。
+ */
 public class RowDataWrapper implements StructLike {
 
   private final LogicalType[] types;
   private final PositionalGetter<?>[] getters;
   private RowData rowData = null;
 
+  /** 构造包装器，预编译每字段的取值函数。 */
   public RowDataWrapper(RowType rowType, Types.StructType struct) {
     int size = rowType.getFieldCount();
 
@@ -52,6 +62,7 @@ public class RowDataWrapper implements StructLike {
     }
   }
 
+  /** 绑定新的 RowData 后返回自身，便于复用包装器。 */
   public RowDataWrapper wrap(RowData data) {
     this.rowData = data;
     return this;
@@ -62,6 +73,7 @@ public class RowDataWrapper implements StructLike {
     return types.length;
   }
 
+  /** 按位置返回字段值，先用预编译 getter，否则回退到 Flink 默认字段 getter。 */
   @Override
   public <T> T get(int pos, Class<T> javaClass) {
     if (rowData.isNullAt(pos)) {
@@ -80,10 +92,12 @@ public class RowDataWrapper implements StructLike {
         "Could not set a field in the RowDataWrapper because rowData is read-only");
   }
 
+  /** 按位置从 RowData 取值的函数式接口。 */
   private interface PositionalGetter<T> {
     T get(RowData data, int pos);
   }
 
+  /** 按 Flink 逻辑类型构造对应的取值函数，特殊处理时间类型与 ROW 类型。 */
   private static PositionalGetter<?> buildGetter(LogicalType logicalType, Type type) {
     switch (logicalType.getTypeRoot()) {
       case TINYINT:

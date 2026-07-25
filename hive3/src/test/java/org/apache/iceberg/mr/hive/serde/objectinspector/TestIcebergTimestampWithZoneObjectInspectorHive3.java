@@ -30,8 +30,32 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 Hive3 的带时区时间戳 ObjectInspector（{@link IcebergTimestampWithZoneObjectInspectorHive3}）。
+ *
+ * <p>所属模块：iceberg-hive3。职责：验证 Iceberg 的带时区 Timestamp（{@link OffsetDateTime}）
+ * 与 Hive3 的 {@link TimestampTZ}/{@link TimestampLocalTZWritable} 之间的双向转换正确性，
+ * 包括类型分类、TypeInfo、Java/Writable 类映射、null 处理、时区转换与对象拷贝。
+ *
+ * <p>测试策略：构造不同时区偏移的 {@link OffsetDateTime}，断言转换后均归一化为 UTC 的
+ * {@link TimestampTZ}；同时验证 copyObject 返回独立副本、preferWritable 返回 false。
+ */
 public class TestIcebergTimestampWithZoneObjectInspectorHive3 {
 
+  /**
+   * 测试带时区时间戳 ObjectInspector 的全部行为。
+   *
+   * <p>逻辑：
+   * <ol>
+   *   <li>断言 Category=PRIMITIVE、PrimitiveCategory=TIMESTAMPLOCALTZ；</li>
+   *   <li>断言 TypeInfo/TypeName 正确；</li>
+   *   <li>断言 Java 类={@link TimestampTZ}、Writable 类={@link TimestampLocalTZWritable}；</li>
+   *   <li>断言 null 输入返回 null（copyObject/getPrimitiveJavaObject/getPrimitiveWritableObject/convert）；</li>
+   *   <li>构造 UTC 时间 + 不同偏移（+4h、+11h）的 OffsetDateTime，断言转换后均为同一 UTC TimestampTZ；</li>
+   *   <li>断言 copyObject 返回值相等但非同一对象（独立副本）；</li>
+   *   <li>断言 preferWritable=false；convert(TimestampTZ) 返回 UTC OffsetDateTime。</li>
+   * </ol>
+   */
   @Test
   public void testIcebergTimestampLocalTZObjectInspector() {
     IcebergTimestampWithZoneObjectInspectorHive3 oi =

@@ -24,20 +24,25 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 
 /**
- * Some types, like binary and fixed, are converted to the same Spark type. Conversion back can
- * produce only one, which may not be correct.
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkFixupTypes。
  */
 class SparkFixupTypes extends FixupTypes {
 
+  /** 构造 SparkFixupTypes 实例。 */
   private SparkFixupTypes(Schema referenceSchema) {
     super(referenceSchema);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static Schema fixup(Schema schema, Schema referenceSchema) {
+    /** 执行该方法的具体逻辑。 */
     return new Schema(
         TypeUtil.visit(schema, new SparkFixupTypes(referenceSchema)).asStructType().fields());
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected boolean fixupPrimitive(Type.PrimitiveType type, Type source) {
     switch (type.typeId()) {

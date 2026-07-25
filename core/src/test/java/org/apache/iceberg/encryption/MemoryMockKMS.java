@@ -21,11 +21,19 @@ package org.apache.iceberg.encryption;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-/** For testing and demonstrations; not for use in production. */
+/**
+ * 测试类：MemoryMockKMS，用于验证 Memory Mock KMS 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Memory Mock KMS 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class MemoryMockKMS implements KeyManagementClient {
 
   protected Map<String, byte[]> masterKeys;
 
+  /** 辅助方法：wrap key。 */
   @Override
   public ByteBuffer wrapKey(ByteBuffer key, String wrappingKeyId) {
     byte[] wrappingKey = masterKeys.get(wrappingKeyId);
@@ -38,6 +46,7 @@ public abstract class MemoryMockKMS implements KeyManagementClient {
     return ByteBuffer.wrap(encryptedKey);
   }
 
+  /** 辅助方法：unwrap key。 */
   @Override
   public ByteBuffer unwrapKey(ByteBuffer wrappedKey, String wrappingKeyId) {
     byte[] wrappingKey = masterKeys.get(wrappingKeyId);

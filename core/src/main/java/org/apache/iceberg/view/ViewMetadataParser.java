@@ -37,6 +37,25 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：{@link ViewMetadata} 的 JSON 序列化/反序列化器及文件读写工具。
+ *
+ * <p>所属模块：iceberg-core（视图元数据实现模块）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link ViewMetadata} 序列化为 JSON 文本（含 view-uuid、format-version、location、
+ *       properties、schemas、current-version-id、versions、version-log）。
+ *   <li>将 JSON 解析回 {@link ViewMetadata} 内存对象。
+ *   <li>提供 {@link #read(InputFile)} / {@link #write}/{@link #overwrite} 完成元数据文件的 读写。
+ * </ul>
+ *
+ * <p>设计意图：schemas、versions、version-log 各字段委托 {@link SchemaParser}、 {@link ViewVersionParser}、{@link
+ * ViewHistoryEntryParser} 处理；写入时使用美化输出便于 人工检视；解析时记录 metadataLocation 以支持后续变更追踪。
+ *
+ * <p>上下游关系：被视图 catalog（如 {@code ViewMetadataParser.read/write}）在加载/提交 视图元数据时调用。
+ */
 public class ViewMetadataParser {
 
   static final String VIEW_UUID = "view-uuid";
@@ -50,14 +69,38 @@ public class ViewMetadataParser {
 
   private ViewMetadataParser() {}
 
+  /**
+   * 将 {@link ViewMetadata} 序列化为 JSON 字符串（紧凑格式）。
+   *
+   * @param metadata 视图元数据
+   * @return JSON 文本
+   */
   public static String toJson(ViewMetadata metadata) {
     return toJson(metadata, false);
   }
 
+  /**
+   * 将 {@link ViewMetadata} 序列化为 JSON 字符串。
+   *
+   * @param metadata 视图元数据
+   * @param pretty 是否美化输出
+   * @return JSON 文本
+   */
   public static String toJson(ViewMetadata metadata, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(metadata, gen), pretty);
   }
 
+  /**
+   * 将 {@link ViewMetadata} 写入 {@link JsonGenerator}。
+   *
+   * <p>逻辑：写起始对象 -> 写 view-uuid、format-version、location、properties -> 写 schemas 数组（委托 {@link
+   * SchemaParser}） -> 写 current-version-id -> 写 versions 数组（委托 {@link ViewVersionParser}） -> 写
+   * version-log 数组 （委托 {@link ViewHistoryEntryParser}） -> 写结束对象。
+   *
+   * @param metadata 视图元数据
+   * @param gen Jackson 生成器
+   * @throws IOException 写入失败
+   */
   static void toJson(ViewMetadata metadata, JsonGenerator gen) throws IOException {
     Preconditions.checkArgument(null != metadata, "Invalid view metadata: null");
 
@@ -90,19 +133,50 @@ public class ViewMetadataParser {
     gen.writeEndObject();
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link ViewMetadata}，并记录元数据文件位置。
+   *
+   * @param metadataLocation 元数据文件路径，可为 null
+   * @param json JSON 文本
+   * @return 视图元数据
+   */
   public static ViewMetadata fromJson(String metadataLocation, String json) {
     return JsonUtil.parse(json, node -> ViewMetadataParser.fromJson(metadataLocation, node));
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link ViewMetadata}（不记录元数据文件位置）。
+   *
+   * @param json JSON 文本
+   * @return 视图元数据
+   */
   public static ViewMetadata fromJson(String json) {
     Preconditions.checkArgument(json != null, "Cannot parse view metadata from null string");
     return JsonUtil.parse(json, ViewMetadataParser::fromJson);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link ViewMetadata}（不记录元数据文件位置）。
+   *
+   * @param json 已解析的 JSON 节点
+   * @return 视图元数据
+   */
   public static ViewMetadata fromJson(JsonNode json) {
     return fromJson(null, json);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link ViewMetadata}，并记录元数据文件位置。
+   *
+   * <p>逻辑：校验节点非空且为对象 -> 逐一取出 view-uuid、format-version、location、properties -> 解析 schemas 数组（委托
+   * {@link SchemaParser}） -> 解析 current-version-id 与 versions 数组 （委托 {@link ViewVersionParser}） ->
+   * 解析 version-log 数组（委托 {@link ViewHistoryEntryParser}） -> 组装 ImmutableViewMetadata（changes
+   * 为空，因从文件加载无待提交变更）。
+   *
+   * @param metadataLocation 元数据文件路径，可为 null
+   * @param json 已解析的 JSON 节点
+   * @return 视图元数据
+   */
   public static ViewMetadata fromJson(String metadataLocation, JsonNode json) {
     Preconditions.checkArgument(json != null, "Cannot parse view metadata from null object");
     Preconditions.checkArgument(
@@ -154,14 +228,35 @@ public class ViewMetadataParser {
         metadataLocation);
   }
 
+  /**
+   * 以覆盖方式将 {@link ViewMetadata} 写入文件（文件已存在则覆盖）。
+   *
+   * @param metadata 视图元数据
+   * @param outputFile 目标输出文件
+   */
   public static void overwrite(ViewMetadata metadata, OutputFile outputFile) {
     internalWrite(metadata, outputFile, true);
   }
 
+  /**
+   * 以新建方式将 {@link ViewMetadata} 写入文件（文件已存在则报错）。
+   *
+   * @param metadata 视图元数据
+   * @param outputFile 目标输出文件
+   */
   public static void write(ViewMetadata metadata, OutputFile outputFile) {
     internalWrite(metadata, outputFile, false);
   }
 
+  /**
+   * 从输入文件读取并解析 {@link ViewMetadata}。
+   *
+   * <p>逻辑：打开输入流 -> 用 Jackson 读取为 JsonNode -> 委托 {@link #fromJson(String, JsonNode)} 解析（携带文件位置）。
+   *
+   * @param file 元数据文件
+   * @return 视图元数据
+   * @throws UncheckedIOException 读取失败时包装 IOException 抛出
+   */
   public static ViewMetadata read(InputFile file) {
     try (InputStream is = file.newStream()) {
       return fromJson(file.location(), JsonUtil.mapper().readValue(is, JsonNode.class));
@@ -170,6 +265,14 @@ public class ViewMetadataParser {
     }
   }
 
+  /**
+   * 内部写入实现：根据 overwrite 选择创建或覆盖输出流，以 UTF-8 美化格式写入 JSON。
+   *
+   * @param metadata 视图元数据
+   * @param outputFile 目标输出文件
+   * @param overwrite 是否覆盖已有文件
+   * @throws UncheckedIOException 写入失败时包装 IOException 抛出
+   */
   private static void internalWrite(
       ViewMetadata metadata, OutputFile outputFile, boolean overwrite) {
     OutputStream stream = overwrite ? outputFile.createOrOverwrite() : outputFile.create();

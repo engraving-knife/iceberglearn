@@ -30,7 +30,13 @@ import org.apache.spark.sql.connector.expressions.aggregate.CountStar;
 import org.apache.spark.sql.connector.expressions.aggregate.Max;
 import org.apache.spark.sql.connector.expressions.aggregate.Min;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkAggregates。
+ */
 public class SparkAggregates {
+  /** 构造 SparkAggregates 实例。 */
   private SparkAggregates() {}
 
   private static final Map<Class<? extends AggregateFunc>, Operation> AGGREGATES =
@@ -41,6 +47,7 @@ public class SparkAggregates {
           .put(Min.class, Operation.MIN)
           .buildOrThrow();
 
+  /** 把输入转换为另一种表示。 */
   public static Expression convert(AggregateFunc aggregate) {
     Operation op = AGGREGATES.get(aggregate.getClass());
     if (op != null) {

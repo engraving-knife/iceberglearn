@@ -18,12 +18,10 @@
  */
 package org.apache.iceberg.spark.procedures;
 
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.ExpireSnapshots;
 import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.spark.actions.ExpireSnapshotsSparkAction;
-import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.procedures.SparkProcedures.ProcedureBuilder;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
@@ -38,9 +36,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A procedure that expires snapshots in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * @see SparkActions#expireSnapshots(Table)
+ * <p>职责：过期快照的存储过程，删除超出保留策略的旧快照。
+ *
+ * <p>设计意图：委托 ExpireSnapshotsSparkAction 执行，以行形式返回删除统计。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 public class ExpireSnapshotsProcedure extends BaseProcedure {
 
@@ -71,9 +73,10 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
             new StructField(
                 "deleted_statistics_files_count", DataTypes.LongType, true, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<ExpireSnapshotsProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected ExpireSnapshotsProcedure doBuild() {
         return new ExpireSnapshotsProcedure(tableCatalog());
@@ -84,17 +87,17 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
   private ExpireSnapshotsProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public InternalRow[] call(InternalRow args) {
@@ -153,7 +156,7 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
           return toOutputRows(result);
         });
   }
-
+  /** 转换为 OutputRows。 */
   private InternalRow[] toOutputRows(ExpireSnapshots.Result result) {
     InternalRow row =
         newInternalRow(
@@ -165,7 +168,7 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
             result.deletedStatisticsFilesCount());
     return new InternalRow[] {row};
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "ExpireSnapshotProcedure";

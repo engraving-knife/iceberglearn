@@ -25,6 +25,13 @@ import org.apache.flink.table.runtime.typeutils.InternalSerializers;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.iceberg.flink.data.RowDataUtil;
 
+/**
+ * RowData 记录工厂，构造 RowData 实例用于复用。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按类型创建 RowData/记录容器。
+ *
+ * <p>设计意图：实现 RecordFactory；被 emitter 调用。
+ */
 class RowDataRecordFactory implements RecordFactory<RowData> {
   private final RowType rowType;
   private final TypeSerializer[] fieldSerializers;

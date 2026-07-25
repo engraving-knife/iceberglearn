@@ -32,6 +32,13 @@ import org.apache.iceberg.io.SeekableInputStream;
 import org.apache.iceberg.metrics.MetricsContext;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 ADLSInputStreamTest 的功能。
+ *
+ * <p>所属模块：iceberg-azure。职责：验证 ADLSInputStreamTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class ADLSInputStreamTest extends BaseAzuriteTest {
 
   private static final String FILE_PATH = "path/to/file";
@@ -39,14 +46,21 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
   private final Random random = new Random(1);
   private final AzureProperties azureProperties = new AzureProperties();
 
+  /** 辅助方法：fileClient。 */
   private DataLakeFileClient fileClient() {
     return AZURITE_CONTAINER.fileClient(FILE_PATH);
   }
 
+  /** 辅助方法：setupData。 */
   private void setupData(byte[] data) {
     AZURITE_CONTAINER.createFile(FILE_PATH, data);
   }
 
+  /**
+   * 测试场景：Read。
+   *
+   * <p>验证该方法在 Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRead() throws Exception {
     int dataSize = 1024 * 1024 * 10;
@@ -81,6 +95,11 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     }
   }
 
+  /**
+   * 测试场景：Read Single。
+   *
+   * <p>验证该方法在 Read Single 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadSingle() throws Exception {
     int i0 = 1;
@@ -96,6 +115,7 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     }
   }
 
+  /** 辅助方法：readAndCheck。 */
   private void readAndCheck(
       SeekableInputStream in, long rangeStart, int size, byte[] original, boolean buffered)
       throws IOException {
@@ -118,6 +138,11 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     assertThat(actual).isEqualTo(Arrays.copyOfRange(original, (int) rangeStart, (int) rangeEnd));
   }
 
+  /**
+   * 测试场景：Range Read。
+   *
+   * <p>验证该方法在 Range Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRangeRead() throws Exception {
     int dataSize = 1024 * 1024 * 10;
@@ -151,6 +176,7 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     }
   }
 
+  /** 辅助方法：readAndCheckRanges。 */
   private void readAndCheckRanges(
       RangeReadable in, byte[] original, long position, byte[] buffer, int offset, int length)
       throws IOException {
@@ -160,6 +186,11 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
         .isEqualTo(Arrays.copyOfRange(original, offset, offset + length));
   }
 
+  /**
+   * 测试场景：Close。
+   *
+   * <p>验证该方法在 Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testClose() throws Exception {
     setupData(randomData(2));
@@ -171,6 +202,11 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
         .hasMessage("Cannot seek: already closed");
   }
 
+  /**
+   * 测试场景：Seek。
+   *
+   * <p>验证该方法在 Seek 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeek() throws Exception {
     byte[] data = randomData(1024 * 1024);
@@ -189,6 +225,11 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     }
   }
 
+  /**
+   * 测试场景：Seek Negative。
+   *
+   * <p>验证该方法在 Seek Negative 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeekNegative() throws Exception {
     setupData(randomData(2));
@@ -200,6 +241,7 @@ public class ADLSInputStreamTest extends BaseAzuriteTest {
     in.close();
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);

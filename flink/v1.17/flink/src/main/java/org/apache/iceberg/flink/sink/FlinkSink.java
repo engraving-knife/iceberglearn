@@ -72,6 +72,30 @@ import org.apache.iceberg.util.SerializableSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Iceberg Flink Sink 的入口类，通过 Builder 模式构建写入流水线。
+ *
+ * <p>所属模块：iceberg-flink（sink 子包），是 Flink 数据写入 Iceberg 表的核心入口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供 Builder API 配置写入参数（表、schema、分区模式、equality 字段等）。
+ *   <li>构建 Flink 算子链：数据分发 → IcebergStreamWriter → IcebergFilesCommitter → DiscardingSink。
+ *   <li>支持多种数据分发模式（NONE/HASH/RANGE）和 UPSERT 模式。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Builder 模式：链式配置，支持 forRowData/forRow/builderFor 三种入口。
+ *   <li>Writer 算子并行写入数据文件，Committer 算子单并行度提交（保证 exactly-once）。
+ *   <li>分发模式由 write.distribution-mode 控制：HASH 按 equality 字段分发， RANGE 按数据统计 shuffle，NONE 不分发。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link IcebergTableSink} 调用；内部创建 {@link IcebergStreamWriter} 和 {@link
+ * IcebergFilesCommitter} 算子。
+ */
 public class FlinkSink {
   private static final Logger LOG = LoggerFactory.getLogger(FlinkSink.class);
 
@@ -83,16 +107,15 @@ public class FlinkSink {
   private FlinkSink() {}
 
   /**
-   * Initialize a {@link Builder} to export the data from generic input data stream into iceberg
-   * table. We use {@link RowData} inside the sink connector, so users need to provide a mapper
-   * function and a {@link TypeInformation} to convert those generic records to a RowData
-   * DataStream.
+   * 初始化 Builder，将泛型输入 DataStream 转换为 RowData 后写入 Iceberg。
    *
-   * @param input the generic source input data stream.
-   * @param mapper function to convert the generic data to {@link RowData}
-   * @param outputType to define the {@link TypeInformation} for the input data.
-   * @param <T> the data type of records.
-   * @return {@link Builder} to connect the iceberg table.
+   * <p>设计要点：sink 内部使用 RowData，用户需提供 mapper 和 TypeInformation 做转换。
+   *
+   * @param input 泛型源数据流
+   * @param mapper 将泛型数据转为 RowData 的函数
+   * @param outputType 输入数据的 TypeInformation
+   * @param <T> 记录数据类型
+   * @return Builder 实例
    */
   public static <T> Builder builderFor(
       DataStream<T> input, MapFunction<T, RowData> mapper, TypeInformation<RowData> outputType) {
@@ -100,13 +123,11 @@ public class FlinkSink {
   }
 
   /**
-   * Initialize a {@link Builder} to export the data from input data stream with {@link Row}s into
-   * iceberg table. We use {@link RowData} inside the sink connector, so users need to provide a
-   * {@link TableSchema} for builder to convert those {@link Row}s to a {@link RowData} DataStream.
+   * 初始化 Builder，将 Row 类型的 DataStream 转换为 RowData 后写入 Iceberg。
    *
-   * @param input the source input data stream with {@link Row}s.
-   * @param tableSchema defines the {@link TypeInformation} for input data.
-   * @return {@link Builder} to connect the iceberg table.
+   * @param input Row 类型的源数据流
+   * @param tableSchema 表 schema（用于类型转换）
+   * @return Builder 实例
    */
   public static Builder forRow(DataStream<Row> input, TableSchema tableSchema) {
     RowType rowType = (RowType) tableSchema.toRowDataType().getLogicalType();
@@ -119,16 +140,16 @@ public class FlinkSink {
   }
 
   /**
-   * Initialize a {@link Builder} to export the data from input data stream with {@link RowData}s
-   * into iceberg table.
+   * 初始化 Builder，直接写入 RowData 类型的 DataStream 到 Iceberg。
    *
-   * @param input the source input data stream with {@link RowData}s.
-   * @return {@link Builder} to connect the iceberg table.
+   * @param input RowData 类型的源数据流
+   * @return Builder 实例
    */
   public static Builder forRowData(DataStream<RowData> input) {
     return new Builder().forRowData(input);
   }
 
+  /** FlinkSink 的构建器，通过链式调用配置写入参数并最终构建写入流水线。 */
   public static class Builder {
     private Function<String, DataStream<RowData>> inputCreator = null;
     private TableLoader tableLoader;
@@ -323,6 +344,15 @@ public class FlinkSink {
       return this;
     }
 
+    /**
+     * 构建 Iceberg 写入算子链。
+     *
+     * <p>逻辑：加载表 → 创建 FlinkWriteConf → 解析 equality 字段 id → 转换 Flink RowType → 按 distribution-mode
+     * 分发数据 → 添加 IcebergStreamWriter → 添加 IcebergFilesCommitter → 添加 DiscardingSink。
+     *
+     * @param <T> 输出类型
+     * @return DataStreamSink
+     */
     private <T> DataStreamSink<T> chainIcebergOperators() {
       Preconditions.checkArgument(
           inputCreator != null,
@@ -371,18 +401,27 @@ public class FlinkSink {
     }
 
     /**
-     * Append the iceberg sink operators to write records to iceberg table.
+     * 将 Iceberg sink 算子附加到数据流，开始写入 Iceberg 表。
      *
-     * @return {@link DataStreamSink} for sink.
+     * @return DataStreamSink
      */
     public DataStreamSink<Void> append() {
       return chainIcebergOperators();
     }
 
+    /** 生成算子名称（带 uidPrefix 前缀）。 */
     private String operatorName(String suffix) {
       return uidPrefix != null ? uidPrefix + "-" + suffix : suffix;
     }
 
+    /**
+     * 检查并获取 equality 字段 id 列表。
+     *
+     * <p>逻辑：默认使用 schema 的 identifierFieldIds；若用户显式配置了 equalityFieldColumns， 则从中解析字段 id，并在与
+     * identifierFieldIds 不一致时发出警告。
+     *
+     * @return equality 字段 id 列表
+     */
     @VisibleForTesting
     List<Integer> checkAndGetEqualityFieldIds() {
       List<Integer> equalityFieldIds = Lists.newArrayList(table.schema().identifierFieldIds());

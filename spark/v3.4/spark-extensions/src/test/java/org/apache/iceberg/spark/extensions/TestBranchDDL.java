@@ -40,18 +40,28 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestBranchDDL 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 分支DDL 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestBranchDDL extends SparkExtensionsTestBase {
 
+  /** 前。 */
   @Before
   public void before() {
     sql("CREATE TABLE %s (id INT, data STRING) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -63,10 +73,12 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     };
   }
 
+  /** 测试分支DDL。 */
   public TestBranchDDL(String catalog, String implementation, Map<String, String> properties) {
     super(catalog, implementation, properties);
   }
 
+  /** 测试创建分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranch() throws NoSuchTableException {
     Table table = insertRows();
@@ -91,6 +103,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessage("Ref b1 already exists");
   }
 
+  /** 测试创建分支上空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchOnEmptyTable() {
     String branchName = "b1";
@@ -114,6 +127,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assertions.assertThat(snapshot.removedDeleteFiles(table.io())).isEmpty();
   }
 
+  /** 测试创建分支use默认配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchUseDefaultConfig() throws NoSuchTableException {
     Table table = insertRows();
@@ -127,6 +141,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref.maxRefAgeMs());
   }
 
+  /** 测试创建分支use自定义最小快照到keep场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchUseCustomMinSnapshotsToKeep() throws NoSuchTableException {
     Integer minSnapshotsToKeep = 2;
@@ -143,6 +158,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref.maxRefAgeMs());
   }
 
+  /** 测试创建分支use自定义最大快照age场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchUseCustomMaxSnapshotAge() throws NoSuchTableException {
     long maxSnapshotAge = 2L;
@@ -159,6 +175,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref.maxRefAgeMs());
   }
 
+  /** 测试创建分支if非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchIfNotExists() throws NoSuchTableException {
     long maxSnapshotAge = 2L;
@@ -177,6 +194,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref.maxRefAgeMs());
   }
 
+  /** 测试创建分支use自定义最小快照到keep与最大快照age场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchUseCustomMinSnapshotsToKeepAndMaxSnapshotAge()
       throws NoSuchTableException {
@@ -203,6 +221,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessageContaining("no viable alternative at input 'WITH SNAPSHOT RETENTION'");
   }
 
+  /** 测试创建分支use自定义最大refage场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateBranchUseCustomMaxRefAge() throws NoSuchTableException {
     long maxRefAge = 10L;
@@ -236,6 +255,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessageContaining("mismatched input 'SECONDS' expecting {'DAYS', 'HOURS', 'MINUTES'}");
   }
 
+  /** 测试删除分支场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBranch() throws NoSuchTableException {
     insertRows();
@@ -253,6 +273,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref);
   }
 
+  /** 测试删除分支does非存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBranchDoesNotExist() {
     Assertions.assertThatThrownBy(
@@ -261,6 +282,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessage("Branch does not exist: nonExistingBranch");
   }
 
+  /** 测试删除分支fails用于标签场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBranchFailsForTag() throws NoSuchTableException {
     String tagName = "b1";
@@ -272,6 +294,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessage("Ref b1 is a tag not a branch");
   }
 
+  /** 测试删除分支不存在的conformingname场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBranchNonConformingName() {
     Assertions.assertThatThrownBy(() -> sql("ALTER TABLE %s DROP BRANCH %s", tableName, "123"))
@@ -279,6 +302,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessageContaining("mismatched input '123'");
   }
 
+  /** 测试删除main分支fails场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropMainBranchFails() {
     Assertions.assertThatThrownBy(() -> sql("ALTER TABLE %s DROP BRANCH main", tableName))
@@ -286,6 +310,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
         .hasMessage("Cannot remove main branch");
   }
 
+  /** 测试删除分支if存在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBranchIfExists() {
     String branchName = "nonExistingBranch";
@@ -299,6 +324,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assert.assertNull(ref);
   }
 
+  /** 插入行。 */
   private Table insertRows() throws NoSuchTableException {
     List<SimpleRecord> records =
         ImmutableList.of(new SimpleRecord(1, "a"), new SimpleRecord(2, "b"));
@@ -307,6 +333,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     return validationCatalog.loadTable(tableIdent);
   }
 
+  /** 创建或替换。 */
   @Test
   public void createOrReplace() throws NoSuchTableException {
     Table table = insertRows();
@@ -323,6 +350,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     assertThat(table.refs().get(branchName).snapshotId()).isEqualTo(second);
   }
 
+  /** 测试创建或替换分支上空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCreateOrReplaceBranchOnEmptyTable() {
     String branchName = "b1";
@@ -346,6 +374,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     Assertions.assertThat(snapshot.removedDeleteFiles(table.io())).isEmpty();
   }
 
+  /** 创建或替换带不存在的已存在的分支。 */
   @Test
   public void createOrReplaceWithNonExistingBranch() throws NoSuchTableException {
     Table table = insertRows();
@@ -360,6 +389,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     assertThat(table.refs().get(branchName).snapshotId()).isEqualTo(snapshotId);
   }
 
+  /** 替换分支。 */
   @Test
   public void replaceBranch() throws NoSuchTableException {
     Table table = insertRows();
@@ -382,6 +412,7 @@ public class TestBranchDDL extends SparkExtensionsTestBase {
     assertThat(ref.maxRefAgeMs()).isEqualTo(expectedMaxRefAgeMs);
   }
 
+  /** 替换分支does非存在。 */
   @Test
   public void replaceBranchDoesNotExist() throws NoSuchTableException {
     Table table = insertRows();

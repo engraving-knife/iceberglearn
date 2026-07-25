@@ -73,6 +73,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkReaderWithBloomFilter 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark读取器带布隆过滤器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkReaderWithBloomFilter {
 
@@ -87,6 +94,7 @@ public class TestSparkReaderWithBloomFilter {
   protected final boolean vectorized;
   protected final boolean useBloomFilter;
 
+  /** 测试Spark读取器带布隆过滤器。 */
   public TestSparkReaderWithBloomFilter(boolean vectorized, boolean useBloomFilter) {
     this.vectorized = vectorized;
     this.useBloomFilter = useBloomFilter;
@@ -116,6 +124,7 @@ public class TestSparkReaderWithBloomFilter {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 写测试数据文件。 */
   @Before
   public void writeTestDataFile() throws IOException {
     this.tableName = "test";
@@ -156,16 +165,19 @@ public class TestSparkReaderWithBloomFilter {
     table.newAppend().appendFile(dataFile).commit();
   }
 
+  /** 辅助方法：cleanup。 */
   @After
   public void cleanup() throws IOException {
     dropTable("test");
   }
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "vectorized = {0}, useBloomFilter = {1}")
   public static Object[][] parameters() {
     return new Object[][] {{false, false}, {true, false}, {false, true}, {true, true}};
   }
 
+  /** 启动元存储与Spark。 */
   @BeforeClass
   public static void startMetastoreAndSpark() {
     metastore = new TestHiveMetastore();
@@ -191,6 +203,7 @@ public class TestSparkReaderWithBloomFilter {
     }
   }
 
+  /** 停止元存储与Spark。 */
   @AfterClass
   public static void stopMetastoreAndSpark() throws Exception {
     catalog = null;
@@ -200,6 +213,7 @@ public class TestSparkReaderWithBloomFilter {
     spark = null;
   }
 
+  /** 创建表。 */
   protected void createTable(String name, Schema schema) {
     table = catalog.createTable(TableIdentifier.of("default", name), schema);
     TableOperations ops = ((BaseTable) table).operations();
@@ -235,10 +249,12 @@ public class TestSparkReaderWithBloomFilter {
     }
   }
 
+  /** 删除表。 */
   protected void dropTable(String name) {
     catalog.dropTable(TableIdentifier.of("default", name));
   }
 
+  /** 写数据文件。 */
   private DataFile writeDataFile(OutputFile out, StructLike partition, List<Record> rows)
       throws IOException {
     FileFormat format = defaultFormat(table.properties());
@@ -329,11 +345,13 @@ public class TestSparkReaderWithBloomFilter {
         .build();
   }
 
+  /** 默认格式。 */
   private FileFormat defaultFormat(Map<String, String> properties) {
     String formatString = properties.getOrDefault(DEFAULT_FILE_FORMAT, DEFAULT_FILE_FORMAT_DEFAULT);
     return FileFormat.fromString(formatString);
   }
 
+  /** 测试读带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadWithFilter() {
     Dataset<org.apache.spark.sql.Row> df =

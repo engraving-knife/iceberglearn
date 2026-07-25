@@ -47,8 +47,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 ADLSFileIOTest 的功能。
+ *
+ * <p>所属模块：iceberg-azure。职责：验证 ADLSFileIOTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class ADLSFileIOTest extends BaseAzuriteTest {
 
+  /**
+   * 测试场景：File Operations。
+   *
+   * <p>验证该方法在 File Operations 条件下的行为是否符合预期。
+   */
   @Test
   public void testFileOperations() throws IOException {
     String path = "path/to/file";
@@ -73,6 +85,11 @@ public class ADLSFileIOTest extends BaseAzuriteTest {
     assertThat(fileClient.exists()).isFalse();
   }
 
+  /**
+   * 测试场景：Bulk Delete Files。
+   *
+   * <p>验证该方法在 Bulk Delete Files 条件下的行为是否符合预期。
+   */
   @Test
   public void testBulkDeleteFiles() {
     String path1 = "path/to/file1";
@@ -92,6 +109,11 @@ public class ADLSFileIOTest extends BaseAzuriteTest {
     assertThat(AZURITE_CONTAINER.fileClient(path2).exists()).isFalse();
   }
 
+  /**
+   * 测试场景：Get Client。
+   *
+   * <p>验证该方法在 Get Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetClient() {
     String location = AZURITE_CONTAINER.location("path/to/file");
@@ -156,6 +178,11 @@ public class ADLSFileIOTest extends BaseAzuriteTest {
     verify(client).deleteDirectoryWithResponse(eq("dir"), eq(true), any(), any(), any());
   }
 
+  /**
+   * 测试场景：Kryo Serialization。
+   *
+   * <p>验证该方法在 Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testKryoSerialization() throws IOException {
     FileIO testFileIO = new ADLSFileIO();
@@ -167,6 +194,11 @@ public class ADLSFileIOTest extends BaseAzuriteTest {
     assertThat(testFileIO.properties()).isEqualTo(roundTripSerializedFileIO.properties());
   }
 
+  /**
+   * 测试场景：Java Serialization。
+   *
+   * <p>验证该方法在 Java Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testJavaSerialization() throws IOException, ClassNotFoundException {
     FileIO testFileIO = new ADLSFileIO();

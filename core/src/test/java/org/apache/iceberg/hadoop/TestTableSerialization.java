@@ -44,8 +44,21 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestTableSerialization，用于验证 Table Serialization 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Table Serialization 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestTableSerialization extends HadoopTableTestBase {
 
+  /**
+   * 测试场景：serializable table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableTable() throws IOException, ClassNotFoundException {
     table.replaceSortOrder().asc("id").commit();
@@ -60,6 +73,11 @@ public class TestTableSerialization extends HadoopTableTestBase {
         serializableTable, TestHelpers.KryoHelpers.roundTripSerialize(serializableTable));
   }
 
+  /**
+   * 测试场景：serializable table with snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableTableWithSnapshot() throws IOException, ClassNotFoundException {
     table.newAppend().appendFile(FILE_A).commit();
@@ -69,6 +87,11 @@ public class TestTableSerialization extends HadoopTableTestBase {
         serializableTable, TestHelpers.KryoHelpers.roundTripSerialize(serializableTable));
   }
 
+  /**
+   * 测试场景：serializable txn table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableTxnTable() throws IOException, ClassNotFoundException {
     table.replaceSortOrder().asc("id").commit();
@@ -85,6 +108,11 @@ public class TestTableSerialization extends HadoopTableTestBase {
     TestHelpers.assertSerializedMetadata(txn.table(), TestHelpers.roundTripSerialize(txn.table()));
   }
 
+  /**
+   * 测试场景：serializable metadata table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableMetadataTable() throws IOException, ClassNotFoundException {
     for (MetadataTableType type : MetadataTableType.values()) {
@@ -97,6 +125,11 @@ public class TestTableSerialization extends HadoopTableTestBase {
     }
   }
 
+  /**
+   * 测试场景：serializable table planning。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableTablePlanning() throws IOException {
     table.newAppend().appendFile(FILE_A).commit();
@@ -118,6 +151,11 @@ public class TestTableSerialization extends HadoopTableTestBase {
     Assertions.assertThat(deserializedFiles).isNotEqualTo(getFiles(table));
   }
 
+  /**
+   * 测试场景：serializable metadata tables planning。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSerializableMetadataTablesPlanning() throws IOException {
     table.updateProperties().set(TableProperties.FORMAT_VERSION, "2").commit();
@@ -153,11 +191,13 @@ public class TestTableSerialization extends HadoopTableTestBase {
     }
   }
 
+  /** 辅助方法：get meta data table。 */
   private static Table getMetaDataTable(Table table, MetadataTableType type) {
     return TABLES.load(
         ((HasTableOperations) table).operations().current().metadataFileLocation() + "#" + type);
   }
 
+  /** 辅助方法：get files。 */
   private static Set<CharSequence> getFiles(Table table) throws IOException {
     Set<CharSequence> files = Sets.newHashSet();
     if (table instanceof PositionDeletesTable
@@ -180,6 +220,7 @@ public class TestTableSerialization extends HadoopTableTestBase {
     return files;
   }
 
+  /** 辅助方法：serialize to bytes。 */
   private static byte[] serializeToBytes(Object obj) {
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(baos)) {
@@ -190,6 +231,7 @@ public class TestTableSerialization extends HadoopTableTestBase {
     }
   }
 
+  /** 辅助方法：deserialize from bytes。 */
   @SuppressWarnings("unchecked")
   private static <T> T deserializeFromBytes(byte[] bytes) {
     if (bytes == null) {

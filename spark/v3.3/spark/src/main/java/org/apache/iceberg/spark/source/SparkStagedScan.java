@@ -30,6 +30,13 @@ import org.apache.iceberg.spark.SparkReadConf;
 import org.apache.iceberg.util.TableScanUtil;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkStagedScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkStagedScan extends SparkScan {
 
   private final String taskSetId;
@@ -48,6 +55,7 @@ class SparkStagedScan extends SparkScan {
     this.openFileCost = readConf.splitOpenFileCost();
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected List<ScanTaskGroup<ScanTask>> taskGroups() {
     if (taskGroups == null) {
@@ -64,6 +72,7 @@ class SparkStagedScan extends SparkScan {
     return taskGroups;
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -82,11 +91,13 @@ class SparkStagedScan extends SparkScan {
         && Objects.equals(openFileCost, that.openFileCost);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table().name(), taskSetId, splitSize, splitSize, openFileCost);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(

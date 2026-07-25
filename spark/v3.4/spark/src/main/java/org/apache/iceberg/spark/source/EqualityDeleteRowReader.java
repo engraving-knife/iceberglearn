@@ -28,6 +28,15 @@ import org.apache.iceberg.io.CloseableIterator;
 import org.apache.spark.rdd.InputFileBlockHolder;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：等值删除读取器，读取 equality-delete 文件以支持行级删除。
+ *
+ * <p>设计意图：基于 SparkAvroReader / SparkOrcReader 读取删除文件中的等值删除键。
+ *
+ * <p>上下游关系：由 BaseReader 在处理 equality delete 时使用。
+ */
 public class EqualityDeleteRowReader extends RowDataReader {
   public EqualityDeleteRowReader(
       CombinedScanTask task,
@@ -37,7 +46,7 @@ public class EqualityDeleteRowReader extends RowDataReader {
       boolean caseSensitive) {
     super(table, task, tableSchema, expectedSchema, caseSensitive);
   }
-
+  /** 打开资源。 */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     SparkDeleteFilter matches =

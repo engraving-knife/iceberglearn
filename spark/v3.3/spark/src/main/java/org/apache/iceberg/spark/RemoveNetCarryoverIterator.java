@@ -26,15 +26,11 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * This class computes the net changes across multiple snapshots. It is different from {@link
- * RemoveCarryoverIterator}, which only removes carry-over rows within a single snapshot. It takes a
- * row iterator, and assumes the following:
+ * Iceberg Spark 集成相关组件的迭代器，按行或按批产出数据。
  *
- * <ul>
- *   <li>The row iterator is partitioned by all columns.
- *   <li>The row iterator is sorted by all columns, change order, and change type. The change order
- *       is 1-to-1 mapping to snapshot id.
- * </ul>
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 RemoveNetCarryoverIterator。
+ *
+ * <p>设计意图：迭代器模式，统一遍历接口。
  */
 public class RemoveNetCarryoverIterator extends ChangelogIterator {
 
@@ -44,11 +40,13 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
   private Row cachedRow;
   private long cachedRowCount;
 
+  /** 构造 RemoveNetCarryoverIterator 实例。 */
   protected RemoveNetCarryoverIterator(Iterator<Row> rowIterator, StructType rowType) {
     super(rowIterator, rowType);
     this.indicesToIdentifySameRow = generateIndicesToIdentifySameRow();
   }
 
+  /** 判断是否包含next。 */
   @Override
   public boolean hasNext() {
     if (cachedRowCount > 0) {
@@ -62,6 +60,11 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
     return rowIterator().hasNext();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 对应结果
+   */
   @Override
   public Row next() {
     // if there are cached rows, return one of them from the beginning
@@ -102,6 +105,7 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
     return null;
   }
 
+  /** 返回currentrow。 */
   private Row getCurrentRow() {
     Row currentRow;
     if (cachedNextRow != null) {
@@ -113,11 +117,13 @@ public class RemoveNetCarryoverIterator extends ChangelogIterator {
     return currentRow;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean oppositeChangeType(Row currentRow, Row nextRow) {
     return (changeType(nextRow).equals(INSERT) && changeType(currentRow).equals(DELETE))
         || (changeType(nextRow).equals(DELETE) && changeType(currentRow).equals(INSERT));
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int[] generateIndicesToIdentifySameRow() {
     Set<Integer> metadataColumnIndices =
         Sets.newHashSet(

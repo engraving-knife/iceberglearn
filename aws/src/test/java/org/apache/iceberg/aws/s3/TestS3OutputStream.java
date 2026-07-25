@@ -69,6 +69,13 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.utils.BinaryUtils;
 
 @ExtendWith(S3MockExtension.class)
+/**
+ * 文件级说明：测试 TestS3OutputStream 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3OutputStream 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3OutputStream {
   private static final Logger LOG = LoggerFactory.getLogger(TestS3OutputStream.class);
   private static final String BUCKET = "test-bucket";
@@ -97,14 +104,17 @@ public class TestS3OutputStream {
               "s3.delete.tags.xyz",
               "456"));
 
+  /** 辅助方法：TestS3OutputStream。 */
   public TestS3OutputStream() throws IOException {}
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     properties.setChecksumEnabled(false);
     createBucket(BUCKET);
   }
 
+  /** 辅助方法：after。 */
   @AfterEach
   public void after() {
     File newStagingDirectory = new File(newTmpDirectory);
@@ -113,11 +123,21 @@ public class TestS3OutputStream {
     }
   }
 
+  /**
+   * 测试场景：Write。
+   *
+   * <p>验证该方法在 Write 条件下的行为是否符合预期。
+   */
   @Test
   public void testWrite() {
     writeTest();
   }
 
+  /**
+   * 测试场景：Abort After Failed Part Upload。
+   *
+   * <p>验证该方法在 Abort After Failed Part Upload 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbortAfterFailedPartUpload() {
     RuntimeException mockException = new RuntimeException("mock uploadPart failure");
@@ -136,6 +156,11 @@ public class TestS3OutputStream {
     verify(s3mock, times(1)).abortMultipartUpload((AbortMultipartUploadRequest) any());
   }
 
+  /**
+   * 测试场景：Abort Multipart。
+   *
+   * <p>验证该方法在 Abort Multipart 条件下的行为是否符合预期。
+   */
   @Test
   public void testAbortMultipart() {
     RuntimeException mockException = new RuntimeException("mock completeMultipartUpload failure");
@@ -156,6 +181,11 @@ public class TestS3OutputStream {
     verify(s3mock, times(1)).abortMultipartUpload((AbortMultipartUploadRequest) any());
   }
 
+  /**
+   * 测试场景：Multiple Close。
+   *
+   * <p>验证该方法在 Multiple Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleClose() throws IOException {
     S3OutputStream stream = new S3OutputStream(s3, randomURI(), properties, nullMetrics());
@@ -163,6 +193,11 @@ public class TestS3OutputStream {
     stream.close();
   }
 
+  /**
+   * 测试场景：Staging Directory Creation。
+   *
+   * <p>验证该方法在 Staging Directory Creation 条件下的行为是否符合预期。
+   */
   @Test
   public void testStagingDirectoryCreation() throws IOException {
     S3FileIOProperties newStagingDirectoryAwsProperties =
@@ -173,12 +208,22 @@ public class TestS3OutputStream {
     stream.close();
   }
 
+  /**
+   * 测试场景：Write With Checksum Enabled。
+   *
+   * <p>验证该方法在 Write With Checksum Enabled 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteWithChecksumEnabled() {
     properties.setChecksumEnabled(true);
     writeTest();
   }
 
+  /**
+   * 测试场景：Double Close。
+   *
+   * <p>验证该方法在 Double Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testDoubleClose() throws IOException {
     IllegalStateException mockException =
@@ -195,6 +240,7 @@ public class TestS3OutputStream {
     Assertions.assertThatNoException().isThrownBy(stream::close);
   }
 
+  /** 辅助方法：writeTest。 */
   private void writeTest() {
     // Run tests for both byte and array write paths
     Stream.of(true, false)
@@ -242,6 +288,7 @@ public class TestS3OutputStream {
             });
   }
 
+  /** 辅助方法：checkUploadPartRequestContent。 */
   private void checkUploadPartRequestContent(
       byte[] data, ArgumentCaptor<UploadPartRequest> uploadPartRequestArgumentCaptor) {
     if (properties.isChecksumEnabled()) {
@@ -258,6 +305,7 @@ public class TestS3OutputStream {
     }
   }
 
+  /** 辅助方法：checkPutObjectRequestContent。 */
   private void checkPutObjectRequestContent(
       byte[] data, ArgumentCaptor<PutObjectRequest> putObjectRequestArgumentCaptor) {
     if (properties.isChecksumEnabled()) {
@@ -267,6 +315,7 @@ public class TestS3OutputStream {
     }
   }
 
+  /** 辅助方法：checkTags。 */
   private void checkTags(ArgumentCaptor<PutObjectRequest> putObjectRequestArgumentCaptor) {
     if (properties.isChecksumEnabled()) {
       List<PutObjectRequest> putObjectRequests = putObjectRequestArgumentCaptor.getAllValues();
@@ -275,10 +324,12 @@ public class TestS3OutputStream {
     }
   }
 
+  /** 辅助方法：getTags。 */
   private String getTags(Set<Tag> objectTags) {
     return objectTags.stream().map(e -> e.key() + "=" + e.value()).collect(Collectors.joining("&"));
   }
 
+  /** 辅助方法：getDigest。 */
   private String getDigest(byte[] data, int offset, int length) {
     try {
       MessageDigest md5 = MessageDigest.getInstance("MD5");
@@ -290,6 +341,7 @@ public class TestS3OutputStream {
     return null;
   }
 
+  /** 辅助方法：writeAndVerify。 */
   private void writeAndVerify(S3Client client, S3URI uri, byte[] data, boolean arrayWrite) {
     try (S3OutputStream stream = new S3OutputStream(client, uri, properties, nullMetrics())) {
       if (arrayWrite) {
@@ -316,6 +368,7 @@ public class TestS3OutputStream {
     }
   }
 
+  /** 辅助方法：readS3Data。 */
   private byte[] readS3Data(S3URI uri) {
     ResponseBytes<GetObjectResponse> data =
         s3.getObject(
@@ -325,16 +378,19 @@ public class TestS3OutputStream {
     return data.asByteArray();
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] result = new byte[size];
     random.nextBytes(result);
     return result;
   }
 
+  /** 辅助方法：randomURI。 */
   private S3URI randomURI() {
     return new S3URI(String.format("s3://%s/data/%s.dat", BUCKET, UUID.randomUUID()));
   }
 
+  /** 辅助方法：createBucket。 */
   private void createBucket(String bucketName) {
     try {
       s3.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());

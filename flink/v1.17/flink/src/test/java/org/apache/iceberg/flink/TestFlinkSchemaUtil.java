@@ -40,8 +40,20 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkSchemaUtil 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkSchemaUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkSchemaUtil {
 
+  /**
+   * 测试场景：Convert Flink Schema To Iceberg Schema。
+   *
+   * <p>验证该方法在 Convert Flink Schema To Iceberg Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testConvertFlinkSchemaToIcebergSchema() {
     TableSchema flinkSchema =
@@ -120,6 +132,11 @@ public class TestFlinkSchemaUtil {
     checkSchema(flinkSchema, icebergSchema);
   }
 
+  /**
+   * 测试场景：Map Field。
+   *
+   * <p>验证该方法在 Map Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapField() {
     TableSchema flinkSchema =
@@ -190,6 +207,11 @@ public class TestFlinkSchemaUtil {
     checkSchema(flinkSchema, icebergSchema);
   }
 
+  /**
+   * 测试场景：Struct Field。
+   *
+   * <p>验证该方法在 Struct Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructField() {
     TableSchema flinkSchema =
@@ -249,6 +271,11 @@ public class TestFlinkSchemaUtil {
     checkSchema(flinkSchema, icebergSchema);
   }
 
+  /**
+   * 测试场景：List Field。
+   *
+   * <p>验证该方法在 List Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testListField() {
     TableSchema flinkSchema =
@@ -312,6 +339,7 @@ public class TestFlinkSchemaUtil {
     checkSchema(flinkSchema, icebergSchema);
   }
 
+  /** 辅助方法：checkSchema，check Schema。 */
   private void checkSchema(TableSchema flinkSchema, Schema icebergSchema) {
     Assert.assertEquals(icebergSchema.asStruct(), FlinkSchemaUtil.convert(flinkSchema).asStruct());
     // The conversion is not a 1:1 mapping, so we just check iceberg types.
@@ -321,6 +349,11 @@ public class TestFlinkSchemaUtil {
             .asStruct());
   }
 
+  /**
+   * 测试场景：Inconsistent Types。
+   *
+   * <p>验证该方法在 Inconsistent Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testInconsistentTypes() {
     checkInconsistentType(
@@ -349,6 +382,7 @@ public class TestFlinkSchemaUtil {
         Types.TimestampType.withZone());
   }
 
+  /** 辅助方法：checkInconsistentType，check Inconsistent Type。 */
   private void checkInconsistentType(
       Type icebergType,
       LogicalType flinkExpectedType,
@@ -360,6 +394,11 @@ public class TestFlinkSchemaUtil {
         FlinkSchemaUtil.convert(FlinkSchemaUtil.toSchema(RowType.of(flinkType))).asStruct());
   }
 
+  /**
+   * 测试场景：Convert Flink Schema Base On Iceberg Schema。
+   *
+   * <p>验证该方法在 Convert Flink Schema Base On Iceberg Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testConvertFlinkSchemaBaseOnIcebergSchema() {
     Schema baseSchema =
@@ -380,6 +419,11 @@ public class TestFlinkSchemaUtil {
     Assert.assertEquals(ImmutableSet.of(101), convertedSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：Convert Flink Schema With Primary Keys。
+   *
+   * <p>验证该方法在 Convert Flink Schema With Primary Keys 条件下的行为是否符合预期。
+   */
   @Test
   public void testConvertFlinkSchemaWithPrimaryKeys() {
     Schema icebergSchema =
@@ -396,6 +440,11 @@ public class TestFlinkSchemaUtil {
         ImmutableSet.copyOf(tableSchema.getPrimaryKey().get().getColumns()));
   }
 
+  /**
+   * 测试场景：Convert Flink Schema With Nested Column In Primary Keys。
+   *
+   * <p>验证该方法在 Convert Flink Schema With Nested Column In Primary Keys 条件下的行为是否符合预期。
+   */
   @Test
   public void testConvertFlinkSchemaWithNestedColumnInPrimaryKeys() {
     Schema icebergSchema =

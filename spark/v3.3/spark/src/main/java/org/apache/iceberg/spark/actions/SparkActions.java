@@ -26,74 +26,136 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 
 /**
- * An implementation of {@link ActionsProvider} for Spark.
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
  *
- * <p>This class is the primary API for interacting with actions in Spark that users should use to
- * instantiate particular actions.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkActions。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
  */
 public class SparkActions implements ActionsProvider {
 
   private final SparkSession spark;
 
+  /** 构造 SparkActions 实例。 */
   private SparkActions(SparkSession spark) {
     this.spark = spark;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static SparkActions get(SparkSession spark) {
+    /** 执行该方法的具体逻辑。 */
     return new SparkActions(spark);
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static SparkActions get() {
+    /** 执行该方法的具体逻辑。 */
     return new SparkActions(SparkSession.active());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param tableIdent 参数
+   * @return 结果对象
+   */
   @Override
   public SnapshotTableSparkAction snapshotTable(String tableIdent) {
     String ctx = "snapshot source";
     CatalogPlugin defaultCatalog = spark.sessionState().catalogManager().currentCatalog();
     CatalogAndIdentifier catalogAndIdent =
         Spark3Util.catalogAndIdentifier(ctx, spark, tableIdent, defaultCatalog);
+    /** 执行该方法的具体逻辑。 */
     return new SnapshotTableSparkAction(
         spark, catalogAndIdent.catalog(), catalogAndIdent.identifier());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param tableIdent 参数
+   * @return 结果对象
+   */
   @Override
   public MigrateTableSparkAction migrateTable(String tableIdent) {
     String ctx = "migrate target";
     CatalogPlugin defaultCatalog = spark.sessionState().catalogManager().currentCatalog();
     CatalogAndIdentifier catalogAndIdent =
         Spark3Util.catalogAndIdentifier(ctx, spark, tableIdent, defaultCatalog);
+    /** 执行该方法的具体逻辑。 */
     return new MigrateTableSparkAction(
         spark, catalogAndIdent.catalog(), catalogAndIdent.identifier());
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteDataFilesSparkAction rewriteDataFiles(Table table) {
+    /** 重写计划或文件。 */
     return new RewriteDataFilesSparkAction(spark, table);
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   @Override
   public DeleteOrphanFilesSparkAction deleteOrphanFiles(Table table) {
+    /** 删除数据或文件。 */
     return new DeleteOrphanFilesSparkAction(spark, table);
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteManifestsSparkAction rewriteManifests(Table table) {
+    /** 重写计划或文件。 */
     return new RewriteManifestsSparkAction(spark, table);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   @Override
   public ExpireSnapshotsSparkAction expireSnapshots(Table table) {
+    /** 执行该方法的具体逻辑。 */
     return new ExpireSnapshotsSparkAction(spark, table);
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @param metadataLocation 参数
+   * @return 结果对象
+   */
   @Override
   public DeleteReachableFilesSparkAction deleteReachableFiles(String metadataLocation) {
+    /** 删除数据或文件。 */
     return new DeleteReachableFilesSparkAction(spark, metadataLocation);
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param table 参数
+   * @return 结果对象
+   */
   @Override
   public RewritePositionDeleteFilesSparkAction rewritePositionDeletes(Table table) {
+    /** 重写计划或文件。 */
     return new RewritePositionDeleteFilesSparkAction(spark, table);
   }
 }

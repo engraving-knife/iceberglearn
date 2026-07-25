@@ -33,10 +33,19 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：DeleteFileIndexTestBase，用于验证 Delete File Index 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Delete File Index 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class DeleteFileIndexTestBase<
         ScanT extends Scan<ScanT, T, G>, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends TableTestBase {
 
+  /** 辅助方法：delete file index test base。 */
   public DeleteFileIndexTestBase() {
     super(2 /* table format version */);
   }
@@ -59,6 +68,7 @@ public abstract class DeleteFileIndexTestBase<
           .withRecordCount(1)
           .build();
 
+  /** 辅助方法：unpartitioned file。 */
   private static DataFile unpartitionedFile(PartitionSpec spec) {
     return DataFiles.builder(spec)
         .withPath("/path/to/data-unpartitioned.parquet")
@@ -67,6 +77,7 @@ public abstract class DeleteFileIndexTestBase<
         .build();
   }
 
+  /** 辅助方法：unpartitioned pos deletes。 */
   private static DeleteFile unpartitionedPosDeletes(PartitionSpec spec) {
     return FileMetadata.deleteFileBuilder(spec)
         .ofPositionDeletes()
@@ -76,6 +87,7 @@ public abstract class DeleteFileIndexTestBase<
         .build();
   }
 
+  /** 辅助方法：partitioned pos deletes。 */
   private static DeleteFile partitionedPosDeletes(PartitionSpec spec, StructLike partition) {
     return FileMetadata.deleteFileBuilder(spec)
         .ofPositionDeletes()
@@ -86,6 +98,7 @@ public abstract class DeleteFileIndexTestBase<
         .build();
   }
 
+  /** 辅助方法：unpartitioned eq deletes。 */
   private static DeleteFile unpartitionedEqDeletes(PartitionSpec spec) {
     return FileMetadata.deleteFileBuilder(spec)
         .ofEqualityDeletes()
@@ -95,6 +108,7 @@ public abstract class DeleteFileIndexTestBase<
         .build();
   }
 
+  /** 辅助方法：partitioned eq deletes。 */
   private static DeleteFile partitionedEqDeletes(PartitionSpec spec, StructLike partition) {
     return FileMetadata.deleteFileBuilder(spec)
         .ofEqualityDeletes()
@@ -105,6 +119,7 @@ public abstract class DeleteFileIndexTestBase<
         .build();
   }
 
+  /** 辅助方法：with data sequence number。 */
   @SuppressWarnings("unchecked")
   private static <F extends ContentFile<F>> F withDataSequenceNumber(long seq, F file) {
     BaseFile<F> baseFile = (BaseFile<F>) file;
@@ -112,8 +127,14 @@ public abstract class DeleteFileIndexTestBase<
     return file;
   }
 
+  /** 辅助方法：new scan。 */
   protected abstract ScanT newScan(Table table);
 
+  /**
+   * 测试场景：min sequence number filtering for files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMinSequenceNumberFilteringForFiles() {
     PartitionSpec partSpec = PartitionSpec.unpartitioned();
@@ -134,6 +155,11 @@ public abstract class DeleteFileIndexTestBase<
     Assert.assertEquals("Only one delete file should apply", 1, index.forDataFile(0, file).length);
   }
 
+  /**
+   * 测试场景：unpartitioned deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUnpartitionedDeletes() {
     PartitionSpec partSpec = PartitionSpec.unpartitioned();
@@ -185,6 +211,11 @@ public abstract class DeleteFileIndexTestBase<
         index.forDataFile(0, partitionedFileA));
   }
 
+  /**
+   * 测试场景：partitioned delete index。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedDeleteIndex() {
     DeleteFile[] deleteFiles = {
@@ -238,6 +269,11 @@ public abstract class DeleteFileIndexTestBase<
         index.forDataFile(0, unpartitionedFileA).length);
   }
 
+  /**
+   * 测试场景：unpartitioned table scan。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUnpartitionedTableScan() throws IOException {
     File location = temp.newFolder();
@@ -280,6 +316,11 @@ public abstract class DeleteFileIndexTestBase<
         Sets.newHashSet(Iterables.transform(task.deletes(), ContentFile::path)));
   }
 
+  /**
+   * 测试场景：partitioned table with partition pos deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithPartitionPosDeletes() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -297,6 +338,11 @@ public abstract class DeleteFileIndexTestBase<
         "Should have only pos delete file", FILE_A_POS_1.path(), task.deletes().get(0).path());
   }
 
+  /**
+   * 测试场景：partitioned table with partition eq deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithPartitionEqDeletes() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -314,6 +360,11 @@ public abstract class DeleteFileIndexTestBase<
         "Should have only pos delete file", FILE_A_EQ_1.path(), task.deletes().get(0).path());
   }
 
+  /**
+   * 测试场景：partitioned table with unrelated partition deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithUnrelatedPartitionDeletes() {
     table.newAppend().appendFile(FILE_B).commit();
@@ -329,6 +380,11 @@ public abstract class DeleteFileIndexTestBase<
     Assert.assertEquals("Should have no delete files to apply", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：partitioned table with older partition deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithOlderPartitionDeletes() {
     table.newRowDelta().addDeletes(FILE_A_POS_1).addDeletes(FILE_A_EQ_1).commit();
@@ -344,6 +400,11 @@ public abstract class DeleteFileIndexTestBase<
     Assert.assertEquals("Should have no delete files to apply", 0, task.deletes().size());
   }
 
+  /**
+   * 测试场景：partitioned table scan with global deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableScanWithGlobalDeletes() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -372,6 +433,11 @@ public abstract class DeleteFileIndexTestBase<
         task.deletes().get(0).path());
   }
 
+  /**
+   * 测试场景：partitioned table scan with global and partition deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableScanWithGlobalAndPartitionDeletes() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -402,6 +468,11 @@ public abstract class DeleteFileIndexTestBase<
         Sets.newHashSet(Iterables.transform(task.deletes(), ContentFile::path)));
   }
 
+  /**
+   * 测试场景：partitioned table sequence numbers。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableSequenceNumbers() {
     table.newRowDelta().addRows(FILE_A).addDeletes(FILE_A_EQ_1).addDeletes(FILE_A_POS_1).commit();
@@ -417,6 +488,11 @@ public abstract class DeleteFileIndexTestBase<
         "Should have only pos delete file", FILE_A_POS_1.path(), task.deletes().get(0).path());
   }
 
+  /**
+   * 测试场景：unpartitioned table sequence numbers。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUnpartitionedTableSequenceNumbers() throws IOException {
     File location = temp.newFolder();
@@ -459,6 +535,11 @@ public abstract class DeleteFileIndexTestBase<
         task.deletes().get(0).path());
   }
 
+  /**
+   * 测试场景：partitioned table with existing delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionedTableWithExistingDeleteFile() {
     table.updateProperties().set(TableProperties.MANIFEST_MERGE_ENABLED, "false").commit();

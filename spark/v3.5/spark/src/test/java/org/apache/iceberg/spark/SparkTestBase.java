@@ -57,6 +57,13 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+/**
+ * 文件级说明：测试 SparkTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class SparkTestBase extends SparkTestHelperBase {
 
   protected static TestHiveMetastore metastore = null;
@@ -65,6 +72,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
   protected static JavaSparkContext sparkContext = null;
   protected static HiveCatalog catalog = null;
 
+  /** 启动元存储与Spark。 */
   @BeforeClass
   public static void startMetastoreAndSpark() {
     SparkTestBase.metastore = new TestHiveMetastore();
@@ -94,6 +102,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** 停止元存储与Spark。 */
   @AfterClass
   public static void stopMetastoreAndSpark() throws Exception {
     SparkTestBase.catalog = null;
@@ -108,6 +117,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** waituntil后。 */
   protected long waitUntilAfter(long timestampMillis) {
     long current = System.currentTimeMillis();
     while (current <= timestampMillis) {
@@ -116,6 +126,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     return current;
   }
 
+  /** SQL。 */
   protected List<Object[]> sql(String query, Object... args) {
     List<Row> rows = spark.sql(String.format(query, args)).collectAsList();
     if (rows.size() < 1) {
@@ -125,6 +136,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     return rowsToJava(rows);
   }
 
+  /** scalarSQL。 */
   protected Object scalarSql(String query, Object... args) {
     List<Object[]> rows = sql(query, args);
     Assert.assertEquals("Scalar SQL should return one row", 1, rows.size());
@@ -133,19 +145,23 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     return row[0];
   }
 
+  /** 行。 */
   protected Object[] row(Object... values) {
     return values;
   }
 
+  /** db路径。 */
   protected static String dbPath(String dbName) {
     return metastore.getDatabasePath(dbName);
   }
 
+  /** 带unavailable文件。 */
   protected void withUnavailableFiles(Iterable<? extends ContentFile<?>> files, Action action) {
     Iterable<String> fileLocations = Iterables.transform(files, file -> file.path().toString());
     withUnavailableLocations(fileLocations, action);
   }
 
+  /** 辅助方法：move。 */
   private void move(String location, String newLocation) {
     Path path = Paths.get(URI.create(location));
     Path tempPath = Paths.get(URI.create(newLocation));
@@ -157,6 +173,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** 带unavailable路径。 */
   protected void withUnavailableLocations(Iterable<String> locations, Action action) {
     for (String location : locations) {
       move(location, location + "_temp");
@@ -171,6 +188,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** 带默认时间时区。 */
   protected void withDefaultTimeZone(String zoneId, Action action) {
     TimeZone currentZone = TimeZone.getDefault();
     try {
@@ -181,6 +199,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** 带SQL配置。 */
   protected void withSQLConf(Map<String, String> conf, Action action) {
     SQLConf sqlConf = SQLConf.get();
 
@@ -216,11 +235,13 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** JSON到df。 */
   protected Dataset<Row> jsonToDF(String schema, String... records) {
     Dataset<String> jsonDF = spark.createDataset(ImmutableList.copyOf(records), Encoders.STRING());
     return spark.read().schema(schema).json(jsonDF);
   }
 
+  /** 追加。 */
   protected void append(String table, String... jsonRecords) {
     try {
       String schema = spark.table(table).schema().toDDL();
@@ -231,6 +252,7 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     }
   }
 
+  /** 表props作为字符串。 */
   protected String tablePropsAsString(Map<String, String> tableProps) {
     StringBuilder stringBuilder = new StringBuilder();
 
@@ -244,10 +266,12 @@ public abstract class SparkTestBase extends SparkTestHelperBase {
     return stringBuilder.toString();
   }
 
+  /** 执行与keep计划。 */
   protected SparkPlan executeAndKeepPlan(String query, Object... args) {
     return executeAndKeepPlan(() -> sql(query, args));
   }
 
+  /** 执行与keep计划。 */
   protected SparkPlan executeAndKeepPlan(Action action) {
     AtomicReference<SparkPlan> executedPlanRef = new AtomicReference<>();
 

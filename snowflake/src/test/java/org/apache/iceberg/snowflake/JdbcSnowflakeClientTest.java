@@ -49,6 +49,13 @@ import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
+/**
+ * 文件级说明：测试 JdbcSnowflakeClientTest 的功能。
+ *
+ * <p>所属模块：iceberg-snowflake。职责：验证 JdbcSnowflakeClientTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class JdbcSnowflakeClientTest {
   @Mock private Connection mockConnection;
   @Mock private JdbcClientPool mockClientPool;
@@ -57,6 +64,7 @@ public class JdbcSnowflakeClientTest {
 
   private JdbcSnowflakeClient snowflakeClient;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() throws SQLException, InterruptedException {
     snowflakeClient = new JdbcSnowflakeClient(mockClientPool);
@@ -76,6 +84,11 @@ public class JdbcSnowflakeClientTest {
             ArgumentMatchers.<String>any());
   }
 
+  /**
+   * 测试场景：Null Client Pool In Constructor。
+   *
+   * <p>验证该方法在 Null Client Pool In Constructor 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullClientPoolInConstructor() {
     Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
@@ -83,6 +96,11 @@ public class JdbcSnowflakeClientTest {
         .withMessageContaining("JdbcClientPool must be non-null");
   }
 
+  /**
+   * 测试场景：Database Exists。
+   *
+   * <p>验证该方法在 Database Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseExists() throws SQLException {
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
@@ -100,6 +118,11 @@ public class JdbcSnowflakeClientTest {
             eq("DB_1"));
   }
 
+  /**
+   * 测试场景：Database Doesnt Exist。
+   *
+   * <p>验证该方法在 Database Doesnt Exist 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseDoesntExist() throws SQLException {
     when(mockResultSet.next())
@@ -123,6 +146,11 @@ public class JdbcSnowflakeClientTest {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Database Failure With Other Exception。
+   *
+   * <p>验证该方法在 Database Failure With Other Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseFailureWithOtherException() throws SQLException {
     Exception injectedException = new SQLException("Some other exception", "2000", 2, null);
@@ -134,6 +162,11 @@ public class JdbcSnowflakeClientTest {
         .withCause(injectedException);
   }
 
+  /**
+   * 测试场景：Database Failure With Interrupted Exception。
+   *
+   * <p>验证该方法在 Database Failure With Interrupted Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseFailureWithInterruptedException()
       throws SQLException, InterruptedException {
@@ -146,6 +179,11 @@ public class JdbcSnowflakeClientTest {
         .withCause(injectedException);
   }
 
+  /**
+   * 测试场景：Schema Exists。
+   *
+   * <p>验证该方法在 Schema Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaExists() throws SQLException {
     when(mockResultSet.next())
@@ -175,6 +213,11 @@ public class JdbcSnowflakeClientTest {
             eq("DB1.SCHEMA1"));
   }
 
+  /**
+   * 测试场景：Schema Doesnt Exist No Schema Found Exception。
+   *
+   * <p>验证该方法在 Schema Doesnt Exist No Schema Found Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaDoesntExistNoSchemaFoundException() throws SQLException {
     when(mockResultSet.next())
@@ -212,6 +255,11 @@ public class JdbcSnowflakeClientTest {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Schema Failure With Other Exception。
+   *
+   * <p>验证该方法在 Schema Failure With Other Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaFailureWithOtherException() throws SQLException {
     Exception injectedException = new SQLException("Some other exception", "2000", 2, null);
@@ -231,6 +279,11 @@ public class JdbcSnowflakeClientTest {
         .withCause(injectedException);
   }
 
+  /**
+   * 测试场景：Schema Failure With Interrupted Exception。
+   *
+   * <p>验证该方法在 Schema Failure With Interrupted Exception 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaFailureWithInterruptedException()
       throws SQLException, InterruptedException {
@@ -244,6 +297,11 @@ public class JdbcSnowflakeClientTest {
         .withCause(injectedException);
   }
 
+  /**
+   * 测试场景：List Databases In Account。
+   *
+   * <p>验证该方法在 List Databases In Account 条件下的行为是否符合预期。
+   */
   @Test
   public void testListDatabasesInAccount() throws SQLException {
     when(mockResultSet.next()).thenReturn(true).thenReturn(true).thenReturn(true).thenReturn(false);

@@ -41,6 +41,25 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：将 Avro 数据解码为 Flink {@link RowData} 字段的读取器工厂集合。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 data 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供各 Iceberg 原始类型与复合类型到 Flink 类型的 Avro 读取器构建方法。
+ *   <li>处理 struct/list/map 等复合类型的递归读取，支持常量字段注入。
+ *   <li>把 Avro 底层值（如 {@code Utf8}、{@code ByteBuffer}）转换为 Flink 的 {@code StringData}/{@code
+ *       DecimalData}/{@code TimestampData} 等内部表示。
+ * </ul>
+ *
+ * <p>设计意图：作为静态工厂集合，集中管理 Avro 到 Flink 的类型映射， 供 {@link FlinkAvroReader} 的内部访问器按需调用。
+ *
+ * <p>上下游关系：上游为 {@link FlinkAvroReader} 的 ReadBuilder， 下游为 Iceberg 的 {@link ValueReaders} 与 Avro
+ * {@link Decoder}。
+ */
 public class FlinkValueReaders {
 
   private FlinkValueReaders() {}

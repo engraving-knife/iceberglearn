@@ -69,6 +69,13 @@ import software.amazon.awssdk.services.s3control.S3ControlClient;
 import software.amazon.awssdk.utils.ImmutableMap;
 import software.amazon.awssdk.utils.IoUtils;
 
+/**
+ * 文件级说明：TestS3FileIOIntegration 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 s3文件io集成 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestS3FileIOIntegration {
 
   private final Random random = new Random(1);
@@ -89,6 +96,7 @@ public class TestS3FileIOIntegration {
   private String objectKey;
   private String objectUri;
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeClass
   public static void beforeClass() {
     clientFactory = AwsClientFactories.defaultFactory();
@@ -112,6 +120,7 @@ public class TestS3FileIOIntegration {
         crossRegionS3Control, crossRegionAccessPointName, crossRegionBucketName);
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterClass
   public static void afterClass() {
     AwsIntegTestUtil.cleanS3Bucket(s3, bucketName, prefix);
@@ -121,17 +130,24 @@ public class TestS3FileIOIntegration {
         ScheduleKeyDeletionRequest.builder().keyId(kmsKeyArn).pendingWindowInDays(7).build());
   }
 
+  /** 初始化：before，在每个测试方法执行前准备测试环境与数据。 */
   @Before
   public void before() {
     objectKey = String.format("%s/%s", prefix, UUID.randomUUID().toString());
     objectUri = String.format("s3://%s/%s", bucketName, objectKey);
   }
 
+  /** 初始化：beforeEach，在每个测试方法执行前准备测试环境与数据。 */
   @BeforeEach
   public void beforeEach() {
     clientFactory.initialize(Maps.newHashMap());
   }
 
+  /**
+   * 测试场景：新建input流。
+   *
+   * <p>验证该方法在 新建input流 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewInputStream() throws Exception {
     s3.putObject(
@@ -141,6 +157,11 @@ public class TestS3FileIOIntegration {
     validateRead(s3FileIO);
   }
 
+  /**
+   * 测试场景：s3文件io带s3文件ioaws客户端工厂impl。
+   *
+   * <p>验证该方法在 s3文件io带s3文件ioaws客户端工厂impl 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testS3FileIOWithS3FileIOAwsClientFactoryImpl() throws Exception {
     s3.putObject(
@@ -155,6 +176,11 @@ public class TestS3FileIOIntegration {
     validateRead(s3FileIO);
   }
 
+  /**
+   * 测试场景：s3文件io带默认aws客户端工厂impl。
+   *
+   * <p>验证该方法在 s3文件io带默认aws客户端工厂impl 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testS3FileIOWithDefaultAwsClientFactoryImpl() throws Exception {
     s3.putObject(
@@ -169,6 +195,11 @@ public class TestS3FileIOIntegration {
     validateRead(s3FileIO);
   }
 
+  /**
+   * 测试场景：新建input流带accesspoint。
+   *
+   * <p>验证该方法在 新建input流带accesspoint 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewInputStreamWithAccessPoint() throws Exception {
     s3.putObject(
@@ -182,6 +213,11 @@ public class TestS3FileIOIntegration {
     validateRead(s3FileIO);
   }
 
+  /**
+   * 测试场景：新建input流带交叉regionaccesspoint。
+   *
+   * <p>验证该方法在 新建input流带交叉regionaccesspoint 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewInputStreamWithCrossRegionAccessPoint() throws Exception {
     clientFactory.initialize(ImmutableMap.of(S3FileIOProperties.USE_ARN_REGION_ENABLED, "true"));
@@ -205,6 +241,11 @@ public class TestS3FileIOIntegration {
     validateRead(s3FileIO);
   }
 
+  /**
+   * 测试场景：新建output流。
+   *
+   * <p>验证该方法在 新建output流 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewOutputStream() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3);
@@ -216,6 +257,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(content, result);
   }
 
+  /**
+   * 测试场景：新建output流带accesspoint。
+   *
+   * <p>验证该方法在 新建output流带accesspoint 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewOutputStreamWithAccessPoint() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3);
@@ -231,6 +277,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(content, result);
   }
 
+  /**
+   * 测试场景：新建output流带交叉regionaccesspoint。
+   *
+   * <p>验证该方法在 新建output流带交叉regionaccesspoint 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testNewOutputStreamWithCrossRegionAccessPoint() throws Exception {
     clientFactory.initialize(ImmutableMap.of(S3FileIOProperties.USE_ARN_REGION_ENABLED, "true"));
@@ -254,6 +305,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(content, result);
   }
 
+  /**
+   * 测试场景：测试serversides3encryption。
+   *
+   * <p>验证该方法在对应输入下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testServerSideS3Encryption() throws Exception {
     S3FileIOProperties properties = new S3FileIOProperties();
@@ -267,6 +323,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(ServerSideEncryption.AES256, response.serverSideEncryption());
   }
 
+  /**
+   * 测试场景：测试serversidekmsencryption。
+   *
+   * <p>验证该方法在对应输入下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testServerSideKmsEncryption() throws Exception {
     S3FileIOProperties properties = new S3FileIOProperties();
@@ -282,6 +343,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(response.ssekmsKeyId(), kmsKeyArn);
   }
 
+  /**
+   * 测试场景：serversidekmsencryption带默认key。
+   *
+   * <p>验证该方法在 serversidekmsencryption带默认key 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testServerSideKmsEncryptionWithDefaultKey() throws Exception {
     S3FileIOProperties properties = new S3FileIOProperties();
@@ -300,6 +366,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals("alias/aws/s3", listAliasesResponse.aliases().get(0).aliasName());
   }
 
+  /**
+   * 测试场景：serverside自定义encryption。
+   *
+   * <p>验证该方法在 serverside自定义encryption 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testServerSideCustomEncryption() throws Exception {
     // generate key
@@ -335,6 +406,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(md5, response.sseCustomerKeyMD5());
   }
 
+  /**
+   * 测试场景：测试acl。
+   *
+   * <p>验证该方法在对应输入下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testACL() throws Exception {
     S3FileIOProperties properties = new S3FileIOProperties();
@@ -349,6 +425,11 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(Permission.FULL_CONTROL, response.grants().get(0).permission());
   }
 
+  /**
+   * 测试场景：客户端工厂序列化。
+   *
+   * <p>验证该方法在 客户端工厂序列化 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testClientFactorySerialization() throws Exception {
     S3FileIO fileIO = new S3FileIO(clientFactory::s3);
@@ -358,12 +439,22 @@ public class TestS3FileIOIntegration {
     validateRead(fileIO2);
   }
 
+  /**
+   * 测试场景：删除文件多个batches。
+   *
+   * <p>验证该方法在 删除文件多个batches 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteFilesMultipleBatches() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3, getDeletionTestProperties());
     testDeleteFiles(deletionBatchSize * 2, s3FileIO);
   }
 
+  /**
+   * 测试场景：删除文件多个batches带accesspoints。
+   *
+   * <p>验证该方法在 删除文件多个batches带accesspoints 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteFilesMultipleBatchesWithAccessPoints() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3, getDeletionTestProperties());
@@ -374,6 +465,11 @@ public class TestS3FileIOIntegration {
     testDeleteFiles(deletionBatchSize * 2, s3FileIO);
   }
 
+  /**
+   * 测试场景：删除文件多个batches带交叉regionaccesspoints。
+   *
+   * <p>验证该方法在 删除文件多个batches带交叉regionaccesspoints 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteFilesMultipleBatchesWithCrossRegionAccessPoints() throws Exception {
     clientFactory.initialize(ImmutableMap.of(S3FileIOProperties.USE_ARN_REGION_ENABLED, "true"));
@@ -385,18 +481,33 @@ public class TestS3FileIOIntegration {
     testDeleteFiles(deletionBatchSize * 2, s3FileIO);
   }
 
+  /**
+   * 测试场景：删除文件lessthan批量size。
+   *
+   * <p>验证该方法在 删除文件lessthan批量size 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteFilesLessThanBatchSize() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3, getDeletionTestProperties());
     testDeleteFiles(deletionBatchSize - 1, s3FileIO);
   }
 
+  /**
+   * 测试场景：删除文件单个批量带remainder。
+   *
+   * <p>验证该方法在 删除文件单个批量带remainder 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDeleteFilesSingleBatchWithRemainder() throws Exception {
     S3FileIO s3FileIO = new S3FileIO(clientFactory::s3, getDeletionTestProperties());
     testDeleteFiles(5, s3FileIO);
   }
 
+  /**
+   * 测试场景：prefix列表。
+   *
+   * <p>验证该方法在 prefix列表 条件下的行为与断言结果是否符合预期。
+   */
   @SuppressWarnings("DangerousParallelStreamUsage")
   @Test
   public void testPrefixList() {
@@ -417,6 +528,11 @@ public class TestS3FileIOIntegration {
     Assertions.assertEquals(totalFiles, Streams.stream(s3FileIO.listPrefix(listPrefix)).count());
   }
 
+  /**
+   * 测试场景：prefix删除。
+   *
+   * <p>验证该方法在 prefix删除 条件下的行为与断言结果是否符合预期。
+   */
   @SuppressWarnings("DangerousParallelStreamUsage")
   @Test
   public void testPrefixDelete() {
@@ -437,12 +553,14 @@ public class TestS3FileIOIntegration {
             });
   }
 
+  /** 辅助方法：获取deletion测试属性。 */
   private S3FileIOProperties getDeletionTestProperties() {
     S3FileIOProperties properties = new S3FileIOProperties();
     properties.setDeleteBatchSize(deletionBatchSize);
     return properties;
   }
 
+  /** 辅助方法：测试删除文件。 */
   private void testDeleteFiles(int numObjects, S3FileIO s3FileIO) throws Exception {
     List<String> paths = Lists.newArrayList();
     for (int i = 1; i <= numObjects; i++) {
@@ -456,10 +574,12 @@ public class TestS3FileIOIntegration {
     }
   }
 
+  /** 辅助方法：写入。 */
   private void write(S3FileIO s3FileIO) throws Exception {
     write(s3FileIO, objectUri);
   }
 
+  /** 辅助方法：写入。 */
   private void write(S3FileIO s3FileIO, String uri) throws Exception {
     OutputFile outputFile = s3FileIO.newOutputFile(uri);
     OutputStream outputStream = outputFile.create();
@@ -467,6 +587,7 @@ public class TestS3FileIOIntegration {
     outputStream.close();
   }
 
+  /** 辅助方法：校验读取。 */
   private void validateRead(S3FileIO s3FileIO) throws Exception {
     InputFile file = s3FileIO.newInputFile(objectUri);
     Assert.assertEquals(contentBytes.length, file.getLength());
@@ -476,6 +597,7 @@ public class TestS3FileIOIntegration {
     Assert.assertEquals(content, result);
   }
 
+  /** 辅助方法：测试accesspointarn。 */
   private String testAccessPointARN(String region, String accessPoint) {
     // format: arn:aws:s3:region:account-id:accesspoint/resource
     return String.format(
@@ -486,6 +608,7 @@ public class TestS3FileIOIntegration {
         accessPoint);
   }
 
+  /** 辅助方法：创建randomobjects。 */
   private void createRandomObjects(String objectPrefix, int count) {
     S3URI s3URI = new S3URI(objectPrefix);
     random

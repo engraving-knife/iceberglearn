@@ -71,10 +71,12 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /**
- * Assigns a rewrite plan for v2 tables that support rewriting data to handle MERGE statements.
+ * Spark Catalyst 分析阶段的规则或检查的写入组件，负责数据写入与提交。
  *
- * This rule assumes the commands have been fully resolved and all assignments have been aligned.
- * That's why it must be run after AlignRowLevelCommandAssignments.
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 RewriteMergeIntoTable。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with PredicateHelper {
 
@@ -85,6 +87,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
   private final val ROW_FROM_SOURCE_REF = FieldReference(ROW_FROM_SOURCE)
   private final val ROW_FROM_TARGET_REF = FieldReference(ROW_FROM_TARGET)
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case m @ MergeIntoIcebergTable(aliasedTable, source, cond, matchedActions, notMatchedActions, None)
         if m.resolved && m.aligned && matchedActions.isEmpty && notMatchedActions.size == 1 =>
@@ -170,6 +176,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
   }
 
   // build a rewrite plan for sources that support replacing groups of data (e.g. files, partitions)
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildReplaceDataPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -240,6 +250,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
   }
 
   // build a rewrite plan for sources that support row deltas
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildWriteDeltaPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -319,10 +333,18 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     WriteDelta(writeRelation, mergeRows, relation, projections)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def actionCondition(action: MergeAction): Expression = {
     action.condition.getOrElse(TrueLiteral)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def actionOutput(
       clause: MergeAction,
       metadataAttrs: Seq[Attribute]): Seq[Expression] = {
@@ -342,6 +364,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def deltaActionOutput(
       action: MergeAction,
       deleteRowValues: Seq[Expression],
@@ -363,6 +389,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     }
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildMergeRowsOutput(
       matchedOutputs: Seq[Seq[Expression]],
       notMatchedOutputs: Seq[Seq[Expression]],
@@ -382,11 +412,16 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     }
   }
 
+  /** 判断是否cardinalitycheckneeded。 */
   private def isCardinalityCheckNeeded(actions: Seq[MergeAction]): Boolean = actions match {
     case Seq(DeleteAction(None)) => false
     case _ => true
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildDeltaDeleteRowValues(
       rowAttrs: Seq[Attribute],
       rowIdAttrs: Seq[Attribute]): Seq[Expression] = {
@@ -399,10 +434,18 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     }
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   private def resolveAttrRef(ref: NamedReference, plan: LogicalPlan): AttributeReference = {
     ExtendedV2ExpressionUtils.resolveRef[AttributeReference](ref, plan)
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildMergeDeltaProjections(
       mergeRows: MergeRows,
       rowAttrs: Seq[Attribute],
@@ -433,6 +476,10 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
   }
 
   // the projection is done by name, ignoring expr IDs
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def newLazyProjection(
       outputs: Seq[Seq[Expression]],
       outputAttrs: Seq[Attribute],

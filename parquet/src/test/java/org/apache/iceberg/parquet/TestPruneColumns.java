@@ -34,7 +34,19 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestPruneColumns 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestPruneColumns 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestPruneColumns {
+  /**
+   * 测试场景：Map Key Value Name。
+   *
+   * <p>验证该方法在 Map Key Value Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapKeyValueName() {
     MessageType fileSchema =
@@ -122,6 +134,11 @@ public class TestPruneColumns {
     assertThat(actual).as("Pruned schema should not rename repeated struct").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：List Element Name。
+   *
+   * <p>验证该方法在 List Element Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testListElementName() {
     MessageType fileSchema =
@@ -197,6 +214,11 @@ public class TestPruneColumns {
     assertThat(actual).as("Pruned schema should not rename repeated struct").isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：Struct Element Name。
+   *
+   * <p>验证该方法在 Struct Element Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testStructElementName() {
     MessageType fileSchema =

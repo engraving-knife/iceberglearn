@@ -33,7 +33,25 @@ import org.apache.iceberg.flink.FlinkConfigOptions;
 import org.apache.iceberg.flink.FlinkReadConf;
 import org.apache.iceberg.flink.FlinkReadOptions;
 
-/** Context object with optional arguments for a Flink Scan. */
+/**
+ * 文件级说明：Flink 读取 Iceberg 表时的扫描上下文配置。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source 子包）。
+ *
+ * <p>职责：聚合一次扫描所需的全部可选参数，包括：
+ *
+ * <ul>
+ *   <li>snapshot 相关（snapshotId、startTag/endTag、startSnapshotId 等）。
+ *   <li>split 相关（splitSize、splitLookback、splitOpenFileCost）。
+ *   <li>流式相关（isStreaming、monitorInterval、startingStrategy、maxPlanningSnapshotCount）。
+ *   <li>schema/过滤/limit/名称映射等。
+ * </ul>
+ *
+ * <p>设计意图：通过不可变值对象统一传递扫描参数， 便于在算子间序列化与传递；通过 {@code copyWith*} 方法派生新配置。
+ *
+ * <p>上下游关系：上游为 {@link FlinkReadOptions} 与 {@link FlinkReadConf}（解析参数构造本对象）， 下游为 {@link
+ * FlinkSplitPlanner}、{@link StreamingMonitorFunction} 等消费本对象。
+ */
 @Internal
 public class ScanContext implements Serializable {
 

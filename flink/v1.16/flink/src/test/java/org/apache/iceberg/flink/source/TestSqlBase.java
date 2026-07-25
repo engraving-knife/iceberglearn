@@ -47,7 +47,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/** Test other more advanced usage of SQL. They don't need to run for every file format. */
+/**
+ * 文件级说明：测试 TestSqlBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestSqlBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public abstract class TestSqlBase {
   @ClassRule
   public static final MiniClusterWithClientResource MINI_CLUSTER_RESOURCE =
@@ -61,6 +67,7 @@ public abstract class TestSqlBase {
 
   private volatile TableEnvironment tEnv;
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
       synchronized (this) {
@@ -73,9 +80,15 @@ public abstract class TestSqlBase {
     return tEnv;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public abstract void before() throws IOException;
 
+  /**
+   * 测试场景：Residuals。
+   *
+   * <p>验证该方法在 Residuals 条件下的行为是否符合预期。
+   */
   @Test
   public void testResiduals() throws Exception {
     Table table =
@@ -108,6 +121,11 @@ public abstract class TestSqlBase {
         TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：Expose Locality。
+   *
+   * <p>验证该方法在 Expose Locality 条件下的行为是否符合预期。
+   */
   @Test
   public void testExposeLocality() throws Exception {
     Table table =
@@ -149,6 +167,7 @@ public abstract class TestSqlBase {
         results, expectedRecords, TestFixtures.SCHEMA);
   }
 
+  /** 辅助方法：run，run。 */
   protected List<Row> run(
       Map<String, String> options, String sqlFilter, String... sqlSelectedFields) {
     String select = String.join(",", sqlSelectedFields);

@@ -62,12 +62,21 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkCatalogTable 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkCatalogTable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
 
+  /** 辅助方法：TestFlinkCatalogTable，Flink Catalog Table。 */
   public TestFlinkCatalogTable(String catalogName, Namespace baseNamespace) {
     super(catalogName, baseNamespace);
   }
 
+  /** 辅助方法：before，before。 */
   @Override
   @Before
   public void before() {
@@ -77,6 +86,7 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     sql("USE %s", DATABASE);
   }
 
+  /** 辅助方法：cleanNamespaces，clean Namespaces。 */
   @After
   public void cleanNamespaces() {
     sql("DROP TABLE IF EXISTS %s.tl", flinkDatabase);
@@ -85,6 +95,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Get Table。
+   *
+   * <p>验证该方法在 Get Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testGetTable() {
     sql("CREATE TABLE tl(id BIGINT, strV STRING)");
@@ -98,6 +113,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         "Should load the expected iceberg schema", iSchema.toString(), table.schema().toString());
   }
 
+  /**
+   * 测试场景：Rename Table。
+   *
+   * <p>验证该方法在 Rename Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRenameTable() {
     Assume.assumeFalse("HadoopCatalog does not support rename table", isHadoopCatalog);
@@ -115,6 +135,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals(tableSchema.asStruct(), actualSchema.asStruct());
   }
 
+  /**
+   * 测试场景：Create Table。
+   *
+   * <p>验证该方法在 Create Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTable() throws TableNotExistException {
     sql("CREATE TABLE tl(id BIGINT)");
@@ -129,6 +154,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         TableSchema.builder().field("id", DataTypes.BIGINT()).build(), catalogTable.getSchema());
   }
 
+  /**
+   * 测试场景：Create Table With Primary Key。
+   *
+   * <p>验证该方法在 Create Table With Primary Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithPrimaryKey() throws Exception {
     sql("CREATE TABLE tl(id BIGINT, data STRING, key STRING PRIMARY KEY NOT ENFORCED)");
@@ -149,6 +179,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         uniqueConstraintOptional.get().getColumns());
   }
 
+  /**
+   * 测试场景：Create Table With Multi Columns In Primary Key。
+   *
+   * <p>验证该方法在 Create Table With Multi Columns In Primary Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithMultiColumnsInPrimaryKey() throws Exception {
     sql(
@@ -171,6 +206,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         ImmutableSet.copyOf(uniqueConstraintOptional.get().getColumns()));
   }
 
+  /**
+   * 测试场景：Create Table If Not Exists。
+   *
+   * <p>验证该方法在 Create Table If Not Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableIfNotExists() {
     sql("CREATE TABLE tl(id BIGINT)");
@@ -193,6 +233,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     assertThat(table("tl").properties()).containsEntry("key", "value");
   }
 
+  /**
+   * 测试场景：Create Table Like。
+   *
+   * <p>验证该方法在 Create Table Like 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableLike() throws TableNotExistException {
     sql("CREATE TABLE tl(id BIGINT)");
@@ -208,6 +253,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         TableSchema.builder().field("id", DataTypes.BIGINT()).build(), catalogTable.getSchema());
   }
 
+  /**
+   * 测试场景：Create Table Location。
+   *
+   * <p>验证该方法在 Create Table Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableLocation() {
     Assume.assumeFalse(
@@ -222,6 +272,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals("file:///tmp/location", table.location());
   }
 
+  /**
+   * 测试场景：Create Partition Table。
+   *
+   * <p>验证该方法在 Create Partition Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatePartitionTable() throws TableNotExistException {
     sql("CREATE TABLE tl(id BIGINT, dt STRING) PARTITIONED BY(dt)");
@@ -246,6 +301,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals(Collections.singletonList("dt"), catalogTable.getPartitionKeys());
   }
 
+  /**
+   * 测试场景：Create Table With Format 2 Through Table Property。
+   *
+   * <p>验证该方法在 Create Table With Format 2 Through Table Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithFormatV2ThroughTableProperty() throws Exception {
     sql("CREATE TABLE tl(id BIGINT) WITH ('format-version'='2')");
@@ -257,6 +317,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         ((BaseTable) table).operations().current().formatVersion());
   }
 
+  /**
+   * 测试场景：Upgrade Table With Format 2 Through Table Property。
+   *
+   * <p>验证该方法在 Upgrade Table With Format 2 Through Table Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testUpgradeTableWithFormatV2ThroughTableProperty() throws Exception {
     sql("CREATE TABLE tl(id BIGINT) WITH ('format-version'='1')");
@@ -269,6 +334,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals("should update table to use format v2", 2, ops.refresh().formatVersion());
   }
 
+  /**
+   * 测试场景：Downgrade Table To Format 1 Through Table Property Fails。
+   *
+   * <p>验证该方法在 Downgrade Table To Format 1 Through Table Property Fails 条件下的行为是否符合预期。
+   */
   @Test
   public void testDowngradeTableToFormatV1ThroughTablePropertyFails() throws Exception {
     sql("CREATE TABLE tl(id BIGINT) WITH ('format-version'='2')");
@@ -283,6 +353,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         .hasMessage("Cannot downgrade v2 table to v1");
   }
 
+  /**
+   * 测试场景：Load Transform Partition Table。
+   *
+   * <p>验证该方法在 Load Transform Partition Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadTransformPartitionTable() throws TableNotExistException {
     Schema schema = new Schema(Types.NestedField.optional(0, "id", Types.LongType.get()));
@@ -297,6 +372,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals(Collections.emptyList(), catalogTable.getPartitionKeys());
   }
 
+  /**
+   * 测试场景：Alter Table Properties。
+   *
+   * <p>验证该方法在 Alter Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableProperties() throws TableNotExistException {
     sql("CREATE TABLE tl(id BIGINT) WITH ('oldK'='oldV')");
@@ -319,6 +399,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     assertThat(table("tl").properties()).containsAllEntriesOf(properties);
   }
 
+  /**
+   * 测试场景：Alter Table Add Column。
+   *
+   * <p>验证该方法在 Alter Table Add Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableAddColumn() {
     sql("CREATE TABLE tl(id BIGINT)");
@@ -360,6 +445,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         .hasMessageContaining("Try to add a column `id` which already exists in the table.");
   }
 
+  /**
+   * 测试场景：Alter Table Drop Column。
+   *
+   * <p>验证该方法在 Alter Table Drop Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableDropColumn() {
     sql("CREATE TABLE tl(id BIGINT, dt STRING, col1 STRING, col2 BIGINT)");
@@ -401,6 +491,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         .hasMessageContaining("The column `dt` does not exist in the base table.");
   }
 
+  /**
+   * 测试场景：Alter Table Modify Column Name。
+   *
+   * <p>验证该方法在 Alter Table Modify Column Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableModifyColumnName() {
     sql("CREATE TABLE tl(id BIGINT, dt STRING)");
@@ -422,6 +517,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         schemaAfter.asStruct());
   }
 
+  /**
+   * 测试场景：Alter Table Modify Column Type。
+   *
+   * <p>验证该方法在 Alter Table Modify Column Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableModifyColumnType() {
     sql("CREATE TABLE tl(id INTEGER, dt STRING)");
@@ -451,6 +551,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         .hasRootCauseMessage("Cannot change column type: dt: string -> int");
   }
 
+  /**
+   * 测试场景：Alter Table Modify Column Nullability。
+   *
+   * <p>验证该方法在 Alter Table Modify Column Nullability 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableModifyColumnNullability() {
     sql("CREATE TABLE tl(id INTEGER NOT NULL, dt STRING)");
@@ -480,6 +585,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         schemaAfter.asStruct());
   }
 
+  /**
+   * 测试场景：Alter Table Modify Column Position。
+   *
+   * <p>验证该方法在 Alter Table Modify Column Position 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableModifyColumnPosition() {
     sql("CREATE TABLE tl(id BIGINT, dt STRING)");
@@ -523,6 +633,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
             "Referenced column `non_existing` by 'AFTER' does not exist in the table.");
   }
 
+  /**
+   * 测试场景：Alter Table Modify Column Comment。
+   *
+   * <p>验证该方法在 Alter Table Modify Column Comment 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableModifyColumnComment() {
     sql("CREATE TABLE tl(id BIGINT, dt STRING)");
@@ -544,6 +659,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         schemaAfter.asStruct());
   }
 
+  /**
+   * 测试场景：Alter Table Constraint。
+   *
+   * <p>验证该方法在 Alter Table Constraint 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlterTableConstraint() {
     sql("CREATE TABLE tl(id BIGINT NOT NULL, dt STRING NOT NULL, col1 STRING)");
@@ -607,6 +727,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
         .hasRootCauseMessage("Unsupported table change: DropConstraint.");
   }
 
+  /**
+   * 测试场景：Relocate Table。
+   *
+   * <p>验证该方法在 Relocate Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRelocateTable() {
     Assume.assumeFalse("HadoopCatalog does not support relocate table", isHadoopCatalog);
@@ -616,6 +741,11 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals("file:///tmp/location", table("tl").location());
   }
 
+  /**
+   * 测试场景：Set Current And Cherry Pick Snapshot Id。
+   *
+   * <p>验证该方法在 Set Current And Cherry Pick Snapshot Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetCurrentAndCherryPickSnapshotId() {
     sql("CREATE TABLE tl(c1 INT, c2 STRING, c3 STRING) PARTITIONED BY (c1)");
@@ -666,6 +796,7 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     validateTableFiles(table, fileA);
   }
 
+  /** 辅助方法：validateTableFiles，validate Table Files。 */
   private void validateTableFiles(Table tbl, DataFile... expectedFiles) {
     tbl.refresh();
     Set<CharSequence> expectedFilePaths =
@@ -678,10 +809,12 @@ public class TestFlinkCatalogTable extends FlinkCatalogTestBase {
     Assert.assertEquals("Files should match", expectedFilePaths, actualFilePaths);
   }
 
+  /** 辅助方法：table，table。 */
   private Table table(String name) {
     return validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, name));
   }
 
+  /** 辅助方法：catalogTable，catalog Table。 */
   private CatalogTable catalogTable(String name) throws TableNotExistException {
     return (CatalogTable)
         getTableEnv()

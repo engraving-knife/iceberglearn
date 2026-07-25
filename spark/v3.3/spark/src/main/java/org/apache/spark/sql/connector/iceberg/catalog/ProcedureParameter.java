@@ -20,37 +20,33 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 
 import org.apache.spark.sql.types.DataType;
 
-/** An input parameter of a {@link Procedure stored procedure}. */
+/**
+ * Spark DataSource V2 连接器扩展，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 ProcedureParameter。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface ProcedureParameter {
 
-  /**
-   * Creates a required input parameter.
-   *
-   * @param name the name of the parameter
-   * @param dataType the type of the parameter
-   * @return the constructed stored procedure parameter
-   */
+  /** 执行该方法的具体逻辑。 */
   static ProcedureParameter required(String name, DataType dataType) {
+    /** 执行该方法的具体逻辑。 */
     return new ProcedureParameterImpl(name, dataType, true);
   }
 
-  /**
-   * Creates an optional input parameter.
-   *
-   * @param name the name of the parameter.
-   * @param dataType the type of the parameter.
-   * @return the constructed optional stored procedure parameter
-   */
+  /** 执行该方法的具体逻辑。 */
   static ProcedureParameter optional(String name, DataType dataType) {
+    /** 执行该方法的具体逻辑。 */
     return new ProcedureParameterImpl(name, dataType, false);
   }
 
-  /** Returns the name of this parameter. */
+  /** 执行该方法的具体逻辑。 */
   String name();
 
-  /** Returns the type of this parameter. */
+  /** 执行该方法的具体逻辑。 */
   DataType dataType();
 
-  /** Returns true if this parameter is required. */
+  /** 执行该方法的具体逻辑。 */
   boolean required();
 }

@@ -46,20 +46,24 @@ public class TestParquetMetrics extends TestMetrics {
   private static final Map<String, String> SMALL_ROW_GROUP_CONFIG =
       ImmutableMap.of(TableProperties.PARQUET_ROW_GROUP_SIZE_BYTES, "1600");
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：TestParquetMetrics。 */
   public TestParquetMetrics(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：fileFormat。 */
   @Override
   public FileFormat fileFormat() {
     return FileFormat.PARQUET;
   }
 
+  /** 辅助方法：createOutputFile。 */
   @Override
   protected OutputFile createOutputFile() throws IOException {
     File tmpFolder = temp.newFolder("parquet");
@@ -67,17 +71,20 @@ public class TestParquetMetrics extends TestMetrics {
     return Files.localOutput(new File(tmpFolder, FileFormat.PARQUET.addExtension(filename)));
   }
 
+  /** 辅助方法：getMetrics。 */
   @Override
   public Metrics getMetrics(Schema schema, Record... records) throws IOException {
     return getMetrics(schema, MetricsConfig.getDefault(), records);
   }
 
+  /** 辅助方法：getMetrics。 */
   @Override
   public Metrics getMetrics(Schema schema, MetricsConfig metricsConfig, Record... records)
       throws IOException {
     return getMetrics(schema, createOutputFile(), ImmutableMap.of(), metricsConfig, records);
   }
 
+  /** 辅助方法：getMetrics。 */
   private Metrics getMetrics(
       Schema schema,
       OutputFile file,
@@ -98,6 +105,7 @@ public class TestParquetMetrics extends TestMetrics {
     return writer.metrics();
   }
 
+  /** 辅助方法：getMetricsForRecordsWithSmallRowGroups。 */
   @Override
   protected Metrics getMetricsForRecordsWithSmallRowGroups(
       Schema schema, OutputFile outputFile, Record... records) throws IOException {
@@ -105,6 +113,7 @@ public class TestParquetMetrics extends TestMetrics {
         schema, outputFile, SMALL_ROW_GROUP_CONFIG, MetricsConfig.getDefault(), records);
   }
 
+  /** 辅助方法：splitCount。 */
   @Override
   public int splitCount(InputFile inputFile) throws IOException {
     try (ParquetFileReader reader = ParquetFileReader.open(ParquetIO.file(inputFile))) {
@@ -112,6 +121,7 @@ public class TestParquetMetrics extends TestMetrics {
     }
   }
 
+  /** 辅助方法：supportsSmallRowGroups。 */
   @Override
   public boolean supportsSmallRowGroups() {
     return true;

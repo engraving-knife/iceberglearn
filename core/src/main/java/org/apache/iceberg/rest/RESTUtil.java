@@ -32,6 +32,23 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 文件级说明：REST Catalog 客户端使用的工具类，提供 URL 编解码、命名空间编解码、map 合并等通用方法。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 工具层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供字符串与 form 数据的 URL 编解码。
+ *   <li>提供命名空间（{@link Namespace}）在 URL 路径中的编码与解码，使用百分号转义分隔符。
+ *   <li>提供 map 合并、前缀提取、尾部斜杠去除等辅助方法。
+ * </ul>
+ *
+ * <p>设计意图：命名空间层级在 URL 中传输时需要特殊处理，本类使用 {@code %1F}（转义后的单元分隔符） 作为层级分隔符，避免与路径分隔符冲突。所有方法为静态方法，工具类不可实例化。
+ *
+ * <p>上下游关系：被 {@link RESTSessionCatalog}、{@link ResourcePaths}、{@link RESTClient} 等广泛使用。
+ */
 public class RESTUtil {
   private static final char NAMESPACE_SEPARATOR = '\u001f';
   public static final Joiner NAMESPACE_JOINER = Joiner.on(NAMESPACE_SEPARATOR);
@@ -41,8 +58,15 @@ public class RESTUtil {
   private static final Splitter NAMESPACE_ESCAPED_SPLITTER =
       Splitter.on(NAMESPACE_ESCAPED_SEPARATOR);
 
+  /** 私有构造函数，禁止实例化工具类。 */
   private RESTUtil() {}
 
+  /**
+   * 去除路径末尾的所有斜杠。输入为 null 时返回 null。
+   *
+   * @param path 待处理的路径
+   * @return 去除尾部斜杠后的路径
+   */
   public static String stripTrailingSlash(String path) {
     if (path == null) {
       return null;
@@ -56,11 +80,11 @@ public class RESTUtil {
   }
 
   /**
-   * Merge updates into a target string map.
+   * 将 updates 合并到 target map 中，updates 中的键覆盖 target 中的同名键。
    *
-   * @param target a map to update
-   * @param updates a map of updates
-   * @return an immutable result map built from target and updates
+   * @param target 基础 map
+   * @param updates 待合并的更新 map
+   * @return 由 target 与 updates 合并而成的不可变 map
    */
   public static Map<String, String> merge(Map<String, String> target, Map<String, String> updates) {
     ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
@@ -78,14 +102,15 @@ public class RESTUtil {
   }
 
   /**
-   * Takes in a map, and returns a copy filtered on the entries with keys beginning with the
-   * designated prefix. The keys are returned with the prefix removed.
+   * 从 map 中提取键以指定前缀开头的条目，并在结果中去掉前缀。
    *
-   * <p>Any entries whose keys don't begin with the prefix are not returned.
+   * <p>键不以该前缀开头的条目不会返回。
    *
-   * <p>This can be used to get a subset of the configuration related to the REST catalog, such as
-   * all properties from a prefix of `spark.sql.catalog.my_catalog.rest.` to get REST catalog
-   * specific properties from the spark configuration.
+   * <p>典型用途：从 Spark 配置中提取以 {@code spark.sql.catalog.my_catalog.rest.} 为前缀的 REST Catalog 专属属性。
+   *
+   * @param properties 原始配置 map
+   * @param prefix 键前缀
+   * @return 去除前缀后的子 map
    */
   public static Map<String, String> extractPrefixMap(
       Map<String, String> properties, String prefix) {
@@ -106,12 +131,12 @@ public class RESTUtil {
       Splitter.on("&").withKeyValueSeparator("=");
 
   /**
-   * Encodes a map of form data as application/x-www-form-urlencoded.
+   * 将 form 数据 map 编码为 application/x-www-form-urlencoded 格式字符串。
    *
-   * <p>This encodes the form with pairs separated by &amp; and keys separated from values by =.
+   * <p>键值对以 &amp; 分隔，键与值以 = 分隔，并对键值进行 URL 编码。
    *
-   * @param formData a map of form data
-   * @return a String of encoded form data
+   * @param formData form 数据 map
+   * @return 编码后的 form 字符串
    */
   public static String encodeFormData(Map<?, ?> formData) {
     ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
@@ -122,12 +147,12 @@ public class RESTUtil {
   }
 
   /**
-   * Decodes a map of form data from application/x-www-form-urlencoded.
+   * 将 application/x-www-form-urlencoded 格式字符串解码为 form 数据 map。
    *
-   * <p>This decodes the form with pairs separated by &amp; and keys separated from values by =.
+   * <p>键值对以 &amp; 分隔，键与值以 = 分隔，并对键值进行 URL 解码。
    *
-   * @param formString a map of form data
-   * @return a map of key/value form data
+   * @param formString form 编码字符串
+   * @return 解码后的键值对 map
    */
   public static Map<String, String> decodeFormData(String formString) {
     return FORM_SPLITTER.split(formString).entrySet().stream()
@@ -137,12 +162,12 @@ public class RESTUtil {
   }
 
   /**
-   * Encodes a string using URL encoding
+   * 使用 URL 编码对字符串进行编码（UTF-8）。
    *
-   * <p>{@link #decodeString(String)} should be used to decode.
+   * <p>解码请使用 {@link #decodeString(String)}。
    *
-   * @param toEncode string to encode
-   * @return UTF-8 encoded string, suitable for use as a URL parameter
+   * @param toEncode 待编码字符串
+   * @return UTF-8 编码后的字符串，可用作 URL 参数
    */
   public static String encodeString(String toEncode) {
     Preconditions.checkArgument(toEncode != null, "Invalid string to encode: null");
@@ -155,12 +180,12 @@ public class RESTUtil {
   }
 
   /**
-   * Decodes a URL-encoded string.
+   * 对 URL 编码的字符串进行解码（UTF-8）。
    *
-   * <p>See also {@link #encodeString(String)} for URL encoding.
+   * <p>编码请使用 {@link #encodeString(String)}。
    *
-   * @param encoded a string to decode
-   * @return a decoded string
+   * @param encoded 待解码字符串
+   * @return 解码后的字符串
    */
   public static String decodeString(String encoded) {
     Preconditions.checkArgument(encoded != null, "Invalid string to decode: null");
@@ -173,15 +198,14 @@ public class RESTUtil {
   }
 
   /**
-   * Returns a String representation of a namespace that is suitable for use in a URL / URI.
+   * 将命名空间编码为可用于 URL 路径/查询参数的字符串表示。
    *
-   * <p>This function needs to be called when a namespace is used as a path variable (or query
-   * parameter etc.), to format the namespace per the spec.
+   * <p>当命名空间作为路径变量或查询参数时必须调用此方法，按规范对层级进行 URL 编码， 并以 {@code %1F} 作为层级分隔符连接。
    *
-   * <p>{@link #decodeNamespace} should be used to parse the namespace from a URL parameter.
+   * <p>解析请使用 {@link #decodeNamespace}。
    *
-   * @param ns namespace to encode
-   * @return UTF-8 encoded string representing the namespace, suitable for use as a URL parameter
+   * @param ns 待编码的命名空间
+   * @return UTF-8 编码后的命名空间字符串，可用作 URL 参数
    */
   public static String encodeNamespace(Namespace ns) {
     Preconditions.checkArgument(ns != null, "Invalid namespace: null");
@@ -196,13 +220,12 @@ public class RESTUtil {
   }
 
   /**
-   * Takes in a string representation of a namespace as used for a URL parameter and returns the
-   * corresponding namespace.
+   * 将 URL 参数中的命名空间字符串表示解码为 {@link Namespace} 对象。
    *
-   * <p>See also {@link #encodeNamespace} for generating correctly formatted URLs.
+   * <p>编码请使用 {@link #encodeNamespace}。
    *
-   * @param encodedNs a namespace to decode
-   * @return a namespace
+   * @param encodedNs 待解码的命名空间字符串
+   * @return 解码后的命名空间
    */
   public static Namespace decodeNamespace(String encodedNs) {
     Preconditions.checkArgument(encodedNs != null, "Invalid namespace: null");

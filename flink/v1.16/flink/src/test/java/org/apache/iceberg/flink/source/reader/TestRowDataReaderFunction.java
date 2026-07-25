@@ -37,16 +37,25 @@ import org.apache.iceberg.flink.TestFixtures;
 import org.apache.iceberg.flink.TestHelpers;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 
+/**
+ * 文件级说明：测试 TestRowDataReaderFunction 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestRowDataReaderFunction 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestRowDataReaderFunction extends ReaderFunctionTestBase<RowData> {
 
   protected static final RowType rowType = FlinkSchemaUtil.convert(TestFixtures.SCHEMA);
   private static final DataStructureConverter<Object, Object> rowDataConverter =
       DataStructureConverters.getConverter(TypeConversions.fromLogicalToDataType(rowType));
 
+  /** 辅助方法：TestRowDataReaderFunction，Row Data Reader Function。 */
   public TestRowDataReaderFunction(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：readerFunction，reader Function。 */
   @Override
   protected ReaderFunction<RowData> readerFunction() {
     return new RowDataReaderFunction(
@@ -60,12 +69,14 @@ public class TestRowDataReaderFunction extends ReaderFunctionTestBase<RowData> {
         Collections.emptyList());
   }
 
+  /** 辅助方法：assertRecords，assert Records。 */
   @Override
   protected void assertRecords(List<Record> expected, List<RowData> actual, Schema schema) {
     List<Row> rows = toRows(actual);
     TestHelpers.assertRecords(rows, expected, TestFixtures.SCHEMA);
   }
 
+  /** 辅助方法：toRows，to Rows。 */
   private List<Row> toRows(List<RowData> actual) {
     return actual.stream()
         .map(rowData -> (Row) rowDataConverter.toExternal(rowData))

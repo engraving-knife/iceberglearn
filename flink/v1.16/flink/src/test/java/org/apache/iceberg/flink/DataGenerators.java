@@ -55,8 +55,11 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.Days;
 
 /**
- * Util class to generate test data with extensive coverage different field types: from primitives
- * to complex nested types.
+ * 文件级说明：测试 DataGenerators 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 DataGenerators 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
  */
 public class DataGenerators {
 
@@ -141,21 +144,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         fixupAvroSchemaConvertedFromIcebergSchema(AvroSchemaUtil.convert(icebergSchema, "table"));
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -191,6 +198,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       byte[] uuidBytes = new byte[16];
@@ -223,6 +231,7 @@ public class DataGenerators {
           FIXED_BYTES);
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -280,21 +289,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       Schema structSchema =
@@ -308,6 +321,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -315,6 +329,7 @@ public class DataGenerators {
           GenericRowData.of(1, StringData.fromString("Jane")));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.Schema structSchema = avroSchema.getField("struct_of_primitive").schema();
@@ -345,21 +360,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       Schema structSchema =
@@ -373,6 +392,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       StringData[] names = {StringData.fromString("Jane"), StringData.fromString("Joe")};
@@ -380,6 +400,7 @@ public class DataGenerators {
           StringData.fromString("row_id_value"), GenericRowData.of(1, new GenericArrayData(names)));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.Schema structSchema = avroSchema.getField("struct_of_array").schema();
@@ -413,21 +434,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       Schema structSchema =
@@ -441,6 +466,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -455,6 +481,7 @@ public class DataGenerators {
                       StringData.fromString("male")))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.Schema structSchema = avroSchema.getField("struct_of_map").schema();
@@ -489,21 +516,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       Schema structSchema =
@@ -522,6 +553,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -532,6 +564,7 @@ public class DataGenerators {
                   StringData.fromString("Jane"), StringData.fromString("Apple Park"))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.Schema structSchema = avroSchema.getField("struct_of_struct").schema();
@@ -561,21 +594,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -584,12 +621,14 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       Integer[] arr = {1, 2, 3};
       return GenericRowData.of(StringData.fromString("row_id_value"), new GenericArrayData(arr));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -614,21 +653,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -638,6 +681,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       // non-primitive
@@ -650,6 +694,7 @@ public class DataGenerators {
           StringData.fromString("row_id_value"), new GenericArrayData(arrayOfArrays));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -677,21 +722,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -703,6 +752,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       GenericMapData[] array = {
@@ -714,6 +764,7 @@ public class DataGenerators {
       return GenericRowData.of(StringData.fromString("row_id_value"), new GenericArrayData(array));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -746,21 +797,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord struct1 = GenericRecord.create(structIcebergSchema);
@@ -775,6 +830,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       GenericRowData[] structArray = {
@@ -785,6 +841,7 @@ public class DataGenerators {
           StringData.fromString("row_id_value"), new GenericArrayData(structArray));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord struct1 = new GenericData.Record(structAvroSchema);
@@ -815,21 +872,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -838,6 +899,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -846,6 +908,7 @@ public class DataGenerators {
               ImmutableMap.of(StringData.fromString("Jane"), 1, StringData.fromString("Joe"), 2)));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -873,21 +936,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return rowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -900,6 +967,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       Integer[] janeArray = {1, 2, 3};
@@ -914,6 +982,7 @@ public class DataGenerators {
                   new GenericArrayData(joeArray))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -946,21 +1015,25 @@ public class DataGenerators {
     private final org.apache.avro.Schema avroSchema =
         AvroSchemaUtil.convert(icebergSchema, "table");
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord genericRecord = GenericRecord.create(icebergSchema);
@@ -973,6 +1046,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -989,6 +1063,7 @@ public class DataGenerators {
                           StringData.fromString("Joe"), 3, StringData.fromString("Bob"), 4)))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
@@ -1003,6 +1078,7 @@ public class DataGenerators {
   }
 
   public static class MapOfStruct implements DataGenerator {
+    /** 辅助方法：createAvroSchemaIdField，create Avro Schema Id Field。 */
     private org.apache.avro.Schema createAvroSchemaIdField() {
       org.apache.avro.Schema schema = SchemaBuilder.builder().intType();
       // this is needed to match the converter generated schema props
@@ -1010,6 +1086,7 @@ public class DataGenerators {
       return schema;
     }
 
+    /** 辅助方法：createAvroSchemaNameField，create Avro Schema Name Field。 */
     private org.apache.avro.Schema createAvroSchemaNameField() {
       org.apache.avro.Schema schema = SchemaBuilder.builder().stringType();
       // this is needed to match the converter generated schema props
@@ -1057,21 +1134,25 @@ public class DataGenerators {
             .noDefault()
             .endRecord();
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       return avroSchema;
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       GenericRecord struct1 = GenericRecord.create(structIcebergSchema);
@@ -1087,6 +1168,7 @@ public class DataGenerators {
       return genericRecord;
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -1099,6 +1181,7 @@ public class DataGenerators {
                   GenericRowData.of(2, StringData.fromString("Joe")))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       org.apache.avro.generic.GenericRecord struct1 = new GenericData.Record(structAvroSchema);
@@ -1133,27 +1216,32 @@ public class DataGenerators {
 
     private final RowType flinkRowType = FlinkSchemaUtil.convert(icebergSchema);
 
+    /** 辅助方法：icebergSchema，iceberg Schema。 */
     @Override
     public Schema icebergSchema() {
       return icebergSchema;
     }
 
+    /** 辅助方法：flinkRowType，flink Row Type。 */
     @Override
     public RowType flinkRowType() {
       return flinkRowType;
     }
 
+    /** 辅助方法：avroSchema，avro Schema。 */
     @Override
     public org.apache.avro.Schema avroSchema() {
       throw new UnsupportedOperationException(
           "Not applicable as Avro Map only support string key type");
     }
 
+    /** 辅助方法：generateIcebergGenericRecord，generate Iceberg Generic Record。 */
     @Override
     public GenericRecord generateIcebergGenericRecord() {
       throw new UnsupportedOperationException("Not implemented yet");
     }
 
+    /** 辅助方法：generateFlinkRowData，generate Flink Row Data。 */
     @Override
     public GenericRowData generateFlinkRowData() {
       return GenericRowData.of(
@@ -1164,6 +1252,7 @@ public class DataGenerators {
                   GenericRowData.of(1L, StringData.fromString("value_data")))));
     }
 
+    /** 辅助方法：generateAvroGenericRecord，generate Avro Generic Record。 */
     @Override
     public org.apache.avro.generic.GenericRecord generateAvroGenericRecord() {
       throw new UnsupportedOperationException("Avro Map only support string key type");

@@ -27,6 +27,22 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：数据文件元信息（ContentFile）的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把 {@link ContentFile}（数据文件/删除文件元信息） 在 JSON 与对象之间双向转换，用于 Iceberg 元数据的 JSON
+ * 持久化。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用 Jackson 流式 API（JsonGenerator/JsonNode），避免为每个字段创建 POJO。
+ *   <li>字段名使用 kebab-case（如 file-path、record-count），与 Iceberg JSON 元数据格式一致。
+ *   <li>支持分区值、列统计（column-sizes、value-counts、null-value-counts 等）的序列化。
+ * </ul>
+ *
+ * <p>上下游关系：被 manifest 解析、表元数据解析等调用；输入/输出为 Jackson JSON 节点。
+ */
 class ContentFileParser {
   private static final String SPEC_ID = "spec-id";
   private static final String CONTENT = "content";
@@ -48,15 +64,34 @@ class ContentFileParser {
 
   private ContentFileParser() {}
 
+  /** 判断是否存在分区数据（非 null 且非空）。 */
   private static boolean hasPartitionData(StructLike partitionData) {
     return partitionData != null && partitionData.size() > 0;
   }
 
+  /**
+   * 把 ContentFile 序列化为 JSON 字符串。
+   *
+   * @param contentFile 文件元信息
+   * @param spec 分区规格
+   * @return JSON 字符串
+   */
   static String toJson(ContentFile<?> contentFile, PartitionSpec spec) {
     return JsonUtil.generate(
         generator -> ContentFileParser.toJson(contentFile, spec, generator), false);
   }
 
+  /**
+   * 把 ContentFile 流式写入 JSON 生成器。
+   *
+   * <p>逻辑步骤：校验参数与 specId/分区一致性；依次写出 spec-id/content/file-path/ file-format/partition/file-size 及
+   * metrics、key-metadata、split-offsets、equality-ids、 sort-order-id 等字段。
+   *
+   * @param contentFile 文件元信息
+   * @param spec 分区规格
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败时抛出
+   */
   static void toJson(ContentFile<?> contentFile, PartitionSpec spec, JsonGenerator generator)
       throws IOException {
     Preconditions.checkArgument(contentFile != null, "Invalid content file: null");
@@ -112,6 +147,13 @@ class ContentFileParser {
     generator.writeEndObject();
   }
 
+  /**
+   * 从 JSON 节点反序列化 ContentFile。
+   *
+   * @param node JSON 节点
+   * @param spec 分区规格（用于解析分区值）
+   * @return ContentFile 实例
+   */
   static ContentFile<?> fromJson(JsonNode jsonNode, PartitionSpec spec) {
     Preconditions.checkArgument(jsonNode != null, "Invalid JSON node for content file: null");
     Preconditions.checkArgument(
@@ -174,6 +216,13 @@ class ContentFileParser {
     }
   }
 
+  /**
+   * 把文件的列统计（record-count/column-sizes/value-counts 等）写入 JSON 生成器。
+   *
+   * @param contentFile 文件元信息
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败时抛出
+   */
   private static void metricsToJson(ContentFile<?> contentFile, JsonGenerator generator)
       throws IOException {
     generator.writeNumberField(RECORD_COUNT, contentFile.recordCount());
@@ -211,6 +260,12 @@ class ContentFileParser {
     }
   }
 
+  /**
+   * 从 JSON 节点解析列统计（record-count/column-sizes/value-counts/lower-bounds 等）。
+   *
+   * @param jsonNode JSON 节点
+   * @return Metrics 对象
+   */
   private static Metrics metricsFromJson(JsonNode jsonNode) {
     long recordCount = JsonUtil.getLong(RECORD_COUNT, jsonNode);
 

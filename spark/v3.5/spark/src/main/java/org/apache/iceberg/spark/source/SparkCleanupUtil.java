@@ -32,7 +32,16 @@ import org.apache.spark.TaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A utility for cleaning up written but not committed files. */
+/**
+ * 清理已写入但未提交文件的工具类。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。在写任务失败或事务回滚后，删除残留的数据/删除文件， 避免存储泄漏。优先使用批量删除，否则在工作线程池中带重试地逐个删除。
+ *
+ * <p>设计意图：区分 driver 与 executor 调用场景（executor 版本附带 Spark 任务信息日志），
+ * 统一封装删除重试与异常抑制逻辑，失败仅告警不抛出，保证清理不影响主流程。
+ *
+ * <p>上下游关系：由 {@link SparkWrite} 等在任务失败或中止时调用，依赖 {@link FileIO} 删除文件。
+ */
 class SparkCleanupUtil {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkCleanupUtil.class);
@@ -45,18 +54,19 @@ class SparkCleanupUtil {
   private SparkCleanupUtil() {}
 
   /**
-   * Attempts to delete as many files produced by a task as possible.
+   * 尽可能删除某任务产出的文件。
    *
-   * <p>Note this method will log Spark task info and is supposed to be called only on executors.
-   * Use {@link #deleteFiles(String, FileIO, List)} to delete files on the driver.
+   * <p>注意：本方法会记录 Spark 任务信息，仅应在 executor 上调用；driver 上请使用 {@link #deleteFiles(String, FileIO,
+   * List)}。
    *
-   * @param io a {@link FileIO} instance used for deleting files
-   * @param files a list of files to delete
+   * @param io 用于删除文件的 {@link FileIO}
+   * @param files 待删除文件列表
    */
   public static void deleteTaskFiles(FileIO io, List<? extends ContentFile<?>> files) {
     deleteFiles(taskInfo(), io, files);
   }
 
+  /** 返回当前任务的描述信息（格式对齐 Spark 内部日志），无 TaskContext 时返回 unknown task。 */
   // the format matches what Spark uses for internal logging
   private static String taskInfo() {
     TaskContext taskContext = TaskContext.get();
@@ -74,17 +84,18 @@ class SparkCleanupUtil {
   }
 
   /**
-   * Attempts to delete as many given files as possible.
+   * 尽可能删除给定文件。
    *
-   * @param context a helpful description of the operation invoking this method
-   * @param io a {@link FileIO} instance used for deleting files
-   * @param files a list of files to delete
+   * @param context 调用方描述，用于日志
+   * @param io 用于删除文件的 {@link FileIO}
+   * @param files 待删除文件列表
    */
   public static void deleteFiles(String context, FileIO io, List<? extends ContentFile<?>> files) {
     List<String> paths = Lists.transform(files, file -> file.path().toString());
     deletePaths(context, io, paths);
   }
 
+  /** 按路径删除：支持批量则批量删除，否则逐个删除。 */
   private static void deletePaths(String context, FileIO io, List<String> paths) {
     if (io instanceof SupportsBulkOperations) {
       SupportsBulkOperations bulkIO = (SupportsBulkOperations) io;
@@ -94,6 +105,7 @@ class SparkCleanupUtil {
     }
   }
 
+  /** 批量删除文件，部分失败时告警已删除数量。 */
   private static void bulkDelete(String context, SupportsBulkOperations io, List<String> paths) {
     try {
       io.deleteFiles(paths);
@@ -109,6 +121,7 @@ class SparkCleanupUtil {
     }
   }
 
+  /** 在工作线程池中带指数退避重试逐个删除文件，NotFound 时停止重试，失败仅告警。 */
   private static void delete(String context, FileIO io, List<String> paths) {
     AtomicInteger deletedFilesCount = new AtomicInteger(0);
 

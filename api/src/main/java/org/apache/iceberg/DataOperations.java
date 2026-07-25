@@ -19,40 +19,31 @@
 package org.apache.iceberg;
 
 /**
- * Data operations that produce snapshots.
+ * 文件级说明：产生快照的数据操作类型常量集合。
  *
- * <p>A snapshot can return the operation that created the snapshot to help other components ignore
- * snapshots that are not needed for some tasks. For example, snapshot expiration does not need to
- * clean up deleted files for appends, which have no deleted files.
+ * <p>所属模块：iceberg-api（核心接口层）。
+ *
+ * <p>职责：定义快照所记录的数据操作类型字符串常量（append/replace/overwrite/delete）， 供 {@link Snapshot#operation()}
+ * 返回，便于其他组件按操作类型过滤不需要处理的快照。
+ *
+ * <p>设计意图：以字符串常量而非枚举形式定义，便于在序列化元数据中持久化与跨版本兼容。 例如快照过期任务对 append 操作无需清理已删除文件（append
+ * 不含删除文件），可据此跳过相关逻辑。
+ *
+ * <p>上下游关系：由 {@link AppendFiles}、{@link RewriteFiles}、{@link OverwriteFiles}、 {@link
+ * ReplacePartitions}、{@link DeleteFiles} 等更新 API 在提交时设置；被快照过期、 增量扫描等组件消费。
  */
 public class DataOperations {
   private DataOperations() {}
 
-  /**
-   * New data is appended to the table and no data is removed or deleted.
-   *
-   * <p>This operation is implemented by {@link AppendFiles}.
-   */
+  /** 追加操作：向表追加新数据，不删除任何数据。由 {@link AppendFiles} 实现。 */
   public static final String APPEND = "append";
 
-  /**
-   * Files are removed and replaced, without changing the data in the table.
-   *
-   * <p>This operation is implemented by {@link RewriteFiles}.
-   */
+  /** 替换操作：移除并替换文件，但不改变表中的数据内容。由 {@link RewriteFiles} 实现。 */
   public static final String REPLACE = "replace";
 
-  /**
-   * New data is added to overwrite existing data.
-   *
-   * <p>This operation is implemented by {@link OverwriteFiles} and {@link ReplacePartitions}.
-   */
+  /** 覆写操作：新增数据并覆写已有数据。由 {@link OverwriteFiles} 和 {@link ReplacePartitions} 实现。 */
   public static final String OVERWRITE = "overwrite";
 
-  /**
-   * Data is deleted from the table and no data is added.
-   *
-   * <p>This operation is implemented by {@link DeleteFiles}.
-   */
+  /** 删除操作：从表中删除数据，不新增任何数据。由 {@link DeleteFiles} 实现。 */
   public static final String DELETE = "delete";
 }

@@ -52,8 +52,16 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestGenericData 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestGenericData 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGenericData extends DataTest {
 
+  /** 辅助方法：writeAndValidate。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     List<Record> expected = RandomGenericData.generate(schema, 100, 0L);
@@ -61,6 +69,11 @@ public class TestGenericData extends DataTest {
     writeAndValidateRecords(schema, expected);
   }
 
+  /**
+   * 测试场景：write And Validate Repeating Records。
+   *
+   * <p>验证该方法在 write And Validate Repeating Records 条件下的行为是否符合预期。
+   */
   @Test
   public void writeAndValidateRepeatingRecords() throws IOException {
     Schema structSchema =
@@ -73,6 +86,11 @@ public class TestGenericData extends DataTest {
     writeAndValidateRecords(structSchema, expectedRepeating);
   }
 
+  /**
+   * 测试场景：write And Validate Timestamps。
+   *
+   * <p>验证该方法在 write And Validate Timestamps 条件下的行为是否符合预期。
+   */
   @Test
   public void writeAndValidateTimestamps() throws IOException {
     TimeZone currentTz = TimeZone.getDefault();
@@ -144,6 +162,11 @@ public class TestGenericData extends DataTest {
     }
   }
 
+  /**
+   * 测试场景：write And Validate External Data。
+   *
+   * <p>验证该方法在 write And Validate External Data 条件下的行为是否符合预期。
+   */
   @Test
   public void writeAndValidateExternalData() throws IOException {
     File testFile = temp.newFile();
@@ -185,6 +208,7 @@ public class TestGenericData extends DataTest {
     Assert.assertEquals("123", rows.get(0).getField("d"));
   }
 
+  /** 辅助方法：writeAndValidateRecords。 */
   private void writeAndValidateRecords(Schema schema, List<Record> expected) throws IOException {
     File testFile = temp.newFile();
     Assert.assertTrue("Delete should succeed", testFile.delete());

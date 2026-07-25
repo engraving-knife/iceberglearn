@@ -28,12 +28,24 @@ import org.apache.iceberg.types.Types.StructType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestAggregateBinding 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestAggregateBinding 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestAggregateBinding {
   private static final List<UnboundAggregate<Integer>> list =
       ImmutableList.of(Expressions.count("x"), Expressions.max("x"), Expressions.min("x"));
   private static final StructType struct =
       StructType.of(Types.NestedField.required(10, "x", Types.IntegerType.get()));
 
+  /**
+   * 测试场景：Aggregate Binding。
+   *
+   * <p>验证该方法在 Aggregate Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testAggregateBinding() {
     for (UnboundAggregate<Integer> unbound : list) {
@@ -46,6 +58,11 @@ public class TestAggregateBinding {
     }
   }
 
+  /**
+   * 测试场景：Count Star Binding。
+   *
+   * <p>验证该方法在 Count Star Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testCountStarBinding() {
     UnboundAggregate<?> unbound = Expressions.countStar();
@@ -57,6 +74,11 @@ public class TestAggregateBinding {
         .isEqualTo(Expression.Operation.COUNT_STAR);
   }
 
+  /**
+   * 测试场景：Bound Aggregate Fails。
+   *
+   * <p>验证该方法在 Bound Aggregate Fails 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundAggregateFails() {
     Expression unbound = Expressions.count("x");
@@ -65,6 +87,11 @@ public class TestAggregateBinding {
         .hasMessageContaining("Found already bound aggregate");
   }
 
+  /**
+   * 测试场景：Case Insensitive Reference。
+   *
+   * <p>验证该方法在 Case Insensitive Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveReference() {
     Expression expr = Expressions.max("X");
@@ -76,6 +103,11 @@ public class TestAggregateBinding {
         .isEqualTo(Expression.Operation.MAX);
   }
 
+  /**
+   * 测试场景：Case Sensitive Reference。
+   *
+   * <p>验证该方法在 Case Sensitive Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveReference() {
     Expression expr = Expressions.max("X");
@@ -84,6 +116,11 @@ public class TestAggregateBinding {
         .hasMessageContaining("Cannot find field 'X' in struct");
   }
 
+  /**
+   * 测试场景：Missing Field。
+   *
+   * <p>验证该方法在 Missing Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingField() {
     UnboundAggregate<?> unbound = Expressions.count("missing");
@@ -92,6 +129,7 @@ public class TestAggregateBinding {
         .hasMessageContaining("Cannot find field 'missing' in struct:");
   }
 
+  /** 辅助方法：assertAndUnwrapAggregate。 */
   private static <T, C> BoundAggregate<T, C> assertAndUnwrapAggregate(Expression expr) {
     Assertions.assertThat(expr).isInstanceOf(BoundAggregate.class);
     return (BoundAggregate<T, C>) expr;

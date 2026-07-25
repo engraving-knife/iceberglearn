@@ -35,11 +35,42 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：NameMapping 工具类，从 Iceberg Schema 生成 {@link MappedFields} 映射。
+ *
+ * <p>所属模块：iceberg-core（mapping 子包）。职责：遍历 Iceberg Schema 的每个字段， 提取字段名→字段 ID 的对应关系，组装成 {@link
+ * MappedFields} 对象；同时支持 按更新后的 Schema 重建映射。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用 visitor 模式递归遍历 StructType/ListType/MapType，收集字段名和 ID。
+ *   <li>{@link #create(org.apache.iceberg.Schema)} 从 Schema 生成完整映射。
+ *   <li>{@link #update(org.apache.iceberg.Schema, MappedFields)} 在 Schema 演化后更新映射， 保留已有映射并补充新增字段。
+ *   <li>处理字段重命名：通过原名和新名的双向索引保持映射连续性。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ProjectionDatumReader}、{@link AvroSchemaUtil} 等调用， 在读取无 ID 文件时自动生成 NameMapping。
+ */
 public class MappingUtil {
   private static final Joiner DOT = Joiner.on('.');
 
   private MappingUtil() {}
 
+  /**
+   * 从 Iceberg Schema 生成完整的 NameMapping。
+   *
+   * @param schema Iceberg Schema
+   * @return NameMapping 实例
+   */
+  /**
+   * 从 Iceberg Schema 生成完整的 NameMapping。
+   *
+   * <p>设计要点：遍历 schema 所有字段，提取字段名→字段 ID 映射。
+   *
+   * @param schema Iceberg Schema
+   * @return NameMapping 实例
+   */
   /**
    * Create a name-based mapping for a schema.
    *
@@ -52,6 +83,22 @@ public class MappingUtil {
     return new NameMapping(TypeUtil.visit(schema, CreateMapping.INSTANCE));
   }
 
+  /**
+   * 在 Schema 演化后更新已有的 NameMapping。
+   *
+   * @param schema 更新后的 Iceberg Schema
+   * @param mapping 已有的 NameMapping
+   * @return 更新后的 NameMapping
+   */
+  /**
+   * 在 Schema 演化后更新已有的 NameMapping。
+   *
+   * <p>设计要点：保留已有映射，为新增字段分配新 ID；处理字段重命名。
+   *
+   * @param schema 更新后的 Iceberg Schema
+   * @param mapping 已有的 NameMapping
+   * @return 更新后的 NameMapping
+   */
   /**
    * Update a name-based mapping using changes to a schema.
    *

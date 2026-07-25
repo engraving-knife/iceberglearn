@@ -37,9 +37,17 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 ReaderFunctionTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 ReaderFunctionTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class ReaderFunctionTestBase<T> {
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "fileFormat={0}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -51,18 +59,22 @@ public abstract class ReaderFunctionTestBase<T> {
 
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
+  /** 辅助方法：readerFunction，reader Function。 */
   protected abstract ReaderFunction<T> readerFunction();
 
+  /** 辅助方法：assertRecords，assert Records。 */
   protected abstract void assertRecords(List<Record> expected, List<T> actual, Schema schema);
 
   private final FileFormat fileFormat;
   private final GenericAppenderFactory appenderFactory;
 
+  /** 辅助方法：ReaderFunctionTestBase，Reader Function Test Base。 */
   public ReaderFunctionTestBase(FileFormat fileFormat) {
     this.fileFormat = fileFormat;
     this.appenderFactory = new GenericAppenderFactory(TestFixtures.SCHEMA);
   }
 
+  /** 辅助方法：assertRecordsAndPosition，assert Records And Position。 */
   private void assertRecordsAndPosition(
       List<Record> expectedRecords,
       int expectedFileOffset,
@@ -85,6 +97,11 @@ public abstract class ReaderFunctionTestBase<T> {
     assertRecords(expectedRecords, actualRecords, TestFixtures.SCHEMA);
   }
 
+  /**
+   * 测试场景：No Checkpointed Position。
+   *
+   * <p>验证该方法在 No Checkpointed Position 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoCheckpointedPosition() throws IOException {
     List<List<Record>> recordBatchList =
@@ -109,6 +126,11 @@ public abstract class ReaderFunctionTestBase<T> {
     batch2.recycle();
   }
 
+  /**
+   * 测试场景：Checkpointed Position Before First File。
+   *
+   * <p>验证该方法在 Checkpointed Position Before First File 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPositionBeforeFirstFile() throws IOException {
     List<List<Record>> recordBatchList =
@@ -133,6 +155,11 @@ public abstract class ReaderFunctionTestBase<T> {
     batch2.recycle();
   }
 
+  /**
+   * 测试场景：Checkpointed Position Middle First File。
+   *
+   * <p>验证该方法在 Checkpointed Position Middle First File 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPositionMiddleFirstFile() throws IOException {
     List<List<Record>> recordBatchList =
@@ -157,6 +184,11 @@ public abstract class ReaderFunctionTestBase<T> {
     batch2.recycle();
   }
 
+  /**
+   * 测试场景：Checkpointed Position After First File。
+   *
+   * <p>验证该方法在 Checkpointed Position After First File 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPositionAfterFirstFile() throws IOException {
     List<List<Record>> recordBatchList =
@@ -177,6 +209,11 @@ public abstract class ReaderFunctionTestBase<T> {
     batch2.recycle();
   }
 
+  /**
+   * 测试场景：Checkpointed Position Before Second File。
+   *
+   * <p>验证该方法在 Checkpointed Position Before Second File 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPositionBeforeSecondFile() throws IOException {
     List<List<Record>> recordBatchList =
@@ -197,6 +234,11 @@ public abstract class ReaderFunctionTestBase<T> {
     batch2.recycle();
   }
 
+  /**
+   * 测试场景：Checkpointed Position Mid Second File。
+   *
+   * <p>验证该方法在 Checkpointed Position Mid Second File 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPositionMidSecondFile() throws IOException {
     List<List<Record>> recordBatchList =

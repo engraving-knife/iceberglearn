@@ -43,6 +43,13 @@ import software.amazon.awssdk.services.iam.model.DeleteRolePolicyRequest;
 import software.amazon.awssdk.services.iam.model.DeleteRoleRequest;
 import software.amazon.awssdk.services.iam.model.PutRolePolicyRequest;
 
+/**
+ * 文件级说明：TestLakeFormationAwsClientFactory 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 lakeformationaws客户端工厂 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestLakeFormationAwsClientFactory {
 
   private static final Logger LOG =
@@ -55,6 +62,7 @@ public class TestLakeFormationAwsClientFactory {
   private Map<String, String> assumeRoleProperties;
   private String policyName;
 
+  /** 初始化：before，在每个测试方法执行前准备测试环境与数据。 */
   @Before
   public void before() {
     roleName = UUID.randomUUID().toString();
@@ -93,6 +101,7 @@ public class TestLakeFormationAwsClientFactory {
     policyName = UUID.randomUUID().toString();
   }
 
+  /** 清理：after，在每个测试方法执行后释放资源。 */
   @After
   public void after() {
     iam.deleteRolePolicy(
@@ -100,6 +109,11 @@ public class TestLakeFormationAwsClientFactory {
     iam.deleteRole(DeleteRoleRequest.builder().roleName(roleName).build());
   }
 
+  /**
+   * 测试场景：lakeformation启用Glue目录。
+   *
+   * <p>验证该方法在 lakeformation启用Glue目录 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testLakeFormationEnabledGlueCatalog() throws Exception {
     String glueArnPrefix = "arn:aws:glue:*:" + AwsIntegTestUtil.testAccountId();
@@ -163,6 +177,7 @@ public class TestLakeFormationAwsClientFactory {
     }
   }
 
+  /** 辅助方法：waitForIamConsistency。 */
   private void waitForIamConsistency() throws Exception {
     Thread.sleep(IAM_PROPAGATION_DELAY); // sleep to make sure IAM up to date
   }

@@ -26,12 +26,20 @@ import org.apache.spark.sql.internal.SQLConf;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
+/**
+ * 文件级说明：SparkDeltaLakeSnapshotTestBase 集成测试。
+ *
+ * <p>所属模块：iceberg-delta-lake。职责：验证 SparkDeltalake快照 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 @SuppressWarnings("VisibilityModifier")
 public abstract class SparkDeltaLakeSnapshotTestBase {
   protected static TestHiveMetastore metastore = null;
   protected static HiveConf hiveConf = null;
   protected static SparkSession spark = null;
 
+  /** 初始化：startMetastoreAndSpark，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeAll
   public static void startMetastoreAndSpark() {
     SparkDeltaLakeSnapshotTestBase.metastore = new TestHiveMetastore();
@@ -52,6 +60,7 @@ public abstract class SparkDeltaLakeSnapshotTestBase {
             .getOrCreate();
   }
 
+  /** 清理：stopMetastoreAndSpark，在所有测试方法执行完毕后释放共享资源。 */
   @AfterAll
   public static void stopMetastoreAndSpark() throws Exception {
     if (metastore != null) {
@@ -64,6 +73,7 @@ public abstract class SparkDeltaLakeSnapshotTestBase {
     }
   }
 
+  /** 构造方法：SparkDeltaLakeSnapshotTestBase。 */
   public SparkDeltaLakeSnapshotTestBase(
       String catalogName, String implementation, Map<String, String> config) {
 

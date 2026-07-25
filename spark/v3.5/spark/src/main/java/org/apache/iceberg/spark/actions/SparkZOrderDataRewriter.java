@@ -43,6 +43,25 @@ import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 基于 Spark 的 Z-Order 数据重写器，通过 Z-Order 排序优化数据文件的聚簇布局。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层）。
+ *
+ * <p>职责：对表数据按多个列的 Z-Order 值排序后重写，使多维度范围查询能更高效地 跳过不相关的数据文件，减少扫描数据量。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link SparkShufflingDataRewriter} 复用 Spark shuffle 排序重写框架。
+ *   <li>将多列值通过 {@link SparkZOrderUDF} 编码为单个二进制 Z 值（字节交错）， 以该值排序即可实现多维数据的空间聚簇。
+ *   <li>支持配置 max-output-size（Z 值输出字节数）和 var-length-contribution （变长类型参与 Z-Order 的字节数），在精度与排序开销间权衡。
+ *   <li>自动排除分区列（分区内值恒定，参与 Z-Order 无意义）。
+ * </ul>
+ *
+ * <p>上下游关系：被 RewriteDataFilesSparkAction 在 sort-order 为 zorder 时调用； 依赖 Spark 的 shuffle 排序能力与
+ * SparkZOrderUDF。
+ */
 class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkZOrderDataRewriter.class);
@@ -55,19 +74,15 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
           .sortBy(Z_COLUMN, SortDirection.ASC, NullOrder.NULLS_LAST)
           .build();
 
-  /**
-   * Controls the amount of bytes interleaved in the ZOrder algorithm. Default is all bytes being
-   * interleaved.
-   */
+  /** 控制 Z-Order 算法中交错的字节数。默认值为 {@link #MAX_OUTPUT_SIZE_DEFAULT}， 即所有字节都参与交错。值越小，Z 值越短、排序越快但精度越低。 */
   public static final String MAX_OUTPUT_SIZE = "max-output-size";
 
   public static final int MAX_OUTPUT_SIZE_DEFAULT = Integer.MAX_VALUE;
 
   /**
-   * Controls the number of bytes considered from an input column of a type with variable length
-   * (String, Binary).
+   * 控制变长类型（String、Binary）列参与 Z-Order 时考虑的字节数。
    *
-   * <p>Default is to use the same size as primitives {@link ZOrderByteUtils#PRIMITIVE_BUFFER_SIZE}.
+   * <p>默认使用与定长类型相同的字节数 {@link ZOrderByteUtils#PRIMITIVE_BUFFER_SIZE}。
    */
   public static final String VAR_LENGTH_CONTRIBUTION = "var-length-contribution";
 
@@ -81,12 +96,12 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     super(spark, table);
     this.zOrderColNames = validZOrderColNames(spark, table, zOrderColNames);
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "Z-ORDER";
   }
-
+  /** 执行 validOptions 相关操作。 */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -95,19 +110,29 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         .add(VAR_LENGTH_CONTRIBUTION)
         .build();
   }
-
+  /** 初始化。 */
   @Override
   public void init(Map<String, String> options) {
     super.init(options);
     this.maxOutputSize = maxOutputSize(options);
     this.varLengthContribution = varLengthContribution(options);
   }
-
+  /** 执行 sortOrder 相关操作。 */
   @Override
   protected SortOrder sortOrder() {
     return Z_SORT_ORDER;
   }
 
+  /**
+   * 在数据集中添加 Z 值列，应用排序函数后移除该列。
+   *
+   * <p>逻辑：通过 withColumn 添加 ICEZVALUE 列（由 zValue 计算得出）， 应用父类的排序函数对该列排序，最后 drop 掉 Z 值列使输出 schema
+   * 不含临时列。
+   *
+   * @param df 输入数据集
+   * @param sortFunc 排序函数
+   * @return 排序后的数据集（不含 Z 值列）
+   */
   @Override
   protected Dataset<Row> sortedDF(Dataset<Row> df, Function<Dataset<Row>, Dataset<Row>> sortFunc) {
     Dataset<Row> zValueDF = df.withColumn(Z_COLUMN, zValue(df));
@@ -115,6 +140,15 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return sortedDF.drop(Z_COLUMN);
   }
 
+  /**
+   * 计算 Z-Order 值列表达式：对每个 Z-Order 列做字典序编码后交错字节。
+   *
+   * <p>逻辑：创建 SparkZOrderUDF，对每列调用 sortedLexicographically 转为定长字节表示， 然后通过 interleaveBytes
+   * 将各列字节交错拼接为最终的二进制 Z 值。
+   *
+   * @param df 输入数据集
+   * @return Z 值列表达式
+   */
   private Column zValue(Dataset<Row> df) {
     SparkZOrderUDF zOrderUDF =
         new SparkZOrderUDF(zOrderColNames.size(), varLengthContribution, maxOutputSize);
@@ -127,7 +161,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
 
     return zOrderUDF.interleaveBytes(array(zOrderCols));
   }
-
+  /** 执行 varLengthContribution 相关操作。 */
   private int varLengthContribution(Map<String, String> options) {
     int value =
         PropertyUtil.propertyAsInt(
@@ -139,7 +173,7 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
         value);
     return value;
   }
-
+  /** 执行 maxOutputSize 相关操作。 */
   private int maxOutputSize(Map<String, String> options) {
     int value = PropertyUtil.propertyAsInt(options, MAX_OUTPUT_SIZE, MAX_OUTPUT_SIZE_DEFAULT);
     Preconditions.checkArgument(
@@ -150,6 +184,23 @@ class SparkZOrderDataRewriter extends SparkShufflingDataRewriter {
     return value;
   }
 
+  /**
+   * 校验并过滤出有效的 Z-Order 列名。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>校验输入列名列表非空。
+   *   <li>根据 Spark 的大小写敏感设置在表 schema 中查找每列，不存在则报错。
+   *   <li>排除分区列（恒定值参与 Z-Order 无意义，仅记录警告）。
+   *   <li>校验过滤后至少剩一列可用。
+   * </ol>
+   *
+   * @param spark SparkSession 实例
+   * @param table 目标 Iceberg 表
+   * @param inputZOrderColNames 用户指定的 Z-Order 列名
+   * @return 过滤后的有效列名列表
+   */
   private List<String> validZOrderColNames(
       SparkSession spark, Table table, List<String> inputZOrderColNames) {
 

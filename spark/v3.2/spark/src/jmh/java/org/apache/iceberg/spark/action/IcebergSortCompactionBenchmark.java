@@ -62,6 +62,14 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Timeout;
 
+/**
+ * 文件级说明：IcebergSortCompactionBenchmark 性能基准测试。
+ *
+ * <p>所属模块：iceberg-spark（v3.2）。职责：对 Iceberg排序compaction 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Measurement(iterations = 10)
@@ -79,27 +87,36 @@ public class IcebergSortCompactionBenchmark {
   private final Configuration hadoopConf = initHadoopConf();
   private SparkSession spark;
 
+  /** 初始化：setupBench，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBench() {
     setupSpark();
   }
 
+  /** 清理：teardownBench，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void teardownBench() {
     tearDownSpark();
   }
 
+  /** 初始化：setupIteration，为基准测试准备测试数据与运行环境。 */
   @Setup(Level.Iteration)
   public void setupIteration() {
     initTable();
     appendData();
   }
 
+  /** 清理：cleanUpIteration，回收基准测试占用的临时数据与资源。 */
   @TearDown(Level.Iteration)
   public void cleanUpIteration() throws IOException {
     cleanupFiles();
   }
 
+  /**
+   * 基准测试场景：排序int。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortInt() {
@@ -113,6 +130,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序int2。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortInt2() {
@@ -127,6 +149,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序int3。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortInt3() {
@@ -143,6 +170,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序int4。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortInt4() {
@@ -159,6 +191,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序字符串。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortString() {
@@ -172,6 +209,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序four列。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortFourColumns() {
@@ -188,6 +230,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：排序six列。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void sortSixColumns() {
@@ -206,6 +253,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序int。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortInt() {
@@ -216,6 +268,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序int2。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortInt2() {
@@ -226,6 +283,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序int3。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortInt3() {
@@ -236,6 +298,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序int4。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortInt4() {
@@ -246,6 +313,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序字符串。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortString() {
@@ -256,6 +328,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序four列。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortFourColumns() {
@@ -266,6 +343,11 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /**
+   * 基准测试场景：z排序six列。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void zSortSixColumns() {
@@ -276,10 +358,12 @@ public class IcebergSortCompactionBenchmark {
         .execute();
   }
 
+  /** 辅助方法：initHadoop配置。 */
   protected Configuration initHadoopConf() {
     return new Configuration();
   }
 
+  /** 辅助方法：init表。 */
   protected final void initTable() {
     Schema schema =
         new Schema(
@@ -306,6 +390,7 @@ public class IcebergSortCompactionBenchmark {
     }
   }
 
+  /** 辅助方法：追加数据。 */
   private void appendData() {
     Dataset<Row> df =
         spark()
@@ -354,10 +439,12 @@ public class IcebergSortCompactionBenchmark {
     writeData(df);
   }
 
+  /** 辅助方法：写入数据。 */
   private void writeData(Dataset<Row> df) {
     df.write().format("iceberg").mode(SaveMode.Append).save(NAME);
   }
 
+  /** 辅助方法：表。 */
   protected final Table table() {
     try {
       return Spark3Util.loadIcebergTable(spark(), NAME);
@@ -366,19 +453,23 @@ public class IcebergSortCompactionBenchmark {
     }
   }
 
+  /** 辅助方法：Spark。 */
   protected final SparkSession spark() {
     return spark;
   }
 
+  /** 辅助方法：获取目录warehouse。 */
   protected String getCatalogWarehouse() {
     String location = Files.createTempDir().getAbsolutePath() + "/" + UUID.randomUUID() + "/";
     return location;
   }
 
+  /** 辅助方法：清理文件。 */
   protected void cleanupFiles() throws IOException {
     spark.sql("DROP TABLE IF EXISTS " + NAME);
   }
 
+  /** 辅助方法：初始化Spark。 */
   protected void setupSpark() {
     SparkSession.Builder builder =
         SparkSession.builder()
@@ -392,6 +483,7 @@ public class IcebergSortCompactionBenchmark {
     hadoopConf.forEach(entry -> sparkHadoopConf.set(entry.getKey(), entry.getValue()));
   }
 
+  /** 辅助方法：tear下推Spark。 */
   protected void tearDownSpark() {
     spark.stop();
   }

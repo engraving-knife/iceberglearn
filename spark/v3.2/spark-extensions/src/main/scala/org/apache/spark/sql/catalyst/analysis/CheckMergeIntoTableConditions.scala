@@ -31,13 +31,19 @@ import org.apache.spark.sql.catalyst.plans.logical.UpdateAction
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
- * A rule that checks MERGE operations contain only supported conditions.
+ * Spark Catalyst 分析阶段的规则或检查，实现 MERGE INTO 行级操作。
  *
- * Note that this rule must be run in the resolution batch before Spark executes CheckAnalysis.
- * Otherwise, CheckAnalysis will throw a less descriptive error.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 CheckMergeIntoTableConditions。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object CheckMergeIntoTableConditions extends Rule[LogicalPlan] {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case m: MergeIntoIcebergTable if m.resolved =>
       checkMergeIntoCondition("SEARCH", m.mergeCondition)
@@ -53,6 +59,7 @@ object CheckMergeIntoTableConditions extends Rule[LogicalPlan] {
       m
   }
 
+  /** 校验前置条件或参数。 */
   private def checkMergeIntoCondition(condName: String, cond: Expression): Unit = {
     if (!cond.deterministic) {
       throw new AnalysisException(

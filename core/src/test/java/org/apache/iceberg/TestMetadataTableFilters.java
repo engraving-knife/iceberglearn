@@ -34,6 +34,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestMetadataTableFilters，用于验证 Metadata Table Filters 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metadata Table Filters 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestMetadataTableFilters extends TableTestBase {
 
@@ -46,6 +54,7 @@ public class TestMetadataTableFilters extends TableTestBase {
 
   private final MetadataTableType type;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "table_type = {0}, format = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -66,11 +75,13 @@ public class TestMetadataTableFilters extends TableTestBase {
     };
   }
 
+  /** 辅助方法：metadata table filters。 */
   public TestMetadataTableFilters(MetadataTableType type, int formatVersion) {
     super(formatVersion);
     this.type = type;
   }
 
+  /** 辅助方法：setup table。 */
   @Before
   @Override
   public void setupTable() throws Exception {
@@ -106,6 +117,7 @@ public class TestMetadataTableFilters extends TableTestBase {
     }
   }
 
+  /** 辅助方法：create metadata table。 */
   private Table createMetadataTable() {
     switch (type) {
       case FILES:
@@ -129,6 +141,7 @@ public class TestMetadataTableFilters extends TableTestBase {
     }
   }
 
+  /** 辅助方法：expected scan task count。 */
   private int expectedScanTaskCount(int partitions) {
     switch (type) {
       case FILES:
@@ -156,10 +169,12 @@ public class TestMetadataTableFilters extends TableTestBase {
     }
   }
 
+  /** 辅助方法：is agg file table。 */
   private boolean isAggFileTable(MetadataTableType tableType) {
     return aggFileTables.contains(tableType);
   }
 
+  /** 辅助方法：partition column。 */
   private String partitionColumn(String colName) {
     switch (type) {
       case FILES:
@@ -177,7 +192,7 @@ public class TestMetadataTableFilters extends TableTestBase {
     }
   }
 
-  /** @return a basic expression that always evaluates to true, to test AND logic */
+  /** 辅助方法：dummy expression。 */
   private Expression dummyExpression() {
     switch (type) {
       case FILES:
@@ -195,6 +210,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：no filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoFilter() {
     Table metadataTable = createMetadataTable();
@@ -209,6 +229,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 3);
   }
 
+  /**
+   * 测试场景：and。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAnd() {
     Table metadataTable = createMetadataTable();
@@ -222,6 +247,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 0);
   }
 
+  /**
+   * 测试场景：lt。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLt() {
     Table metadataTable = createMetadataTable();
@@ -234,6 +264,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 1);
   }
 
+  /**
+   * 测试场景：or。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOr() {
     Table metadataTable = createMetadataTable();
@@ -251,6 +286,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 3);
   }
 
+  /**
+   * 测试场景：not。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNot() {
     Table metadataTable = createMetadataTable();
@@ -264,6 +304,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 3);
   }
 
+  /**
+   * 测试场景：in。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIn() {
     Table metadataTable = createMetadataTable();
@@ -278,6 +323,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 3);
   }
 
+  /**
+   * 测试场景：not null。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNotNull() {
     Table metadataTable = createMetadataTable();
@@ -293,6 +343,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateFileScanTasks(tasks, 3);
   }
 
+  /**
+   * 测试场景：plan tasks。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPlanTasks() {
     Table metadataTable = createMetadataTable();
@@ -306,6 +361,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     validateCombinedScanTasks(tasks, 0);
   }
 
+  /**
+   * 测试场景：partition spec evolution removal 1。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionRemovalV1() {
     Assume.assumeTrue(formatVersion == 1);
@@ -373,6 +433,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     Assert.assertEquals(expectedScanTaskCount(1), Iterables.size(tasks));
   }
 
+  /**
+   * 测试场景：partition spec evolution removal 2。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionRemovalV2() {
     Assume.assumeTrue(formatVersion == 2);
@@ -459,6 +524,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     Assert.assertEquals(expectedScanTaskCount(3), Iterables.size(tasks));
   }
 
+  /**
+   * 测试场景：partition spec evolution additive 1。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionAdditiveV1() {
     Assume.assumeTrue(formatVersion == 1);
@@ -528,6 +598,11 @@ public class TestMetadataTableFilters extends TableTestBase {
     Assert.assertEquals(expectedScanTaskCount(2), Iterables.size(tasks));
   }
 
+  /**
+   * 测试场景：partition spec evolution additive 2。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionAdditiveV2() {
     Assume.assumeTrue(formatVersion == 2);
@@ -614,6 +689,7 @@ public class TestMetadataTableFilters extends TableTestBase {
     Assert.assertEquals(expectedScanTaskCount(2), Iterables.size(tasks));
   }
 
+  /** 辅助方法：validate file scan tasks。 */
   private void validateFileScanTasks(CloseableIterable<FileScanTask> fileScanTasks, int partValue) {
     Assert.assertTrue(
         "File scan tasks do not include correct file",
@@ -621,6 +697,7 @@ public class TestMetadataTableFilters extends TableTestBase {
             .anyMatch(t -> manifestHasPartition(manifest(t), partValue)));
   }
 
+  /** 辅助方法：validate combined scan tasks。 */
   private void validateCombinedScanTasks(CloseableIterable<CombinedScanTask> tasks, int partValue) {
     Assert.assertTrue(
         "File scan tasks do not include correct partition value",
@@ -629,6 +706,7 @@ public class TestMetadataTableFilters extends TableTestBase {
             .anyMatch(m -> manifestHasPartition(m, partValue)));
   }
 
+  /** 辅助方法：manifest has partition。 */
   private boolean manifestHasPartition(ManifestFile mf, int partValue) {
     int lower =
         Conversions.fromByteBuffer(Types.IntegerType.get(), mf.partitions().get(0).lowerBound());
@@ -637,6 +715,7 @@ public class TestMetadataTableFilters extends TableTestBase {
     return (lower <= partValue) && (upper >= partValue);
   }
 
+  /** 辅助方法：manifest。 */
   private ManifestFile manifest(FileScanTask task) {
     if (task instanceof BaseFilesTable.ManifestReadTask) {
       return ((BaseFilesTable.ManifestReadTask) task).manifest();

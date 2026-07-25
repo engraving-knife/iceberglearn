@@ -38,11 +38,18 @@ import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.SpecializedGetters;
 
-/** This class acts as an adaptor from an OrcFileAppender to a FileAppender&lt;InternalRow&gt;. */
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkOrcWriter。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
 
   private final InternalRowWriter writer;
 
+  /** 构造 SparkOrcWriter 实例。 */
   public SparkOrcWriter(Schema iSchema, TypeDescription orcSchema) {
     Preconditions.checkArgument(
         orcSchema.getCategory() == TypeDescription.Category.STRUCT,
@@ -52,46 +59,106 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
         (InternalRowWriter) OrcSchemaWithTypeVisitor.visit(iSchema, orcSchema, new WriteBuilder());
   }
 
+  /**
+   * 写入数据。
+   *
+   * @param value 参数
+   * @param output 参数
+   */
   @Override
   public void write(InternalRow value, VectorizedRowBatch output) {
     Preconditions.checkArgument(value != null, "value must not be null");
     writer.writeRow(value, output);
   }
 
+  /**
+   * 写入数据。
+   *
+   * @return 结果对象
+   */
   @Override
   public List<OrcValueWriter<?>> writers() {
     return writer.writers();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Stream<FieldMetrics<?>> metrics() {
     return writer.metrics();
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 WriteBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class WriteBuilder extends OrcSchemaWithTypeVisitor<OrcValueWriter<?>> {
+    /** 构造 WriteBuilder 实例。 */
     private WriteBuilder() {}
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iStruct 参数
+     * @param record 参数
+     * @param names 参数
+     * @param fields 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueWriter<?> record(
         Types.StructType iStruct,
         TypeDescription record,
         List<String> names,
         List<OrcValueWriter<?>> fields) {
+      /** 执行该方法的具体逻辑。 */
       return new InternalRowWriter(fields, record.getChildren());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iList 参数
+     * @param array 参数
+     * @param element 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueWriter<?> list(
         Types.ListType iList, TypeDescription array, OrcValueWriter<?> element) {
       return SparkOrcValueWriters.list(element, array.getChildren());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iMap 参数
+     * @param map 参数
+     * @param key 参数
+     * @param value 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueWriter<?> map(
         Types.MapType iMap, TypeDescription map, OrcValueWriter<?> key, OrcValueWriter<?> value) {
       return SparkOrcValueWriters.map(key, value, map.getChildren());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param iPrimitive 参数
+     * @param primitive 参数
+     * @return 结果对象
+     */
     @Override
     public OrcValueWriter<?> primitive(Type.PrimitiveType iPrimitive, TypeDescription primitive) {
       switch (primitive.getCategory()) {
@@ -130,6 +197,13 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 InternalRowWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class InternalRowWriter extends GenericOrcWriters.StructWriter<InternalRow> {
     private final List<FieldGetter<?>> fieldGetters;
 
@@ -142,12 +216,14 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
       }
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected Object get(InternalRow struct, int index) {
       return fieldGetters.get(index).getFieldOrNull(struct, index);
     }
   }
 
+  /** 创建并返回新实例。 */
   static FieldGetter<?> createFieldGetter(TypeDescription fieldType) {
     final FieldGetter<?> fieldGetter;
     switch (fieldType.getCategory()) {
@@ -219,17 +295,16 @@ public class SparkOrcWriter implements OrcRowWriter<InternalRow> {
     };
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：接口 FieldGetter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   interface FieldGetter<T> extends Serializable {
 
-    /**
-     * Returns a value from a complex Spark data holder such ArrayData, InternalRow, etc... Calls
-     * the appropriate getter for the expected data type.
-     *
-     * @param row Spark's data representation
-     * @param ordinal index in the data structure (e.g. column index for InterRow, list index in
-     *     ArrayData, etc..)
-     * @return field value at ordinal
-     */
+    /** 返回fieldornull。 */
     @Nullable
     T getFieldOrNull(SpecializedGetters row, int ordinal);
   }

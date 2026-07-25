@@ -60,6 +60,14 @@ import org.openjdk.jmh.infra.Blackhole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：IcebergSourceDeleteBenchmark 性能基准测试。
+ *
+ * <p>所属模块：iceberg-spark（v3.3）。职责：对 Iceberg数据源删除 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
+ */
 public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmark {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergSourceDeleteBenchmark.class);
   private static final long TARGET_FILE_SIZE_IN_BYTES = 512L * 1024 * 1024;
@@ -67,18 +75,25 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
   protected static final int NUM_FILES = 1;
   protected static final int NUM_ROWS = 10 * 1000 * 1000;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() throws IOException {
     setupSpark();
     appendData();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() throws IOException {
     tearDownSpark();
     cleanupFiles();
   }
 
+  /**
+   * 基准测试场景：读取Iceberg。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIceberg(Blackhole blackhole) {
@@ -94,6 +109,11 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
         });
   }
 
+  /**
+   * 基准测试场景：读取Iceberg带isdeleted列。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIcebergWithIsDeletedColumn(Blackhole blackhole) {
@@ -110,6 +130,11 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
         });
   }
 
+  /**
+   * 基准测试场景：读取deleted行。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDeletedRows(Blackhole blackhole) {
@@ -126,6 +151,11 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
         });
   }
 
+  /**
+   * 基准测试场景：读取Iceberg向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIcebergVectorized(Blackhole blackhole) {
@@ -141,6 +171,11 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
         });
   }
 
+  /**
+   * 基准测试场景：读取Iceberg带isdeleted列向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIcebergWithIsDeletedColumnVectorized(Blackhole blackhole) {
@@ -157,6 +192,11 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
         });
   }
 
+  /**
+   * 基准测试场景：读取deleted行向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readDeletedRowsVectorized(Blackhole blackhole) {
@@ -175,6 +215,7 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
 
   protected abstract void appendData() throws IOException;
 
+  /** 辅助方法：写入数据。 */
   protected void writeData(int fileNum) {
     Dataset<Row> df =
         spark()
@@ -189,6 +230,7 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     appendAsFile(df);
   }
 
+  /** 辅助方法：init表。 */
   @Override
   protected Table initTable() {
     Schema schema =
@@ -208,21 +250,25 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     return tables.create(schema, partitionSpec, properties, newTableLocation());
   }
 
+  /** 辅助方法：initHadoop配置。 */
   @Override
   protected Configuration initHadoopConf() {
     return new Configuration();
   }
 
+  /** 辅助方法：写入位置删除。 */
   protected void writePosDeletes(CharSequence path, long numRows, double percentage)
       throws IOException {
     writePosDeletes(path, numRows, percentage, 1);
   }
 
+  /** 辅助方法：写入位置删除。 */
   protected void writePosDeletes(
       CharSequence path, long numRows, double percentage, int numDeleteFile) throws IOException {
     writePosDeletesWithNoise(path, numRows, percentage, 0, numDeleteFile);
   }
 
+  /** 辅助方法：写入位置删除带噪声。 */
   protected void writePosDeletesWithNoise(
       CharSequence path, long numRows, double percentage, int numNoise, int numDeleteFile)
       throws IOException {
@@ -239,6 +285,7 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     }
   }
 
+  /** 辅助方法：写入位置删除。 */
   protected void writePosDeletes(CharSequence path, List<Long> deletedPos, int numNoise)
       throws IOException {
     OutputFileFactory fileFactory = newFileFactory();
@@ -268,6 +315,7 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     rowDelta.validateDeletedFiles().commit();
   }
 
+  /** 辅助方法：写入等值删除。 */
   protected void writeEqDeletes(long numRows, double percentage) throws IOException {
     Set<Long> deletedValues = Sets.newHashSet();
     while (deletedValues.size() < numRows * percentage) {
@@ -291,6 +339,7 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     writeEqDeletes(rows);
   }
 
+  /** 辅助方法：写入等值删除。 */
   private void writeEqDeletes(List<InternalRow> rows) throws IOException {
     int equalityFieldId = table().schema().findField("longCol").fieldId();
 
@@ -319,10 +368,12 @@ public abstract class IcebergSourceDeleteBenchmark extends IcebergSourceBenchmar
     rowDelta.validateDeletedFiles().commit();
   }
 
+  /** 辅助方法：新建文件工厂。 */
   private OutputFileFactory newFileFactory() {
     return OutputFileFactory.builderFor(table(), 1, 1).format(fileFormat()).build();
   }
 
+  /** 辅助方法：噪声路径。 */
   private CharSequence noisePath(CharSequence path) {
     // assume the data file name would be something like
     // "00000-0-30da64e0-56b5-4743-a11b-3188a1695bf7-00001.parquet"

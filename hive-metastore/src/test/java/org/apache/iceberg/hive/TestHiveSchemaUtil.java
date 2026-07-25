@@ -36,6 +36,13 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestHiveSchemaUtil 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveSchemaUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveSchemaUtil {
   private static final Schema SIMPLE_ICEBERG_SCHEMA =
       new Schema(
@@ -111,12 +118,22 @@ public class TestHiveSchemaUtil {
                   + "street_type:string>,country:string,postal_code:string>",
               ""));
 
+  /**
+   * 测试场景：Simple Schema Convert To Iceberg Schema。
+   *
+   * <p>验证该方法在 Simple Schema Convert To Iceberg Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleSchemaConvertToIcebergSchema() {
     assertThat(HiveSchemaUtil.convert(SIMPLE_HIVE_SCHEMA).asStruct())
         .isEqualTo(SIMPLE_ICEBERG_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：Simple Schema Convert To Iceberg Schema From Name And Type Lists。
+   *
+   * <p>验证该方法在 Simple Schema Convert To Iceberg Schema From Name And Type Lists 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleSchemaConvertToIcebergSchemaFromNameAndTypeLists() {
     List<String> names =
@@ -131,18 +148,33 @@ public class TestHiveSchemaUtil {
         .isEqualTo(SIMPLE_ICEBERG_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：Complex Schema Convert To Iceberg Schema。
+   *
+   * <p>验证该方法在 Complex Schema Convert To Iceberg Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testComplexSchemaConvertToIcebergSchema() {
     assertThat(HiveSchemaUtil.convert(COMPLEX_HIVE_SCHEMA).asStruct())
         .isEqualTo(COMPLEX_ICEBERG_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：Schema Convert To Iceberg Schema For Every Primitive Type。
+   *
+   * <p>验证该方法在 Schema Convert To Iceberg Schema For Every Primitive Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaConvertToIcebergSchemaForEveryPrimitiveType() {
     Schema schemaWithEveryType = HiveSchemaUtil.convert(getSupportedFieldSchemas());
     assertThat(schemaWithEveryType.asStruct()).isEqualTo(getSchemaWithSupportedTypes().asStruct());
   }
 
+  /**
+   * 测试场景：Not Supported Types。
+   *
+   * <p>验证该方法在 Not Supported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotSupportedTypes() {
     for (FieldSchema notSupportedField : getNotSupportedFieldSchemas()) {
@@ -153,16 +185,31 @@ public class TestHiveSchemaUtil {
     }
   }
 
+  /**
+   * 测试场景：Simple Schema Convert To Hive Schema。
+   *
+   * <p>验证该方法在 Simple Schema Convert To Hive Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleSchemaConvertToHiveSchema() {
     assertThat(HiveSchemaUtil.convert(SIMPLE_ICEBERG_SCHEMA)).isEqualTo(SIMPLE_HIVE_SCHEMA);
   }
 
+  /**
+   * 测试场景：Complex Schema Convert To Hive Schema。
+   *
+   * <p>验证该方法在 Complex Schema Convert To Hive Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testComplexSchemaConvertToHiveSchema() {
     assertThat(HiveSchemaUtil.convert(COMPLEX_ICEBERG_SCHEMA)).isEqualTo(COMPLEX_HIVE_SCHEMA);
   }
 
+  /**
+   * 测试场景：Simple Type And Type Info Convert。
+   *
+   * <p>验证该方法在 Simple Type And Type Info Convert 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleTypeAndTypeInfoConvert() {
     // Test for every supported type
@@ -175,6 +222,11 @@ public class TestHiveSchemaUtil {
     }
   }
 
+  /**
+   * 测试场景：Complex Type And Type Info Convert。
+   *
+   * <p>验证该方法在 Complex Type And Type Info Convert 条件下的行为是否符合预期。
+   */
   @Test
   public void testComplexTypeAndTypeInfoConvert() {
     for (int i = 0; i < COMPLEX_HIVE_SCHEMA.size(); ++i) {
@@ -184,6 +236,11 @@ public class TestHiveSchemaUtil {
     }
   }
 
+  /**
+   * 测试场景：Conversion Without Last Comment。
+   *
+   * <p>验证该方法在 Conversion Without Last Comment 条件下的行为是否符合预期。
+   */
   @Test
   public void testConversionWithoutLastComment() {
     Schema expected =
@@ -202,6 +259,7 @@ public class TestHiveSchemaUtil {
     assertThat(schema.asStruct()).isEqualTo(expected.asStruct());
   }
 
+  /** 辅助方法：getSupportedFieldSchemas。 */
   protected List<FieldSchema> getSupportedFieldSchemas() {
     List<FieldSchema> fields = Lists.newArrayListWithCapacity(10);
     fields.add(new FieldSchema("c_float", serdeConstants.FLOAT_TYPE_NAME, "float comment"));
@@ -217,6 +275,7 @@ public class TestHiveSchemaUtil {
     return fields;
   }
 
+  /** 辅助方法：getNotSupportedFieldSchemas。 */
   protected List<FieldSchema> getNotSupportedFieldSchemas() {
     List<FieldSchema> fields = Lists.newArrayListWithCapacity(6);
     fields.add(new FieldSchema("c_byte", serdeConstants.TINYINT_TYPE_NAME, ""));
@@ -229,6 +288,7 @@ public class TestHiveSchemaUtil {
     return fields;
   }
 
+  /** 辅助方法：getSchemaWithSupportedTypes。 */
   protected Schema getSchemaWithSupportedTypes() {
     return new Schema(
         optional(0, "c_float", Types.FloatType.get(), "float comment"),

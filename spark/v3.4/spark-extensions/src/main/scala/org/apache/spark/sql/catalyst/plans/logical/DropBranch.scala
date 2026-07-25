@@ -20,12 +20,19 @@
 package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：删除分支的逻辑计划节点，对应 DROP BRANCH 语句。
+ * <p>设计意图：封装分支删除语义。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 DropBranchExec 执行。
+ */
 
 case class DropBranch(table: Seq[String], branch: String, ifExists: Boolean) extends LeafCommand {
 
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"DropBranch branch: ${branch} for table: ${table.quoted}"

@@ -76,6 +76,13 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestRewritePositionDeleteFilesAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 重写位置删除文件动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
 
   private static final String TABLE_NAME = "test_table";
@@ -97,6 +104,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
   @Parameterized.Parameters(
       name =
           "formatVersion = {0}, catalogName = {1}, implementation = {2}, config = {3}, fileFormat = {4}")
+  /** 参数。 */
   public static Object[][] parameters() {
     return new Object[][] {
       {
@@ -112,17 +120,20 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
 
   private final FileFormat format;
 
+  /** 测试重写位置删除文件动作。 */
   public TestRewritePositionDeleteFilesAction(
       String catalogName, String implementation, Map<String, String> config, FileFormat format) {
     super(catalogName, implementation, config);
     this.format = format;
   }
 
+  /** 辅助方法：cleanup。 */
   @After
   public void cleanup() {
     validationCatalog.dropTable(TableIdentifier.of("default", TABLE_NAME));
   }
 
+  /** 测试空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEmptyTable() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c1").build();
@@ -135,6 +146,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     Assert.assertEquals("No added delete files", 0, result.addedDeleteFilesCount());
   }
 
+  /** 测试非分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitioned() throws Exception {
     Table table = createTableUnpartitioned(2, SCALE);
@@ -168,6 +180,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试重写所有场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteAll() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -204,6 +217,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试重写过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteFilter() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -249,6 +263,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试重写到smallertarget场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteToSmallerTarget() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -286,6 +301,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试移除dangling删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRemoveDanglingDeletes() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -331,6 +347,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     Assert.assertEquals("Should be no new position deletes", 0, actualDeletes.size());
   }
 
+  /** 测试some分区dangling删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSomePartitionsDanglingDeletes() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -384,6 +401,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试重写过滤器移除dangling场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteFilterRemoveDangling() throws Exception {
     Table table = createTablePartitioned(4, 2, SCALE);
@@ -432,6 +450,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletesFiltered, allDeletes);
   }
 
+  /** 测试分区演进添加场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionEvolutionAdd() throws Exception {
     Table table = createTableUnpartitioned(2, SCALE);
@@ -484,6 +503,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试分区演进移除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionEvolutionRemove() throws Exception {
     Table table = createTablePartitioned(2, 2, SCALE);
@@ -531,6 +551,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Position deletes must match", expectedDeletes, actualDeletes);
   }
 
+  /** 测试模式演进场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSchemaEvolution() throws Exception {
     Table table = createTablePartitioned(2, 2, SCALE);
@@ -580,6 +601,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 创建表分区。 */
   private Table createTablePartitioned(int partitions, int files, int numRecords) {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c1").build();
     Table table =
@@ -590,6 +612,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     return table;
   }
 
+  /** 创建表非分区。 */
   private Table createTableUnpartitioned(int files, int numRecords) {
     Table table =
         validationCatalog.createTable(
@@ -602,6 +625,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     return table;
   }
 
+  /** 表属性。 */
   private Map<String, String> tableProperties() {
     return ImmutableMap.of(
         TableProperties.DEFAULT_WRITE_METRICS_MODE,
@@ -612,10 +636,12 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         format.toString());
   }
 
+  /** 写记录。 */
   private void writeRecords(Table table, int files, int numRecords) {
     writeRecords(table, files, numRecords, 1);
   }
 
+  /** 写记录。 */
   private void writeRecords(Table table, int files, int numRecords, int numPartitions) {
     writeRecordsWithPartitions(
         table,
@@ -624,6 +650,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         IntStream.range(0, numPartitions).mapToObj(ImmutableList::of).collect(Collectors.toList()));
   }
 
+  /** 写记录带分区。 */
   private void writeRecordsWithPartitions(
       Table table, int files, int numRecords, List<List<Integer>> partitions) {
     int partitionTypeSize = table.spec().partitionType().fields().size();
@@ -662,6 +689,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     table.refresh();
   }
 
+  /** 写新建模式记录。 */
   private void writeNewSchemaRecords(
       Table table, int files, int numRecords, int startingPartition, int partitions) {
     List<FourColumnRecord> records =
@@ -687,11 +715,13 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         .save(name(table));
   }
 
+  /** 记录。 */
   private List<Object[]> records(Table table) {
     return rowsToJava(
         spark.read().format("iceberg").load(name(table)).sort("c1", "c2", "c3").collectAsList());
   }
 
+  /** 删除记录。 */
   private List<Object[]> deleteRecords(Table table) {
     String[] additionalFields;
     // do not select delete_file_path for comparison
@@ -711,12 +741,14 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
             .collectAsList());
   }
 
+  /** 写pos删除用于文件。 */
   private void writePosDeletesForFiles(
       Table table, int deleteFilesPerPartition, int deletesPerDataFile, List<DataFile> files)
       throws IOException {
     writePosDeletesForFiles(table, deleteFilesPerPartition, deletesPerDataFile, files, false);
   }
 
+  /** 写pos删除用于文件。 */
   private void writePosDeletesForFiles(
       Table table,
       int deleteFilesPerPartition,
@@ -775,6 +807,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     }
   }
 
+  /** 删除文件。 */
   private List<DeleteFile> deleteFiles(Table table) {
     Table deletesTable =
         MetadataTableUtils.createMetadataTableInstance(table, MetadataTableType.POSITION_DELETES);
@@ -783,6 +816,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         CloseableIterable.transform(tasks, t -> ((PositionDeletesScanTask) t).file()));
   }
 
+  /** 差集。 */
   private <T extends ContentFile<?>> List<T> except(List<T> first, List<T> second) {
     Set<String> secondPaths =
         second.stream().map(f -> f.path().toString()).collect(Collectors.toSet());
@@ -791,6 +825,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         .collect(Collectors.toList());
   }
 
+  /** 断言非contains。 */
   private void assertNotContains(List<DeleteFile> original, List<DeleteFile> rewritten) {
     Set<String> originalPaths =
         original.stream().map(f -> f.path().toString()).collect(Collectors.toSet());
@@ -800,6 +835,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     Assert.assertEquals(0, rewrittenPaths.size());
   }
 
+  /** 断言locallysorted。 */
   private void assertLocallySorted(List<DeleteFile> deleteFiles) {
     for (DeleteFile deleteFile : deleteFiles) {
       Dataset<Row> deletes =
@@ -821,16 +857,19 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     }
   }
 
+  /** 辅助方法：name。 */
   private String name(Table table) {
     String[] splits = table.name().split("\\.");
     Assert.assertEquals(3, splits.length);
     return String.format("%s.%s", splits[1], splits[2]);
   }
 
+  /** 辅助方法：size。 */
   private long size(List<DeleteFile> deleteFiles) {
     return deleteFiles.stream().mapToLong(DeleteFile::fileSizeInBytes).sum();
   }
 
+  /** 过滤器删除。 */
   private List<Object[]> filterDeletes(List<Object[]> deletes, List<?>... partitionValues) {
     Stream<Object[]> matches =
         deletes.stream()
@@ -845,6 +884,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     return sorted(matches).collect(Collectors.toList());
   }
 
+  /** 辅助方法：match。 */
   private boolean match(Object[] partition, List<?> expectedPartition) {
     return IntStream.range(0, expectedPartition.size())
         .mapToObj(j -> partition[j] == expectedPartition.get(j))
@@ -852,6 +892,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         .get();
   }
 
+  /** 辅助方法：sorted。 */
   private Stream<Object[]> sorted(Stream<Object[]> deletes) {
     return deletes.sorted(
         (a, b) -> {
@@ -868,6 +909,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         });
   }
 
+  /** 过滤器文件。 */
   private List<DeleteFile> filterFiles(
       Table table, List<DeleteFile> files, List<?>... partitionValues) {
     List<Types.StructType> partitionTypes =
@@ -896,6 +938,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         .collect(Collectors.toList());
   }
 
+  /** 检查结果。 */
   private void checkResult(
       Result result,
       List<DeleteFile> rewrittenDeletes,
@@ -946,6 +989,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
         result.rewriteResults().stream().mapToLong(FileGroupRewriteResult::addedBytesCount).sum());
   }
 
+  /** 检查sequencenumbers。 */
   private void checkSequenceNumbers(
       Table table, List<DeleteFile> rewrittenDeletes, List<DeleteFile> addedDeletes) {
     StructLikeMap<List<DeleteFile>> rewrittenFilesPerPartition =
@@ -969,6 +1013,7 @@ public class TestRewritePositionDeleteFilesAction extends SparkCatalogTestBase {
     }
   }
 
+  /** 分组每分区。 */
   private StructLikeMap<List<DeleteFile>> groupPerPartition(
       Table table, List<DeleteFile> deleteFiles) {
     StructLikeMap<List<DeleteFile>> result =

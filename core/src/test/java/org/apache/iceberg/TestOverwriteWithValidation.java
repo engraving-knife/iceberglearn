@@ -44,6 +44,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestOverwriteWithValidation，用于验证 Overwrite With Validation 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Overwrite With Validation
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestOverwriteWithValidation extends TableTestBase {
 
@@ -181,6 +189,7 @@ public class TestOverwriteWithValidation extends TableTestBase {
 
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -191,17 +200,20 @@ public class TestOverwriteWithValidation extends TableTestBase {
     };
   }
 
+  /** 辅助方法：overwrite with validation。 */
   public TestOverwriteWithValidation(int formatVersion, String branch) {
     super(formatVersion);
     this.branch = branch;
   }
 
+  /** 辅助方法：long to buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }
 
   private Table table = null;
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     File tableDir = temp.newFolder();
@@ -210,6 +222,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         TestTables.create(tableDir, TABLE_NAME, DATE_SCHEMA, PARTITION_SPEC, formatVersion);
   }
 
+  /**
+   * 测试场景：overwrite empty table not validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteEmptyTableNotValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -219,6 +236,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite empty table strict validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteEmptyTableStrictValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -235,6 +257,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite empty table validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteEmptyTableValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -251,6 +278,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite table not validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteTableNotValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -263,6 +295,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite table strict validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteTableStrictValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -284,6 +321,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite table validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteTableValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -305,6 +347,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite compatible addition not validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleAdditionNotValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_2), branch);
@@ -321,6 +368,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite compatible addition strict validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleAdditionStrictValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_2), branch);
@@ -350,6 +402,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite compatible addition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleAdditionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_2), branch);
@@ -373,6 +430,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite compatible deletion validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleDeletionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -396,6 +458,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite incompatible addition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteIncompatibleAdditionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1), branch);
@@ -424,6 +491,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite incompatible deletion validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteIncompatibleDeletionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -453,6 +525,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite compatible rewrite allowed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleRewriteAllowed() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -483,6 +560,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite compatible expiration addition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleExpirationAdditionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_2), branch); // id 1
@@ -508,6 +590,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite compatible expiration deletion validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCompatibleExpirationDeletionValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch); // id 1
@@ -533,6 +620,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite incompatible expiration validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteIncompatibleExpirationValidated() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1), branch); // id 1
@@ -563,6 +655,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite incompatible base expiration empty table validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteIncompatibleBaseExpirationEmptyTableValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -591,6 +688,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：overwrite another range validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteAnotherRangeValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -609,6 +711,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：overwrite another range within partition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteAnotherRangeWithinPartitionValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -628,6 +735,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_ANOTHER_RANGE, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：transaction compatible addition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTransactionCompatibleAdditionValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -653,6 +765,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_1, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：transaction incompatible addition validated。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTransactionIncompatibleAdditionValidated() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -682,6 +799,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         latestSnapshot(table, branch).snapshotId());
   }
 
+  /**
+   * 测试场景：concurrent conflicting position deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingPositionDeletes() {
     Assume.assumeTrue(formatVersion == 2);
@@ -709,6 +831,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         .hasMessageStartingWith("Cannot commit, found new delete for replaced data file");
   }
 
+  /**
+   * 测试场景：concurrent conflicting position deletes overwrite by filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingPositionDeletesOverwriteByFilter() {
     Assume.assumeTrue(formatVersion == 2);
@@ -736,6 +863,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         .hasMessageStartingWith("Found new conflicting delete");
   }
 
+  /**
+   * 测试场景：concurrent conflicting data file delete overwrite by filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingDataFileDeleteOverwriteByFilter() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -760,6 +892,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         .hasMessageStartingWith("Found conflicting deleted files");
   }
 
+  /**
+   * 测试场景：concurrent non conflicting data file delete overwrite by filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingDataFileDeleteOverwriteByFilter() {
     Assert.assertNull("Should be empty table", latestSnapshot(table, branch));
@@ -784,6 +921,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchFiles(table, branch, FILE_DAY_2_MODIFIED);
   }
 
+  /**
+   * 测试场景：concurrent non conflicting position deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingPositionDeletes() {
     Assume.assumeTrue(formatVersion == 2);
@@ -812,6 +954,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchDeleteFiles(table, branch, FILE_DAY_1_POS_DELETES);
   }
 
+  /**
+   * 测试场景：concurrent non conflicting position deletes overwrite by filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingPositionDeletesOverwriteByFilter() {
     Assume.assumeTrue(formatVersion == 2);
@@ -840,6 +987,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchDeleteFiles(table, branch, FILE_DAY_1_POS_DELETES);
   }
 
+  /**
+   * 测试场景：concurrent conflicting equality deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentConflictingEqualityDeletes() {
     Assume.assumeTrue(formatVersion == 2);
@@ -867,6 +1019,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         .hasMessageStartingWith("Cannot commit, found new delete for replaced data file");
   }
 
+  /**
+   * 测试场景：concurrent non conflicting equality deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentNonConflictingEqualityDeletes() {
     Assume.assumeTrue(formatVersion == 2);
@@ -898,6 +1055,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchDeleteFiles(table, branch, FILE_DAY_2_ANOTHER_RANGE_EQ_DELETES);
   }
 
+  /**
+   * 测试场景：overwrite by filter inherits conflict detection filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteByFilterInheritsConflictDetectionFilter() {
     Assume.assumeTrue(formatVersion == 2);
@@ -926,6 +1088,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
     validateBranchDeleteFiles(table, branch, FILE_DAY_1_POS_DELETES);
   }
 
+  /**
+   * 测试场景：overwrite case sensitivity。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testOverwriteCaseSensitivity() {
     commit(table, table.newAppend().appendFile(FILE_DAY_1).appendFile(FILE_DAY_2), branch);
@@ -977,6 +1144,11 @@ public class TestOverwriteWithValidation extends TableTestBase {
         .hasMessageStartingWith("Found conflicting files");
   }
 
+  /**
+   * 测试场景：metadata only delete with position deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetadataOnlyDeleteWithPositionDeletes() {
     Assume.assumeTrue(formatVersion == 2);

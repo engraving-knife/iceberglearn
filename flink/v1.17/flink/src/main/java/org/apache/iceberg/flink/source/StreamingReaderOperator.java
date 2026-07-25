@@ -45,14 +45,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The operator that reads the {@link FlinkInputSplit splits} received from the preceding {@link
- * StreamingMonitorFunction}. Contrary to the {@link StreamingMonitorFunction} which has a
- * parallelism of 1, this operator can have multiple parallelism.
+ * 文件级说明：流式读取算子，接收上游 {@link StreamingMonitorFunction} 发现的 split 并读取数据。
  *
- * <p>As soon as a split descriptor is received, it is put in a queue, and use {@link
- * MailboxExecutor} read the actual data of the split. This architecture allows the separation of
- * the reading thread from the one split processing the checkpoint barriers, thus removing any
- * potential back-pressure.
+ * <p>所属模块：iceberg-flink（source 子包），继承 Flink 的 {@link AbstractStreamOperator}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>接收 {@link FlinkInputSplit} 描述符，放入队列。
+ *   <li>通过 {@link MailboxExecutor} 异步读取 split 的实际数据。
+ *   <li>支持 checkpoint 状态恢复（保存当前正在处理的 split 和读取位置）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>与 {@link StreamingMonitorFunction}（单并行度）配合，本算子可多并行度。
+ *   <li>使用 MailboxExecutor 将数据读取与 checkpoint barrier 处理分离，避免反压影响。
+ *   <li>split 到达后入队，在 mailbox 线程中逐个读取，保证线程安全。
+ * </ul>
+ *
+ * <p>上下游关系：上游为 {@link StreamingMonitorFunction}；下游为用户的 DataStream 处理逻辑。
  */
 public class StreamingReaderOperator extends AbstractStreamOperator<RowData>
     implements OneInputStreamOperator<FlinkInputSplit, RowData> {

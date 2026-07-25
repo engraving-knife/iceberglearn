@@ -25,18 +25,28 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkProcedures。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 public class SparkProcedures {
 
   private static final Map<String, Supplier<ProcedureBuilder>> BUILDERS = initProcedureBuilders();
 
+  /** 构造 SparkProcedures 实例。 */
   private SparkProcedures() {}
 
+  /** 执行该方法的具体逻辑。 */
   public static ProcedureBuilder newBuilder(String name) {
     // procedure resolution is case insensitive to match the existing Spark behavior for functions
     Supplier<ProcedureBuilder> builderSupplier = BUILDERS.get(name.toLowerCase(Locale.ROOT));
     return builderSupplier != null ? builderSupplier.get() : null;
   }
 
+  /** 执行初始化。 */
   private static Map<String, Supplier<ProcedureBuilder>> initProcedureBuilders() {
     ImmutableMap.Builder<String, Supplier<ProcedureBuilder>> mapBuilder = ImmutableMap.builder();
     mapBuilder.put("rollback_to_snapshot", RollbackToSnapshotProcedure::builder);
@@ -57,9 +67,20 @@ public class SparkProcedures {
     return mapBuilder.build();
   }
 
+  /**
+   * Iceberg 存储过程，通过 Spark SQL CALL 调用的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：接口 ProcedureBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+   */
   public interface ProcedureBuilder {
+    /** 返回带新设置的副本。 */
     ProcedureBuilder withTableCatalog(TableCatalog tableCatalog);
 
+    /** 构造并返回目标对象。 */
     Procedure build();
   }
 }

@@ -25,12 +25,21 @@ import org.apache.spark.sql.connector.catalog.FunctionCatalog;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.functions.UnboundFunction;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：支持函数注册的目录混入接口，声明目录可向 Spark 暴露 Iceberg 标量函数。
+ *
+ * <p>设计意图：以接口隔离函数能力，使目录可选地提供函数目录功能。
+ *
+ * <p>上下游关系：由 SparkCatalog / SparkSessionCatalog 实现；由 SparkFunctionCatalog 使用。
+ */
 interface SupportsFunctions extends FunctionCatalog {
-
+  /** 判断是否 FunctionNamespace。 */
   default boolean isFunctionNamespace(String[] namespace) {
     return namespace.length == 0;
   }
-
+  /** 判断是否 ExistingNamespace。 */
   default boolean isExistingNamespace(String[] namespace) {
     return namespace.length == 0;
   }

@@ -21,20 +21,31 @@ package org.apache.iceberg;
 import java.util.List;
 import java.util.Map;
 
-/** A metadata about a statistics or indices blob. */
+/**
+ * 统计信息或索引 blob 的元数据接口。
+ *
+ * <p>所属模块：iceberg-api（表元数据抽象层）。
+ *
+ * <p>职责：描述一个持久化在 {@link StatisticsFile} 中的 blob 的基本信息，包括其类型、 来源快照、参与计算的列字段 ID 列表及附加属性，供查询规划时按需读取对应
+ * blob。
+ *
+ * <p>设计意图：将 blob 的元信息与 blob 二进制内容分离存储，使规划阶段无需读取大块 二进制即可判断是否需要加载某个 blob（如 Bloom Filter / 列统计）。
+ *
+ * <p>上下游关系：由 {@link StatisticsFile} 持有一组 {@code BlobMetadata}；被 core 模块 在写入统计文件时构造，在查询优化时读取。
+ */
 public interface BlobMetadata {
-  /** Type of the blob. Never null */
+  /** 返回 blob 的类型标识，永不返回 null。 */
   String type();
 
-  /** ID of the Iceberg table's snapshot the blob was computed from */
+  /** 返回计算该 blob 所基于的 Iceberg 表快照 ID。 */
   long sourceSnapshotId();
 
-  /** Sequence number of the Iceberg table's snapshot the blob was computed from */
+  /** 返回计算该 blob 所基于的 Iceberg 表快照序列号。 */
   long sourceSnapshotSequenceNumber();
 
-  /** Ordered list of fields the blob was calculated from. Never null */
+  /** 返回参与计算该 blob 的字段 ID 有序列表，永不返回 null。 */
   List<Integer> fields();
 
-  /** Additional properties of the blob, specific to the blob type. Never null */
+  /** 返回该 blob 的附加属性（具体内容由 blob 类型决定），永不返回 null。 */
   Map<String, String> properties();
 }

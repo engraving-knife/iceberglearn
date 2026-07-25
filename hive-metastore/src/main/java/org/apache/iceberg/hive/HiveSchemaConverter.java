@@ -35,8 +35,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Package private class for converting Hive schema to Iceberg schema. Should be used only by the
- * HiveSchemaUtil. Use {@link HiveSchemaUtil} for conversion purposes.
+ * Hive Schema 到 Iceberg Schema 的转换器（包级可见）。
+ *
+ * <p>所属模块：iceberg-hive-metastore（Schema 映射层）。
+ *
+ * <p>职责：将 Hive 的 {@link TypeInfo} 类型树递归转换为 Iceberg 的 {@link Type}/{@link Schema}， 同时维护字段 id 的自增分配。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>包级可见：仅作为 {@link HiveSchemaUtil} 的内部实现，外部应使用 HiveSchemaUtil。
+ *   <li>autoConvert 开关：Hive 的 TINYINT/SMALLINT 在 Iceberg 中无直接对应（Iceberg 仅有
+ *       IntegerType），CHAR/VARCHAR 同理。开启 autoConvert 时自动转为 INTEGER/STRING， 否则抛异常，让调用方显式决定是否容忍精度损失。
+ *   <li>字段 id 自增：转换过程中通过实例字段 id 递增分配，保证 struct/map/list 内字段 id 唯一。
+ *   <li>所有字段按 optional（可空）处理，因为 Hive 不区分 nullable/required。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link HiveSchemaUtil} 的各 convert 方法调用；输入来自 Hive Metastore 表结构。
  */
 class HiveSchemaConverter {
   private static final Logger LOG = LoggerFactory.getLogger(HiveSchemaConverter.class);
@@ -49,17 +64,45 @@ class HiveSchemaConverter {
     this.id = 0;
   }
 
+  /**
+   * 将 Hive 列名/类型/注释列表转换为 Iceberg {@link Schema}。
+   *
+   * <p>逻辑：创建一个新转换器实例，委托 {@link #convertInternal} 生成字段列表后包装为 Schema。
+   *
+   * @param names 列名列表
+   * @param typeInfos 列类型信息列表
+   * @param comments 列注释列表
+   * @param autoConvert 是否自动转换不兼容类型（TINYINT/SMALLINT→INT，CHAR/VARCHAR→STRING）
+   * @return 转换后的 Iceberg Schema
+   */
   static Schema convert(
       List<String> names, List<TypeInfo> typeInfos, List<String> comments, boolean autoConvert) {
     HiveSchemaConverter converter = new HiveSchemaConverter(autoConvert);
     return new Schema(converter.convertInternal(names, typeInfos, comments));
   }
 
+  /**
+   * 将单个 Hive {@link TypeInfo} 转换为 Iceberg {@link Type}。
+   *
+   * @param typeInfo Hive 类型信息
+   * @param autoConvert 是否自动转换不兼容类型
+   * @return 转换后的 Iceberg Type
+   */
   static Type convert(TypeInfo typeInfo, boolean autoConvert) {
     HiveSchemaConverter converter = new HiveSchemaConverter(autoConvert);
     return converter.convertType(typeInfo);
   }
 
+  /**
+   * 将 Hive 列列表转换为 Iceberg NestedField 列表。
+   *
+   * <p>逻辑：遍历列名列表，对每列分配递增 id，调用 {@link #convertType} 转换类型， 并关联注释（若提供），所有字段按 optional 创建。
+   *
+   * @param names 列名列表
+   * @param typeInfos 列类型信息列表
+   * @param comments 列注释列表（可为空或短于 names）
+   * @return Iceberg NestedField 列表
+   */
   List<Types.NestedField> convertInternal(
       List<String> names, List<TypeInfo> typeInfos, List<String> comments) {
     List<Types.NestedField> result = Lists.newArrayListWithExpectedSize(names.size());
@@ -75,6 +118,25 @@ class HiveSchemaConverter {
     return result;
   }
 
+  /**
+   * 将 Hive {@link TypeInfo} 递归转换为 Iceberg {@link Type}。
+   *
+   * <p>逻辑：按 typeInfo 的 category 分发：
+   *
+   * <ul>
+   *   <li>PRIMITIVE：按 Hive 原始类型映射到 Iceberg 类型；BYTE/SHORT 需要 autoConvert 才映射为
+   *       IntegerType；CHAR/VARCHAR 需要 autoConvert 才映射为 StringType；TIMESTAMP 默认无时区，
+   *       TIMESTAMPLOCALTZ（Hive3 特有）映射为带时区 TimestampType；DECIMAL 保留精度和小数位。
+   *   <li>STRUCT：递归转换各字段为 NestedField，构造 StructType。
+   *   <li>MAP：递归转换 key/value 类型，分配 id，构造 MapType.ofOptional。
+   *   <li>LIST：递归转换元素类型，构造 ListType.ofOptional。
+   *   <li>UNION 及其他：抛 IllegalArgumentException。
+   * </ul>
+   *
+   * @param typeInfo Hive 类型信息
+   * @return 转换后的 Iceberg Type
+   * @throws IllegalArgumentException 遇到不支持的类型或 autoConvert 关闭时不兼容类型
+   */
   Type convertType(TypeInfo typeInfo) {
     switch (typeInfo.getCategory()) {
       case PRIMITIVE:

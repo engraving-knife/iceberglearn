@@ -38,6 +38,25 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.io.BaseEncoding;
 
+/**
+ * JSON 序列化/反序列化工具类，封装 Iceberg 元数据 JSON 读写所需的通用方法。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供共享的 {@link JsonFactory} 与 {@link ObjectMapper} 单例；
+ *   <li>封装按属性名从 {@link JsonNode} 读取基础类型（int/long/boolean/String/ByteBuffer 等）的方法， 含严格的类型校验与缺失字段报错；
+ *   <li>提供数组和 Map 类型的读写辅助，以及条件写入字段的方法。
+ * </ul>
+ *
+ * <p>设计意图：Iceberg 元数据（metadata.json、manifest 列表、快照等）以 JSON 持久化， 需要大量强类型读取与校验。本类把重复的 Preconditions
+ * 校验与异常包装统一收敛， 使各元数据解析类保持简洁，同时保证反序列化时的格式错误能给出清晰的错误信息。
+ *
+ * <p>上下游关系：被 core 的元数据序列化类（如 TableMetadataParser、SnapshotParser、ManifestFile 等） 大量调用；依赖 Jackson 与
+ * relocated guava。
+ */
 public class JsonUtil {
 
   private JsonUtil() {}
@@ -45,10 +64,12 @@ public class JsonUtil {
   private static final JsonFactory FACTORY = new JsonFactory();
   private static final ObjectMapper MAPPER = new ObjectMapper(FACTORY);
 
+  /** 返回 全局共享的 {@link JsonFactory}，用于创建 JsonGenerator/JsonParser。 */
   public static JsonFactory factory() {
     return FACTORY;
   }
 
+  /** 返回 全局共享的 {@link ObjectMapper}，用于把 JSON 字符串解析为 JsonNode。 */
   public static ObjectMapper mapper() {
     return MAPPER;
   }
@@ -59,7 +80,7 @@ public class JsonUtil {
   }
 
   /**
-   * Helper for writing JSON with a JsonGenerator.
+   * 使用 {@link JsonGenerator} 写入 JSON 并返回字符串。
    *
    * @param toJson a function to produce JSON using a JsonGenerator
    * @param pretty whether to pretty-print JSON for readability
@@ -80,18 +101,22 @@ public class JsonUtil {
     }
   }
 
+  /** 函数式接口：从 {@link JsonNode} 解析为 Java 对象。 */
   @FunctionalInterface
   public interface FromJson<T> {
     T parse(JsonNode node);
   }
 
   /**
-   * Helper for parsing JSON from a String.
+   * 从 JSON 字符串解析为 Java 对象的辅助方法。
    *
-   * @param json a JSON string
-   * @param parser a function that converts a JsonNode to a Java object
-   * @param <T> type of objects created by the parser
-   * @return the parsed Java object
+   * <p>逻辑：先用 ObjectMapper 把字符串读成 JsonNode，再交给 parser 转换； IOException 包装为 {@link
+   * UncheckedIOException} 抛出。
+   *
+   * @param json JSON 字符串
+   * @param parser 把 JsonNode 转换为目标对象的函数
+   * @param <T> 目标对象类型
+   * @return 解析后的 Java 对象
    */
   public static <T> T parse(String json, FromJson<T> parser) {
     try {
@@ -125,6 +150,13 @@ public class JsonUtil {
     return getInt(property, node);
   }
 
+  /**
+   * 读取可选的 long 属性，缺失或为 null 时返回 null。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return long 值或 null
+   */
   public static Long getLongOrNull(String property, JsonNode node) {
     if (!node.hasNonNull(property)) {
       return null;
@@ -188,6 +220,16 @@ public class JsonUtil {
         BaseEncoding.base16().decode(pNode.textValue().toUpperCase(Locale.ROOT)));
   }
 
+  /**
+   * 读取必需的 String-&gt;String Map 属性。
+   *
+   * <p>逻辑：节点必须是对象类型，遍历其字段名，每个值按 String 读取，构建不可变 Map。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return 不可变的字符串 Map
+   * @throws IllegalArgumentException 属性缺失或非对象类型
+   */
   public static Map<String, String> getStringMap(String property, JsonNode node) {
     Preconditions.checkArgument(node.has(property), "Cannot parse missing map: %s", property);
     JsonNode pNode = node.get(property);
@@ -234,6 +276,13 @@ public class JsonUtil {
         .build();
   }
 
+  /**
+   * 读取可选的 String List 属性，缺失或为 null 时返回 null。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return 不可变的 String 列表或 null
+   */
   public static List<String> getStringListOrNull(String property, JsonNode node) {
     if (!node.has(property) || node.get(property).isNull()) {
       return null;
@@ -279,6 +328,13 @@ public class JsonUtil {
     return ImmutableList.<Long>builder().addAll(new JsonLongArrayIterator(property, node)).build();
   }
 
+  /**
+   * 读取可选的 Long List 属性，缺失或为 null 时返回 null。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return 不可变的 Long 列表或 null
+   */
   public static List<Long> getLongListOrNull(String property, JsonNode node) {
     if (!node.has(property) || node.get(property).isNull()) {
       return null;
@@ -287,6 +343,13 @@ public class JsonUtil {
     return ImmutableList.<Long>builder().addAll(new JsonLongArrayIterator(property, node)).build();
   }
 
+  /**
+   * 读取可选的 Long Set 属性，缺失或为 null 时返回 null。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return 不可变的 Long 集合或 null
+   */
   public static Set<Long> getLongSetOrNull(String property, JsonNode node) {
     if (!node.hasNonNull(property)) {
       return null;
@@ -295,6 +358,14 @@ public class JsonUtil {
     return getLongSet(property, node);
   }
 
+  /**
+   * 读取必需的 Long Set 属性（数组节点），去重。
+   *
+   * @param property 属性名
+   * @param node 父节点
+   * @return 不可变的 Long 集合
+   * @throws IllegalArgumentException 属性缺失
+   */
   public static Set<Long> getLongSet(String property, JsonNode node) {
     Preconditions.checkArgument(node.has(property), "Cannot parse missing set: %s", property);
     return ImmutableSet.<Long>builder().addAll(new JsonLongArrayIterator(property, node)).build();

@@ -26,11 +26,16 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 
 /**
- * A wrapper around CachingCatalog that provides accessor methods to test the underlying cache,
- * without making those fields public in the CachingCatalog itself.
+ * 测试类：TestableCachingCatalog，用于验证 able Caching Catalog 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 able Caching Catalog 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
  */
 public class TestableCachingCatalog extends CachingCatalog {
 
+  /** 辅助方法：wrap。 */
   public static TestableCachingCatalog wrap(
       Catalog catalog, Duration expirationInterval, Ticker ticker) {
     return new TestableCachingCatalog(
@@ -45,6 +50,7 @@ public class TestableCachingCatalog extends CachingCatalog {
     this.cacheExpirationInterval = expirationInterval;
   }
 
+  /** 辅助方法：cache。 */
   public Cache<TableIdentifier, Table> cache() {
     // cleanUp must be called as tests apply assertions directly on the underlying map, but metadata
     // table
@@ -53,6 +59,7 @@ public class TestableCachingCatalog extends CachingCatalog {
     return tableCache;
   }
 
+  /** 辅助方法：is cache expiration enabled。 */
   public boolean isCacheExpirationEnabled() {
     return tableCache.policy().expireAfterAccess().isPresent()
         || tableCache.policy().expireAfterWrite().isPresent();

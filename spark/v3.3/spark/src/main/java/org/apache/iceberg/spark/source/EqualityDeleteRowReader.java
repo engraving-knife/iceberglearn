@@ -28,7 +28,15 @@ import org.apache.iceberg.io.CloseableIterator;
 import org.apache.spark.rdd.InputFileBlockHolder;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 EqualityDeleteRowReader。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 public class EqualityDeleteRowReader extends RowDataReader {
+  /** 构造 EqualityDeleteRowReader 实例。 */
   public EqualityDeleteRowReader(
       CombinedScanTask task,
       Table table,
@@ -38,6 +46,7 @@ public class EqualityDeleteRowReader extends RowDataReader {
     super(table, task, tableSchema, expectedSchema, caseSensitive);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     SparkDeleteFilter matches =

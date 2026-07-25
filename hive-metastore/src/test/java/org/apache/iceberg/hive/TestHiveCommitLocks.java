@@ -71,6 +71,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.invocation.InvocationOnMock;
 
+/**
+ * 文件级说明：测试 TestHiveCommitLocks 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveCommitLocks 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveCommitLocks extends HiveTableBaseTest {
   private static HiveTableOperations spyOps = null;
   private static HiveClientPool spyClientPool = null;
@@ -88,6 +95,7 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
   LockResponse notAcquiredLockResponse = new LockResponse(dummyLockId, LockState.NOT_ACQUIRED);
   ShowLocksResponse emptyLocks = new ShowLocksResponse(Lists.newArrayList());
 
+  /** 辅助方法：startMetastore。 */
   @BeforeAll
   public static void startMetastore() throws Exception {
     HiveMetastoreTest.startMetastore(
@@ -122,6 +130,7 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     spyClient = spyClientRef.get();
   }
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() throws Exception {
     Table table = catalog.loadTable(TABLE_IDENTIFIER);
@@ -151,6 +160,7 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     reset(spyClient);
   }
 
+  /** 辅助方法：cleanup。 */
   @AfterAll
   public static void cleanup() {
     try {
@@ -160,6 +170,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     }
   }
 
+  /**
+   * 测试场景：Lock Acquisition At First Time。
+   *
+   * <p>验证该方法在 Lock Acquisition At First Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockAcquisitionAtFirstTime() throws TException, InterruptedException {
     doReturn(acquiredLockResponse).when(spyClient).lock(any());
@@ -171,6 +186,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     assertThat(spyOps.current().schema().columns()).hasSize(1); // should be 1 again
   }
 
+  /**
+   * 测试场景：Lock Acquisition After Retries。
+   *
+   * <p>验证该方法在 Lock Acquisition After Retries 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockAcquisitionAfterRetries() throws TException, InterruptedException {
 
@@ -190,6 +210,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     assertThat(spyOps.current().schema().columns()).hasSize(1); // should be 1 again
   }
 
+  /**
+   * 测试场景：Lock Acquisition After Failed Not Found Lock。
+   *
+   * <p>验证该方法在 Lock Acquisition After Failed Not Found Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockAcquisitionAfterFailedNotFoundLock() throws TException, InterruptedException {
     doReturn(emptyLocks).when(spyClient).showLocks(any());
@@ -209,6 +234,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     assertThat(spyOps.current().schema().columns()).hasSize(1); // should be 1 again
   }
 
+  /**
+   * 测试场景：Lock Acquisition After Failed And Found Lock。
+   *
+   * <p>验证该方法在 Lock Acquisition After Failed And Found Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockAcquisitionAfterFailedAndFoundLock() throws TException, InterruptedException {
     ArgumentCaptor<LockRequest> lockRequestCaptor = ArgumentCaptor.forClass(LockRequest.class);
@@ -234,6 +264,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     assertThat(spyOps.current().schema().columns()).hasSize(1); // should be 1 again
   }
 
+  /**
+   * 测试场景：Un Lock。
+   *
+   * <p>验证该方法在 Un Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnLock() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -246,6 +281,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, times(1)).unlock(eq(dummyLockId));
   }
 
+  /**
+   * 测试场景：Un Lock Interrupted Un Lock。
+   *
+   * <p>验证该方法在 Un Lock Interrupted Un Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnLockInterruptedUnLock() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -264,6 +304,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, times(2)).unlock(eq(dummyLockId));
   }
 
+  /**
+   * 测试场景：Un Lock After Interrupted Lock。
+   *
+   * <p>验证该方法在 Un Lock After Interrupted Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnLockAfterInterruptedLock() throws TException {
     ArgumentCaptor<LockRequest> lockRequestCaptor = ArgumentCaptor.forClass(LockRequest.class);
@@ -296,6 +341,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, times(1)).lock(any());
   }
 
+  /**
+   * 测试场景：Un Lock After Interrupted Lock Check。
+   *
+   * <p>验证该方法在 Un Lock After Interrupted Lock Check 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnLockAfterInterruptedLockCheck() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -320,6 +370,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, times(1)).checkLock(eq(dummyLockId));
   }
 
+  /**
+   * 测试场景：Un Lock After Interrupted Get Table。
+   *
+   * <p>验证该方法在 Un Lock After Interrupted Get Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnLockAfterInterruptedGetTable() throws TException {
     doReturn(acquiredLockResponse).when(spyClient).lock(any());
@@ -344,26 +399,35 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
   private class ShowLocksResponseElementWrapper extends ShowLocksResponseElement {
     private ArgumentCaptor<LockRequest> wrapped;
 
+    /** 辅助方法：ShowLocksResponseElementWrapper。 */
     private ShowLocksResponseElementWrapper(ArgumentCaptor<LockRequest> wrapped) {
       this.wrapped = wrapped;
     }
 
+    /** 辅助方法：getAgentInfo。 */
     @Override
     public String getAgentInfo() {
       return wrapped.getValue().getAgentInfo();
     }
 
+    /** 辅助方法：getState。 */
     @Override
     public LockState getState() {
       return LockState.WAITING;
     }
 
+    /** 辅助方法：getLockid。 */
     @Override
     public long getLockid() {
       return dummyLockId;
     }
   }
 
+  /**
+   * 测试场景：Lock Failure At First Time。
+   *
+   * <p>验证该方法在 Lock Failure At First Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockFailureAtFirstTime() throws TException {
     doReturn(notAcquiredLockResponse).when(spyClient).lock(any());
@@ -375,6 +439,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
                 + "Could not acquire the lock on hivedb.tbl, lock request ended in state NOT_ACQUIRED");
   }
 
+  /**
+   * 测试场景：Lock Failure After Retries。
+   *
+   * <p>验证该方法在 Lock Failure After Retries 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockFailureAfterRetries() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -393,6 +462,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
                 + "Could not acquire the lock on hivedb.tbl, lock request ended in state NOT_ACQUIRED");
   }
 
+  /**
+   * 测试场景：Lock Timeout After Retries。
+   *
+   * <p>验证该方法在 Lock Timeout After Retries 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockTimeoutAfterRetries() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -405,6 +479,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
         .hasMessageEndingWith("waiting for lock on hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Pass Through Thrift Exceptions。
+   *
+   * <p>验证该方法在 Pass Through Thrift Exceptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testPassThroughThriftExceptions() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -419,6 +498,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
             "org.apache.iceberg.hive.LockException: Metastore operation failed for hivedb.tbl");
   }
 
+  /**
+   * 测试场景：Pass Through Thrift Exceptions For Hive Version 1。
+   *
+   * <p>验证该方法在 Pass Through Thrift Exceptions For Hive Version 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testPassThroughThriftExceptionsForHiveVersion_1()
       throws TException, InterruptedException {
@@ -445,6 +529,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     }
   }
 
+  /**
+   * 测试场景：Pass Through Interruptions。
+   *
+   * <p>验证该方法在 Pass Through Interruptions 条件下的行为是否符合预期。
+   */
   @Test
   public void testPassThroughInterruptions() throws TException {
     doReturn(waitLockResponse).when(spyClient).lock(any());
@@ -465,6 +554,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
                 + "Could not acquire the lock on hivedb.tbl, lock request ended in state WAITING");
   }
 
+  /**
+   * 测试场景：Table Level Process Lock Blocks Concurrent HMS Requests For Same Table。
+   *
+   * <p>验证该方法在 Table Level Process Lock Blocks Concurrent HMS Requests For Same Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableLevelProcessLockBlocksConcurrentHMSRequestsForSameTable() throws Exception {
     int numConcurrentCommits = 10;
@@ -496,6 +590,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, times(numConcurrentCommits)).lock(any(LockRequest.class));
   }
 
+  /**
+   * 测试场景：Lock Heartbeat。
+   *
+   * <p>验证该方法在 Lock Heartbeat 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockHeartbeat() throws TException, InterruptedException {
     doReturn(acquiredLockResponse).when(spyClient).lock(any());
@@ -509,6 +608,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
     verify(spyClient, atLeastOnce()).heartbeat(eq(0L), eq(dummyLockId));
   }
 
+  /**
+   * 测试场景：Lock Heartbeat Failure During Commit。
+   *
+   * <p>验证该方法在 Lock Heartbeat Failure During Commit 条件下的行为是否符合预期。
+   */
   @Test
   public void testLockHeartbeatFailureDuringCommit() throws TException, InterruptedException {
     doReturn(acquiredLockResponse).when(spyClient).lock(any());
@@ -526,6 +630,11 @@ public class TestHiveCommitLocks extends HiveTableBaseTest {
                 + "Failed to heartbeat for hive lock. Failed to heart beat.");
   }
 
+  /**
+   * 测试场景：No Lock Calls With No Lock。
+   *
+   * <p>验证该方法在 No Lock Calls With No Lock 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoLockCallsWithNoLock() throws TException {
     Configuration confWithLock = new Configuration(overriddenHiveConf);

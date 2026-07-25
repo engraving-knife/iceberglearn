@@ -30,6 +30,15 @@ import org.apache.spark.sql.connector.expressions.aggregate.CountStar;
 import org.apache.spark.sql.connector.expressions.aggregate.Max;
 import org.apache.spark.sql.connector.expressions.aggregate.Min;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 聚合表达式转换工具，将 Spark 聚合函数映射为 Iceberg 聚合表达式。
+ *
+ * <p>设计意图：用于在 MERGE INTO 等行级操作中下推聚合计算。
+ *
+ * <p>上下游关系：由 RewriteMergeIntoTable / RewriteRowLevelIcebergCommand 调用。
+ */
 public class SparkAggregates {
   private SparkAggregates() {}
 
@@ -40,7 +49,7 @@ public class SparkAggregates {
           .put(Max.class, Operation.MAX)
           .put(Min.class, Operation.MIN)
           .buildOrThrow();
-
+  /** 执行类型/值转换。 */
   public static Expression convert(AggregateFunc aggregate) {
     Operation op = AGGREGATES.get(aggregate.getClass());
     if (op != null) {

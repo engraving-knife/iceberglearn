@@ -24,7 +24,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestFixedSizeSplitScanTaskIterator，用于验证 Fixed Size Split Scan Task Iterator 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Fixed Size Split Scan Task Iterator
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestFixedSizeSplitScanTaskIterator {
+  /**
+   * 测试场景：splits。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplits() {
     verify(
@@ -42,6 +55,7 @@ public class TestFixedSizeSplitScanTaskIterator {
     verify(20L, 10L, asList(asList(0L, 10L)));
   }
 
+  /** 辅助方法：verify。 */
   private static void verify(long splitSize, long fileLen, List<List<Long>> offsetLenPairs) {
     FileScanTask mockFileScanTask = new MockFileScanTask(fileLen);
     SplitScanTaskIterator<FileScanTask> splitTaskIterator =
@@ -62,10 +76,12 @@ public class TestFixedSizeSplitScanTaskIterator {
     }
   }
 
+  /** 辅助方法：as list。 */
   private <T> List<T> asList(T... items) {
     return Lists.newArrayList(items);
   }
 
+  /** 辅助方法：create split task。 */
   private static FileScanTask createSplitTask(FileScanTask parentTask, long offset, long length) {
     return new SplitScanTask(offset, length, parentTask);
   }

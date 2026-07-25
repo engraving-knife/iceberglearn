@@ -29,10 +29,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+/**
+ * 文件级说明：测试 TestBucketPartitioner 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestBucketPartitioner 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestBucketPartitioner {
 
   static final int DEFAULT_NUM_BUCKETS = 60;
 
+  /**
+   * 测试场景：Partitioning Parallelism Greater Than Buckets。
+   *
+   * <p>验证该方法在 Partitioning Parallelism Greater Than Buckets 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @CsvSource({"ONE_BUCKET,50", "IDENTITY_AND_BUCKET,50", "ONE_BUCKET,60", "IDENTITY_AND_BUCKET,60"})
   public void testPartitioningParallelismGreaterThanBuckets(
@@ -54,6 +66,11 @@ public class TestBucketPartitioner {
     }
   }
 
+  /**
+   * 测试场景：Partitioning Parallelism Equal Less Than Buckets。
+   *
+   * <p>验证该方法在 Partitioning Parallelism Equal Less Than Buckets 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @CsvSource({"ONE_BUCKET,50", "IDENTITY_AND_BUCKET,50", "ONE_BUCKET,60", "IDENTITY_AND_BUCKET,60"})
   public void testPartitioningParallelismEqualLessThanBuckets(
@@ -70,6 +87,11 @@ public class TestBucketPartitioner {
     }
   }
 
+  /**
+   * 测试场景：Partitioner Bucket Id Null Fail。
+   *
+   * <p>验证该方法在 Partitioner Bucket Id Null Fail 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionerBucketIdNullFail() {
     PartitionSpec partitionSpec = TableSchemaType.ONE_BUCKET.getPartitionSpec(DEFAULT_NUM_BUCKETS);
@@ -80,6 +102,11 @@ public class TestBucketPartitioner {
         .withMessage(BUCKET_NULL_MESSAGE);
   }
 
+  /**
+   * 测试场景：Partitioner Multiple Buckets Fail。
+   *
+   * <p>验证该方法在 Partitioner Multiple Buckets Fail 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionerMultipleBucketsFail() {
     PartitionSpec partitionSpec = TableSchemaType.TWO_BUCKETS.getPartitionSpec(DEFAULT_NUM_BUCKETS);
@@ -89,6 +116,11 @@ public class TestBucketPartitioner {
         .withMessage(BucketPartitionerUtil.BAD_NUMBER_OF_BUCKETS_ERROR_MESSAGE, 2);
   }
 
+  /**
+   * 测试场景：Partitioner Bucket Id Out Of Range Fail。
+   *
+   * <p>验证该方法在 Partitioner Bucket Id Out Of Range Fail 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionerBucketIdOutOfRangeFail() {
     PartitionSpec partitionSpec = TableSchemaType.ONE_BUCKET.getPartitionSpec(DEFAULT_NUM_BUCKETS);

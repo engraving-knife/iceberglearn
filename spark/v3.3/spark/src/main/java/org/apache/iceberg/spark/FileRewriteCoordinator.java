@@ -20,12 +20,21 @@ package org.apache.iceberg.spark;
 
 import org.apache.iceberg.DataFile;
 
+/**
+ * Iceberg Spark 集成相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 FileRewriteCoordinator。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ */
 public class FileRewriteCoordinator extends BaseFileRewriteCoordinator<DataFile> {
 
   private static final FileRewriteCoordinator INSTANCE = new FileRewriteCoordinator();
 
+  /** 构造 FileRewriteCoordinator 实例。 */
   private FileRewriteCoordinator() {}
 
+  /** 执行该方法的具体逻辑。 */
   public static FileRewriteCoordinator get() {
     return INSTANCE;
   }

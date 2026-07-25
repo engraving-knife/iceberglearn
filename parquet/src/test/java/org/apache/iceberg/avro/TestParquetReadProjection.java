@@ -27,7 +27,15 @@ import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 
+/**
+ * 文件级说明：测试 TestParquetReadProjection 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestParquetReadProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestParquetReadProjection extends TestReadProjection {
+  /** 辅助方法：writeAndRead。 */
   @Override
   protected GenericData.Record writeAndRead(
       String desc, Schema writeSchema, Schema readSchema, GenericData.Record record)

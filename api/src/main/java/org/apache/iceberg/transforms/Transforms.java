@@ -27,18 +27,39 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.types.Type;
 
 /**
- * Factory methods for transforms.
+ * 变换（Transform）工厂方法集合。
  *
- * <p>Most users should create transforms using a {@link PartitionSpec#builderFor(Schema)} partition
- * spec builder}.
+ * <p>所属模块：iceberg-api（提供构造常用变换实例的入口，被 PartitionSpec 构造器、元数据反序列化等使用）。
  *
- * @see PartitionSpec#builderFor(Schema) The partition spec builder.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供 identity/year/month/day/hour/bucket/truncate/void 等常用变换的工厂方法。
+ *   <li>支持从字符串（如 "bucket[16]"、"year"）反序列化出变换实例，用于元数据重建。
+ *   <li>保留一批 {@code @Deprecated} 的带 Type 工厂方法以兼容旧 API。
+ * </ul>
+ *
+ * <p>设计意图：所有具体变换均为不可变值对象（单例或按参数缓存），工厂方法集中入口便于 发现与维护；旧 API 显式标记弃用，引导调用方迁移到不带 Type 的版本（类型绑定延迟到 bind
+ * 阶段）。
+ *
+ * <p>上下游关系：被 {@link PartitionSpec#builderFor(Schema)}、元数据 JSON 反序列化、各引擎 创建 Iceberg 表时调用。
+ *
+ * @see PartitionSpec#builderFor(Schema) 分区规约构造器
  */
 public class Transforms {
   private Transforms() {}
 
-  private static final Pattern HAS_WIDTH = Pattern.compile("(\\w+)\\[(\\d+)\\]");
+  private static final Pattern HAS_WIDTH = Pattern.compile("(\\w+)\\[(\\d+)]");
 
+  /**
+   * 从字符串解析变换实例（不感知类型）。
+   *
+   * <p>逻辑：先用正则匹配形如 "name[N]" 的带参变换（truncate/bucket），命中则取宽度并构造； 否则按
+   * identity/year/month/day/hour/void 关键字匹配；都不命中则返回 {@link UnknownTransform}， 保留原始字符串以便后续处理或报错。
+   *
+   * @param transform 变换字符串表达
+   * @return 解析得到的变换实例
+   */
   public static Transform<?, ?> fromString(String transform) {
     Matcher widthMatcher = HAS_WIDTH.matcher(transform);
     if (widthMatcher.matches()) {
@@ -68,6 +89,16 @@ public class Transforms {
     return new UnknownTransform<>(transform);
   }
 
+  /**
+   * 从字符串解析变换实例，结合源类型选择更精确的实现。
+   *
+   * <p>逻辑：先尝试带参变换（truncate/bucket，传入 type）；再匹配 identity； 对 TIMESTAMP 与 DATE 调用 {@link
+   * Timestamps}/{@link Dates} 的枚举 valueOf 获取对应粒度变换（非法名称会被忽略并继续往下走）；最后匹配 void，否则返回 UnknownTransform。
+   *
+   * @param type 源字段类型，用于挑选与类型相关的变换实现
+   * @param transform 变换字符串表达
+   * @return 解析得到的变换实例
+   */
   public static Transform<?, ?> fromString(Type type, String transform) {
     Matcher widthMatcher = HAS_WIDTH.matcher(transform);
     if (widthMatcher.matches()) {

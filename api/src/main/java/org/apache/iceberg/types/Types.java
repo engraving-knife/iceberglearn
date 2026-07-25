@@ -33,6 +33,34 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.types.Type.NestedType;
 import org.apache.iceberg.types.Type.PrimitiveType;
 
+/**
+ * Iceberg 类型系统具体实现集合：定义所有数据类型的内部类与工厂方法。
+ *
+ * <p>所属模块：iceberg-api（类型系统的核心实现，被 schema、分区、表达式、序列化等模块依赖）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义 13 种原始类型（Boolean/Integer/Long/Float/Double/Date/Time/Timestamp/String/UUID/
+ *       Fixed/Binary/Decimal）与 3 种嵌套类型（StructType/ListType/MapType）。
+ *   <li>定义 {@link NestedField} 表示 struct 字段、list 元素、map 键值，携带字段 ID、可选性与文档。
+ *   <li>提供 {@link #fromPrimitiveString(String)} 把类型字符串（如 "int"、"fixed[16]"、"decimal(10,2)"）
+ *       解析为原始类型实例。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>无参数的原始类型采用单例（INSTANCE），减少对象创建并保证相等性；带参数的类型 （TimestampType 的 adjustToUTC、FixedType 的
+ *       length、DecimalType 的 precision/scale） 自行覆盖 equals/hashCode。
+ *   <li>嵌套类型把元素/键值建模为 {@link NestedField}，统一字段 ID 管理，支撑 schema 演进时的 字段增删与 ID 稳定性。
+ *   <li>{@link StructType} 的字段索引（按名/按 ID/按小写名）采用 transient 懒加载缓存， 序列化时不保存缓存，反序列化后按需重建。
+ *   <li>{@link DecimalType} 限制 precision <= 38，与 IEEE 754 decimal128 对齐。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link org.apache.iceberg.Schema} 持有；被 {@link TypeUtil} 遍历与改写； 被 {@link
+ * Conversions}、{@link Comparators} 用于值转换与比较；被各引擎集成模块用于类型映射。
+ */
 public class Types {
 
   private Types() {}
@@ -57,6 +85,17 @@ public class Types {
   private static final Pattern DECIMAL =
       Pattern.compile("decimal\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)");
 
+  /**
+   * 把类型字符串解析为原始类型实例。
+   *
+   * <p>逻辑：先小写化后查 TYPES 常量映射（覆盖 boolean/int/long/float/double/date/time/
+   * timestamptz/timestamp/string/uuid/binary）；未命中再分别用 FIXED、DECIMAL 正则匹配 fixed[N] 与
+   * decimal(P,S)；都不匹配则抛 IllegalArgumentException。
+   *
+   * @param typeString 类型字符串
+   * @return 对应的原始类型实例
+   * @throws IllegalArgumentException 无法解析时抛出
+   */
   public static PrimitiveType fromPrimitiveString(String typeString) {
     String lowerTypeString = typeString.toLowerCase(Locale.ROOT);
     if (TYPES.containsKey(lowerTypeString)) {
@@ -76,6 +115,7 @@ public class Types {
     throw new IllegalArgumentException("Cannot parse type string to primitive: " + typeString);
   }
 
+  /** 布尔类型，单例。 */
   public static class BooleanType extends PrimitiveType {
     private static final BooleanType INSTANCE = new BooleanType();
 
@@ -94,6 +134,7 @@ public class Types {
     }
   }
 
+  /** 32 位有符号整数类型，单例。 */
   public static class IntegerType extends PrimitiveType {
     private static final IntegerType INSTANCE = new IntegerType();
 
@@ -112,6 +153,7 @@ public class Types {
     }
   }
 
+  /** 64 位有符号长整型类型，单例。 */
   public static class LongType extends PrimitiveType {
     private static final LongType INSTANCE = new LongType();
 
@@ -130,6 +172,7 @@ public class Types {
     }
   }
 
+  /** 单精度浮点类型，单例。 */
   public static class FloatType extends PrimitiveType {
     private static final FloatType INSTANCE = new FloatType();
 
@@ -148,6 +191,7 @@ public class Types {
     }
   }
 
+  /** 双精度浮点类型，单例。 */
   public static class DoubleType extends PrimitiveType {
     private static final DoubleType INSTANCE = new DoubleType();
 
@@ -166,6 +210,11 @@ public class Types {
     }
   }
 
+  /**
+   * 日期类型：自 1970-01-01 起的天数，以 int 存储，单例。
+   *
+   * <p>设计要点：与 SQL DATE 语义一致，不含时区与时间分量。
+   */
   public static class DateType extends PrimitiveType {
     private static final DateType INSTANCE = new DateType();
 
@@ -184,6 +233,11 @@ public class Types {
     }
   }
 
+  /**
+   * 时间类型：自午夜起的微秒数，以 long 存储，单例。
+   *
+   * <p>设计要点：与 SQL TIME WITHOUT TIME ZONE 语义一致，不含日期与时区。
+   */
   public static class TimeType extends PrimitiveType {
     private static final TimeType INSTANCE = new TimeType();
 
@@ -204,6 +258,12 @@ public class Types {
     }
   }
 
+  /**
+   * 时间戳类型：自 epoch 起的微秒数，以 long 存储。
+   *
+   * <p>设计要点：区分带时区（adjustToUTC=true，toString="timestamptz"）与不带时区
+   * （adjustToUTC=false，toString="timestamp"）两个单例；因 adjustToUTC 参与相等性判断， 故覆盖 equals/hashCode。
+   */
   public static class TimestampType extends PrimitiveType {
     private static final TimestampType INSTANCE_WITH_ZONE = new TimestampType(true);
     private static final TimestampType INSTANCE_WITHOUT_ZONE = new TimestampType(false);
@@ -258,6 +318,7 @@ public class Types {
     }
   }
 
+  /** 字符串类型，单例。 */
   public static class StringType extends PrimitiveType {
     private static final StringType INSTANCE = new StringType();
 
@@ -276,6 +337,7 @@ public class Types {
     }
   }
 
+  /** UUID 类型，单例。 */
   public static class UUIDType extends PrimitiveType {
     private static final UUIDType INSTANCE = new UUIDType();
 
@@ -294,6 +356,11 @@ public class Types {
     }
   }
 
+  /**
+   * 定长二进制类型：长度固定的 byte 数组。
+   *
+   * <p>设计要点：因 length 参与相等性判断，覆盖 equals/hashCode；toString 为 "fixed[N]"。
+   */
   public static class FixedType extends PrimitiveType {
     public static FixedType ofLength(int length) {
       return new FixedType(length);
@@ -337,6 +404,7 @@ public class Types {
     }
   }
 
+  /** 变长二进制类型，单例。 */
   public static class BinaryType extends PrimitiveType {
     private static final BinaryType INSTANCE = new BinaryType();
 
@@ -355,6 +423,12 @@ public class Types {
     }
   }
 
+  /**
+   * Decimal 类型：固定精度与标度的十进制数。
+   *
+   * <p>设计要点：precision 限制 <= 38（与 decimal128 对齐）；precision 与 scale 参与相等性判断， 故覆盖
+   * equals/hashCode；toString 为 "decimal(P,S)"。
+   */
   public static class DecimalType extends PrimitiveType {
     public static DecimalType of(int precision, int scale) {
       return new DecimalType(precision, scale);
@@ -411,6 +485,12 @@ public class Types {
     }
   }
 
+  /**
+   * 嵌套字段：struct 字段、list 元素、map 键值的统一表示。
+   *
+   * <p>设计要点：字段 ID 在 schema 演进中保持稳定（即使字段重命名），是 Iceberg schema 演进的核心； isOptional 区分可选（允许 null）与必填；doc
+   * 携带可选文档说明。不可变值对象，asOptional/asRequired 返回新实例而非原地修改。
+   */
   public static class NestedField implements Serializable {
     public static NestedField optional(int id, String name, Type type) {
       return new NestedField(true, id, name, type, null);
@@ -523,6 +603,11 @@ public class Types {
     }
   }
 
+  /**
+   * Struct 类型：有序字段集合，是表 schema 的顶层结构。
+   *
+   * <p>设计要点：字段以数组存储保持顺序；按名/按 ID/按小写名的索引采用 transient 懒加载缓存， 序列化时不保存缓存。equals 基于 fields 数组内容。
+   */
   public static class StructType extends NestedType {
     private static final Joiner FIELD_SEP = Joiner.on(", ");
 
@@ -655,6 +740,11 @@ public class Types {
     }
   }
 
+  /**
+   * List 类型：元素列表，元素建模为名为 "element" 的 {@link NestedField}。
+   *
+   * <p>设计要点：元素字段带独立 ID，支持 schema 演进；区分元素可选/必填。
+   */
   public static class ListType extends NestedType {
     public static ListType ofOptional(int elementId, Type elementType) {
       Preconditions.checkNotNull(elementType, "Element type cannot be null");
@@ -755,6 +845,11 @@ public class Types {
     }
   }
 
+  /**
+   * Map 类型：键值对集合，键值分别建模为名为 "key"/"value" 的 {@link NestedField}。
+   *
+   * <p>设计要点：键始终必填（不允许 null），值可可选/必填；键值字段带独立 ID。
+   */
   public static class MapType extends NestedType {
     public static MapType ofOptional(int keyId, int valueId, Type keyType, Type valueType) {
       Preconditions.checkNotNull(valueType, "Value type cannot be null");

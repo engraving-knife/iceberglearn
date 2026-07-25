@@ -24,15 +24,23 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.connector.iceberg.catalog.Procedure
 import scala.collection.compat.immutable.ArraySeq
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：存储过程调用的物理执行节点，执行已解析的 Procedure 并以行形式返回结果。
+ * <p>设计意图：实现 Call 的物理执行，调用 Procedure.call 并包装结果为 RDD。
+ * <p>上下游关系：由 ExtendedDataSourceV2Strategy 从 Call 创建。
+ */
 
 case class CallExec(
     output: Seq[Attribute],
     procedure: Procedure,
     input: InternalRow) extends LeafV2CommandExec {
+  /** 执行任务。 */
 
   override protected def run(): Seq[InternalRow] = {
     ArraySeq.unsafeWrapArray(procedure.call(input))
   }
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"CallExec${truncatedString(output, "[", ", ", "]", maxFields)} ${procedure.description}"

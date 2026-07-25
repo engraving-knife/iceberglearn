@@ -30,8 +30,11 @@ import org.apache.iceberg.util.StructLikeWrapper;
 import org.apache.iceberg.util.StructProjection;
 
 /**
- * Create a {@link KeySelector} to shuffle by equality fields, to ensure same equality fields record
- * will be emitted to same writer in order.
+ * 等值字段键选择器，按 equality 字段计算键用于 upsert 路由。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：从 RowData 提取等值字段并计算哈希键。
+ *
+ * <p>设计意图：实现 Flink KeySelector；被 FlinkSink 用于 equality delete 路由。
  */
 class EqualityFieldKeySelector implements KeySelector<RowData, Integer> {
 

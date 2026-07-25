@@ -29,8 +29,11 @@ import org.apache.iceberg.io.CloseableIterator;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * FlinkRecordReaderFunction essentially cloned objects already. So there is no need to use array
- * pool to clone objects. Simply create a new ArrayList for each batch.
+ * 基于 List 的数据迭代器分批器，用列表收集记录批次。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按批大小从迭代器读取记录并构造 ListBatchRecords。
+ *
+ * <p>设计意图：实现 DataIteratorBatcher；被 IcebergSourceSplitReader 调用。
  */
 class ListDataIteratorBatcher<T> implements DataIteratorBatcher<T> {
 

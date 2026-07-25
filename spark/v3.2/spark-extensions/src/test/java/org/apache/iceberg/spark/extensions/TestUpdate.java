@@ -70,8 +70,16 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestUpdate 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 更新 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
 
+  /** 测试更新。 */
   public TestUpdate(
       String catalogName,
       String implementation,
@@ -82,11 +90,13 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     super(catalogName, implementation, config, fileFormat, vectorized, distributionMode);
   }
 
+  /** 初始化Spark配置。 */
   @BeforeClass
   public static void setupSparkConf() {
     spark.conf().set("spark.sql.shuffle.partitions", "4");
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -95,6 +105,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     sql("DROP TABLE IF EXISTS deleted_employee");
   }
 
+  /** 测试EXPLAIN场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExplain() {
     createAndInitTable("id INT, dep STRING");
@@ -114,6 +125,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试更新空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateEmptyTable() {
     createAndInitTable("id INT, dep STRING");
@@ -130,6 +142,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试更新带别名场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithAlias() {
     createAndInitTable("id INT, dep STRING", "{ \"id\": 1, \"dep\": \"a\" }");
@@ -146,6 +159,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试更新对齐赋值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateAlignsAssignments() {
     createAndInitTable("id INT, c1 INT, c2 INT");
@@ -160,6 +174,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试更新带不支持的分区谓词场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithUnsupportedPartitionPredicate() {
     createAndInitTable("id INT, dep STRING");
@@ -175,6 +190,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试更新带动态文件过滤场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithDynamicFileFiltering() {
     createAndInitTable("id INT, dep STRING");
@@ -203,6 +219,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试更新不存在的已存在的记录场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateNonExistingRecords() {
     createAndInitTable("id INT, dep STRING");
@@ -228,6 +245,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试更新无condition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithoutCondition() {
     createAndInitTable("id INT, dep STRING");
@@ -269,6 +287,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY dep ASC", tableName));
   }
 
+  /** 测试更新带空值conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithNullConditions() {
     createAndInitTable("id INT, dep STRING");
@@ -301,6 +320,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试更新带在与非在conditions场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInAndNotInConditions() {
     createAndInitTable("id INT, dep STRING");
@@ -330,6 +350,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST, dep", tableName));
   }
 
+  /** 测试更新带多个行分组Parquet场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithMultipleRowGroupsParquet() throws NoSuchTableException {
     Assume.assumeTrue(fileFormat.equalsIgnoreCase("parquet"));
@@ -361,6 +382,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     Assert.assertEquals(200, spark.table(tableName).count());
   }
 
+  /** 测试更新嵌套结构体字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateNestedStructFields() {
     createAndInitTable(
@@ -394,6 +416,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试更新带userdefined分布场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithUserDefinedDistribution() {
     createAndInitTable("id INT, c2 INT, c3 INT");
@@ -430,6 +453,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试更新带serializable隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testUpdateWithSerializableIsolation() throws InterruptedException {
     // cannot run tests with concurrency for Hadoop tables without atomic renames
@@ -512,6 +536,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试更新带快照隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testUpdateWithSnapshotIsolation()
       throws InterruptedException, ExecutionException {
@@ -589,6 +614,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     Assert.assertTrue("Timeout", executorService.awaitTermination(2, TimeUnit.MINUTES));
   }
 
+  /** 测试更新带inferred转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInferredCasts() {
     createAndInitTable("id INT, s STRING", "{ \"id\": 1, \"s\": \"value\" }");
@@ -601,6 +627,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试更新modifies空值结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateModifiesNullStruct() {
     createAndInitTable("id INT, s STRUCT<n1:INT,n2:INT>", "{ \"id\": 1, \"s\": null }");
@@ -613,6 +640,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** 测试更新refreshesrelationcache场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateRefreshesRelationCache() {
     createAndInitTable("id INT, dep STRING");
@@ -659,6 +687,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     spark.sql("UNCACHE TABLE tmp");
   }
 
+  /** 测试更新带在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -707,6 +736,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST, dep", tableName));
   }
 
+  /** 测试更新带在subquery与动态文件过滤场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInSubqueryAndDynamicFileFiltering() {
     createAndInitTable("id INT, dep STRING");
@@ -739,6 +769,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试更新带自身subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithSelfSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -772,6 +803,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试更新带multi列在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithMultiColumnInSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -795,6 +827,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST", tableName));
   }
 
+  /** 测试更新带非在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithNotInSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -832,6 +865,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id ASC NULLS LAST, dep", tableName));
   }
 
+  /** 测试更新带存在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithExistSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -883,6 +917,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试更新带非存在subquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithNotExistsSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -925,6 +960,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         sql("SELECT * FROM %s ORDER BY id, dep", tableName));
   }
 
+  /** 测试更新带scalarsubquery场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithScalarSubquery() {
     createAndInitTable("id INT, dep STRING");
@@ -949,6 +985,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试更新thatrequiresgrouping前写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateThatRequiresGroupingBeforeWrite() {
     createAndInitTable("id INT, dep STRING");
@@ -992,6 +1029,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试更新带vectorization场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithVectorization() {
     createAndInitTable("id INT, dep STRING");
@@ -1014,6 +1052,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试更新modify分区源字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateModifyPartitionSourceField() throws NoSuchTableException {
     createAndInitTable("id INT, dep STRING, country STRING");
@@ -1054,6 +1093,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     Assert.assertEquals(30L, scalarSql("SELECT count(*) FROM %s WHERE id = -1", tableName));
   }
 
+  /** 测试更新带静态谓词下推场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithStaticPredicatePushdown() {
     createAndInitTable("id INT, dep STRING");
@@ -1084,6 +1124,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试更新带invalid更新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInvalidUpdates() {
     createAndInitTable("id INT, a ARRAY<STRUCT<c1:INT,c2:INT>>, m MAP<STRING,STRING>");
@@ -1101,6 +1142,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         () -> sql("UPDATE %s SET m.key = 'new_key'", tableName));
   }
 
+  /** 测试更新带conflicting赋值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithConflictingAssignments() {
     createAndInitTable("id INT, c STRUCT<n1:INT,n2:STRUCT<dn1:INT,dn2:INT>>");
@@ -1128,6 +1170,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         });
   }
 
+  /** 测试更新带invalid赋值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithInvalidAssignments() {
     createAndInitTable(
@@ -1170,6 +1213,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
     }
   }
 
+  /** 测试更新带不存在的deterministiccondition场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateWithNonDeterministicCondition() {
     createAndInitTable("id INT, dep STRING");
@@ -1181,6 +1225,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         () -> sql("UPDATE %s SET id = -1 WHERE id = 1 AND rand() > 0.5", tableName));
   }
 
+  /** 测试更新上不存在的Iceberg表非supported场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUpdateOnNonIcebergTableNotSupported() {
     createOrReplaceView("testtable", "{ \"c1\": -100, \"c2\": -200 }");
@@ -1192,6 +1237,7 @@ public abstract class TestUpdate extends SparkRowLevelOperationsTestBase {
         () -> sql("UPDATE %s SET c1 = -1 WHERE c2 = 1", "testtable"));
   }
 
+  /** 模式。 */
   private RowLevelOperationMode mode(Table table) {
     String modeName = table.properties().getOrDefault(UPDATE_MODE, UPDATE_MODE_DEFAULT);
     return RowLevelOperationMode.fromName(modeName);

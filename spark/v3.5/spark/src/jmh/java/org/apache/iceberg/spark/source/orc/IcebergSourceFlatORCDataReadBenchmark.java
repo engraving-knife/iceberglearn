@@ -37,32 +37,37 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 
 /**
- * A benchmark that evaluates the performance of reading ORC data with a flat schema using Iceberg
- * and the built-in file source in Spark.
+ * 文件级说明：IcebergSourceFlatORCDataReadBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.5: <code>
- *   ./gradlew -DsparkVersions=3.5 :iceberg-spark:iceberg-spark-3.5_2.12:jmh
- *       -PjmhIncludeRegex=IcebergSourceFlatORCDataReadBenchmark
- *       -PjmhOutputPath=benchmark/iceberg-source-flat-orc-data-read-benchmark-result.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.5）。职责：对 Iceberg数据源扁平ORC数据读取 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCDataBenchmark {
 
   private static final int NUM_FILES = 10;
   private static final int NUM_ROWS = 1000000;
 
+  /** 初始化：setupBenchmark，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBenchmark() {
     setupSpark();
     appendData();
   }
 
+  /** 清理：tearDownBenchmark，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void tearDownBenchmark() throws IOException {
     tearDownSpark();
     cleanupFiles();
   }
 
+  /**
+   * 基准测试场景：读取Iceberg不存在的向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIcebergNonVectorized() {
@@ -77,6 +82,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取Iceberg向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readIcebergVectorized() {
@@ -96,6 +106,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取文件数据源向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readFileSourceVectorized() {
@@ -110,6 +125,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取文件数据源不存在的向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readFileSourceNonVectorized() {
@@ -124,6 +144,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取带投影Iceberg不存在的向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readWithProjectionIcebergNonVectorized() {
@@ -138,6 +163,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取带投影Iceberg向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readWithProjectionIcebergVectorized() {
@@ -158,6 +188,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取带投影文件数据源向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readWithProjectionFileSourceVectorized() {
@@ -172,6 +207,11 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /**
+   * 基准测试场景：读取带投影文件数据源不存在的向量化。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void readWithProjectionFileSourceNonVectorized() {
@@ -186,6 +226,7 @@ public class IcebergSourceFlatORCDataReadBenchmark extends IcebergSourceFlatORCD
         });
   }
 
+  /** 辅助方法：追加数据。 */
   private void appendData() {
     Map<String, String> tableProperties = Maps.newHashMap();
     tableProperties.put(DEFAULT_FILE_FORMAT, "orc");

@@ -27,6 +27,15 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.UserDefinedType;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark DataType 访问者基类，提供递归遍历 Spark 类型树的骨架。
+ *
+ * <p>设计意图：采用访问者模式解耦类型遍历与具体转换逻辑。
+ *
+ * <p>上下游关系：被 SparkTypeToType / SparkFixupTypes / TypeToSparkType 等继承。
+ */
 class SparkTypeVisitor<T> {
   static <T> T visit(DataType type, SparkTypeVisitor<T> visitor) {
     if (type instanceof StructType) {
@@ -55,23 +64,23 @@ class SparkTypeVisitor<T> {
       return visitor.atomic(type);
     }
   }
-
+  /** 执行 struct 相关操作。 */
   public T struct(StructType struct, List<T> fieldResults) {
     return null;
   }
-
+  /** 执行 field 相关操作。 */
   public T field(StructField field, T typeResult) {
     return null;
   }
-
+  /** 执行 array 相关操作。 */
   public T array(ArrayType array, T elementResult) {
     return null;
   }
-
+  /** 执行 map 相关操作。 */
   public T map(MapType map, T keyResult, T valueResult) {
     return null;
   }
-
+  /** 执行 atomic 相关操作。 */
   public T atomic(DataType atomic) {
     return null;
   }

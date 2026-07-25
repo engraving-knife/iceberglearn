@@ -23,6 +23,12 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.expressions.AttributeSet
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.util.truncatedString
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：行合并逻辑计划节点，按 MERGE 的 WHEN 子句对匹配/未匹配行进行合并输出。
+ * <p>设计意图：作为 MERGE 重写的中间节点，流式合并源行与目标行并输出 delete/insert/update 行。
+ * <p>上下游关系：由 RewriteMergeIntoTable 创建；由 MergeRowsExec 执行。
+ */
 
 case class MergeRows(
     isSourceRowPresent: Expression,
@@ -44,10 +50,12 @@ case class MergeRows(
   }
 
   override lazy val references: AttributeSet = child.outputSet
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     s"MergeRows${truncatedString(output, "[", ", ", "]", maxFields)}"
   }
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: LogicalPlan): LogicalPlan = {
     copy(child = newChild)

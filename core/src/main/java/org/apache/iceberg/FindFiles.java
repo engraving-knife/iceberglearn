@@ -26,13 +26,40 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.DateTimeUtil;
 
+/**
+ * 文件查找工具：以 Builder 方式按快照、时间、过滤条件等查找表中的数据文件。
+ *
+ * <p>所属模块：iceberg-core（扫描工具层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供链式 API 配置查找条件（快照 id、时间戳、行过滤、元数据过滤、分区过滤）；
+ *   <li>在 {@link #collect()} 中基于条件扫描 manifest，返回匹配的 {@link DataFile} 集合。
+ * </ul>
+ *
+ * <p>设计意图：封装扫描的复杂配置，提供比直接使用 TableScan 更简洁的查找接口， 适合需要按多种条件检索文件而非读取数据的场景。
+ *
+ * <p>上下游关系：由用户代码直接调用；底层使用 {@link ManifestGroup} 做实际扫描。
+ */
 public class FindFiles {
   private FindFiles() {}
 
+  /**
+   * 创建一个查找 Builder。
+   *
+   * @param table 目标表
+   * @return {@link Builder}
+   */
   public static Builder in(Table table) {
     return new Builder(table);
   }
 
+  /**
+   * 文件查找构建器：累积查找条件并最终通过 {@link #collect()} 执行查找。
+   *
+   * <p>设计意图：支持多种过滤维度（快照、时间、行级、元数据级、分区级）的组合， 各维度通过 AND/OR 表达式叠加，最终在 collect 时一次性应用。
+   */
   public static class Builder {
     private final Table table;
     private final TableOperations ops;
@@ -43,31 +70,43 @@ public class FindFiles {
     private Expression fileFilter = Expressions.alwaysTrue();
     private Expression partitionFilter = Expressions.alwaysTrue();
 
+    /**
+     * 构造 Builder。
+     *
+     * @param table 目标表
+     */
     public Builder(Table table) {
       this.table = table;
       this.ops = ((HasTableOperations) table).operations();
     }
 
+    /** 设置查找大小写不敏感。 */
     public Builder caseInsensitive() {
       this.caseSensitive = false;
       return this;
     }
 
+    /**
+     * 设置查找是否大小写敏感。
+     *
+     * @param findCaseSensitive 是否大小写敏感
+     */
     public Builder caseSensitive(boolean findCaseSensitive) {
       this.caseSensitive = findCaseSensitive;
       return this;
     }
 
+    /** 标记查找结果包含列统计信息。 */
     public Builder includeColumnStats() {
       this.includeColumnStats = true;
       return this;
     }
 
     /**
-     * Base results on the given snapshot.
+     * 基于指定快照查找文件。
      *
-     * @param findSnapshotId a snapshot ID
-     * @return this for method chaining
+     * @param findSnapshotId 快照 id
+     * @return this
      */
     public Builder inSnapshot(long findSnapshotId) {
       Preconditions.checkArgument(
@@ -81,10 +120,10 @@ public class FindFiles {
     }
 
     /**
-     * Base results on files in the snapshot that was current as of a timestamp.
+     * 基于时间戳查找文件：使用该时间戳之前最新的快照。
      *
-     * @param timestampMillis a timestamp in milliseconds
-     * @return this for method chaining
+     * @param timestampMillis 时间戳（毫秒）
+     * @return this
      */
     public Builder asOfTime(long timestampMillis) {
       Preconditions.checkArgument(
@@ -112,11 +151,10 @@ public class FindFiles {
     }
 
     /**
-     * Filter results using a record filter. Files that may contain at least one matching record
-     * will be returned by {@link #collect()}.
+     * 按行过滤查找文件：返回可能包含至少一条匹配记录的文件。
      *
-     * @param expr a record filter
-     * @return this for method chaining
+     * @param expr 行过滤表达式
+     * @return this
      */
     public Builder withRecordsMatching(Expression expr) {
       this.rowFilter = Expressions.and(rowFilter, expr);
@@ -124,10 +162,10 @@ public class FindFiles {
     }
 
     /**
-     * Filter results using a metadata filter for the data in a {@link DataFile}.
+     * 按 {@link DataFile} 元数据列过滤查找文件。
      *
-     * @param expr a filter for {@link DataFile} metadata columns
-     * @return this for method chaining
+     * @param expr 元数据过滤表达式
+     * @return this
      */
     public Builder withMetadataMatching(Expression expr) {
       this.fileFilter = Expressions.and(fileFilter, expr);
@@ -135,33 +173,35 @@ public class FindFiles {
     }
 
     /**
-     * Filter results to files in any one of the given partitions.
+     * 限定查找范围为指定分区。
      *
-     * @param spec a spec for the partitions
-     * @param partition a StructLike that stores a partition tuple
-     * @return this for method chaining
+     * @param spec 分区规格
+     * @param partition 分区数据
+     * @return this
      */
     public Builder inPartition(PartitionSpec spec, StructLike partition) {
       return inPartitions(spec, partition);
     }
 
     /**
-     * Filter results to files in any one of the given partitions.
+     * 限定查找范围为多个分区（可变参数）。
      *
-     * @param spec a spec for the partitions
-     * @param partitions one or more StructLike that stores a partition tuple
-     * @return this for method chaining
+     * @param spec 分区规格
+     * @param partitions 分区数据数组
+     * @return this
      */
     public Builder inPartitions(PartitionSpec spec, StructLike... partitions) {
       return inPartitions(spec, Arrays.asList(partitions));
     }
 
     /**
-     * Filter results to files in any one of the given partitions.
+     * 限定查找范围为多个分区（列表）。
      *
-     * @param spec a spec for the partitions
-     * @param partitions a list of StructLike that stores a partition tuple
-     * @return this for method chaining
+     * <p>逻辑：对每个分区构造等值表达式（所有分区字段相等），多个分区间用 OR 连接， 再与已有 partitionFilter 用 OR 合并。
+     *
+     * @param spec 分区规格
+     * @param partitions 分区数据列表
+     * @return this
      */
     public Builder inPartitions(PartitionSpec spec, List<StructLike> partitions) {
       Preconditions.checkArgument(
@@ -190,7 +230,14 @@ public class FindFiles {
       return this;
     }
 
-    /** Returns all files in the table that match all of the filters. */
+    /**
+     * 执行查找，返回所有匹配过滤条件的数据文件。
+     *
+     * <p>逻辑：确定目标快照（指定 id 或当前快照）；用 {@link ManifestGroup} 配置行过滤、文件过滤、 分区过滤，忽略已删除文件，扫描 entries 并转换为
+     * DataFile。
+     *
+     * @return 匹配的数据文件集合
+     */
     public CloseableIterable<DataFile> collect() {
       Snapshot snapshot =
           snapshotId != null ? ops.current().snapshot(snapshotId) : ops.current().currentSnapshot();

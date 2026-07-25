@@ -26,6 +26,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestSnapshotManager，用于验证 Snapshot Manager 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Snapshot Manager 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestSnapshotManager extends TableTestBase {
 
@@ -47,15 +55,22 @@ public class TestSnapshotManager extends TableTestBase {
           .withRecordCount(1)
           .build();
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：snapshot manager。 */
   public TestSnapshotManager(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：cherry pick dynamic overwrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickDynamicOverwrite() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -78,6 +93,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_B, REPLACEMENT_FILE_A);
   }
 
+  /**
+   * 测试场景：cherry pick dynamic overwrite without parent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickDynamicOverwriteWithoutParent() {
     Assert.assertNull("Table should not have a current snapshot", table.currentSnapshot());
@@ -100,6 +120,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_B, REPLACEMENT_FILE_A);
   }
 
+  /**
+   * 测试场景：cherry pick dynamic overwrite conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickDynamicOverwriteConflict() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -128,6 +153,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_A, CONFLICT_FILE_A);
   }
 
+  /**
+   * 测试场景：cherry pick dynamic overwrite delete conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickDynamicOverwriteDeleteConflict() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -159,6 +189,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_B);
   }
 
+  /**
+   * 测试场景：cherry pick from branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickFromBranch() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -190,6 +225,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_A);
   }
 
+  /**
+   * 测试场景：cherry pick overwrite。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCherryPickOverwrite() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -218,6 +258,11 @@ public class TestSnapshotManager extends TableTestBase {
     validateTableFiles(table, FILE_A, FILE_B);
   }
 
+  /**
+   * 测试场景：create branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateBranch() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -230,6 +275,11 @@ public class TestSnapshotManager extends TableTestBase {
             && expectedBranch.equals(SnapshotRef.branchBuilder(snapshotId).build()));
   }
 
+  /**
+   * 测试场景：create branch without snapshot id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateBranchWithoutSnapshotId() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -241,6 +291,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assertions.assertThat(actualBranch).isEqualTo(SnapshotRef.branchBuilder(snapshotId).build());
   }
 
+  /**
+   * 测试场景：create branch on empty table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateBranchOnEmptyTable() {
     table.manageSnapshots().createBranch("branch1").commit();
@@ -262,6 +317,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assertions.assertThat(snapshot.removedDeleteFiles(table.io())).isEmpty();
   }
 
+  /**
+   * 测试场景：create branch on empty table fails when ref already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateBranchOnEmptyTableFailsWhenRefAlreadyExists() {
     table.manageSnapshots().createBranch("branch1").commit();
@@ -278,6 +338,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Ref branch2 already exists");
   }
 
+  /**
+   * 测试场景：create branch fails when ref already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateBranchFailsWhenRefAlreadyExists() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -301,6 +366,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Ref branch2 already exists");
   }
 
+  /**
+   * 测试场景：create tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTag() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -313,6 +383,11 @@ public class TestSnapshotManager extends TableTestBase {
         expectedTag != null && expectedTag.equals(SnapshotRef.tagBuilder(snapshotId).build()));
   }
 
+  /**
+   * 测试场景：create tag fails when ref already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTagFailsWhenRefAlreadyExists() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -337,6 +412,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Ref tag2 already exists");
   }
 
+  /**
+   * 测试场景：remove branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveBranch() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -355,6 +435,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertNull(updated.ref("branch2"));
   }
 
+  /**
+   * 测试场景：removing non existing branch fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovingNonExistingBranchFails() {
     Assertions.assertThatThrownBy(
@@ -363,6 +448,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Branch does not exist: non-existing");
   }
 
+  /**
+   * 测试场景：removing main branch fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovingMainBranchFails() {
     Assertions.assertThatThrownBy(
@@ -371,6 +461,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Cannot remove main branch");
   }
 
+  /**
+   * 测试场景：remove tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveTag() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -388,6 +483,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertNull(updated.ref("tag2"));
   }
 
+  /**
+   * 测试场景：removing non existing tag fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovingNonExistingTagFails() {
     Assertions.assertThatThrownBy(() -> table.manageSnapshots().removeTag("non-existing").commit())
@@ -395,6 +495,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Tag does not exist: non-existing");
   }
 
+  /**
+   * 测试场景：replace branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceBranch() {
     table.newAppend().appendFile(FILE_A).set("wap.id", "123").stageOnly().commit();
@@ -408,6 +513,11 @@ public class TestSnapshotManager extends TableTestBase {
         table.ops().refresh().ref("branch1").snapshotId(), secondSnapshot.snapshotId());
   }
 
+  /**
+   * 测试场景：replace branch non existing target branch fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceBranchNonExistingTargetBranchFails() {
     Assertions.assertThatThrownBy(
@@ -416,6 +526,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Target branch does not exist: non-existing");
   }
 
+  /**
+   * 测试场景：replace branch non existing source fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceBranchNonExistingSourceFails() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -427,6 +542,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Ref does not exist: non-existing");
   }
 
+  /**
+   * 测试场景：fast forward。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFastForward() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -444,6 +564,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(table.currentSnapshot().snapshotId(), 2);
   }
 
+  /**
+   * 测试场景：fast forward when target is not ancestor fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFastForwardWhenTargetIsNotAncestorFails() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -469,6 +594,11 @@ public class TestSnapshotManager extends TableTestBase {
             "Cannot fast-forward: main is not an ancestor of new-branch-at-staged-snapshot");
   }
 
+  /**
+   * 测试场景：replace tag。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTag() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -481,6 +611,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(table.ops().refresh().ref("tag1").snapshotId(), currentSnapshot);
   }
 
+  /**
+   * 测试场景：updating branch retention。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdatingBranchRetention() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -507,6 +642,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(10, (long) updated.ref("branch2").minSnapshotsToKeep());
   }
 
+  /**
+   * 测试场景：setting branch retention on tag fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSettingBranchRetentionOnTagFails() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -533,6 +673,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Tags do not support setting maxSnapshotAgeMs");
   }
 
+  /**
+   * 测试场景：updating branch max ref age。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdatingBranchMaxRefAge() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -547,6 +692,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(maxRefAgeMs, (long) updated.ref("branch1").maxRefAgeMs());
   }
 
+  /**
+   * 测试场景：updating tag max ref age。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdatingTagMaxRefAge() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -570,6 +720,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(maxRefAgeMs, (long) updated.ref("tag2").maxRefAgeMs());
   }
 
+  /**
+   * 测试场景：rename branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameBranch() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -594,6 +749,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(updated.ref("branch4"), SnapshotRef.branchBuilder(snapshotId).build());
   }
 
+  /**
+   * 测试场景：fail renaming main branch。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFailRenamingMainBranch() {
     Assertions.assertThatThrownBy(
@@ -606,6 +766,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Cannot rename main branch");
   }
 
+  /**
+   * 测试场景：renaming non existing branch fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenamingNonExistingBranchFails() {
     Assertions.assertThatThrownBy(
@@ -615,6 +780,11 @@ public class TestSnapshotManager extends TableTestBase {
         .hasMessage("Branch does not exist: some-missing-branch");
   }
 
+  /**
+   * 测试场景：create references and rollback。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateReferencesAndRollback() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -637,6 +807,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(SnapshotRef.tagBuilder(snapshotPriorToRollback).build(), actualTag);
   }
 
+  /**
+   * 测试场景：create references and cherrypick。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateReferencesAndCherrypick() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -662,6 +837,11 @@ public class TestSnapshotManager extends TableTestBase {
     Assert.assertEquals(SnapshotRef.tagBuilder(1).build(), actualTag);
   }
 
+  /**
+   * 测试场景：attempt to rollback to current snapshot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAttemptToRollbackToCurrentSnapshot() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -673,6 +853,11 @@ public class TestSnapshotManager extends TableTestBase {
     table.manageSnapshots().rollbackTo(currentSnapshotId).commit();
   }
 
+  /**
+   * 测试场景：snapshot manager through transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotManagerThroughTransaction() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -714,6 +899,11 @@ public class TestSnapshotManager extends TableTestBase {
         "Table should be on version 3 after invoking rollbackTo", 3, (int) version());
   }
 
+  /**
+   * 测试场景：snapshot manager through transaction multi operation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotManagerThroughTransactionMultiOperation() {
     table.newAppend().appendFile(FILE_A).commit();
@@ -741,6 +931,11 @@ public class TestSnapshotManager extends TableTestBase {
         "Table should be on version 3 after invoking rollbackTo", 3, (int) version());
   }
 
+  /**
+   * 测试场景：snapshot manager invalid parameters。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotManagerInvalidParameters() throws Exception {
     Assert.assertThrows(

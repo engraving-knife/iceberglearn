@@ -28,12 +28,21 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：SmokeTest 集成测试。
+ *
+ * <p>所属模块：iceberg-spark（v3.5）。职责：验证 冒烟 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class SmokeTest extends SparkExtensionsTestBase {
 
+  /** 构造方法：SmokeTest。 */
   public SmokeTest(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 初始化：dropTable，在每个测试方法执行前准备测试环境与数据。 */
   @Before
   public void dropTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
@@ -127,6 +136,11 @@ public class SmokeTest extends SparkExtensionsTestBase {
     Assert.assertEquals("Table should be sorted on 2 fields", 2, table.sortOrder().fields().size());
   }
 
+  /**
+   * 测试场景：创建表。
+   *
+   * <p>验证该方法在 创建表 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTable() {
     sql("DROP TABLE IF EXISTS %s", tableName("first"));
@@ -165,10 +179,12 @@ public class SmokeTest extends SparkExtensionsTestBase {
     Assert.assertEquals("Should be partitioned on 3 columns", 3, third.spec().fields().size());
   }
 
+  /** 辅助方法：获取表。 */
   private Table getTable(String name) {
     return validationCatalog.loadTable(TableIdentifier.of("default", name));
   }
 
+  /** 辅助方法：获取表。 */
   private Table getTable() {
     return validationCatalog.loadTable(tableIdent);
   }

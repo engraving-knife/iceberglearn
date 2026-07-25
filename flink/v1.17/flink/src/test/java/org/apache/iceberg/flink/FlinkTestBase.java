@@ -38,6 +38,13 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 FlinkTestBase 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 FlinkTestBase 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public abstract class FlinkTestBase extends TestBaseUtils {
 
   @ClassRule
@@ -52,6 +59,7 @@ public abstract class FlinkTestBase extends TestBaseUtils {
 
   private volatile TableEnvironment tEnv = null;
 
+  /** 辅助方法：startMetastore，start Metastore。 */
   @BeforeClass
   public static void startMetastore() {
     FlinkTestBase.metastore = new TestHiveMetastore();
@@ -63,12 +71,14 @@ public abstract class FlinkTestBase extends TestBaseUtils {
                 HiveCatalog.class.getName(), "hive", ImmutableMap.of(), hiveConf);
   }
 
+  /** 辅助方法：stopMetastore，stop Metastore。 */
   @AfterClass
   public static void stopMetastore() throws Exception {
     metastore.stop();
     FlinkTestBase.catalog = null;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
       synchronized (this) {
@@ -86,14 +96,17 @@ public abstract class FlinkTestBase extends TestBaseUtils {
     return tEnv;
   }
 
+  /** 辅助方法：exec，exec。 */
   protected static TableResult exec(TableEnvironment env, String query, Object... args) {
     return env.executeSql(String.format(query, args));
   }
 
+  /** 辅助方法：exec，exec。 */
   protected TableResult exec(String query, Object... args) {
     return exec(getTableEnv(), query, args);
   }
 
+  /** 辅助方法：sql，sql。 */
   protected List<Row> sql(String query, Object... args) {
     TableResult tableResult = exec(query, args);
     try (CloseableIterator<Row> iter = tableResult.collect()) {
@@ -103,10 +116,12 @@ public abstract class FlinkTestBase extends TestBaseUtils {
     }
   }
 
+  /** 辅助方法：assertSameElements，assert Same Elements。 */
   protected void assertSameElements(Iterable<Row> expected, Iterable<Row> actual) {
     Assertions.assertThat(actual).isNotNull().containsExactlyInAnyOrderElementsOf(expected);
   }
 
+  /** 辅助方法：assertSameElements，assert Same Elements。 */
   protected void assertSameElements(String message, Iterable<Row> expected, Iterable<Row> actual) {
     Assertions.assertThat(actual)
         .isNotNull()

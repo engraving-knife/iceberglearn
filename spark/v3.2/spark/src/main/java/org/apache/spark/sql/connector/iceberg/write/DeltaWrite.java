@@ -21,12 +21,14 @@ package org.apache.spark.sql.connector.iceberg.write;
 import org.apache.spark.sql.connector.write.Write;
 
 /**
- * A logical representation of a data source write that handles a delta of rows. A delta of rows is
- * a set of instructions that indicate which records need to be deleted, updated, or inserted. Data
- * sources that support deltas allow Spark to discard unchanged rows and pass only the information
- * about what rows have changed during a row-level operation.
+ * Spark DataSource V2 连接器扩展的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 DeltaWrite。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 public interface DeltaWrite extends Write {
+  /** 转换为batch。 */
   @Override
   DeltaBatchWrite toBatch();
 }

@@ -41,6 +41,13 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.util.ArrayUtil;
 import org.apache.iceberg.util.SerializableSupplier;
 
+/**
+ * Flink RowData 任务写入器工厂，按分区策略创建 PartitionedDeltaWriter/UnpartitionedDeltaWriter。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装 schema、format、props 等，构造具体 delta writer。
+ *
+ * <p>设计意图：工厂模式，实现 TaskWriterFactory；被 IcebergStreamWriter 调用。
+ */
 public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
   private final Supplier<Table> tableSupplier;
   private final Schema schema;

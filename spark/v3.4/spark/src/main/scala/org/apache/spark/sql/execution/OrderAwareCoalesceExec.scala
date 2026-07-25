@@ -27,19 +27,29 @@ import org.apache.spark.sql.catalyst.expressions.SortOrder
 import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.catalyst.plans.physical.SinglePartition
 import org.apache.spark.sql.catalyst.plans.physical.UnknownPartitioning
+/**
+ * 所属模块：iceberg-spark v3.4
+ * <p>职责：感知顺序的合并物理执行节点，在合并分区时保持数据顺序。
+ * <p>设计意图：实现保序合并，避免破坏 Iceberg 写入排序要求。
+ * <p>上下游关系：由 Spark 物理计划策略从 OrderAwareCoalesce 创建。
+ */
 
 case class OrderAwareCoalesceExec(
     numPartitions: Int,
     coalescer: PartitionCoalescer,
     child: SparkPlan) extends UnaryExecNode {
+  /** 执行 output 相关操作。 */
 
   override def output: Seq[Attribute] = child.output
+  /** 执行 outputOrdering 相关操作。 */
 
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
+  /** 执行 outputPartitioning 相关操作。 */
 
   override def outputPartitioning: Partitioning = {
     if (numPartitions == 1) SinglePartition else UnknownPartitioning(numPartitions)
   }
+  /** 执行 doExecute 相关操作。 */
 
   protected override def doExecute(): RDD[InternalRow] = {
     val result = child.execute()
@@ -52,6 +62,7 @@ case class OrderAwareCoalesceExec(
       result.coalesce(numPartitions, shuffle = false, Some(coalescer))
     }
   }
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: SparkPlan): SparkPlan = {
     copy(child = newChild)

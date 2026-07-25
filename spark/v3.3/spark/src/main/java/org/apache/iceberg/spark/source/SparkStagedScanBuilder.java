@@ -25,6 +25,15 @@ import org.apache.spark.sql.connector.read.Scan;
 import org.apache.spark.sql.connector.read.ScanBuilder;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkStagedScanBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkStagedScanBuilder implements ScanBuilder {
 
   private final SparkSession spark;
@@ -37,8 +46,14 @@ class SparkStagedScanBuilder implements ScanBuilder {
     this.readConf = new SparkReadConf(spark, table, options);
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public Scan build() {
+    /** 执行该方法的具体逻辑。 */
     return new SparkStagedScan(spark, table, readConf);
   }
 }

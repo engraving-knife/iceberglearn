@@ -38,17 +38,27 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDataFrameWriterV2 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 数据frame写入器v2 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestDataFrameWriterV2 extends SparkTestBaseWithCatalog {
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE %s (id bigint, data string) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试合并模式fails无写入器选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeSchemaFailsWithoutWriterOption() throws Exception {
     sql(
@@ -90,6 +100,7 @@ public class TestDataFrameWriterV2 extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试合并模式无accept任意模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeSchemaWithoutAcceptAnySchema() throws Exception {
     Dataset<Row> twoColDF =
@@ -125,6 +136,7 @@ public class TestDataFrameWriterV2 extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试合并模式Spark属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeSchemaSparkProperty() throws Exception {
     sql(
@@ -159,6 +171,7 @@ public class TestDataFrameWriterV2 extends SparkTestBaseWithCatalog {
         sql("select * from %s order by id", tableName));
   }
 
+  /** 测试合并模式Iceberg属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeSchemaIcebergProperty() throws Exception {
     sql(
@@ -193,6 +206,7 @@ public class TestDataFrameWriterV2 extends SparkTestBaseWithCatalog {
         sql("select * from %s order by id", tableName));
   }
 
+  /** 测试写带场景sensitive选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteWithCaseSensitiveOption() throws NoSuchTableException, ParseException {
     SparkSession sparkSession = spark.cloneSession();

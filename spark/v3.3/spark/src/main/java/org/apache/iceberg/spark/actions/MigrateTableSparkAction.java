@@ -44,9 +44,11 @@ import scala.Some;
 import scala.collection.JavaConverters;
 
 /**
- * Takes a Spark table in the source catalog and attempts to transform it into an Iceberg table in
- * the same location with the same identifier. Once complete the identifier which previously
- * referred to a non-Iceberg table will refer to the newly migrated Iceberg table.
+ * 基于 Spark 执行的 Iceberg 表维护动作，执行快照过期、文件清理、数据压缩等表维护操作。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 MigrateTableSparkAction。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
  */
 public class MigrateTableSparkAction extends BaseTableCreationSparkAction<MigrateTableSparkAction>
     implements MigrateTable {
@@ -69,39 +71,65 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     this.backupIdent = Identifier.of(sourceTableIdent.namespace(), backupName);
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected MigrateTableSparkAction self() {
     return this;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected StagingTableCatalog destCatalog() {
     return destCatalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Identifier destTableIdent() {
     return destTableIdent;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param properties 参数
+   * @return 结果对象
+   */
   @Override
   public MigrateTableSparkAction tableProperties(Map<String, String> properties) {
     setProperties(properties);
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param property 参数
+   * @param value 参数
+   * @return 结果对象
+   */
   @Override
   public MigrateTableSparkAction tableProperty(String property, String value) {
     setProperty(property, value);
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public MigrateTableSparkAction dropBackup() {
     this.dropBackup = true;
     return this;
   }
 
+  /**
+   * 执行具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public MigrateTable.Result execute() {
     String desc = String.format("Migrating table %s", destTableIdent().toString());
@@ -109,6 +137,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     return withJobGroupInfo(info, this::doExecute);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private MigrateTable.Result doExecute() {
     LOG.info("Starting the migration of {} to Iceberg", sourceTableIdent());
 
@@ -160,6 +189,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
         Long.parseLong(snapshot.summary().get(SnapshotSummary.TOTAL_DATA_FILES_PROP));
     LOG.info(
         "Successfully loaded Iceberg metadata for {} files to {}",
+        /** 执行该方法的具体逻辑。 */
         migratedDataFilesCount,
         destTableIdent());
     return ImmutableMigrateTable.Result.builder()
@@ -167,6 +197,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
         .build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Map<String, String> destTableProps() {
     Map<String, String> properties = Maps.newHashMap();
@@ -188,6 +219,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     return properties;
   }
 
+  /** 校验前置条件或参数。 */
   @Override
   protected TableCatalog checkSourceCatalog(CatalogPlugin catalog) {
     // currently the import code relies on being able to look up the table in the session catalog
@@ -200,6 +232,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     return (TableCatalog) catalog;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void renameAndBackupSourceTable() {
     try {
       LOG.info("Renaming {} as {} for backup", sourceTableIdent(), backupIdent);
@@ -215,6 +248,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void restoreSourceTable() {
     try {
       LOG.info("Restoring {} from {}", sourceTableIdent(), backupIdent);
@@ -233,6 +267,7 @@ public class MigrateTableSparkAction extends BaseTableCreationSparkAction<Migrat
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private void dropBackupTable() {
     try {
       destCatalog().dropTable(backupIdent);

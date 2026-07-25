@@ -45,8 +45,16 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestCopyOnWriteDelete 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 复制上写删除 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCopyOnWriteDelete extends TestDelete {
 
+  /** 测试复制上写删除。 */
   public TestCopyOnWriteDelete(
       String catalogName,
       String implementation,
@@ -57,12 +65,14 @@ public class TestCopyOnWriteDelete extends TestDelete {
     super(catalogName, implementation, config, fileFormat, vectorized, distributionMode);
   }
 
+  /** extra表属性。 */
   @Override
   protected Map<String, String> extraTableProperties() {
     return ImmutableMap.of(
         TableProperties.DELETE_MODE, RowLevelOperationMode.COPY_ON_WRITE.modeName());
   }
 
+  /** 测试删除带并发表刷新场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public synchronized void testDeleteWithConcurrentTableRefresh() throws Exception {
     // this test can only be run with Hive tables as it requires a reliable lock

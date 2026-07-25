@@ -41,11 +41,22 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 测试类：TestMetadataTableScansWithPartitionEvolution，用于验证 Metadata Table Scans With Partition
+ * Evolution 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metadata Table Scans With Partition Evolution
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableScanTestBase {
+  /** 辅助方法：metadata table scans with partition evolution。 */
   public TestMetadataTableScansWithPartitionEvolution(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：create table。 */
   @Before
   public void createTable() throws IOException {
     TestTables.clearTables();
@@ -73,6 +84,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
         .commit();
   }
 
+  /**
+   * 测试场景：manifests table with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestsTableWithAddPartitionOnNestedField() throws IOException {
     Table manifestsTable = new ManifestsTable(table);
@@ -84,6 +100,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：data files table with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDataFilesTableWithAddPartitionOnNestedField() throws IOException {
     Table dataFilesTable = new DataFilesTable(table);
@@ -95,6 +116,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：manifest entries with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testManifestEntriesWithAddPartitionOnNestedField() throws IOException {
     Table manifestEntriesTable = new ManifestEntriesTable(table);
@@ -106,6 +132,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：all data files table with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllDataFilesTableWithAddPartitionOnNestedField() throws IOException {
     Table allDataFilesTable = new AllDataFilesTable(table);
@@ -117,6 +148,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：all entries table with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllEntriesTableWithAddPartitionOnNestedField() throws IOException {
     Table allEntriesTable = new AllEntriesTable(table);
@@ -128,6 +164,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：all manifests table with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAllManifestsTableWithAddPartitionOnNestedField() throws IOException {
     Table allManifestsTable = new AllManifestsTable(table);
@@ -139,6 +180,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /**
+   * 测试场景：partitions table scan with add partition on nested field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionsTableScanWithAddPartitionOnNestedField() {
     Table partitionsTable = new PartitionsTable(table);
@@ -165,6 +211,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     validatePartition(entries, 1, 3);
   }
 
+  /**
+   * 测试场景：position deletes partition spec removal。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPositionDeletesPartitionSpecRemoval() {
     Assume.assumeTrue("Position deletes supported only for v2 tables", formatVersion == 2);
@@ -224,6 +275,11 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
         constantsMap(posDeleteTask, partitionType).get(MetadataColumns.FILE_PATH.fieldId()));
   }
 
+  /**
+   * 测试场景：partition spec evolution to unpartitioned。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPartitionSpecEvolutionToUnpartitioned() throws IOException {
     // Remove all the partition fields
@@ -256,6 +312,7 @@ public class TestMetadataTableScansWithPartitionEvolution extends MetadataTableS
     }
   }
 
+  /** 辅助方法：all rows。 */
   private Stream<StructLike> allRows(Iterable<FileScanTask> tasks) {
     return Streams.stream(tasks).flatMap(task -> Streams.stream(task.asDataTask().rows()));
   }

@@ -37,6 +37,24 @@ import org.apache.flink.util.Preconditions;
 import org.apache.iceberg.flink.sink.FlinkSink;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 
+/**
+ * 文件级说明：Iceberg 表的 Flink DynamicTableSink 实现。
+ *
+ * <p>所属模块：iceberg-flink（sink 子包），实现 Flink 的 {@link DynamicTableSink} 接口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>作为 Flink SQL 中 Iceberg 表的写入入口，将 DataStream 写入 Iceberg 表。
+ *   <li>支持分区写入（{@link SupportsPartitioning}）和覆盖写入（{@link SupportsOverwrite}）。
+ *   <li>支持 Changelog 模式（INSERT/UPDATE_BEFORE/UPDATE_AFTER/DELETE）。
+ * </ul>
+ *
+ * <p>设计意图：作为 Flink Table API 与 Iceberg {@link FlinkSink} 之间的适配层， 将 Flink 的 SinkRuntimeProvider 转换为对
+ * FlinkSink Builder 的调用。 equality columns 从 TableSchema 主键中提取，用于 UPSERT/CDC 场景。
+ *
+ * <p>上下游关系：由 {@link FlinkDynamicTableFactory} 创建；内部委托 {@link FlinkSink} 执行实际写入。
+ */
 public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning, SupportsOverwrite {
   private final TableLoader tableLoader;
   private final TableSchema tableSchema;
@@ -45,6 +63,7 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
 
   private boolean overwrite = false;
 
+  /** 拷贝构造方法。 */
   private IcebergTableSink(IcebergTableSink toCopy) {
     this.tableLoader = toCopy.tableLoader;
     this.tableSchema = toCopy.tableSchema;
@@ -53,6 +72,14 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
     this.writeProps = toCopy.writeProps;
   }
 
+  /**
+   * 构造 IcebergTableSink。
+   *
+   * @param tableLoader 表加载器
+   * @param tableSchema Flink 表 schema
+   * @param readableConfig Flink 配置
+   * @param writeProps 写入属性
+   */
   public IcebergTableSink(
       TableLoader tableLoader,
       TableSchema tableSchema,
@@ -64,6 +91,15 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
     this.writeProps = writeProps;
   }
 
+  /**
+   * 创建 Sink 运行时 Provider。
+   *
+   * <p>逻辑：校验 overwrite 仅用于有界流 → 从主键提取 equality columns → 返回 DataStreamSinkProvider， 在其
+   * consumeDataStream 中调用 {@link FlinkSink#forRowData} 构建写入链。
+   *
+   * @param context Flink sink 上下文
+   * @return DataStreamSinkProvider
+   */
   @Override
   public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
     Preconditions.checkState(
@@ -89,12 +125,14 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
     };
   }
 
+  /** 静态分区由 Flink 的 PartitionFanoutWriter 自动处理，此处无需额外操作。 */
   @Override
   public void applyStaticPartition(Map<String, String> partition) {
     // The flink's PartitionFanoutWriter will handle the static partition write policy
     // automatically.
   }
 
+  /** 接受所有请求的 ChangelogMode（支持 INSERT/UPDATE/DELETE）。 */
   @Override
   public ChangelogMode getChangelogMode(ChangelogMode requestedMode) {
     ChangelogMode.Builder builder = ChangelogMode.newBuilder();
@@ -104,6 +142,7 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
     return builder.build();
   }
 
+  /** 创建当前 sink 的副本。 */
   @Override
   public DynamicTableSink copy() {
     return new IcebergTableSink(this);
@@ -114,6 +153,7 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
     return "Iceberg table sink";
   }
 
+  /** 设置覆盖写入模式。 */
   @Override
   public void applyOverwrite(boolean newOverwrite) {
     this.overwrite = newOverwrite;

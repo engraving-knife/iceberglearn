@@ -28,20 +28,11 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 
 /**
- * SplitAssigner interface is extracted out as a separate component so that we can plug in different
- * split assignment strategy for different requirements. E.g.
+ * 分片分配器接口，定义管理并分配待读分片的契约。
  *
- * <ul>
- *   <li>Simple assigner with no ordering guarantee or locality aware optimization.
- *   <li>Locality aware assigner that prefer splits that are local.
- *   <li>Snapshot aware assigner that assign splits based on the order they are committed.
- *   <li>Event time alignment assigner that assign splits satisfying certain time ordering within a
- *       single source or across sources.
- * </ul>
+ * <p>所属模块：iceberg-flink v1.15。职责：维护分片集合，响应 reader 的分配请求并支持 checkpoint。
  *
- * <p>Assigner implementation needs to be thread safe. Enumerator call the assigner APIs mostly from
- * the coordinator thread. But enumerator may call the {@link SplitAssigner#pendingSplitCount()}
- * from the I/O threads.
+ * <p>设计意图：策略接口；被 enumerator 调用。
  */
 public interface SplitAssigner extends Closeable {
 

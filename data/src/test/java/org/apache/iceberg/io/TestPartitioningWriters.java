@@ -38,8 +38,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestPartitioningWriters 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestPartitioningWriters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -55,17 +63,21 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
   private final FileFormat fileFormat;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：TestPartitioningWriters。 */
   public TestPartitioningWriters(FileFormat fileFormat) {
     super(TABLE_FORMAT_VERSION);
     this.fileFormat = fileFormat;
   }
 
+  /** 辅助方法：toSet。 */
   protected abstract StructLikeSet toSet(Iterable<T> records);
 
+  /** 辅助方法：format。 */
   protected FileFormat format() {
     return fileFormat;
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws Exception {
@@ -77,6 +89,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     this.fileFactory = OutputFileFactory.builderFor(table, 1, 1).format(fileFormat).build();
   }
 
+  /**
+   * 测试场景：Clustered Data Writer No Records。
+   *
+   * <p>验证该方法在 Clustered Data Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredDataWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -90,6 +107,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Must be no data files", 0, writer.result().dataFiles().size());
   }
 
+  /**
+   * 测试场景：Clustered Data Writer Multiple Partitions。
+   *
+   * <p>验证该方法在 Clustered Data Writer Multiple Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredDataWriterMultiplePartitions() throws IOException {
     table.updateSpec().addField(Expressions.ref("data")).commit();
@@ -121,6 +143,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Clustered Data Writer Out Of Order Partitions。
+   *
+   * <p>验证该方法在 Clustered Data Writer Out Of Order Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredDataWriterOutOfOrderPartitions() throws IOException {
     table.updateSpec().addField(Expressions.ref("data")).commit();
@@ -146,6 +173,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     writer.close();
   }
 
+  /**
+   * 测试场景：Clustered Equality Delete Writer No Records。
+   *
+   * <p>验证该方法在 Clustered Equality Delete Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredEqualityDeleteWriterNoRecords() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -167,6 +199,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(writer.result().referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Clustered Equality Delete Writer Multiple Specs。
+   *
+   * <p>验证该方法在 Clustered Equality Delete Writer Multiple Specs 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredEqualityDeleteWriterMultipleSpecs() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -233,6 +270,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Clustered Equality Delete Writer Out Of Order Specs And Partitions。
+   *
+   * <p>验证该方法在 Clustered Equality Delete Writer Out Of Order Specs And Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredEqualityDeleteWriterOutOfOrderSpecsAndPartitions() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -277,6 +319,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     writer.close();
   }
 
+  /**
+   * 测试场景：Clustered Position Delete Writer No Records。
+   *
+   * <p>验证该方法在 Clustered Position Delete Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredPositionDeleteWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -295,6 +342,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(writer.result().referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Clustered Position Delete Writer Multiple Specs。
+   *
+   * <p>验证该方法在 Clustered Position Delete Writer Multiple Specs 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredPositionDeleteWriterMultipleSpecs() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -363,6 +415,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Clustered Position Delete Writer Out Of Order Specs And Partitions。
+   *
+   * <p>验证该方法在 Clustered Position Delete Writer Out Of Order Specs And Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testClusteredPositionDeleteWriterOutOfOrderSpecsAndPartitions() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -419,6 +476,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     writer.close();
   }
 
+  /**
+   * 测试场景：Fanout Data Writer No Records。
+   *
+   * <p>验证该方法在 Fanout Data Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testFanoutDataWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -432,6 +494,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Must be no data files", 0, writer.result().dataFiles().size());
   }
 
+  /**
+   * 测试场景：Fanout Data Writer Multiple Partitions。
+   *
+   * <p>验证该方法在 Fanout Data Writer Multiple Partitions 条件下的行为是否符合预期。
+   */
   @Test
   public void testFanoutDataWriterMultiplePartitions() throws IOException {
     table.updateSpec().addField(Expressions.ref("data")).commit();
@@ -463,6 +530,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Records should match", toSet(expectedRows), actualRowSet("*"));
   }
 
+  /**
+   * 测试场景：Fanout Position Only Delete Writer No Records。
+   *
+   * <p>验证该方法在 Fanout Position Only Delete Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testFanoutPositionOnlyDeleteWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -481,6 +553,11 @@ public abstract class TestPartitioningWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(writer.result().referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Fanout Position Only Delete Writer Out Of Order Records。
+   *
+   * <p>验证该方法在 Fanout Position Only Delete Writer Out Of Order Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testFanoutPositionOnlyDeleteWriterOutOfOrderRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());

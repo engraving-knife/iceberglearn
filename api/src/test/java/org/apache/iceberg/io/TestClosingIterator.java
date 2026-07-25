@@ -27,7 +27,19 @@ import static org.mockito.Mockito.when;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestClosingIterator 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestClosingIterator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestClosingIterator {
+  /**
+   * 测试场景：Empty Iterator。
+   *
+   * <p>验证该方法在 Empty Iterator 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyIterator() {
     CloseableIterator<String> underlying = mock(CloseableIterator.class);
@@ -35,6 +47,11 @@ public class TestClosingIterator {
     assertThat(closingIterator).isExhausted();
   }
 
+  /**
+   * 测试场景：Has Next And Next。
+   *
+   * <p>验证该方法在 Has Next And Next 条件下的行为是否符合预期。
+   */
   @Test
   public void testHasNextAndNext() {
     CloseableIterator<String> underlying = mock(CloseableIterator.class);
@@ -45,6 +62,11 @@ public class TestClosingIterator {
     assertThat(closingIterator.next()).isEqualTo("hello");
   }
 
+  /**
+   * 测试场景：Underlying Iterator Close When Elements Are Exhausted。
+   *
+   * <p>验证该方法在 Underlying Iterator Close When Elements Are Exhausted 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnderlyingIteratorCloseWhenElementsAreExhausted() throws Exception {
     CloseableIterator<String> underlying = mock(CloseableIterator.class);
@@ -57,6 +79,11 @@ public class TestClosingIterator {
     verify(underlying, times(1)).close();
   }
 
+  /**
+   * 测试场景：Close Called Once For Multiple Has Next Calls。
+   *
+   * <p>验证该方法在 Close Called Once For Multiple Has Next Calls 条件下的行为是否符合预期。
+   */
   @Test
   public void testCloseCalledOnceForMultipleHasNextCalls() throws Exception {
     CloseableIterator<String> underlying = mock(CloseableIterator.class);
@@ -65,6 +92,11 @@ public class TestClosingIterator {
     verify(underlying, times(1)).close();
   }
 
+  /**
+   * 测试场景：transform Null Check。
+   *
+   * <p>验证该方法在 transform Null Check 条件下的行为是否符合预期。
+   */
   @Test
   public void transformNullCheck() {
     Assertions.assertThatThrownBy(

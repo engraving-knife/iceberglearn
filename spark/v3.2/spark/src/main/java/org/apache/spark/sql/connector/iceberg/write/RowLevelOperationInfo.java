@@ -21,11 +21,17 @@ package org.apache.spark.sql.connector.iceberg.write;
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperation.Command;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
-/** An interface with logical information for a row-level operation such as DELETE or MERGE. */
+/**
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 RowLevelOperationInfo。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface RowLevelOperationInfo {
-  /** Returns options that the user specified when performing the row-level operation. */
+  /** 执行该方法的具体逻辑。 */
   CaseInsensitiveStringMap options();
 
-  /** Returns the SQL command (e.g. DELETE, UPDATE, MERGE) for this row-level operation. */
+  /** 执行该方法的具体逻辑。 */
   Command command();
 }

@@ -35,8 +35,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestRollingFileWriters 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestRollingFileWriters 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "FileFormat={0}, Partitioned={1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -60,16 +68,19 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
   private StructLike partition = null;
   private OutputFileFactory fileFactory = null;
 
+  /** 辅助方法：TestRollingFileWriters。 */
   public TestRollingFileWriters(FileFormat fileFormat, boolean partitioned) {
     super(TABLE_FORMAT_VERSION);
     this.fileFormat = fileFormat;
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：format。 */
   protected FileFormat format() {
     return fileFormat;
   }
 
+  /** 辅助方法：setupTable。 */
   @Override
   @Before
   public void setupTable() throws Exception {
@@ -89,6 +100,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     this.fileFactory = OutputFileFactory.builderFor(table, 1, 1).format(fileFormat).build();
   }
 
+  /**
+   * 测试场景：Rolling Data Writer No Records。
+   *
+   * <p>验证该方法在 Rolling Data Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingDataWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -103,6 +119,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals("Must be no data files", 0, writer.result().dataFiles().size());
   }
 
+  /**
+   * 测试场景：Rolling Data Writer Split Data。
+   *
+   * <p>验证该方法在 Rolling Data Writer Split Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingDataWriterSplitData() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -125,6 +146,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     Assert.assertEquals(4, writer.result().dataFiles().size());
   }
 
+  /**
+   * 测试场景：Rolling Equality Delete Writer No Records。
+   *
+   * <p>验证该方法在 Rolling Equality Delete Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingEqualityDeleteWriterNoRecords() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -146,6 +172,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(writer.result().referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Rolling Equality Delete Writer Split Deletes。
+   *
+   * <p>验证该方法在 Rolling Equality Delete Writer Split Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingEqualityDeleteWriterSplitDeletes() throws IOException {
     List<Integer> equalityFieldIds = ImmutableList.of(table.schema().findField("id").fieldId());
@@ -174,6 +205,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(result.referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Rolling Position Delete Writer No Records。
+   *
+   * <p>验证该方法在 Rolling Position Delete Writer No Records 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingPositionDeleteWriterNoRecords() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());
@@ -192,6 +228,11 @@ public abstract class TestRollingFileWriters<T> extends WriterTestBase<T> {
     Assert.assertFalse(writer.result().referencesDataFiles());
   }
 
+  /**
+   * 测试场景：Rolling Position Delete Writer Split Deletes。
+   *
+   * <p>验证该方法在 Rolling Position Delete Writer Split Deletes 条件下的行为是否符合预期。
+   */
   @Test
   public void testRollingPositionDeleteWriterSplitDeletes() throws IOException {
     FileWriterFactory<T> writerFactory = newWriterFactory(table.schema());

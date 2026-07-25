@@ -23,46 +23,58 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 
 /**
- * An interface used to create output files using {@link PositionOutputStream} instances.
+ * 文件级说明：输出文件抽象接口，用于通过 {@link PositionOutputStream} 写入文件字节内容。
  *
- * <p>This class is based on Parquet's InputFile.
+ * <p>所属模块：iceberg-api（核心对外 API 模块）。本接口设计参考 Parquet 的 OutputFile。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>通过 {@link #create()} 创建新文件并返回输出流（文件已存在则报错）。
+ *   <li>通过 {@link #createOrOverwrite()} 创建或覆盖文件并返回输出流。
+ *   <li>暴露输出文件路径，并支持转换为对应 {@link InputFile} 以便读取回写内容。
+ * </ul>
+ *
+ * <p>设计意图：抽象出与具体存储无关的“可写文件”视图，使上层写入逻辑（Parquet/ORC/Avro 写入器、数据文件提交等）只依赖此接口，由 {@link FileIO} 实现负责构造具体
+ * OutputFile。 区分 {@code create} 与 {@code createOrOverwrite} 是为了在调用侧显式表达“是否允许覆盖” 的语义，避免误覆盖已有数据。
+ *
+ * <p>上下游关系：由 {@link FileIO#newOutputFile(String)} 创建；被 Iceberg 写路径及底层列式 写入器消费，用于写数据文件与元数据文件。
  */
 public interface OutputFile {
 
   /**
-   * Create a new file and return a {@link PositionOutputStream} to it.
+   * 创建新文件并返回其 {@link PositionOutputStream}。
    *
-   * <p>If the file already exists, this will throw an exception.
+   * <p>若文件已存在则抛出异常，不进行覆盖。
    *
-   * @return an output stream that can report its position
-   * @throws AlreadyExistsException If the path already exists
-   * @throws RuntimeIOException If the implementation throws an {@link IOException}
+   * @return 可报告写入位置的输出流
+   * @throws AlreadyExistsException 若目标路径已存在
+   * @throws RuntimeIOException 若底层实现抛出 {@link IOException}
    */
   PositionOutputStream create();
 
   /**
-   * Create a new file and return a {@link PositionOutputStream} to it.
+   * 创建或覆盖文件并返回其 {@link PositionOutputStream}。
    *
-   * <p>If the file already exists, this will not throw an exception and will replace the file.
+   * <p>若文件已存在则不抛异常，而是替换原文件。
    *
-   * @return an output stream that can report its position
-   * @throws RuntimeIOException If the implementation throws an {@link IOException}
-   * @throws SecurityException If staging directory creation fails due to missing JVM level
-   *     permission
+   * @return 可报告写入位置的输出流
+   * @throws RuntimeIOException 若底层实现抛出 {@link IOException}
+   * @throws SecurityException 若因缺少 JVM 权限导致暂存目录创建失败
    */
   PositionOutputStream createOrOverwrite();
 
   /**
-   * Return the location this output file will create.
+   * 返回该输出文件的目标路径。
    *
-   * @return the location of this output file
+   * @return 输出文件路径
    */
   String location();
 
   /**
-   * Return an {@link InputFile} for the location of this output file.
+   * 返回与本输出文件同位置的 {@link InputFile}，便于在写完后读取回放。
    *
-   * @return an input file for the location of this output file
+   * @return 对应位置的 {@link InputFile}
    */
   InputFile toInputFile();
 }

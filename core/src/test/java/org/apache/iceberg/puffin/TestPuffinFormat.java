@@ -30,7 +30,20 @@ import java.util.Arrays;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestPuffinFormat，用于验证 Puffin Format 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Puffin Format 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestPuffinFormat {
+  /**
+   * 测试场景：write integer little endian。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testWriteIntegerLittleEndian() throws Exception {
     testWriteIntegerLittleEndian(0, bytes(0, 0, 0, 0));
@@ -39,6 +52,11 @@ public class TestPuffinFormat {
     testWriteIntegerLittleEndian(-7, bytes(0xF9, 0xFF, 0xFF, 0xFF));
   }
 
+  /**
+   * 测试场景：write integer little endian。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   private void testWriteIntegerLittleEndian(int value, byte[] expected) throws Exception {
     // Sanity check: validate the expectation
     ByteBuffer buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
@@ -53,6 +71,11 @@ public class TestPuffinFormat {
     assertThat(outputStream.toByteArray()).isEqualTo(expected);
   }
 
+  /**
+   * 测试场景：read integer little endian。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIntegerLittleEndian() {
     testReadIntegerLittleEndian(bytes(0, 0, 0, 0), 0, 0);
@@ -62,6 +85,11 @@ public class TestPuffinFormat {
     testReadIntegerLittleEndian(bytes(13, 0xF9, 0xFF, 0xFF, 0xFF, 14), 1, -7);
   }
 
+  /**
+   * 测试场景：read integer little endian。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   private void testReadIntegerLittleEndian(byte[] input, int offset, int expected) {
     // Sanity check: validate the expectation
     Preconditions.checkArgument(
@@ -74,6 +102,7 @@ public class TestPuffinFormat {
     assertThat(readIntegerLittleEndian(input, offset)).isEqualTo(expected);
   }
 
+  /** 辅助方法：bytes。 */
   private byte[] bytes(int... unsignedBytes) {
     byte[] bytes = new byte[unsignedBytes.length];
     for (int i = 0; i < unsignedBytes.length; i++) {

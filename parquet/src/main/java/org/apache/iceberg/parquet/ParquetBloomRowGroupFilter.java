@@ -49,15 +49,47 @@ import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotat
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
+/**
+ * 文件级说明：基于 Parquet Bloom Filter 的行组（Row Group）过滤器。
+ *
+ * <p>所属模块：iceberg-parquet（Parquet 读取优化，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：利用 Parquet 文件中列级 Bloom Filter，在读取前判断某个行组是否可能包含 满足过滤条件的数据行，从而跳过不相关的行组，减少 IO。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Bloom Filter 只能做等值（eq）和 IN 判断：基于哈希，无法排除 lt/gt/notEq 等条件， 这些操作直接返回 ROWS_MIGHT_MATCH。
+ *   <li>BoundExpressionVisitor：将过滤表达式绑定到 schema 后，用访问器模式遍历表达式树， 每个谓词返回布尔值（是否可能匹配）。
+ *   <li>延迟加载 Bloom Filter：loadBloomFilter 按需读取并缓存，避免为不需要的列读取 Bloom。
+ * </ul>
+ *
+ * <p>上下游关系：被 Parquet 读取流程在行组级别调用；依赖 BloomFilterReader（Parquet 提供）、 ExpressionVisitors（表达式遍历）。
+ */
 public class ParquetBloomRowGroupFilter {
   private final Schema schema;
   private final Expression expr;
   private final boolean caseSensitive;
 
+  /**
+   * 构造过滤器（大小写敏感）。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定的过滤表达式
+   */
   public ParquetBloomRowGroupFilter(Schema schema, Expression unbound) {
     this(schema, unbound, true);
   }
 
+  /**
+   * 构造过滤器。
+   *
+   * <p>逻辑：将表达式通过 {@link Binder#bind} 绑定到 schema（含 rewriteNot 重写 NOT）， 使后续访问器能直接处理绑定后的引用。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定的过滤表达式
+   * @param caseSensitive 字段名匹配是否大小写敏感
+   */
   public ParquetBloomRowGroupFilter(Schema schema, Expression unbound, boolean caseSensitive) {
     this.schema = schema;
     StructType struct = schema.asStruct();
@@ -66,12 +98,14 @@ public class ParquetBloomRowGroupFilter {
   }
 
   /**
-   * Tests whether the bloom for a row group may contain records that match the expression.
+   * 判断行组是否可能包含满足过滤条件的数据行。
    *
-   * @param fileSchema schema for the Parquet file
-   * @param rowGroup metadata for a row group
-   * @param bloomReader a bloom filter reader
-   * @return false if the file cannot contain rows that match the expression, true otherwise.
+   * <p>逻辑：创建 BloomEvalVisitor 并委托 eval 方法遍历表达式树。
+   *
+   * @param fileSchema Parquet 文件 schema
+   * @param rowGroup 行组元数据
+   * @param bloomReader Bloom Filter 读取器
+   * @return false 表示行组不可能匹配（可跳过），true 表示可能匹配
    */
   public boolean shouldRead(
       MessageType fileSchema, BlockMetaData rowGroup, BloomFilterReader bloomReader) {
@@ -81,6 +115,11 @@ public class ParquetBloomRowGroupFilter {
   private static final boolean ROWS_MIGHT_MATCH = true;
   private static final boolean ROWS_CANNOT_MATCH = false;
 
+  /**
+   * Bloom Filter 表达式评估访问器：遍历绑定后的表达式，对每个谓词利用 Bloom Filter 判断。
+   *
+   * <p>设计要点：eq/in 谓词查 Bloom Filter；lt/gt/notEq/notIn/startsWith 等基于哈希无法排除， 直接返回 ROWS_MIGHT_MATCH。
+   */
   private class BloomEvalVisitor extends BoundExpressionVisitor<Boolean> {
     private BloomFilterReader bloomReader;
     private Set<Integer> fieldsWithBloomFilter = null;
@@ -89,6 +128,17 @@ public class ParquetBloomRowGroupFilter {
     private Map<Integer, PrimitiveType> parquetPrimitiveTypes = null;
     private Map<Integer, Type> types = null;
 
+    /**
+     * 评估表达式。
+     *
+     * <p>逻辑：
+     *
+     * <ol>
+     *   <li>遍历行组所有列元数据，收集有 Bloom Filter 的字段 ID 集合；
+     *   <li>若过滤条件引用的列与 Bloom Filter 列无交集，提前返回 ROWS_MIGHT_MATCH；
+     *   <li>否则委托 ExpressionVisitors.visitEvaluator 遍历表达式树。
+     * </ol>
+     */
     private boolean eval(
         MessageType fileSchema, BlockMetaData rowGroup, BloomFilterReader bloomFilterReader) {
       this.bloomReader = bloomFilterReader;
@@ -251,6 +301,7 @@ public class ParquetBloomRowGroupFilter {
       return ROWS_MIGHT_MATCH;
     }
 
+    /** 按需加载并缓存指定字段 ID 的 Bloom Filter。 */
     private BloomFilter loadBloomFilter(int id) {
       if (bloomCache.containsKey(id)) {
         return bloomCache.get(id);
@@ -267,6 +318,18 @@ public class ParquetBloomRowGroupFilter {
       }
     }
 
+    /**
+     * 对单个值查询 Bloom Filter，判断是否可能存在。
+     *
+     * <p>逻辑：按 Parquet 原始类型和 Iceberg 类型计算哈希值并查询 Bloom Filter。 处理 INT32/INT64（含
+     * decimal）、FLOAT/DOUBLE、BINARY（含 string/decimal/UUID）等类型。
+     *
+     * @param primitiveType Parquet 原始类型
+     * @param value 待查询的值
+     * @param bloom Bloom Filter 实例
+     * @param type Iceberg 类型（用于类型分派）
+     * @return true 表示可能存在，false 表示不存在
+     */
     private <T> boolean shouldRead(
         PrimitiveType primitiveType, T value, BloomFilter bloom, Type type) {
       long hashValue = 0;

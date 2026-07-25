@@ -31,6 +31,11 @@ import org.apache.iceberg.util.StructProjection;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkDataFile。
+ */
 public class SparkDataFile implements DataFile {
 
   private final int filePathPosition;
@@ -55,10 +60,12 @@ public class SparkDataFile implements DataFile {
   private final StructLike partitionProjection;
   private Row wrapped;
 
+  /** 构造 SparkDataFile 实例。 */
   public SparkDataFile(Types.StructType type, StructType sparkType) {
     this(type, null, sparkType);
   }
 
+  /** 构造 SparkDataFile 实例。 */
   public SparkDataFile(
       Types.StructType type, Types.StructType projectedType, StructType sparkType) {
     this.lowerBoundsType = type.fieldType("lower_bounds");
@@ -100,6 +107,12 @@ public class SparkDataFile implements DataFile {
     sortOrderIdPosition = positions.get("sort_order_id");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param row 参数
+   * @return 结果对象
+   */
   public SparkDataFile wrap(Row row) {
     this.wrapped = row;
     if (wrappedPartition.size() > 0) {
@@ -108,51 +121,101 @@ public class SparkDataFile implements DataFile {
     return this;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Long pos() {
     return null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public int specId() {
     return -1;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public CharSequence path() {
     return wrapped.getAs(filePathPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public FileFormat format() {
     return FileFormat.fromString(wrapped.getString(fileFormatPosition));
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructLike partition() {
     return partitionProjection;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public long recordCount() {
     return wrapped.getAs(recordCountPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public long fileSizeInBytes() {
     return wrapped.getAs(fileSizeInBytesPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, Long> columnSizes() {
     return wrapped.isNullAt(columnSizesPosition) ? null : wrapped.getJavaMap(columnSizesPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, Long> valueCounts() {
     return wrapped.isNullAt(valueCountsPosition) ? null : wrapped.getJavaMap(valueCountsPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, Long> nullValueCounts() {
     return wrapped.isNullAt(nullValueCountsPosition)
@@ -160,6 +223,11 @@ public class SparkDataFile implements DataFile {
         : wrapped.getJavaMap(nullValueCountsPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, Long> nanValueCounts() {
     return wrapped.isNullAt(nanValueCountsPosition)
@@ -167,6 +235,11 @@ public class SparkDataFile implements DataFile {
         : wrapped.getJavaMap(nanValueCountsPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, ByteBuffer> lowerBounds() {
     Map<?, ?> lowerBounds =
@@ -174,6 +247,11 @@ public class SparkDataFile implements DataFile {
     return convert(lowerBoundsType, lowerBounds);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Map<Integer, ByteBuffer> upperBounds() {
     Map<?, ?> upperBounds =
@@ -181,31 +259,57 @@ public class SparkDataFile implements DataFile {
     return convert(upperBoundsType, upperBounds);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ByteBuffer keyMetadata() {
     return convert(keyMetadataType, wrapped.get(keyMetadataPosition));
   }
 
+  /**
+   * 返回当前对象的副本。
+   *
+   * @return 结果对象
+   */
   @Override
   public DataFile copy() {
     throw new UnsupportedOperationException("Not implemented: copy");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public DataFile copyWithoutStats() {
     throw new UnsupportedOperationException("Not implemented: copyWithoutStats");
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public List<Long> splitOffsets() {
     return wrapped.isNullAt(splitOffsetsPosition) ? null : wrapped.getList(splitOffsetsPosition);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Integer sortOrderId() {
     return wrapped.getAs(sortOrderIdPosition);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int fieldPosition(String name, StructType sparkType) {
     try {
       return sparkType.fieldIndex(name);
@@ -218,6 +322,7 @@ public class SparkDataFile implements DataFile {
     }
   }
 
+  /** 把输入转换为另一种表示。 */
   @SuppressWarnings("unchecked")
   private <T> T convert(Type valueType, Object value) {
     return (T) SparkValueConverter.convert(valueType, value);

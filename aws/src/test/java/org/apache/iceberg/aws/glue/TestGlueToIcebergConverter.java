@@ -29,8 +29,20 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.glue.model.Database;
 import software.amazon.awssdk.services.glue.model.Table;
 
+/**
+ * 文件级说明：测试 TestGlueToIcebergConverter 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestGlueToIcebergConverter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestGlueToIcebergConverter {
 
+  /**
+   * 测试场景：To Namespace。
+   *
+   * <p>验证该方法在 To Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testToNamespace() {
     Database database = Database.builder().name("db").build();
@@ -38,6 +50,11 @@ public class TestGlueToIcebergConverter {
     Assertions.assertThat(GlueToIcebergConverter.toNamespace(database)).isEqualTo(namespace);
   }
 
+  /**
+   * 测试场景：To Table Id。
+   *
+   * <p>验证该方法在 To Table Id 条件下的行为是否符合预期。
+   */
   @Test
   public void testToTableId() {
     Table table = Table.builder().databaseName("db").name("name").build();
@@ -45,6 +62,11 @@ public class TestGlueToIcebergConverter {
     Assertions.assertThat(GlueToIcebergConverter.toTableId(table)).isEqualTo(icebergId);
   }
 
+  /**
+   * 测试场景：Validate Table Iceberg Property Not Found。
+   *
+   * <p>验证该方法在 Validate Table Iceberg Property Not Found 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidateTableIcebergPropertyNotFound() {
     Table table = Table.builder().parameters(ImmutableMap.of()).build();
@@ -54,6 +76,11 @@ public class TestGlueToIcebergConverter {
         .hasMessage("Input Glue table is not an iceberg table: name (type=null)");
   }
 
+  /**
+   * 测试场景：Validate Table Iceberg Property Value Wrong。
+   *
+   * <p>验证该方法在 Validate Table Iceberg Property Value Wrong 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidateTableIcebergPropertyValueWrong() {
     Map<String, String> properties =

@@ -41,9 +41,29 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.util.LocationUtil;
 
+/**
+ * 文件级说明：基于 REST 协议的 {@link TableOperations} 实现，负责单表的元数据提交与刷新。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 表操作层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 {@link TableOperations}，通过 {@link RESTClient} 向服务端提交表元数据变更与刷新。
+ *   <li>支持三种提交类型：CREATE（建表）、REPLACE（替换表）、SIMPLE（普通更新）。
+ *   <li>提供元数据文件位置计算、{@link LocationProvider} 与临时表操作视图。
+ * </ul>
+ *
+ * <p>设计意图：提交类型通过 {@link UpdateType} 区分，不同类型对应不同的需求校验 （{@link UpdateRequirements}）与错误处理策略。提交后自动降级为
+ * SIMPLE，保证后续提交走普通流程。
+ *
+ * <p>上下游关系：由 {@link RESTSessionCatalog} 在加载/创建/注册表时构造；依赖 {@link RESTClient}、 {@link FileIO} 与
+ * {@link ErrorHandlers}。
+ */
 class RESTTableOperations implements TableOperations {
   private static final String METADATA_FOLDER_NAME = "metadata";
 
+  /** 提交类型枚举：CREATE 建表、REPLACE 替换表、SIMPLE 普通更新。 */
   enum UpdateType {
     CREATE,
     REPLACE,
@@ -59,6 +79,15 @@ class RESTTableOperations implements TableOperations {
   private UpdateType updateType;
   private TableMetadata current;
 
+  /**
+   * 简单提交构造器，使用 SIMPLE 类型与空变更列表。
+   *
+   * @param client HTTP 客户端
+   * @param path 表资源路径
+   * @param headers 请求头供应器
+   * @param io 表级 FileIO
+   * @param current 当前表元数据
+   */
   RESTTableOperations(
       RESTClient client,
       String path,
@@ -68,6 +97,17 @@ class RESTTableOperations implements TableOperations {
     this(client, path, headers, io, UpdateType.SIMPLE, Lists.newArrayList(), current);
   }
 
+  /**
+   * 完整构造器，指定提交类型与建表变更列表。
+   *
+   * @param client HTTP 客户端
+   * @param path 表资源路径
+   * @param headers 请求头供应器
+   * @param io 表级 FileIO
+   * @param updateType 提交类型
+   * @param createChanges 建表/替换的变更列表
+   * @param current 当前表元数据（CREATE 类型下会被置为 null）
+   */
   RESTTableOperations(
       RESTClient client,
       String path,
@@ -90,17 +130,38 @@ class RESTTableOperations implements TableOperations {
     }
   }
 
+  /** 返回当前表元数据。 */
   @Override
   public TableMetadata current() {
     return current;
   }
 
+  /**
+   * 从服务端刷新表元数据，GET 表资源路径并更新当前元数据。
+   *
+   * @return 刷新后的表元数据
+   */
   @Override
   public TableMetadata refresh() {
     return updateCurrentMetadata(
         client.get(path, LoadTableResponse.class, headers, ErrorHandlers.tableErrorHandler()));
   }
 
+  /**
+   * 提交表元数据变更，根据提交类型构造不同的需求与变更列表后 POST 到服务端。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>按 {@link UpdateType} 分支处理：CREATE 校验 base 为 null 并合并 createChanges； REPLACE 校验 base 非空并基于
+   *       replaceBase 计算需求；SIMPLE 直接使用 metadata.changes()。
+   *   <li>构造 {@link UpdateTableRequest} 并 POST，由错误处理器抛出提交失败等异常。
+   *   <li>提交后将 updateType 置为 SIMPLE，并更新当前元数据。
+   * </ol>
+   *
+   * @param base 期望的基线元数据（CREATE 时为 null）
+   * @param metadata 待提交的目标元数据
+   */
   @Override
   public void commit(TableMetadata base, TableMetadata metadata) {
     Consumer<ErrorResponse> errorHandler;
@@ -157,11 +218,18 @@ class RESTTableOperations implements TableOperations {
     updateCurrentMetadata(response);
   }
 
+  /** 返回表级 FileIO。 */
   @Override
   public FileIO io() {
     return io;
   }
 
+  /**
+   * 根据加载表响应更新当前元数据。仅当当前元数据为空或元数据文件位置变化时才更新， 避免无变化的重复解析。
+   *
+   * @param response 加载表响应
+   * @return 当前表元数据
+   */
   private TableMetadata updateCurrentMetadata(LoadTableResponse response) {
     // LoadTableResponse is used to deserialize the response, but config is not allowed by the REST
     // spec so it can be
@@ -174,6 +242,13 @@ class RESTTableOperations implements TableOperations {
     return current;
   }
 
+  /**
+   * 计算元数据文件位置。优先使用配置的 WRITE_METADATA_LOCATION，否则使用表位置下的 metadata 目录。
+   *
+   * @param metadata 表元数据
+   * @param filename 元数据文件名
+   * @return 元数据文件完整路径
+   */
   private static String metadataFileLocation(TableMetadata metadata, String filename) {
     String metadataLocation = metadata.properties().get(TableProperties.WRITE_METADATA_LOCATION);
 
@@ -184,16 +259,26 @@ class RESTTableOperations implements TableOperations {
     }
   }
 
+  /** 返回当前表元数据下指定文件名的元数据文件位置。 */
   @Override
   public String metadataFileLocation(String filename) {
     return metadataFileLocation(current(), filename);
   }
 
+  /** 根据当前表位置与属性返回 {@link LocationProvider}。 */
   @Override
   public LocationProvider locationProvider() {
     return LocationProviders.locationsFor(current().location(), current().properties());
   }
 
+  /**
+   * 返回一个临时 {@link TableOperations} 视图，使用未提交的元数据，禁止 refresh/commit。
+   *
+   * <p>设计意图：用于在事务提交前基于未提交元数据执行操作（如写入），而不影响真实表状态。
+   *
+   * @param uncommittedMetadata 未提交的元数据
+   * @return 临时表操作视图
+   */
   @Override
   public TableOperations temp(TableMetadata uncommittedMetadata) {
     return new TableOperations() {

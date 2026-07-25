@@ -22,72 +22,97 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
 
-/** Interface for view definition. */
+/**
+ * SQL 视图定义接口。
+ *
+ * <p>所属模块：iceberg-api。本接口是 view 模块的核心抽象，类似 {@link org.apache.iceberg.Table} 之于表，定义了一个 Iceberg
+ * 视图的元数据视图与变更入口。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供视图名称、schema、schema 集合、当前版本、版本列表、版本历史与属性等元数据查询。
+ *   <li>提供变更入口：{@link #updateProperties()} 更新属性，{@link #replaceVersion()} 替换版本。
+ * </ul>
+ *
+ * <p>设计意图：视图与表类似地采用"版本化元数据 + 不可变版本"模型，支持时间旅行。schema 以 Map&lt;Integer, Schema&gt; 形式保存多版本，便于不同版本引用不同
+ * schema。replaceVersion 默认抛 {@link UnsupportedOperationException}，作为可选能力由具体实现按需提供。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.catalog.ViewCatalog} 加载/管理；变更操作产出 {@link
+ * UpdateViewProperties} 与 {@link ReplaceViewVersion}。
+ */
 public interface View {
 
+  /**
+   * 返回视图名称。
+   *
+   * @return 视图名
+   */
   String name();
 
   /**
-   * Return the {@link Schema schema} for this view.
+   * 返回本视图当前使用的 {@link Schema}。
    *
-   * @return this table's schema
+   * @return 当前 schema
    */
   Schema schema();
 
   /**
-   * Return a map of {@link Schema schema} for this view.
+   * 返回本视图全部 {@link Schema} 的映射（按 schema ID 索引）。
    *
-   * @return this table's schema map
+   * @return schema 映射
    */
   Map<Integer, Schema> schemas();
 
   /**
-   * Get the current version for this view, or null if there are no versions.
+   * 获取本视图的当前版本，若无任何版本则返回 null。
    *
-   * @return the current view version.
+   * @return 当前视图版本
    */
   ViewVersion currentVersion();
 
   /**
-   * Get the versions of this view.
+   * 获取本视图的全部版本。
    *
-   * @return an Iterable of versions of this view.
+   * @return 版本可迭代集合
    */
   Iterable<ViewVersion> versions();
 
   /**
-   * Get a version in this view by ID.
+   * 按 ID 获取本视图的某个版本。
    *
-   * @param versionId version ID
-   * @return a version, or null if the ID cannot be found
+   * @param versionId 版本 ID
+   * @return 对应版本，找不到时返回 null
    */
   ViewVersion version(int versionId);
 
   /**
-   * Get the version history of this table.
+   * 获取本视图的版本历史。
    *
-   * @return a list of {@link ViewHistoryEntry}
+   * @return {@link ViewHistoryEntry} 列表
    */
   List<ViewHistoryEntry> history();
 
   /**
-   * Return a map of string properties for this view.
+   * 返回本视图的字符串属性映射。
    *
-   * @return this view's properties map
+   * @return 属性映射
    */
   Map<String, String> properties();
 
   /**
-   * Create a new {@link UpdateViewProperties} to update view properties.
+   * 创建一个新的 {@link UpdateViewProperties} 用于更新视图属性。
    *
-   * @return a new {@link UpdateViewProperties}
+   * @return 新的 {@link UpdateViewProperties}
    */
   UpdateViewProperties updateProperties();
 
   /**
-   * Create a new {@link ReplaceViewVersion} to replace the view's current version.
+   * 创建一个新的 {@link ReplaceViewVersion} 用于替换视图当前版本。
    *
-   * @return a new {@link ReplaceViewVersion}
+   * <p>默认抛出 {@link UnsupportedOperationException}，表示不支持替换版本。
+   *
+   * @return 新的 {@link ReplaceViewVersion}
    */
   default ReplaceViewVersion replaceVersion() {
     throw new UnsupportedOperationException("Replacing a view's version is not supported");

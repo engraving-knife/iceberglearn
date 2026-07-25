@@ -50,6 +50,13 @@ import org.junit.rules.TemporaryFolder;
 import scala.Option;
 import scala.collection.JavaConverters;
 
+/**
+ * 文件级说明：测试 TestStructuredStreaming 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 结构化流式 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestStructuredStreaming {
 
   private static final Configuration CONF = new Configuration();
@@ -60,6 +67,7 @@ public class TestStructuredStreaming {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestStructuredStreaming.spark =
@@ -69,6 +77,7 @@ public class TestStructuredStreaming {
             .getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestStructuredStreaming.spark;
@@ -76,6 +85,7 @@ public class TestStructuredStreaming {
     currentSpark.stop();
   }
 
+  /** 测试流式写追加模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStreamingWriteAppendMode() throws Exception {
     File parent = temp.newFolder("parquet");
@@ -137,6 +147,7 @@ public class TestStructuredStreaming {
     }
   }
 
+  /** 测试流式写complete模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStreamingWriteCompleteMode() throws Exception {
     File parent = temp.newFolder("parquet");
@@ -197,6 +208,7 @@ public class TestStructuredStreaming {
     }
   }
 
+  /** 测试流式写complete模式带投影场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStreamingWriteCompleteModeWithProjection() throws Exception {
     File parent = temp.newFolder("parquet");
@@ -257,6 +269,7 @@ public class TestStructuredStreaming {
     }
   }
 
+  /** 测试流式写更新模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStreamingWriteUpdateMode() throws Exception {
     File parent = temp.newFolder("parquet");
@@ -293,10 +306,12 @@ public class TestStructuredStreaming {
     }
   }
 
+  /** 新建memory流。 */
   private <T> MemoryStream<T> newMemoryStream(int id, SQLContext sqlContext, Encoder<T> encoder) {
     return new MemoryStream<>(id, sqlContext, Option.empty(), encoder);
   }
 
+  /** 辅助方法：send。 */
   private <T> void send(List<T> records, MemoryStream<T> stream) {
     stream.addData(JavaConverters.asScalaBuffer(records));
   }

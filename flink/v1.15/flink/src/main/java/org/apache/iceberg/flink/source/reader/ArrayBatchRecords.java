@@ -29,18 +29,11 @@ import org.apache.iceberg.flink.source.DataIterator;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * {@link RecordsWithSplitIds} is used to pass a batch of records from fetcher to source reader.
- * Batching is to improve the efficiency for records handover.
+ * 基于数组的记录批次实现，用数组池承载一批记录。
  *
- * <p>{@link RecordsWithSplitIds} interface can encapsulate batches from multiple splits. This is
- * the case for Kafka source where fetchers can retrieve records from multiple Kafka partitions at
- * the same time.
+ * <p>所属模块：iceberg-flink v1.15。职责：封装记录数组与 split id，支持高效复用。
  *
- * <p>For file-based sources like Iceberg, readers always read one split/file at a time. Hence, we
- * will only have a batch of records for one split here.
- *
- * <p>This class uses array to store a batch of records from the same file (with the same
- * fileOffset).
+ * <p>设计意图：实现 RecordsWithSplitIds；被 ArrayPoolDataIteratorBatcher 产出。
  */
 class ArrayBatchRecords<T> implements RecordsWithSplitIds<RecordAndPosition<T>> {
   @Nullable private String splitId;

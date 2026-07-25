@@ -81,6 +81,15 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Iceberg Spark 写入实现，协调数据文件写出、分布与排序、提交与回滚。
+ *
+ * <p>设计意图：实现 Spark Write 接口，管理 Writer 提交消息并在 Driver 端原子提交到 Iceberg。
+ *
+ * <p>上下游关系：由 SparkWriteBuilder 创建；依赖 SparkWriteConf / SparkAppenderFactory / FileIO。
+ */
 abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   private static final Logger LOG = LoggerFactory.getLogger(SparkWrite.class);
 
@@ -131,26 +140,26 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     this.outputSpecId = writeConf.outputSpecId();
     this.writeProperties = writeConf.writeProperties();
   }
-
+  /** 执行 requiredDistribution 相关操作。 */
   @Override
   public Distribution requiredDistribution() {
     Distribution distribution = writeRequirements.distribution();
     LOG.info("Requesting {} as write distribution for table {}", distribution, table.name());
     return distribution;
   }
-
+  /** 执行 distributionStrictlyRequired 相关操作。 */
   @Override
   public boolean distributionStrictlyRequired() {
     return false;
   }
-
+  /** 执行 requiredOrdering 相关操作。 */
   @Override
   public SortOrder[] requiredOrdering() {
     SortOrder[] ordering = writeRequirements.ordering();
     LOG.info("Requesting {} as write ordering for table {}", ordering, table.name());
     return ordering;
   }
-
+  /** 执行 advisoryPartitionSizeInBytes 相关操作。 */
   @Override
   public long advisoryPartitionSizeInBytes() {
     long size = writeRequirements.advisoryPartitionSize();
@@ -202,7 +211,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
         useFanoutWriter,
         writeProperties);
   }
-
+  /** 执行 commitOperation 相关操作。 */
   private void commitOperation(SnapshotUpdate<?> operation, String description) {
     LOG.info("Committing {} to table {}", description, table);
     if (applicationId != null) {
@@ -238,7 +247,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       throw commitStateUnknownException;
     }
   }
-
+  /** 中止写入并清理。 */
   private void abort(WriterCommitMessage[] messages) {
     if (cleanupOnAbort) {
       SparkCleanupUtil.deleteFiles("job abort", table.io(), files(messages));
@@ -246,7 +255,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       LOG.warn("Skipping cleanup of written files");
     }
   }
-
+  /** 执行 files 相关操作。 */
   private List<DataFile> files(WriterCommitMessage[] messages) {
     List<DataFile> files = Lists.newArrayList();
 
@@ -259,23 +268,24 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
 
     return files;
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format("IcebergWrite(table=%s, format=%s)", table, format);
   }
 
   private abstract class BaseBatchWrite implements BatchWrite {
+    /** 执行 createBatchWriterFactory 相关操作。 */
     @Override
     public DataWriterFactory createBatchWriterFactory(PhysicalWriteInfo info) {
       return createWriterFactory();
     }
-
+    /** 中止写入并清理。 */
     @Override
     public void abort(WriterCommitMessage[] messages) {
       SparkWrite.this.abort(messages);
     }
-
+    /** 返回字符串表示。 */
     @Override
     public String toString() {
       return String.format("IcebergBatchWrite(table=%s, format=%s)", table, format);
@@ -283,6 +293,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   }
 
   private class BatchAppend extends BaseBatchWrite {
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       AppendFiles append = table.newAppend();
@@ -298,6 +309,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   }
 
   private class DynamicOverwrite extends BaseBatchWrite {
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       List<DataFile> files = files(messages);
@@ -341,7 +353,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     private OverwriteByFilter(Expression overwriteExpr) {
       this.overwriteExpr = overwriteExpr;
     }
-
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -382,7 +394,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       this.scan = scan;
       this.isolationLevel = isolationLevel;
     }
-
+    /** 执行 overwrittenFiles 相关操作。 */
     private List<DataFile> overwrittenFiles() {
       if (scan == null) {
         return ImmutableList.of();
@@ -390,7 +402,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
         return scan.tasks().stream().map(FileScanTask::file).collect(Collectors.toList());
       }
     }
-
+    /** 执行 conflictDetectionFilter 相关操作。 */
     private Expression conflictDetectionFilter() {
       // the list of filter expressions may be empty but is never null
       List<Expression> scanFilterExpressions = scan.filterExpressions();
@@ -403,7 +415,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
 
       return filter;
     }
-
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -437,7 +449,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
             String.format("overwrite with %d new data files (no validation)", numAddedFiles));
       }
     }
-
+    /** 执行 commitWithSerializableIsolation 相关操作。 */
     private void commitWithSerializableIsolation(
         OverwriteFiles overwriteFiles, int numOverwrittenFiles, int numAddedFiles) {
       Long scanSnapshotId = scan.snapshotId();
@@ -456,7 +468,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
               numOverwrittenFiles, numAddedFiles, scanSnapshotId, conflictDetectionFilter);
       commitOperation(overwriteFiles, commitMsg);
     }
-
+    /** 执行 commitWithSnapshotIsolation 相关操作。 */
     private void commitWithSnapshotIsolation(
         OverwriteFiles overwriteFiles, int numOverwrittenFiles, int numAddedFiles) {
       Long scanSnapshotId = scan.snapshotId();
@@ -482,7 +494,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
     private RewriteFiles(String fileSetID) {
       this.fileSetID = fileSetID;
     }
-
+    /** 提交写入。 */
     @Override
     public void commit(WriterCommitMessage[] messages) {
       FileRewriteCoordinator coordinator = FileRewriteCoordinator.get();
@@ -493,14 +505,14 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   private abstract class BaseStreamingWrite implements StreamingWrite {
     private static final String QUERY_ID_PROPERTY = "spark.sql.streaming.queryId";
     private static final String EPOCH_ID_PROPERTY = "spark.sql.streaming.epochId";
-
+    /** 执行 mode 相关操作。 */
     protected abstract String mode();
-
+    /** 执行 createStreamingWriterFactory 相关操作。 */
     @Override
     public StreamingDataWriterFactory createStreamingWriterFactory(PhysicalWriteInfo info) {
       return createWriterFactory();
     }
-
+    /** 提交写入。 */
     @Override
     public final void commit(long epochId, WriterCommitMessage[] messages) {
       LOG.info("Committing epoch {} for query {} in {} mode", epochId, queryId, mode());
@@ -515,7 +527,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
 
       doCommit(epochId, messages);
     }
-
+    /** 执行 doCommit 相关操作。 */
     protected abstract void doCommit(long epochId, WriterCommitMessage[] messages);
 
     protected <T> void commit(SnapshotUpdate<T> snapshotUpdate, long epochId, String description) {
@@ -523,7 +535,7 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       snapshotUpdate.set(EPOCH_ID_PROPERTY, Long.toString(epochId));
       commitOperation(snapshotUpdate, description);
     }
-
+    /** 执行 findLastCommittedEpochId 相关操作。 */
     private Long findLastCommittedEpochId() {
       Snapshot snapshot = table.currentSnapshot();
       Long lastCommittedEpochId = null;
@@ -539,12 +551,12 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       }
       return lastCommittedEpochId;
     }
-
+    /** 中止写入并清理。 */
     @Override
     public void abort(long epochId, WriterCommitMessage[] messages) {
       SparkWrite.this.abort(messages);
     }
-
+    /** 返回字符串表示。 */
     @Override
     public String toString() {
       return String.format("IcebergStreamingWrite(table=%s, format=%s)", table, format);
@@ -552,11 +564,12 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   }
 
   private class StreamingAppend extends BaseStreamingWrite {
+    /** 执行 mode 相关操作。 */
     @Override
     protected String mode() {
       return "append";
     }
-
+    /** 执行 doCommit 相关操作。 */
     @Override
     protected void doCommit(long epochId, WriterCommitMessage[] messages) {
       AppendFiles append = table.newFastAppend();
@@ -570,11 +583,12 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
   }
 
   private class StreamingOverwrite extends BaseStreamingWrite {
+    /** 执行 mode 相关操作。 */
     @Override
     protected String mode() {
       return "complete";
     }
-
+    /** 执行 doCommit 相关操作。 */
     @Override
     public void doCommit(long epochId, WriterCommitMessage[] messages) {
       OverwriteFiles overwriteFiles = table.newOverwrite();
@@ -652,12 +666,12 @@ abstract class SparkWrite implements Write, RequiresDistributionAndOrdering {
       this.queryId = queryId;
       this.writeProperties = writeProperties;
     }
-
+    /** 执行 createWriter 相关操作。 */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
       return createWriter(partitionId, taskId, 0);
     }
-
+    /** 执行 createWriter 相关操作。 */
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId, long epochId) {
       Table table = tableBroadcast.value();

@@ -59,6 +59,13 @@ import org.apache.spark.sql.sources.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkBatchQueryScan。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkBatchQueryScan.class);
@@ -98,10 +105,12 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   Long snapshotId() {
     return snapshotId;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private Set<Integer> specIds() {
     if (specIds == null) {
       Set<Integer> specIdSet = Sets.newHashSet();
@@ -114,6 +123,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     return specIds;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private List<FileScanTask> files() {
     if (files == null) {
       try (CloseableIterable<FileScanTask> filesIterable = scan.planFiles()) {
@@ -126,6 +136,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     return files;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected List<CombinedScanTask> tasks() {
     if (tasks == null) {
@@ -141,6 +152,11 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     return tasks;
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @return 结果对象
+   */
   @Override
   public NamedReference[] filterAttributes() {
     Set<Integer> partitionFieldSourceIds = Sets.newHashSet();
@@ -164,6 +180,11 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
         .toArray(NamedReference[]::new);
   }
 
+  /**
+   * 按条件过滤。
+   *
+   * @param filters 参数
+   */
   @Override
   public void filter(Filter[] filters) {
     Expression runtimeFilterExpr = convertRuntimeFilters(filters);
@@ -213,6 +234,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
 
   // at this moment, Spark can only pass IN filters for a single attribute
   // if there are multiple filter attributes, Spark will pass two separate IN filters
+  /** 把输入转换为另一种表示。 */
   private Expression convertRuntimeFilters(Filter[] filters) {
     Expression runtimeFilterExpr = Expressions.alwaysTrue();
 
@@ -233,6 +255,11 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     return runtimeFilterExpr;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Statistics estimateStatistics() {
     if (scan == null) {
@@ -253,6 +280,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
     }
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -275,6 +303,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
         && Objects.equals(asOfTimestamp, that.asOfTimestamp);
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -288,6 +317,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
         asOfTimestamp);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -295,6 +325,7 @@ class SparkBatchQueryScan extends SparkScan implements SupportsRuntimeFiltering 
         table(),
         expectedSchema().asStruct(),
         filterExpressions(),
+        /** 执行该方法的具体逻辑。 */
         runtimeFilterExpressions,
         caseSensitive());
   }

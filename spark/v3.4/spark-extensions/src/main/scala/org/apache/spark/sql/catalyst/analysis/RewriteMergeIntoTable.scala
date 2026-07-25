@@ -67,10 +67,10 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /**
- * Assigns a rewrite plan for v2 tables that support rewriting data to handle MERGE statements.
- *
- * This rule assumes the commands have been fully resolved and all assignments have been aligned.
- * That's why it must be run after AlignRowLevelCommandAssignments.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：MERGE INTO 重写规则，将 MERGE 语句重写为基于 MergeRows 的可执行计划。
+ * <p>设计意图：在分析阶段将声明式 MERGE 转换为数据替换 + 行合并的物理等价计划。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册；产出 MergeRows/ReplaceIcebergData。
  */
 object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with PredicateHelper {
 
@@ -80,6 +80,7 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
 
   private final val ROW_FROM_SOURCE_REF = FieldReference(ROW_FROM_SOURCE)
   private final val ROW_FROM_TARGET_REF = FieldReference(ROW_FROM_TARGET)
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case m @ MergeIntoIcebergTable(aliasedTable, source, cond, matchedActions, notMatchedActions, None)
@@ -315,10 +316,12 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     val projections = buildDeltaProjections(mergeRows, rowAttrs, rowIdAttrs, metadataAttrs)
     WriteIcebergDelta(writeRelation, mergeRows, relation, projections)
   }
+  /** 执行 actionCondition 相关操作。 */
 
   private def actionCondition(action: MergeAction): Expression = {
     action.condition.getOrElse(TrueLiteral)
   }
+  /** 执行 matchedActionOutput 相关操作。 */
 
   private def matchedActionOutput(
       clause: MergeAction,
@@ -335,6 +338,7 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
         throw new AnalysisException(s"Unexpected WHEN MATCHED action: $other")
     }
   }
+  /** 执行 notMatchedActionOutput 相关操作。 */
 
   private def notMatchedActionOutput(
       clause: MergeAction,
@@ -348,6 +352,7 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
         throw new AnalysisException(s"Unexpected WHEN NOT MATCHED action: $other")
     }
   }
+  /** 执行 matchedDeltaActionOutput 相关操作。 */
 
   private def matchedDeltaActionOutput(
       action: MergeAction,
@@ -369,6 +374,7 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
         throw new AnalysisException(s"Unexpected WHEN MATCHED action: $other")
     }
   }
+  /** 执行 notMatchedDeltaActionOutput 相关操作。 */
 
   private def notMatchedDeltaActionOutput(
       action: MergeAction,
@@ -382,6 +388,7 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
         throw new AnalysisException(s"Unexpected WHEN NOT MATCHED action: $other")
     }
   }
+  /** 执行 buildMergeRowsOutput 相关操作。 */
 
   private def buildMergeRowsOutput(
       matchedOutputs: Seq[Seq[Seq[Expression]]],
@@ -392,15 +399,18 @@ object RewriteMergeIntoTable extends RewriteRowLevelIcebergCommand with Predicat
     val outputs = matchedOutputs.flatten.filter(_.nonEmpty) ++ notMatchedOutputs.filter(_.nonEmpty)
     buildMergingOutput(outputs, attrs)
   }
+  /** 判断是否 CardinalityCheckNeeded。 */
 
   private def isCardinalityCheckNeeded(actions: Seq[MergeAction]): Boolean = actions match {
     case Seq(DeleteAction(None)) => false
     case _ => true
   }
+  /** 执行 resolveAttrRef 相关操作。 */
 
   private def resolveAttrRef(ref: NamedReference, plan: LogicalPlan): AttributeReference = {
     V2ExpressionUtils.resolveRef[AttributeReference](ref, plan)
   }
+  /** 执行 buildDeltaProjections 相关操作。 */
 
   private def buildDeltaProjections(
       mergeRows: MergeRows,

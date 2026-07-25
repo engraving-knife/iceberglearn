@@ -23,8 +23,16 @@ import javax.annotation.concurrent.ThreadSafe;
 import org.apache.flink.annotation.VisibleForTesting;
 
 /**
- * This enumeration history is used for split discovery throttling. It tracks the discovered split
- * count per every non-empty enumeration.
+ * 文件级说明：枚举历史，用于 split 发现限流。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/enumerator 子包）。
+ *
+ * <p>职责：跟踪每次非空枚举发现的 split 数量， 用于在 split 数量激增时进行限流，避免压垮系统。
+ *
+ * <p>设计意图：使用固定大小的环形数组存储最近若干次枚举的 split 数， 通过 {@link ThreadSafe} + synchronized 保证线程安全。
+ *
+ * <p>上下游关系：上游为 {@link ContinuousIcebergEnumerator} 在每次枚举后调用 {@code record}， 下游为限流判断逻辑（{@code
+ * shouldThrottle} 等）。
  */
 @ThreadSafe
 class EnumerationHistory {

@@ -47,6 +47,15 @@ import org.apache.spark.sql.connector.distributions.Distributions;
 import org.apache.spark.sql.connector.expressions.SortOrder;
 import org.apache.spark.sql.internal.SQLConf;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的策略实现，定义文件重写等动作的具体算法。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkSortStrategy。
+ *
+ * <p>设计意图：策略模式，可在运行时切换算法实现。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 public class SparkSortStrategy extends SortStrategy {
 
   /**
@@ -68,16 +77,27 @@ public class SparkSortStrategy extends SortStrategy {
 
   private double sizeEstimateMultiple;
 
+  /** 构造 SparkSortStrategy 实例。 */
   public SparkSortStrategy(Table table, SparkSession spark) {
     this.table = table;
     this.spark = spark;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Table table() {
     return table;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -86,6 +106,12 @@ public class SparkSortStrategy extends SortStrategy {
         .build();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public RewriteStrategy options(Map<String, String> options) {
     sizeEstimateMultiple = PropertyUtil.propertyAsDouble(options, COMPRESSION_FACTOR, 1.0);
@@ -98,6 +124,12 @@ public class SparkSortStrategy extends SortStrategy {
     return super.options(options);
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param filesToRewrite 参数
+   * @return 结果对象
+   */
   @Override
   public Set<DataFile> rewriteFiles(List<FileScanTask> filesToRewrite) {
     String groupID = UUID.randomUUID().toString();
@@ -154,27 +186,33 @@ public class SparkSortStrategy extends SortStrategy {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkSession spark() {
     return this.spark;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected LogicalPlan sortPlan(
       Distribution distribution, SortOrder[] ordering, LogicalPlan plan, SQLConf conf) {
     return DistributionAndOrderingUtils$.MODULE$.prepareQuery(distribution, ordering, plan, conf);
   }
 
+  /** 返回大小。 */
   protected double sizeEstimateMultiple() {
     return sizeEstimateMultiple;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkTableCache tableCache() {
     return tableCache;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected FileScanTaskSetManager manager() {
     return manager;
   }
 
+  /** 重写计划或文件。 */
   protected FileRewriteCoordinator rewriteCoordinator() {
     return rewriteCoordinator;
   }

@@ -33,13 +33,23 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestManifestReaderStats，用于验证 Manifest Reader Stats 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Manifest Reader Stats 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestManifestReaderStats extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：manifest reader stats。 */
   public TestManifestReaderStats(int formatVersion) {
     super(formatVersion);
   }
@@ -65,6 +75,11 @@ public class TestManifestReaderStats extends TableTestBase {
           .withMetrics(METRICS)
           .build();
 
+  /**
+   * 测试场景：read includes full stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIncludesFullStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -75,6 +90,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read entries with filter includes full stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadEntriesWithFilterIncludesFullStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -86,6 +106,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read iterator with filter includes full stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIteratorWithFilterIncludesFullStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -96,6 +121,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read entries with filter and select includes full stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadEntriesWithFilterAndSelectIncludesFullStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -109,6 +139,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read iterator with filter and select drops stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIteratorWithFilterAndSelectDropsStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -121,6 +156,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read iterator with filter and select record count drops stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIteratorWithFilterAndSelectRecordCountDropsStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -133,6 +173,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read iterator with filter and select stats includes full stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIteratorWithFilterAndSelectStatsIncludesFullStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -148,6 +193,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read iterator with project stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadIteratorWithProjectStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -167,6 +217,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read entries with select not project stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadEntriesWithSelectNotProjectStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -190,6 +245,11 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：read entries with select certain stat not project stats。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReadEntriesWithSelectCertainStatNotProjectStats() throws IOException {
     ManifestFile manifest = writeManifest(1000L, FILE);
@@ -212,6 +272,7 @@ public class TestManifestReaderStats extends TableTestBase {
     }
   }
 
+  /** 辅助方法：assert full stats。 */
   private void assertFullStats(DataFile dataFile) {
     Assert.assertEquals(3, dataFile.recordCount());
     Assert.assertNull(dataFile.columnSizes());
@@ -260,6 +321,7 @@ public class TestManifestReaderStats extends TableTestBase {
     Assert.assertEquals(FILE_PATH, dataFile.path()); // always select file path in all test cases
   }
 
+  /** 辅助方法：assert stats dropped。 */
   private void assertStatsDropped(DataFile dataFile) {
     Assert.assertEquals(
         3, dataFile.recordCount()); // record count is not considered as droppable stats
@@ -273,6 +335,7 @@ public class TestManifestReaderStats extends TableTestBase {
     Assert.assertEquals(FILE_PATH, dataFile.path()); // always select file path in all test cases
   }
 
+  /** 辅助方法：assert null record count。 */
   private void assertNullRecordCount(DataFile dataFile) {
     // record count is a primitive type, accessing null record count will throw NPE
     Assertions.assertThatThrownBy(dataFile::recordCount).isInstanceOf(NullPointerException.class);

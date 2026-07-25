@@ -62,9 +62,17 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+/**
+ * 文件级说明：测试 TestMetadataTablesWithPartitionEvolution 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 元数据表带分区演进 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBase {
 
+  /** 参数。 */
   @Parameters(name = "catalog = {0}, impl = {1}, conf = {2}, fileFormat = {3}, formatVersion = {4}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -122,6 +130,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
   private final FileFormat fileFormat;
   private final int formatVersion;
 
+  /** 测试元数据表带分区演进。 */
   public TestMetadataTablesWithPartitionEvolution(
       String catalogName,
       String implementation,
@@ -133,11 +142,13 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     this.formatVersion = formatVersion;
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试文件元数据表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesMetadataTable() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -199,6 +210,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 测试文件元数据表过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilesMetadataTableFilter() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -290,6 +302,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 测试条目元数据表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testEntriesMetadataTable() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -351,6 +364,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 测试分区表添加移除字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableAddRemoveFields() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -406,6 +420,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
         PARTITIONS);
   }
 
+  /** 测试分区表重命名字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableRenameFields() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -433,6 +448,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
         PARTITIONS);
   }
 
+  /** 测试分区表switch字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableSwitchFields() throws Exception {
     createTable("id bigint NOT NULL, category string, data string");
@@ -495,6 +511,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 测试分区表过滤器添加移除字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionTableFilterAddRemoveFields() throws ParseException {
     // Create un-partitioned table
@@ -549,6 +566,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
         "partition.category = 'c2'");
   }
 
+  /** 测试分区表过滤器switch字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionTableFilterSwitchFields() throws Exception {
     // Re-added partition fields currently not re-associated:
@@ -595,6 +613,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
         "partition.data = 'd1'");
   }
 
+  /** 测试分区表过滤器重命名字段场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionsTableFilterRenameFields() throws ParseException {
     createTable("id bigint NOT NULL, category string, data string");
@@ -618,6 +637,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
         "partition.category_another_name = 'c1'");
   }
 
+  /** 测试元数据表带unknown转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMetadataTablesWithUnknownTransforms() {
     createTable("id bigint NOT NULL, category string, data string");
@@ -647,6 +667,7 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 测试分区列命名分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionColumnNamedPartition() {
     sql(
@@ -658,12 +679,14 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     Assert.assertEquals(2, sql("SELECT * FROM %s.files", tableName).size());
   }
 
+  /** 断言分区。 */
   private void assertPartitions(
       List<Object[]> expectedPartitions, String expectedTypeAsString, MetadataTableType tableType)
       throws ParseException {
     assertPartitions(expectedPartitions, expectedTypeAsString, tableType, null);
   }
 
+  /** 断言分区。 */
   private void assertPartitions(
       List<Object[]> expectedPartitions,
       String expectedTypeAsString,
@@ -718,10 +741,12 @@ public class TestMetadataTablesWithPartitionEvolution extends SparkCatalogTestBa
     }
   }
 
+  /** 加载元数据表。 */
   private Dataset<Row> loadMetadataTable(MetadataTableType tableType) {
     return spark.read().format("iceberg").load(tableName + "." + tableType.name());
   }
 
+  /** 创建表。 */
   private void createTable(String schema) {
     sql(
         "CREATE TABLE %s (%s) USING iceberg TBLPROPERTIES ('%s' '%s', '%s' '%d')",

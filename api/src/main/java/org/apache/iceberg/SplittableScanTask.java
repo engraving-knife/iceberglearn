@@ -19,21 +19,26 @@
 package org.apache.iceberg;
 
 /**
- * A scan task that can be split into smaller scan tasks.
+ * 可切分扫描任务：可被拆分为多个更小扫描任务的任务。
  *
- * @param <ThisT> the child Java API class
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：在 {@link ScanTask} 基础上提供 {@link #split(long)} 方法，把大任务按目标大小拆分， 用于生成大小均衡的输入分片。
+ *
+ * <p>设计意图：目标分片大小仅为指导值，实际分片可能偏大或偏小；文件格式（如 Parquet）可利用 row group 偏移信息在切分时对齐格式边界，避免拆坏行组。
+ *
+ * <p>上下游关系：被扫描规划器在 {@code planTasks} 阶段调用，把大文件任务切分为多个小任务。
+ *
+ * @param <ThisT> 子类型自身，用于 split 返回类型收敛
  */
 public interface SplittableScanTask<ThisT> extends ScanTask {
   /**
-   * Attempts to split this scan task into several smaller scan tasks, each close to {@code
-   * splitSize} size.
+   * 尝试把本扫描任务拆分为多个更小的任务，每个接近 {@code targetSplitSize} 大小。
    *
-   * <p>Note the target split size is just guidance and the actual split size may be either smaller
-   * or larger. File formats like Parquet may leverage the row group offset information while
-   * splitting tasks.
+   * <p>目标大小仅为指导值，实际大小可能偏大或偏小。Parquet 等格式会利用 row group 偏移 信息在切分时对齐格式边界。
    *
-   * @param targetSplitSize the target size of each new scan task in bytes
-   * @return an Iterable of smaller tasks
+   * @param targetSplitSize 每个新任务的目标大小（字节）
+   * @return 拆分后的小任务迭代器
    */
   Iterable<ThisT> split(long targetSplitSize);
 }

@@ -23,135 +23,112 @@ import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.Projections;
 
 /**
- * API for overwriting files in a table.
+ * 文件覆写 API：通过删除一组旧文件并添加一组新文件来更新表的某个数据片段。
  *
- * <p>This API accumulates file additions and produces a new {@link Snapshot} of the table by
- * replacing all the deleted files with the set of additions. This operation is used to implement
- * idempotent writes that always replace a section of a table with new data or update/delete
- * operations that eagerly overwrite files.
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
  *
- * <p>Overwrites can be validated. The default validation mode is idempotent, meaning the overwrite
- * is correct and should be committed out regardless of other concurrent changes to the table. For
- * example, this can be used for replacing all the data for day D with query results. Alternatively,
- * this API can be configured for overwriting certain files with their filtered versions while
- * ensuring no new data that would need to be filtered has been added.
+ * <p>职责：
  *
- * <p>When committing, these changes will be applied to the latest table snapshot. Commit conflicts
- * will be resolved by applying the changes to the new latest snapshot and reattempting the commit.
+ * <ul>
+ *   <li>累积待新增的 {@link DataFile} 与待删除的 {@link DataFile}。
+ *   <li>支持按行过滤表达式批量删除文件，实现幂等写入或更新/删除。
+ *   <li>提供冲突检测与校验配置，保障非幂等覆写的隔离性。
+ * </ul>
+ *
+ * <p>设计意图：默认采用幂等模式提交；亦可配置为"按行过滤覆写部分文件并保证不会有需要过滤的 新数据被并发加入"的强校验模式。提交时若检测到表已前进，会把变更应用到新的最新快照上重试。 通过
+ * {@link Projections#inclusive(PartitionSpec)} 选候选文件、 {@link Projections#strict(PartitionSpec)}
+ * 判定整文件删除，保证"整文件删除当且仅当其全部行 都匹配过滤条件"。
+ *
+ * <p>上下游关系：由 {@link Table#newOverwrite()} 创建；下游实现位于 core 模块， 落地为一次替换类快照提交。
  */
 public interface OverwriteFiles extends SnapshotUpdate<OverwriteFiles> {
   /**
-   * Delete files that match an {@link Expression} on data rows from the table.
+   * 按行过滤表达式删除文件。
    *
-   * <p>A file is selected to be deleted by the expression if it could contain any rows that match
-   * the expression (candidate files are selected using an {@link
-   * Projections#inclusive(PartitionSpec) inclusive projection}). These candidate files are deleted
-   * if all of the rows in the file must match the expression (the partition data matches the
-   * expression's {@link Projections#strict(PartitionSpec)} strict projection}). This guarantees
-   * that files are deleted if and only if all rows in the file must match the expression.
+   * <p>逻辑：
    *
-   * <p>Files that may contain some rows that match the expression and some rows that do not will
-   * result in a {@link ValidationException}.
+   * <ul>
+   *   <li>用 {@link Projections#inclusive(PartitionSpec)} 把行级表达式投影到分区级， 选出可能含匹配行的候选文件；
+   *   <li>用 {@link Projections#strict(PartitionSpec)} 严格投影判定文件是否全部行都匹配， 全部匹配才整文件删除；
+   *   <li>若某文件可能既含匹配行又含非匹配行，则抛 {@link ValidationException}。
+   * </ul>
    *
-   * @param expr an expression on rows in the table
-   * @return this for method chaining
-   * @throws ValidationException If a file can contain both rows that match and rows that do not
+   * @param expr 行级过滤表达式
+   * @return this，便于链式调用
+   * @throws ValidationException 存在"部分行匹配"的文件
    */
   OverwriteFiles overwriteByRowFilter(Expression expr);
 
   /**
-   * Add a {@link DataFile} to the table.
+   * 向表中新增一个数据文件。
    *
-   * @param file a data file
-   * @return this for method chaining
+   * @param file 待新增的数据文件
+   * @return this，便于链式调用
    */
   OverwriteFiles addFile(DataFile file);
 
   /**
-   * Delete a {@link DataFile} from the table.
+   * 从表中删除一个数据文件。
    *
-   * @param file a data file
-   * @return this for method chaining
+   * @param file 待删除的数据文件
+   * @return this，便于链式调用
    */
   OverwriteFiles deleteFile(DataFile file);
 
   /**
-   * Signal that each file added to the table must match the overwrite expression.
+   * 声明每个新增文件都必须匹配覆写过滤表达式。
    *
-   * <p>If this method is called, each added file is validated on commit to ensure that it matches
-   * the overwrite row filter. This is used to ensure that writes are idempotent: that files cannot
-   * be added during a commit that would not be removed if the operation were run a second time.
+   * <p>逻辑：调用后，提交时会对每个新增文件做校验，确保其匹配覆写行过滤。用于保证幂等性： 即使重跑也不会留下"本应被过滤掉"的文件。
    *
-   * @return this for method chaining
+   * @return this，便于链式调用
    */
   OverwriteFiles validateAddedFilesMatchOverwriteFilter();
 
   /**
-   * Set the snapshot ID used in any reads for this operation.
+   * 设置本操作读取所基于的快照 ID，校验将针对该快照之后的变更进行。
    *
-   * <p>Validations will check changes after this snapshot ID. If the from snapshot is not set, all
-   * ancestor snapshots through the table's initial snapshot are validated.
+   * <p>若未设置，则校验覆盖从初始快照到当前的所有祖先快照。
    *
-   * @param snapshotId a snapshot ID
-   * @return this for method chaining
+   * @param snapshotId 基准快照 ID
+   * @return this，便于链式调用
    */
   OverwriteFiles validateFromSnapshot(long snapshotId);
 
   /**
-   * Enables or disables case sensitive expression binding for validations that accept expressions.
+   * 启用/关闭校验阶段表达式绑定的大小写敏感性。
    *
-   * @param caseSensitive whether expression binding should be case sensitive
-   * @return this for method chaining
+   * @param caseSensitive 是否大小写敏感
+   * @return this，便于链式调用
    */
   OverwriteFiles caseSensitive(boolean caseSensitive);
 
   /**
-   * Sets a conflict detection filter used to validate concurrently added data and delete files.
+   * 设置冲突检测过滤器，用于校验并发新增的数据文件与删除文件是否冲突。
    *
-   * @param conflictDetectionFilter an expression on rows in the table
-   * @return this for method chaining
+   * @param conflictDetectionFilter 行级冲突检测表达式
+   * @return this，便于链式调用
    */
   OverwriteFiles conflictDetectionFilter(Expression conflictDetectionFilter);
 
   /**
-   * Enables validation that data added concurrently does not conflict with this commit's operation.
+   * 启用"并发新增数据不冲突"校验。
    *
-   * <p>This method should be called while committing non-idempotent overwrite operations. If a
-   * concurrent operation commits a new file after the data was read and that file might contain
-   * rows matching the specified conflict detection filter, the overwrite operation will detect this
-   * and fail.
+   * <p>逻辑：用于非幂等覆写提交。若在 {@link #validateFromSnapshot(long)} 指定的快照之后， 有并发操作新增了可能匹配 {@link
+   * #conflictDetectionFilter(Expression)} 的文件，则本次覆写 提交失败。未设置冲突检测过滤器时，任何并发新增数据都会导致失败。
    *
-   * <p>Calling this method with a correct conflict detection filter is required to maintain
-   * isolation for non-idempotent overwrite operations.
-   *
-   * <p>Validation uses the conflict detection filter passed to {@link
-   * #conflictDetectionFilter(Expression)} and applies to operations that happened after the
-   * snapshot passed to {@link #validateFromSnapshot(long)}. If the conflict detection filter is not
-   * set, any new data added concurrently will fail this overwrite operation.
-   *
-   * @return this for method chaining
+   * @return this，便于链式调用
    */
   OverwriteFiles validateNoConflictingData();
 
   /**
-   * Enables validation that deletes that happened concurrently do not conflict with this commit's
-   * operation.
+   * 启用"并发删除不冲突"校验。
    *
-   * <p>Validating concurrent deletes is required during non-idempotent overwrite operations. If a
-   * concurrent operation deletes data in one of the files being overwritten, the overwrite
-   * operation must be aborted as it may undelete rows that were removed concurrently.
+   * <p>逻辑：非幂等覆写必需。若并发操作删除了本次正在覆写的文件，则必须中止提交，否则可能 "复活"被并发删除的行。校验基于 {@link
+   * #conflictDetectionFilter(Expression)}，作用于 {@link #validateFromSnapshot(long)}
+   * 之后的变更；若未设置冲突检测过滤器，则使用 {@link #overwriteByRowFilter(Expression)} 的行过滤来检查新删除文件，并确保通过 {@link
+   * #deleteFile(DataFile)} 删除的文件不存在并发删除冲突。
    *
-   * <p>Calling this method with a correct conflict detection filter is required to maintain
-   * isolation for non-idempotent overwrite operations.
-   *
-   * <p>Validation uses the conflict detection filter passed to {@link
-   * #conflictDetectionFilter(Expression)} and applies to operations that happened after the
-   * snapshot passed to {@link #validateFromSnapshot(long)}. If the conflict detection filter is not
-   * set, this operation will use the row filter provided in {@link
-   * #overwriteByRowFilter(Expression)} to check for new delete files and will ensure there are no
-   * conflicting deletes for data files removed via {@link #deleteFile(DataFile)}.
-   *
-   * @return this for method chaining
+   * @return this，便于链式调用
    */
   OverwriteFiles validateNoConflictingDeletes();
 }

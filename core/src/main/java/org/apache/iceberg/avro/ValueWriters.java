@@ -37,6 +37,24 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.util.DecimalUtil;
 import org.apache.iceberg.util.UUIDUtil;
 
+/**
+ * 文件级说明：Avro 值写入器的具体实现工厂（静态方法集合），提供各 Iceberg 类型的 {@link ValueWriter} 实现。
+ *
+ * <p>所属模块：iceberg-core（avro 子包）。职责：为 boolean/int/long/float/double/string/
+ * bytes/uuid/decimal/date/time/timestamp 等 primitive 类型，以及 struct/list/map 等 复合类型，提供具体的 {@link
+ * ValueWriter} 实现类和工厂方法。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用工厂模式：每个类型有对应的 Writer 实现类（私有静态内部类），通过静态工厂方法创建。
+ *   <li>struct writer 按字段顺序依次写入，支持 metrics 收集。
+ *   <li>decimal/uuid 等特殊类型做专门编码，保证与 Iceberg 存储格式一致。
+ *   <li>写入时对 null 字段写 Avro union 的 null 分支。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link GenericAvroWriter}、反射写入器等按 schema 类型组合调用。
+ */
 public class ValueWriters {
   private ValueWriters() {}
 
@@ -44,6 +62,11 @@ public class ValueWriters {
     return NullWriter.INSTANCE;
   }
 
+  /**
+   * 创建 boolean 类型写入器。
+   *
+   * @return boolean ValueWriter
+   */
   public static ValueWriter<Boolean> booleans() {
     return BooleanWriter.INSTANCE;
   }
@@ -56,18 +79,38 @@ public class ValueWriters {
     return ShortToIntegerWriter.INSTANCE;
   }
 
+  /**
+   * 创建 int 类型写入器。
+   *
+   * @return int ValueWriter
+   */
   public static ValueWriter<Integer> ints() {
     return IntegerWriter.INSTANCE;
   }
 
+  /**
+   * 创建 long 类型写入器。
+   *
+   * @return long ValueWriter
+   */
   public static ValueWriter<Long> longs() {
     return LongWriter.INSTANCE;
   }
 
+  /**
+   * 创建 float 类型写入器。
+   *
+   * @return float ValueWriter
+   */
   public static ValueWriter<Float> floats() {
     return FloatWriter.INSTANCE;
   }
 
+  /**
+   * 创建 double 类型写入器。
+   *
+   * @return double ValueWriter
+   */
   public static ValueWriter<Double> doubles() {
     return DoubleWriter.INSTANCE;
   }
@@ -80,6 +123,11 @@ public class ValueWriters {
     return Utf8Writer.INSTANCE;
   }
 
+  /**
+   * 创建 UUID 类型写入器。
+   *
+   * @return UUID ValueWriter
+   */
   public static ValueWriter<UUID> uuids() {
     return UUIDWriter.INSTANCE;
   }
@@ -117,6 +165,13 @@ public class ValueWriters {
     return new ArrayMapWriter<>(keyWriter, valueWriter);
   }
 
+  /**
+   * 创建 map 类型写入器。
+   *
+   * @param keyWriter key ValueWriter
+   * @param valueWriter value ValueWriter
+   * @return map ValueWriter
+   */
   public static <K, V> ValueWriter<Map<K, V>> map(
       ValueWriter<K> keyWriter, ValueWriter<V> valueWriter) {
     return new MapWriter<>(keyWriter, valueWriter);

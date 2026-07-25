@@ -44,21 +44,62 @@ import org.apache.spark.sql.catalyst.util.MapData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark 专用的 ORC 值读取器工厂与内部读取器实现集合。
+ *
+ * <p>所属模块：iceberg-spark（Iceberg 与 Spark 3.5 的集成层，data 子包负责 ORC 格式 数据到 Spark 内部类型的读取转换）。
+ *
+ * <p>职责：为 ORC 格式的各种数据类型（字符串、UUID、时间戳、Decimal、struct、array、map） 提供 {@link OrcValueReader} 实现，将 ORC 的
+ * ColumnVector 数据转换为 Spark 的 InternalRow/ArrayData/MapData/UTF8String/Decimal 等内部表示。
+ *
+ * <p>设计意图：将 ORC 读取器按类型拆分为独立的内部类（StringReader、UUIDReader、
+ * TimestampTzReader、Decimal18Reader、Decimal38Reader、StructReader、ArrayReader、MapReader），
+ * 每个类只负责一种类型的读取逻辑。工厂方法对外提供统一入口。Decimal 根据 precision 分为 18 位（long 存储）和 38 位（BigDecimal 存储）两种读取器。
+ *
+ * <p>上下游关系：被 {@link VectorizedSparkOrcReaders} 和非向量化 ORC 读取路径调用； 依赖 Iceberg ORC 模块的 OrcValueReader
+ * 接口和 Hive ORC 的 ColumnVector。
+ */
 public class SparkOrcValueReaders {
   private SparkOrcValueReaders() {}
 
+  /**
+   * 创建 UTF8 字符串读取器（单例）。
+   *
+   * @return 将 ORC BytesColumnVector 转换为 Spark UTF8String 的读取器
+   */
   public static OrcValueReader<UTF8String> utf8String() {
     return StringReader.INSTANCE;
   }
 
+  /**
+   * 创建 UUID 读取器（单例），将 ORC 中的 16 字节二进制转换为 UUID 字符串。
+   *
+   * @return UUID 读取器
+   */
   public static OrcValueReader<UTF8String> uuids() {
     return UUIDReader.INSTANCE;
   }
 
+  /**
+   * 创建带时区的时间戳读取器（单例），将 ORC TimestampColumnVector 转换为微秒级 Long。
+   *
+   * @return 时间戳读取器
+   */
   public static OrcValueReader<Long> timestampTzs() {
     return TimestampTzReader.INSTANCE;
   }
 
+  /**
+   * 根据 precision 选择合适的 Decimal 读取器。
+   *
+   * <p>逻辑：precision 不超过 Spark Decimal 的 MAX_LONG_DIGITS（18）时使用 Decimal18Reader（基于 long 存储），否则不超过 38
+   * 时使用 Decimal38Reader （基于 BigDecimal 存储），超过 38 则报错。
+   *
+   * @param precision Decimal 精度
+   * @param scale Decimal 标度
+   * @return Decimal 读取器
+   * @throws IllegalArgumentException precision 超过 38 时抛出
+   */
   public static OrcValueReader<Decimal> decimals(int precision, int scale) {
     if (precision <= Decimal.MAX_LONG_DIGITS()) {
       return new SparkOrcValueReaders.Decimal18Reader(precision, scale);
@@ -68,16 +109,16 @@ public class SparkOrcValueReaders {
       throw new IllegalArgumentException("Invalid precision: " + precision);
     }
   }
-
+  /** 执行 struct 相关操作。 */
   static OrcValueReader<?> struct(
       List<OrcValueReader<?>> readers, Types.StructType struct, Map<Integer, ?> idToConstant) {
     return new StructReader(readers, struct, idToConstant);
   }
-
+  /** 执行 array 相关操作。 */
   static OrcValueReader<?> array(OrcValueReader<?> elementReader) {
     return new ArrayReader(elementReader);
   }
-
+  /** 执行 map 相关操作。 */
   static OrcValueReader<?> map(OrcValueReader<?> keyReader, OrcValueReader<?> valueReader) {
     return new MapReader(keyReader, valueReader);
   }
@@ -88,7 +129,7 @@ public class SparkOrcValueReaders {
     private ArrayReader(OrcValueReader<?> elementReader) {
       this.elementReader = elementReader;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public ArrayData nonNullRead(ColumnVector vector, int row) {
       ListColumnVector listVector = (ListColumnVector) vector;
@@ -100,7 +141,7 @@ public class SparkOrcValueReaders {
       }
       return new GenericArrayData(elements.toArray());
     }
-
+    /** 设置 BatchContext 属性。 */
     @Override
     public void setBatchContext(long batchOffsetInFile) {
       elementReader.setBatchContext(batchOffsetInFile);
@@ -115,7 +156,7 @@ public class SparkOrcValueReaders {
       this.keyReader = keyReader;
       this.valueReader = valueReader;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public MapData nonNullRead(ColumnVector vector, int row) {
       MapColumnVector mapVector = (MapColumnVector) vector;
@@ -131,7 +172,7 @@ public class SparkOrcValueReaders {
       return new ArrayBasedMapData(
           new GenericArrayData(keys.toArray()), new GenericArrayData(values.toArray()));
     }
-
+    /** 设置 BatchContext 属性。 */
     @Override
     public void setBatchContext(long batchOffsetInFile) {
       keyReader.setBatchContext(batchOffsetInFile);
@@ -147,12 +188,12 @@ public class SparkOrcValueReaders {
       super(readers, struct, idToConstant);
       this.numFields = struct.fields().size();
     }
-
+    /** 创建实例。 */
     @Override
     protected InternalRow create() {
       return new GenericInternalRow(numFields);
     }
-
+    /** 执行 set 相关操作。 */
     @Override
     protected void set(InternalRow struct, int pos, Object value) {
       if (value != null) {
@@ -167,7 +208,7 @@ public class SparkOrcValueReaders {
     private static final StringReader INSTANCE = new StringReader();
 
     private StringReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public UTF8String nonNullRead(ColumnVector vector, int row) {
       BytesColumnVector bytesVector = (BytesColumnVector) vector;
@@ -180,7 +221,7 @@ public class SparkOrcValueReaders {
     private static final UUIDReader INSTANCE = new UUIDReader();
 
     private UUIDReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public UTF8String nonNullRead(ColumnVector vector, int row) {
       BytesColumnVector bytesVector = (BytesColumnVector) vector;
@@ -194,7 +235,7 @@ public class SparkOrcValueReaders {
     private static final TimestampTzReader INSTANCE = new TimestampTzReader();
 
     private TimestampTzReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Long nonNullRead(ColumnVector vector, int row) {
       TimestampColumnVector tcv = (TimestampColumnVector) vector;
@@ -210,7 +251,7 @@ public class SparkOrcValueReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Decimal nonNullRead(ColumnVector vector, int row) {
       HiveDecimalWritable value = ((DecimalColumnVector) vector).vector[row];
@@ -242,7 +283,7 @@ public class SparkOrcValueReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Decimal nonNullRead(ColumnVector vector, int row) {
       BigDecimal value =

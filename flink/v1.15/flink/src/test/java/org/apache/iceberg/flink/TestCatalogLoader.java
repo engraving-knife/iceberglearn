@@ -43,7 +43,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-/** Test for {@link CatalogLoader}. */
+/**
+ * 文件级说明：测试 TestCatalogLoader 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestCatalogLoader 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestCatalogLoader extends FlinkTestBase {
 
   private static File warehouse = null;
@@ -51,6 +57,7 @@ public class TestCatalogLoader extends FlinkTestBase {
   private static final Schema SCHEMA =
       new Schema(Types.NestedField.required(1, "f1", Types.StringType.get()));
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   @BeforeClass
   public static void createWarehouse() throws IOException {
     warehouse = File.createTempFile("warehouse", null);
@@ -58,6 +65,7 @@ public class TestCatalogLoader extends FlinkTestBase {
     hiveConf.set("my_key", "my_value");
   }
 
+  /** 辅助方法：dropWarehouse，drop Warehouse。 */
   @AfterClass
   public static void dropWarehouse() throws IOException {
     if (warehouse != null && warehouse.exists()) {
@@ -67,6 +75,11 @@ public class TestCatalogLoader extends FlinkTestBase {
     }
   }
 
+  /**
+   * 测试场景：Hadoop Catalog Loader。
+   *
+   * <p>验证该方法在 Hadoop Catalog Loader 条件下的行为是否符合预期。
+   */
   @Test
   public void testHadoopCatalogLoader() throws IOException, ClassNotFoundException {
     Map<String, String> properties = Maps.newHashMap();
@@ -75,12 +88,22 @@ public class TestCatalogLoader extends FlinkTestBase {
     validateCatalogLoader(loader);
   }
 
+  /**
+   * 测试场景：Hive Catalog Loader。
+   *
+   * <p>验证该方法在 Hive Catalog Loader 条件下的行为是否符合预期。
+   */
   @Test
   public void testHiveCatalogLoader() throws IOException, ClassNotFoundException {
     CatalogLoader loader = CatalogLoader.hive("my_catalog", hiveConf, Maps.newHashMap());
     validateCatalogLoader(loader);
   }
 
+  /**
+   * 测试场景：REST Catalog Loader。
+   *
+   * <p>验证该方法在 REST Catalog Loader 条件下的行为是否符合预期。
+   */
   @Test
   public void testRESTCatalogLoader() {
     Map<String, String> properties = Maps.newHashMap();
@@ -88,12 +111,14 @@ public class TestCatalogLoader extends FlinkTestBase {
     CatalogLoader.rest("my_catalog", hiveConf, Maps.newHashMap());
   }
 
+  /** 辅助方法：validateCatalogLoader，validate Catalog Loader。 */
   private static void validateCatalogLoader(CatalogLoader loader)
       throws IOException, ClassNotFoundException {
     Table table = javaSerAndDeSer(loader).loadCatalog().createTable(IDENTIFIER, SCHEMA);
     validateHadoopConf(table);
   }
 
+  /** 辅助方法：validateHadoopConf，validate Hadoop Conf。 */
   private static void validateHadoopConf(Table table) {
     FileIO io = table.io();
     Assertions.assertThat(io)
@@ -103,6 +128,7 @@ public class TestCatalogLoader extends FlinkTestBase {
     Assert.assertEquals("my_value", hadoopIO.conf().get("my_key"));
   }
 
+  /** 辅助方法：javaSerAndDeSer，java Ser And De Ser。 */
   @SuppressWarnings("unchecked")
   private static <T> T javaSerAndDeSer(T object) throws IOException, ClassNotFoundException {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();

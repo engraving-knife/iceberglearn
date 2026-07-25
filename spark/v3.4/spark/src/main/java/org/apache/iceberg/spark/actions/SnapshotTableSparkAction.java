@@ -43,8 +43,13 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConverters;
 
 /**
- * Creates a new Iceberg table based on a source Spark table. The new Iceberg table will have a
- * different data and metadata directory allowing it to exist independently of the source table.
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：快照表的 Spark 动作，为已有非 Iceberg 表创建一份 Iceberg 快照表（原表保留）。
+ *
+ * <p>设计意图：通过列举原表文件并以新 Iceberg 表注册，实现无拷贝的表级快照。
+ *
+ * <p>上下游关系：由 SparkActions 创建；继承 BaseTableCreationSparkAction。
  */
 public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<SnapshotTableSparkAction>
     implements SnapshotTable {
@@ -59,22 +64,22 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
       SparkSession spark, CatalogPlugin sourceCatalog, Identifier sourceTableIdent) {
     super(spark, sourceCatalog, sourceTableIdent);
   }
-
+  /** 执行 self 相关操作。 */
   @Override
   protected SnapshotTableSparkAction self() {
     return this;
   }
-
+  /** 执行 destCatalog 相关操作。 */
   @Override
   protected StagingTableCatalog destCatalog() {
     return destCatalog;
   }
-
+  /** 执行 destTableIdent 相关操作。 */
   @Override
   protected Identifier destTableIdent() {
     return destTableIdent;
   }
-
+  /** 执行 as 相关操作。 */
   @Override
   public SnapshotTableSparkAction as(String ident) {
     String ctx = "snapshot destination";
@@ -85,26 +90,26 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
     this.destTableIdent = catalogAndIdent.identifier();
     return this;
   }
-
+  /** 执行 tableProperties 相关操作。 */
   @Override
   public SnapshotTableSparkAction tableProperties(Map<String, String> properties) {
     setProperties(properties);
     return this;
   }
-
+  /** 执行 tableProperty 相关操作。 */
   @Override
   public SnapshotTableSparkAction tableProperty(String property, String value) {
     setProperty(property, value);
     return this;
   }
-
+  /** 执行动作并返回结果。 */
   @Override
   public SnapshotTable.Result execute() {
     String desc = String.format("Snapshotting table %s as %s", sourceTableIdent(), destTableIdent);
     JobGroupInfo info = newJobGroupInfo("SNAPSHOT-TABLE", desc);
     return withJobGroupInfo(info, this::doExecute);
   }
-
+  /** 执行 doExecute 相关操作。 */
   private SnapshotTable.Result doExecute() {
     Preconditions.checkArgument(
         destCatalog() != null && destTableIdent() != null,
@@ -154,7 +159,7 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
         .importedDataFilesCount(importedDataFilesCount)
         .build();
   }
-
+  /** 执行 destTableProps 相关操作。 */
   @Override
   protected Map<String, String> destTableProps() {
     Map<String, String> properties = Maps.newHashMap();
@@ -185,7 +190,7 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
 
     return properties;
   }
-
+  /** 执行 checkSourceCatalog 相关操作。 */
   @Override
   protected TableCatalog checkSourceCatalog(CatalogPlugin catalog) {
     // currently the import code relies on being able to look up the table in the session catalog
@@ -203,7 +208,7 @@ public class SnapshotTableSparkAction extends BaseTableCreationSparkAction<Snaps
 
     return (TableCatalog) catalog;
   }
-
+  /** 执行 tableLocation 相关操作。 */
   @Override
   public SnapshotTableSparkAction tableLocation(String location) {
     Preconditions.checkArgument(

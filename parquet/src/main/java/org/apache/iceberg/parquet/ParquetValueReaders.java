@@ -35,9 +35,42 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.Type;
 
+/**
+ * 文件级说明：Parquet 值读取器集合，提供各类型的基础读取器实现。
+ *
+ * <p>所属模块：iceberg-parquet（读取器基础设施，位于 org.apache.iceberg.parquet 包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供原始类型读取器（UnboxedReader/StringReader/BytesReader 等），封装 Parquet 列迭代器。
+ *   <li>提供组合读取器（OptionReader/StructReader/ListReader/MapReader）处理嵌套结构与 null 语义。
+ *   <li>提供工具读取器（NullReader/ConstantReader/PositionReader）处理缺失列、常量列、行号列。
+ *   <li>提供类型转换读取器（IntAsLong/FloatAsDouble/IntegerAsDecimal/LongAsDecimal/BinaryAsDecimal）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>组合模式：StructReader/ListReader/MapReader 通过组合子读取器实现嵌套结构的递归读取。
+ *   <li>Definition Level 驱动：OptionReader/RepeatedReader 通过 DL 判断 null/空集合/非空集合。
+ *   <li>容器复用：ListReader/MapReader 支持复用容器对象以减少 GC 压力。
+ * </ul>
+ *
+ * <p>上下游关系：被 BaseParquetReaders/ParquetAvroValueReaders 等构建器使用； 依赖
+ * ColumnIterator/PageIterator（底层列迭代器）。
+ */
 public class ParquetValueReaders {
   private ParquetValueReaders() {}
 
+  /**
+   * 按 repetition 类型包装读取器：OPTIONAL 列用 OptionReader 包装以处理 null 语义。
+   *
+   * @param type Parquet 列类型
+   * @param definitionLevel 字段的最大定义级别
+   * @param reader 原始读取器
+   * @return 包装后的读取器（REQUIRED 列直接返回原读取器）
+   */
   public static <T> ParquetValueReader<T> option(
       Type type, int definitionLevel, ParquetValueReader<T> reader) {
     if (type.isRepetition(Type.Repetition.OPTIONAL)) {
@@ -46,23 +79,28 @@ public class ParquetValueReaders {
     return reader;
   }
 
+  /** 返回 NullReader：所有行都返回 null（用于缺失列）。 */
   @SuppressWarnings("unchecked")
   public static <T> ParquetValueReader<T> nulls() {
     return (ParquetValueReader<T>) NullReader.INSTANCE;
   }
 
+  /** 返回 ConstantReader：所有行都返回指定常量值。 */
   public static <C> ParquetValueReader<C> constant(C value) {
     return new ConstantReader<>(value);
   }
 
+  /** 返回 ConstantReader（带定义级别，用于嵌套结构中的常量列）。 */
   public static <C> ParquetValueReader<C> constant(C value, int definitionLevel) {
     return new ConstantReader<>(value, definitionLevel);
   }
 
+  /** 返回 PositionReader：读取行号（ROW_POSITION 元数据列）。 */
   public static ParquetValueReader<Long> position() {
     return new PositionReader();
   }
 
+  /** Null 读取器：用于缺失列，所有行返回 null，不读取任何 Parquet 数据。 */
   private static class NullReader<T> implements ParquetValueReader<T> {
     private static final NullReader<Void> INSTANCE = new NullReader<>();
     private static final ImmutableList<TripleIterator<?>> COLUMNS = ImmutableList.of();
@@ -115,6 +153,7 @@ public class ParquetValueReaders {
     public void setPageSource(PageReadStore pageStore, long rowPosition) {}
   }
 
+  /** 常量读取器：所有行返回指定常量值，用于投影中的常量列。 */
   static class ConstantReader<C> implements ParquetValueReader<C> {
     private final C constantValue;
     private final TripleIterator<?> column;
@@ -178,6 +217,7 @@ public class ParquetValueReaders {
     public void setPageSource(PageReadStore pageStore, long rowPosition) {}
   }
 
+  /** 行号读取器：返回当前行的全局行号（用于 ROW_POSITION 元数据列）。 */
   static class PositionReader implements ParquetValueReader<Long> {
     private long rowOffset = -1;
     private long rowGroupStart;
@@ -205,6 +245,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** 原始类型读取器基类（抽象）：封装 {@link ColumnIterator}，提供页面源设置和列迭代器访问。 子类通过 column.nextXxx() 读取具体类型的值。 */
   public abstract static class PrimitiveReader<T> implements ParquetValueReader<T> {
     private final ColumnDescriptor desc;
 
@@ -235,6 +276,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** 拆箱读取器：提供 readBoolean/Integer/Long/Float/Double/Binary 等原始类型读取方法。 read() 方法默认抛异常，由具体子类覆写。 */
   public static class UnboxedReader<T> extends PrimitiveReader<T> {
     public UnboxedReader(ColumnDescriptor desc) {
       super(desc);
@@ -271,6 +313,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** String 读取器：将 Parquet Binary 按 UTF-8 解码为 String。 */
   public static class StringReader extends PrimitiveReader<String> {
     public StringReader(ColumnDescriptor desc) {
       super(desc);
@@ -282,6 +325,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** INT32→Long 读取器：将 Parquet INT32 读为 Java long（Iceberg LONG 类型读 INT32 列时使用）。 */
   public static class IntAsLongReader extends UnboxedReader<Long> {
     public IntAsLongReader(ColumnDescriptor desc) {
       super(desc);
@@ -298,6 +342,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** FLOAT→Double 读取器：将 Parquet FLOAT 读为 Java double（Iceberg DOUBLE 类型读 FLOAT 列时使用）。 */
   public static class FloatAsDoubleReader extends UnboxedReader<Double> {
     public FloatAsDoubleReader(ColumnDescriptor desc) {
       super(desc);
@@ -314,6 +359,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** INT32→Decimal 读取器：将 Parquet INT32 读为 BigDecimal（按 scale 解码）。 */
   public static class IntegerAsDecimalReader extends PrimitiveReader<BigDecimal> {
     private final int scale;
 
@@ -328,6 +374,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** INT64→Decimal 读取器：将 Parquet INT64 读为 BigDecimal（按 scale 解码）。 */
   public static class LongAsDecimalReader extends PrimitiveReader<BigDecimal> {
     private final int scale;
 
@@ -342,6 +389,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** BINARY→Decimal 读取器：将 Parquet Binary 读为 BigDecimal（按 scale 解码）。 */
   public static class BinaryAsDecimalReader extends PrimitiveReader<BigDecimal> {
     private int scale;
 
@@ -357,6 +405,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** Bytes 读取器：将 Parquet Binary 读为 ByteBuffer，支持复用已有 buffer。 */
   public static class BytesReader extends PrimitiveReader<ByteBuffer> {
     public BytesReader(ColumnDescriptor desc) {
       super(desc);
@@ -379,6 +428,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** byte[] 读取器：将 Parquet Binary 读为 byte 数组。 */
   public static class ByteArrayReader extends ParquetValueReaders.PrimitiveReader<byte[]> {
     public ByteArrayReader(ColumnDescriptor desc) {
       super(desc);
@@ -390,6 +440,12 @@ public class ParquetValueReaders {
     }
   }
 
+  /**
+   * 可选字段读取器：通过 definition level 判断字段是否为 null。
+   *
+   * <p>逻辑：read 时若 currentDefinitionLevel > definitionLevel 表示非 null，委托子读取器读取； 否则返回 null 并消费 null
+   * 三元组。
+   */
   private static class OptionReader<T> implements ParquetValueReader<T> {
     private final int definitionLevel;
     private final ParquetValueReader<T> reader;
@@ -432,6 +488,12 @@ public class ParquetValueReaders {
     }
   }
 
+  /**
+   * 重复字段读取器基类（抽象）：处理 Parquet LIST 编码中的重复元素。
+   *
+   * <p>逻辑：read 时通过 do-while 循环读取元素，DL 判断空/非空列表，RL 判断列表结束。 子类实现
+   * newListData/getElement/addElement/buildList 以适配具体集合类型。
+   */
   public abstract static class RepeatedReader<T, I, E> implements ParquetValueReader<T> {
     private final int definitionLevel;
     private final int repetitionLevel;
@@ -493,6 +555,7 @@ public class ParquetValueReaders {
     protected abstract T buildList(I list);
   }
 
+  /** List 读取器：将 Parquet LIST 读取为 Java List，支持复用列表容器。 */
   public static class ListReader<E> extends RepeatedReader<List<E>, List<E>, E> {
     private List<E> lastList = null;
     private Iterator<E> elements = null;
@@ -542,6 +605,12 @@ public class ParquetValueReaders {
     }
   }
 
+  /**
+   * 重复键值对读取器基类（抽象）：处理 Parquet MAP 编码中的重复 key-value 对。
+   *
+   * <p>逻辑：read 时通过 do-while 循环读取 key-value 对，DL 判断空/非空 map，RL 判断 map 结束。 子类实现
+   * newMapData/getPair/addPair/buildMap 以适配具体 map 类型。
+   */
   public abstract static class RepeatedKeyValueReader<M, I, K, V> implements ParquetValueReader<M> {
     private final int definitionLevel;
     private final int repetitionLevel;
@@ -614,6 +683,7 @@ public class ParquetValueReaders {
     protected abstract M buildMap(I map);
   }
 
+  /** Map 读取器：将 Parquet MAP 读取为 Java Map，支持复用 map 容器。 */
   public static class MapReader<K, V> extends RepeatedKeyValueReader<Map<K, V>, Map<K, V>, K, V> {
     private final ReusableEntry<K, V> nullEntry = new ReusableEntry<>();
     private Map<K, V> lastMap = null;
@@ -668,6 +738,7 @@ public class ParquetValueReaders {
     }
   }
 
+  /** 可复用的 Map.Entry 实现：避免在 MapReader 中频繁创建 Entry 对象。 */
   public static class ReusableEntry<K, V> implements Map.Entry<K, V> {
     private K key = null;
     private V value = null;
@@ -695,6 +766,17 @@ public class ParquetValueReaders {
     }
   }
 
+  /**
+   * Struct 读取器基类（抽象）：将各字段读取器组合为一行记录。
+   *
+   * <p>设计意图：
+   *
+   * <ul>
+   *   <li>模板方法：子类实现 newStructData/getField/buildStruct/set 以适配具体记录类型。
+   *   <li>Setter 内部类：按字段位置分发值写入，支持 null 和各原始类型。
+   *   <li>列复用：setPageSource 将页面源传递给所有子读取器。
+   * </ul>
+   */
   public abstract static class StructReader<T, I> implements ParquetValueReader<T> {
     private interface Setter<R> {
       void set(R record, int pos, Object reuse);

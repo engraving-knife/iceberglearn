@@ -34,6 +34,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestTableSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 表序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestTableSerialization {
 
   private static final HadoopTables TABLES = new HadoopTables();
@@ -53,6 +60,7 @@ public class TestTableSerialization {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private Table table;
 
+  /** init表。 */
   @Before
   public void initTable() throws IOException {
     Map<String, String> props = ImmutableMap.of("k1", "v1", "k2", "v2");
@@ -63,6 +71,7 @@ public class TestTableSerialization {
     this.table = TABLES.create(SCHEMA, SPEC, SORT_ORDER, props, tableLocation.toString());
   }
 
+  /** 测试serializable表Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSerializableTableKryoSerialization() throws IOException {
     Table serializableTable = SerializableTableWithSize.copyOf(table);
@@ -70,6 +79,7 @@ public class TestTableSerialization {
         table, KryoHelpers.roundTripSerialize(serializableTable));
   }
 
+  /** 测试serializable元数据表Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSerializableMetadataTableKryoSerialization() throws IOException {
     for (MetadataTableType type : MetadataTableType.values()) {
@@ -83,6 +93,7 @@ public class TestTableSerialization {
     }
   }
 
+  /** 测试serializable事务表Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSerializableTransactionTableKryoSerialization() throws IOException {
     Transaction txn = table.newTransaction();

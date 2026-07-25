@@ -57,15 +57,39 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkParquetWriters。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class SparkParquetWriters {
+  /** 构造 SparkParquetWriters 实例。 */
   private SparkParquetWriters() {}
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @param dfSchema 参数
+   * @param type 参数
+   * @return 结果对象
+   */
   @SuppressWarnings("unchecked")
   public static <T> ParquetValueWriter<T> buildWriter(StructType dfSchema, MessageType type) {
     return (ParquetValueWriter<T>)
         ParquetWithSparkSchemaVisitor.visit(dfSchema, type, new WriteBuilder(type));
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 WriteBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class WriteBuilder extends ParquetWithSparkSchemaVisitor<ParquetValueWriter<?>> {
     private final MessageType type;
 
@@ -73,12 +97,28 @@ public class SparkParquetWriters {
       this.type = type;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sStruct 参数
+     * @param message 参数
+     * @param fieldWriters 参数
+     * @return 结果对象
+     */
     @Override
     public ParquetValueWriter<?> message(
         StructType sStruct, MessageType message, List<ParquetValueWriter<?>> fieldWriters) {
       return struct(sStruct, message.asGroupType(), fieldWriters);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sStruct 参数
+     * @param struct 参数
+     * @param fieldWriters 参数
+     * @return 结果对象
+     */
     @Override
     public ParquetValueWriter<?> struct(
         StructType sStruct, GroupType struct, List<ParquetValueWriter<?>> fieldWriters) {
@@ -91,9 +131,18 @@ public class SparkParquetWriters {
         sparkTypes.add(sparkFields[i].dataType());
       }
 
+      /** 执行该方法的具体逻辑。 */
       return new InternalRowWriter(writers, sparkTypes);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sArray 参数
+     * @param array 参数
+     * @param elementWriter 参数
+     * @return 结果对象
+     */
     @Override
     public ParquetValueWriter<?> list(
         ArrayType sArray, GroupType array, ParquetValueWriter<?> elementWriter) {
@@ -104,12 +153,22 @@ public class SparkParquetWriters {
       int repeatedR = type.getMaxRepetitionLevel(repeatedPath);
 
       return new ArrayDataWriter<>(
+          /** 执行该方法的具体逻辑。 */
           repeatedD,
           repeatedR,
           newOption(repeated.getType(0), elementWriter),
           sArray.elementType());
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sMap 参数
+     * @param map 参数
+     * @param keyWriter 参数
+     * @param valueWriter 参数
+     * @return 结果对象
+     */
     @Override
     public ParquetValueWriter<?> map(
         MapType sMap,
@@ -123,6 +182,7 @@ public class SparkParquetWriters {
       int repeatedR = type.getMaxRepetitionLevel(repeatedPath);
 
       return new MapDataWriter<>(
+          /** 执行该方法的具体逻辑。 */
           repeatedD,
           repeatedR,
           newOption(repeatedKeyValue.getType(0), keyWriter),
@@ -131,11 +191,19 @@ public class SparkParquetWriters {
           sMap.valueType());
     }
 
+    /** 执行该方法的具体逻辑。 */
     private ParquetValueWriter<?> newOption(Type fieldType, ParquetValueWriter<?> writer) {
       int maxD = type.getMaxDefinitionLevel(path(fieldType.getName()));
       return ParquetValueWriters.option(fieldType, maxD, writer);
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sType 参数
+     * @param primitive 参数
+     * @return 结果对象
+     */
     @Override
     public ParquetValueWriter<?> primitive(DataType sType, PrimitiveType primitive) {
       ColumnDescriptor desc = type.getColumnDescription(currentPath());
@@ -201,6 +269,7 @@ public class SparkParquetWriters {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<?> ints(DataType type, ColumnDescriptor desc) {
     if (type instanceof ByteType) {
       return ParquetValueWriters.tinyints(desc);
@@ -210,54 +279,94 @@ public class SparkParquetWriters {
     return ParquetValueWriters.ints(desc);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<UTF8String> utf8Strings(ColumnDescriptor desc) {
+    /** 执行该方法的具体逻辑。 */
     return new UTF8StringWriter(desc);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<UTF8String> uuids(ColumnDescriptor desc) {
+    /** 执行该方法的具体逻辑。 */
     return new UUIDWriter(desc);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<Decimal> decimalAsInteger(
       ColumnDescriptor desc, int precision, int scale) {
+    /** 执行该方法的具体逻辑。 */
     return new IntegerDecimalWriter(desc, precision, scale);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<Decimal> decimalAsLong(
       ColumnDescriptor desc, int precision, int scale) {
+    /** 执行该方法的具体逻辑。 */
     return new LongDecimalWriter(desc, precision, scale);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<Decimal> decimalAsFixed(
       ColumnDescriptor desc, int precision, int scale) {
+    /** 执行该方法的具体逻辑。 */
     return new FixedDecimalWriter(desc, precision, scale);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static PrimitiveWriter<byte[]> byteArrays(ColumnDescriptor desc) {
+    /** 执行该方法的具体逻辑。 */
     return new ByteArrayWriter(desc);
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 UTF8StringWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class UTF8StringWriter extends PrimitiveWriter<UTF8String> {
+    /** 构造 UTF8StringWriter 实例。 */
     private UTF8StringWriter(ColumnDescriptor desc) {
       super(desc);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param value 参数
+     */
     @Override
     public void write(int repetitionLevel, UTF8String value) {
       column.writeBinary(repetitionLevel, Binary.fromReusedByteArray(value.getBytes()));
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 IntegerDecimalWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class IntegerDecimalWriter extends PrimitiveWriter<Decimal> {
     private final int precision;
     private final int scale;
 
+    /** 构造 IntegerDecimalWriter 实例。 */
     private IntegerDecimalWriter(ColumnDescriptor desc, int precision, int scale) {
       super(desc);
       this.precision = precision;
       this.scale = scale;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param decimal 参数
+     */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       Preconditions.checkArgument(
@@ -277,16 +386,30 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 LongDecimalWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class LongDecimalWriter extends PrimitiveWriter<Decimal> {
     private final int precision;
     private final int scale;
 
+    /** 构造 LongDecimalWriter 实例。 */
     private LongDecimalWriter(ColumnDescriptor desc, int precision, int scale) {
       super(desc);
       this.precision = precision;
       this.scale = scale;
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param decimal 参数
+     */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       Preconditions.checkArgument(
@@ -306,11 +429,19 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 FixedDecimalWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class FixedDecimalWriter extends PrimitiveWriter<Decimal> {
     private final int precision;
     private final int scale;
     private final ThreadLocal<byte[]> bytes;
 
+    /** 构造 FixedDecimalWriter 实例。 */
     private FixedDecimalWriter(ColumnDescriptor desc, int precision, int scale) {
       super(desc);
       this.precision = precision;
@@ -319,6 +450,12 @@ public class SparkParquetWriters {
           ThreadLocal.withInitial(() -> new byte[TypeUtil.decimalRequiredBytes(precision)]);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param decimal 参数
+     */
     @Override
     public void write(int repetitionLevel, Decimal decimal) {
       byte[] binary =
@@ -328,6 +465,13 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 UUIDWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class UUIDWriter extends PrimitiveWriter<UTF8String> {
     private static final ThreadLocal<ByteBuffer> BUFFER =
         ThreadLocal.withInitial(
@@ -337,10 +481,17 @@ public class SparkParquetWriters {
               return buffer;
             });
 
+    /** 构造 UUIDWriter 实例。 */
     private UUIDWriter(ColumnDescriptor desc) {
       super(desc);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param string 参数
+     */
     @Override
     public void write(int repetitionLevel, UTF8String string) {
       UUID uuid = UUID.fromString(string.toString());
@@ -349,20 +500,42 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ByteArrayWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ByteArrayWriter extends PrimitiveWriter<byte[]> {
+    /** 构造 ByteArrayWriter 实例。 */
     private ByteArrayWriter(ColumnDescriptor desc) {
       super(desc);
     }
 
+    /**
+     * 写入数据。
+     *
+     * @param repetitionLevel 参数
+     * @param bytes 参数
+     */
     @Override
     public void write(int repetitionLevel, byte[] bytes) {
       column.writeBinary(repetitionLevel, Binary.fromReusedByteArray(bytes));
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 ArrayDataWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ArrayDataWriter<E> extends RepeatedWriter<ArrayData, E> {
     private final DataType elementType;
 
+    /** 构造 ArrayDataWriter 实例。 */
     private ArrayDataWriter(
         int definitionLevel,
         int repetitionLevel,
@@ -372,31 +545,49 @@ public class SparkParquetWriters {
       this.elementType = elementType;
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected Iterator<E> elements(ArrayData list) {
       return new ElementIterator<>(list);
     }
 
+    /**
+     * Iceberg 与 Spark 数据格式之间的读写转换组件的迭代器，按行或按批产出数据。
+     *
+     * <p>所属模块：iceberg-spark v3.3。 类型：类 ElementIterator。
+     *
+     * <p>设计意图：迭代器模式，统一遍历接口。
+     *
+     * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+     */
     private class ElementIterator<E> implements Iterator<E> {
       private final int size;
       private final ArrayData list;
       private int index;
 
+      /** 构造 ElementIterator 实例。 */
       private ElementIterator(ArrayData list) {
         this.list = list;
         size = list.numElements();
         index = 0;
       }
 
+      /** 判断是否包含next。 */
       @Override
       public boolean hasNext() {
         return index != size;
       }
 
+      /**
+       * 执行该方法的具体逻辑。
+       *
+       * @return 对应结果
+       */
       @Override
       @SuppressWarnings("unchecked")
       public E next() {
         if (index >= size) {
+          /** 执行该方法的具体逻辑。 */
           throw new NoSuchElementException();
         }
 
@@ -414,10 +605,18 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 MapDataWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class MapDataWriter<K, V> extends RepeatedKeyValueWriter<MapData, K, V> {
     private final DataType keyType;
     private final DataType valueType;
 
+    /** 构造 MapDataWriter 实例。 */
     private MapDataWriter(
         int definitionLevel,
         int repetitionLevel,
@@ -430,11 +629,21 @@ public class SparkParquetWriters {
       this.valueType = valueType;
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected Iterator<Map.Entry<K, V>> pairs(MapData map) {
       return new EntryIterator<>(map);
     }
 
+    /**
+     * Iceberg 与 Spark 数据格式之间的读写转换组件的迭代器，按行或按批产出数据。
+     *
+     * <p>所属模块：iceberg-spark v3.3。 类型：类 EntryIterator。
+     *
+     * <p>设计意图：迭代器模式，统一遍历接口。
+     *
+     * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+     */
     private class EntryIterator<K, V> implements Iterator<Map.Entry<K, V>> {
       private final int size;
       private final ArrayData keys;
@@ -442,6 +651,7 @@ public class SparkParquetWriters {
       private final ReusableEntry<K, V> entry;
       private int index;
 
+      /** 构造 EntryIterator 实例。 */
       private EntryIterator(MapData map) {
         size = map.numElements();
         keys = map.keyArray();
@@ -450,15 +660,22 @@ public class SparkParquetWriters {
         index = 0;
       }
 
+      /** 判断是否包含next。 */
       @Override
       public boolean hasNext() {
         return index != size;
       }
 
+      /**
+       * 执行该方法的具体逻辑。
+       *
+       * @return 对应结果
+       */
       @Override
       @SuppressWarnings("unchecked")
       public Map.Entry<K, V> next() {
         if (index >= size) {
+          /** 执行该方法的具体逻辑。 */
           throw new NoSuchElementException();
         }
 
@@ -475,14 +692,23 @@ public class SparkParquetWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.3。 类型：类 InternalRowWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class InternalRowWriter extends ParquetValueWriters.StructWriter<InternalRow> {
     private final DataType[] types;
 
+    /** 构造 InternalRowWriter 实例。 */
     private InternalRowWriter(List<ParquetValueWriter<?>> writers, List<DataType> types) {
       super(writers);
       this.types = types.toArray(new DataType[types.size()]);
     }
 
+    /** 执行该方法的具体逻辑。 */
     @Override
     protected Object get(InternalRow struct, int index) {
       return struct.get(index, types[index]);

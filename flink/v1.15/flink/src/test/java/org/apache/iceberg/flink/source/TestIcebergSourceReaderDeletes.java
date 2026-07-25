@@ -47,6 +47,14 @@ import org.apache.iceberg.util.StructLikeSet;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceReaderDeletes 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestIcebergSourceReaderDeletes 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceReaderDeletes extends TestFlinkReaderDeletesBase {
 
   private static final int PARALLELISM = 4;
@@ -61,10 +69,12 @@ public class TestIcebergSourceReaderDeletes extends TestFlinkReaderDeletesBase {
               .setNumberSlotsPerTaskManager(PARALLELISM)
               .build());
 
+  /** 辅助方法：TestIcebergSourceReaderDeletes，Iceberg Source Reader Deletes。 */
   public TestIcebergSourceReaderDeletes(FileFormat inputFormat) {
     super(inputFormat);
   }
 
+  /** 辅助方法：rowSet，row Set。 */
   @Override
   protected StructLikeSet rowSet(String tableName, Table testTable, String... columns)
       throws IOException {

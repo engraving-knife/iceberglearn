@@ -62,6 +62,26 @@ import org.apache.iceberg.util.ThreadPools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg sink 的提交算子，负责将各 writer 产出的数据/删除文件在 checkpoint 完成时提交到 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-flink（sink 侧），继承 Flink {@link AbstractStreamOperator}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>缓存每个 checkpoint 的 {@link WriteResult}，快照时序列化为 manifest 写入状态后端。
+ *   <li>checkpoint 完成时将待提交文件按序合并提交（append / rowDelta / replacePartitions）。
+ *   <li>维护 max-committed-checkpoint-id 与 job id，支持从不同作业的快照恢复且不重复提交。
+ *   <li>提交后清理临时 Flink manifest 文件。
+ * </ul>
+ *
+ * <p>设计意图：利用 Flink checkpoint 语义实现 exactly-once——只有 checkpoint 成功后才提交； 通过在 snapshot 元数据中记录
+ * checkpoint id 与 job/operator id，使恢复时能定位已提交进度。 空提交按 {@code max-continuous-empty-commits}
+ * 控制频率，避免无谓提交。
+ *
+ * <p>上下游关系：上游为 {@link IcebergStreamWriter}（产出 WriteResult）；下游为 Iceberg 表事务。
+ */
 class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     implements OneInputStreamOperator<WriteResult, Void>, BoundedOneInput {
 
@@ -125,6 +145,16 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
   private final PartitionSpec spec;
   private transient ExecutorService workerPool;
 
+  /**
+   * 构造提交算子。
+   *
+   * @param tableLoader 表加载器
+   * @param replacePartitions 是否为动态分区覆写模式
+   * @param snapshotProperties 自定义快照属性
+   * @param workerPoolSize manifest 扫描工作线程池大小
+   * @param branch 提交目标分支
+   * @param spec 分区规格
+   */
   IcebergFilesCommitter(
       TableLoader tableLoader,
       boolean replacePartitions,
@@ -140,6 +170,16 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     this.spec = spec;
   }
 
+  /**
+   * 算子状态初始化（含恢复逻辑）。
+   *
+   * <p>逻辑：获取 flink job id 与 operator id；打开 tableLoader 加载表与提交指标； 读取 max-continuous-empty-commits
+   * 配置；创建 manifest 输出工厂； 从状态恢复时，依据旧 job id 在表快照中查找 max-committed-checkpoint-id， 并将未提交的文件补提交到
+   * Iceberg 表。
+   *
+   * @param context 状态初始化上下文
+   * @throws Exception 初始化失败
+   */
   @Override
   public void initializeState(StateInitializationContext context) throws Exception {
     super.initializeState(context);
@@ -201,6 +241,15 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     }
   }
 
+  /**
+   * checkpoint 快照：将当前 checkpoint 的 WriteResult 写为 manifest 并持久化到状态后端。
+   *
+   * <p>逻辑：把当前缓存刷写到 dataFilesPerCheckpoint，重置 checkpointsState 与 jobIdState， 清空当前 checkpoint
+   * 的本地缓冲，并记录 checkpoint 耗时指标。
+   *
+   * @param context 快照上下文
+   * @throws Exception 快照失败
+   */
   @Override
   public void snapshotState(StateSnapshotContext context) throws Exception {
     super.snapshotState(context);
@@ -226,6 +275,15 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
         TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano));
   }
 
+  /**
+   * checkpoint 完成通知：实际触发 Iceberg 提交。
+   *
+   * <p>逻辑：仅当 checkpointId 大于已提交最大值时才提交（保证单调递增、避免重复提交）， 提交后更新 maxCommittedCheckpointId
+   * 并重新加载表以获取最新配置。
+   *
+   * @param checkpointId 完成的 checkpoint id
+   * @throws Exception 提交失败
+   */
   @Override
   public void notifyCheckpointComplete(long checkpointId) throws Exception {
     super.notifyCheckpointComplete(checkpointId);
@@ -252,6 +310,18 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     this.table = tableLoader.loadTable();
   }
 
+  /**
+   * 提交不超过指定 checkpoint 的所有待提交文件。
+   *
+   * <p>逻辑：取 headMap(checkpointId) 作为待提交集合，逐项反序列化 DeltaManifests 还原 WriteResult， 跳过空 manifest；汇总后委托
+   * {@link #commitPendingResult} 提交，提交完成清理临时 manifest。
+   *
+   * @param deltaManifestsMap 待提交的 checkpoint→manifest 字节映射
+   * @param newFlinkJobId Flink job id
+   * @param operatorId 算子 id
+   * @param checkpointId 截止 checkpoint id
+   * @throws IOException 反序列化/IO 失败
+   */
   private void commitUpToCheckpoint(
       NavigableMap<Long, byte[]> deltaManifestsMap,
       String newFlinkJobId,
@@ -283,6 +353,12 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     deleteCommittedManifests(manifests, newFlinkJobId, checkpointId);
   }
 
+  /**
+   * 根据待提交结果选择提交方式并执行。
+   *
+   * <p>逻辑：统计文件数，空提交累计计数达到 maxContinuousEmptyCommits 倍数时仍触发一次提交（避免长期不提交导致元数据滞后）； 非空或有 delete 时按
+   * replacePartitions 或 delta 事务提交。
+   */
   private void commitPendingResult(
       NavigableMap<Long, WriteResult> pendingResults,
       CommitSummary summary,
@@ -303,6 +379,7 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     }
   }
 
+  /** 提交完成后删除临时 Flink manifest 文件；删除失败仅告警，不影响已完成提交。 */
   private void deleteCommittedManifests(
       List<ManifestFile> manifests, String newFlinkJobId, long checkpointId) {
     for (ManifestFile manifest : manifests) {
@@ -324,6 +401,7 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     }
   }
 
+  /** 动态分区覆写提交：将数据文件通过 {@link ReplacePartitions} 加入并提交（不允许含 delete 文件）。 */
   private void replacePartitions(
       NavigableMap<Long, WriteResult> pendingResults,
       CommitSummary summary,
@@ -349,6 +427,12 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
         checkpointId);
   }
 
+  /**
+   * 增量事务提交。
+   *
+   * <p>逻辑：无 delete 文件时用 {@link AppendFiles} 合并提交（兼容 V1）； 有 delete 文件时按 checkpoint 逐个 {@link
+   * RowDelta} 提交，避免合并导致 equality delete 语义错乱 （txn2 的 equality delete 需作用于 txn1 的数据）。
+   */
   private void commitDeltaTxn(
       NavigableMap<Long, WriteResult> pendingResults,
       CommitSummary summary,
@@ -390,6 +474,12 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     }
   }
 
+  /**
+   * 执行单个 Iceberg 事务提交并记录指标。
+   *
+   * <p>逻辑：设置自定义快照属性、max-committed-checkpoint-id、job id、operator id 与目标分支， 提交并记录耗时指标；提交失败时 Iceberg
+   * 会自动 abort。
+   */
   private void commitOperation(
       SnapshotUpdate<?> operation,
       CommitSummary summary,
@@ -425,11 +515,13 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     committerMetrics.commitDuration(durationMs);
   }
 
+  /** 接收上游 writer 产出的 WriteResult，缓存到当前 checkpoint 缓冲。 */
   @Override
   public void processElement(StreamRecord<WriteResult> element) {
     this.writeResultsOfCurrentCkpt.add(element.getValue());
   }
 
+  /** 有界输入结束时，以 Long.MAX_VALUE 为 checkpoint id 触发最终提交。 */
   @Override
   public void endInput() throws IOException {
     // Flush the buffered data files into 'dataFilesPerCheckpoint' firstly.
@@ -441,8 +533,14 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
   }
 
   /**
-   * Write all the complete data files to a newly created manifest file and return the manifest's
-   * avro serialized bytes.
+   * 将当前 checkpoint 缓冲的所有 WriteResult 写入新 manifest，返回其版本化序列化字节。
+   *
+   * <p>逻辑：缓冲为空时返回空字节数组；否则合并为 WriteResult，由 FlinkManifestUtil 写为 DeltaManifests， 再经
+   * DeltaManifestsSerializer 序列化。
+   *
+   * @param checkpointId 当前 checkpoint id
+   * @return 序列化字节（空则返回 EMPTY_MANIFEST_DATA）
+   * @throws IOException 写 manifest 失败
    */
   private byte[] writeToManifest(long checkpointId) throws IOException {
     if (writeResultsOfCurrentCkpt.isEmpty()) {
@@ -458,6 +556,7 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
         DeltaManifestsSerializer.INSTANCE, deltaManifests);
   }
 
+  /** 算子打开时创建 manifest 扫描用的工作线程池。 */
   @Override
   public void open() throws Exception {
     super.open();
@@ -467,6 +566,7 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
         ThreadPools.newWorkerPool("iceberg-worker-pool-" + operatorID, workerPoolSize);
   }
 
+  /** 关闭 tableLoader 与工作线程池。 */
   @Override
   public void close() throws Exception {
     if (tableLoader != null) {
@@ -478,6 +578,7 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     }
   }
 
+  /** 构造存储 checkpoint→manifest 字节的排序 Map 状态描述符（按 Long 比较器排序）。 */
   @VisibleForTesting
   static ListStateDescriptor<SortedMap<Long, byte[]>> buildStateDescriptor() {
     Comparator<Long> longComparator = Comparators.forType(Types.LongType.get());
@@ -490,6 +591,18 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
     return new ListStateDescriptor<>("iceberg-files-committer-state", sortedMapTypeInfo);
   }
 
+  /**
+   * 从 Iceberg 表快照链中查找指定 Flink job/operator 已提交的最大 checkpoint id。
+   *
+   * <p>逻辑：从分支当前快照沿父快照回溯，匹配 summary 中的 FLINK_JOB_ID 与 OPERATOR_ID， 命中后读取 max-committed-checkpoint-id
+   * 返回；未命中返回初始值 -1。
+   *
+   * @param table Iceberg 表
+   * @param flinkJobId Flink job id
+   * @param operatorId 算子 id
+   * @param branch 分支名
+   * @return 已提交的最大 checkpoint id
+   */
   static long getMaxCommittedCheckpointId(
       Table table, String flinkJobId, String operatorId, String branch) {
     Snapshot snapshot = table.snapshot(branch);

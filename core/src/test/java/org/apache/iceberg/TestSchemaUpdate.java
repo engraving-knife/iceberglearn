@@ -34,6 +34,14 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 测试类：TestSchemaUpdate，用于验证 Schema Update 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Schema Update 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestSchemaUpdate {
   private static final Schema SCHEMA =
       new Schema(
@@ -81,12 +89,22 @@ public class TestSchemaUpdate {
 
   private static final int SCHEMA_LAST_COLUMN_ID = 23;
 
+  /**
+   * 测试场景：no changes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoChanges() {
     Schema identical = new SchemaUpdate(SCHEMA, SCHEMA_LAST_COLUMN_ID).apply();
     Assert.assertEquals("Should not include any changes", SCHEMA.asStruct(), identical.asStruct());
   }
 
+  /**
+   * 测试场景：delete fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFields() {
     // use schema projection to test column deletes
@@ -121,6 +139,11 @@ public class TestSchemaUpdate {
     }
   }
 
+  /**
+   * 测试场景：delete fields case sensitive disabled。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFieldsCaseSensitiveDisabled() {
     // use schema projection to test column deletes
@@ -155,6 +178,11 @@ public class TestSchemaUpdate {
     }
   }
 
+  /**
+   * 测试场景：update types。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTypes() {
     Types.StructType expected =
@@ -209,6 +237,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should convert types", expected, updated.asStruct());
   }
 
+  /**
+   * 测试场景：update types case insensitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTypesCaseInsensitive() {
     Types.StructType expected =
@@ -264,6 +297,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should convert types", expected, updated.asStruct());
   }
 
+  /**
+   * 测试场景：update failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateFailure() {
     Set<Pair<Type.PrimitiveType, Type.PrimitiveType>> allowedUpdates =
@@ -312,6 +350,11 @@ public class TestSchemaUpdate {
     }
   }
 
+  /**
+   * 测试场景：rename。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRename() {
     Types.StructType expected =
@@ -369,6 +412,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should rename all fields", expected, renamed.asStruct());
   }
 
+  /**
+   * 测试场景：rename case insensitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameCaseInsensitive() {
     Types.StructType expected =
@@ -427,6 +475,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should rename all fields", expected, renamed.asStruct());
   }
 
+  /**
+   * 测试场景：add fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddFields() {
     Schema expected =
@@ -486,6 +539,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should match with added fields", expected.asStruct(), added.asStruct());
   }
 
+  /**
+   * 测试场景：add nested struct。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedStruct() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -510,6 +568,11 @@ public class TestSchemaUpdate {
         "Should add struct and reassign column IDs", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：add nested map of structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedMapOfStructs() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -550,6 +613,11 @@ public class TestSchemaUpdate {
         "Should add map and reassign column IDs", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：add nested list of structs。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedListOfStructs() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -578,6 +646,11 @@ public class TestSchemaUpdate {
         "Should add map and reassign column IDs", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：add required column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddRequiredColumn() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -600,6 +673,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should add required column", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：add required column case insensitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddRequiredColumnCaseInsensitive() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -615,6 +693,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot add column, name already exists: ID");
   }
 
+  /**
+   * 测试场景：make column optional。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMakeColumnOptional() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -626,6 +709,11 @@ public class TestSchemaUpdate {
         "Should update column to be optional", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：require column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRequireColumn() {
     Schema schema = new Schema(optional(1, "id", Types.IntegerType.get()));
@@ -645,6 +733,11 @@ public class TestSchemaUpdate {
         "Should update column to be required", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：require column case insensitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRequireColumnCaseInsensitive() {
     Schema schema = new Schema(optional(1, "id", Types.IntegerType.get()));
@@ -661,6 +754,11 @@ public class TestSchemaUpdate {
         "Should update column to be required", expected.asStruct(), result.asStruct());
   }
 
+  /**
+   * 测试场景：mixed changes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMixedChanges() {
     Schema expected =
@@ -732,6 +830,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should match with added fields", expected.asStruct(), updated.asStruct());
   }
 
+  /**
+   * 测试场景：ambiguous add。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAmbiguousAdd() {
     // preferences.booleans could be top-level or a field of preferences
@@ -744,6 +847,11 @@ public class TestSchemaUpdate {
         .hasMessageStartingWith("Cannot add column with ambiguous name: preferences.booleans");
   }
 
+  /**
+   * 测试场景：add already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAlreadyExists() {
     Assertions.assertThatThrownBy(
@@ -763,6 +871,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot add column, name already exists: preferences");
   }
 
+  /**
+   * 测试场景：delete then add。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteThenAdd() {
     Schema schema = new Schema(required(1, "id", Types.IntegerType.get()));
@@ -777,6 +890,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should match with added fields", expected.asStruct(), updated.asStruct());
   }
 
+  /**
+   * 测试场景：delete then add nested。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteThenAddNested() {
     Schema expectedNested =
@@ -831,6 +949,11 @@ public class TestSchemaUpdate {
         "Should match with added fields", expectedNested.asStruct(), updatedNested.asStruct());
   }
 
+  /**
+   * 测试场景：delete missing column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteMissingColumn() {
     Assertions.assertThatThrownBy(
@@ -842,6 +965,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot delete missing column: col");
   }
 
+  /**
+   * 测试场景：add delete conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDeleteConflict() {
     Assertions.assertThatThrownBy(
@@ -863,6 +991,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot delete a column that has additions: preferences");
   }
 
+  /**
+   * 测试场景：rename missing column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameMissingColumn() {
     Assertions.assertThatThrownBy(
@@ -874,6 +1007,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot rename missing column: col");
   }
 
+  /**
+   * 测试场景：rename delete conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameDeleteConflict() {
     Assertions.assertThatThrownBy(
@@ -893,6 +1031,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot delete missing column: col");
   }
 
+  /**
+   * 测试场景：delete rename conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteRenameConflict() {
     Assertions.assertThatThrownBy(
@@ -904,6 +1047,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot rename a column that will be deleted: id");
   }
 
+  /**
+   * 测试场景：update missing column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateMissingColumn() {
     Assertions.assertThatThrownBy(
@@ -915,6 +1063,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot update missing column: col");
   }
 
+  /**
+   * 测试场景：update delete conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateDeleteConflict() {
     Assertions.assertThatThrownBy(
@@ -926,6 +1079,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot delete a column that has updates: id");
   }
 
+  /**
+   * 测试场景：delete update conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteUpdateConflict() {
     Assertions.assertThatThrownBy(
@@ -937,6 +1095,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot update a column that will be deleted: id");
   }
 
+  /**
+   * 测试场景：delete map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteMapKey() {
     Assertions.assertThatThrownBy(
@@ -948,6 +1111,11 @@ public class TestSchemaUpdate {
         .hasMessageStartingWith("Cannot delete map keys");
   }
 
+  /**
+   * 测试场景：add field to map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddFieldToMapKey() {
     Assertions.assertThatThrownBy(
@@ -959,6 +1127,11 @@ public class TestSchemaUpdate {
         .hasMessageStartingWith("Cannot add fields to map keys");
   }
 
+  /**
+   * 测试场景：alter map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAlterMapKey() {
     Assertions.assertThatThrownBy(
@@ -970,6 +1143,11 @@ public class TestSchemaUpdate {
         .hasMessageStartingWith("Cannot alter map keys");
   }
 
+  /**
+   * 测试场景：update map key。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateMapKey() {
     Schema schema =
@@ -984,6 +1162,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot update map keys: map<int, double>");
   }
 
+  /**
+   * 测试场景：update added column doc。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateAddedColumnDoc() {
     Schema schema = new Schema(required(1, "i", Types.IntegerType.get()));
@@ -997,6 +1180,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot update missing column: value");
   }
 
+  /**
+   * 测试场景：update deleted column doc。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateDeletedColumnDoc() {
     Schema schema = new Schema(required(1, "i", Types.IntegerType.get()));
@@ -1010,6 +1198,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot update a column that will be deleted: i");
   }
 
+  /**
+   * 测试场景：multiple moves。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleMoves() {
     Schema schema =
@@ -1038,6 +1231,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Schema should match", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top level column first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelColumnFirst() {
     Schema schema =
@@ -1052,6 +1250,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top level column before first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelColumnBeforeFirst() {
     Schema schema =
@@ -1066,6 +1269,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top level column after last。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelColumnAfterLast() {
     Schema schema =
@@ -1080,6 +1288,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top level column after。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelColumnAfter() {
     Schema schema =
@@ -1098,6 +1311,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top level column before。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelColumnBefore() {
     Schema schema =
@@ -1116,6 +1334,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move nested field first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveNestedFieldFirst() {
     Schema schema =
@@ -1142,6 +1365,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move nested field before first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveNestedFieldBeforeFirst() {
     Schema schema =
@@ -1168,6 +1396,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move nested field after last。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveNestedFieldAfterLast() {
     Schema schema =
@@ -1194,6 +1427,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move nested field after。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveNestedFieldAfter() {
     Schema schema =
@@ -1222,6 +1460,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move nested field before。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveNestedFieldBefore() {
     Schema schema =
@@ -1250,6 +1493,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move list element field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveListElementField() {
     Schema schema =
@@ -1282,6 +1530,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move map value struct field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveMapValueStructField() {
     Schema schema =
@@ -1318,6 +1571,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move added top level column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveAddedTopLevelColumn() {
     Schema schema =
@@ -1338,6 +1596,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move added top level column after added column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveAddedTopLevelColumnAfterAddedColumn() {
     Schema schema =
@@ -1361,6 +1624,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move added nested struct field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveAddedNestedStructField() {
     Schema schema =
@@ -1392,6 +1660,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move added nested struct field before added column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveAddedNestedStructFieldBeforeAddedColumn() {
     Schema schema =
@@ -1426,6 +1699,11 @@ public class TestSchemaUpdate {
     Assert.assertEquals("Should move data first", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move self reference fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveSelfReferenceFails() {
     Schema schema =
@@ -1441,6 +1719,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move id after itself");
   }
 
+  /**
+   * 测试场景：move missing column fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveMissingColumnFails() {
     Schema schema =
@@ -1462,6 +1745,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move missing column: items");
   }
 
+  /**
+   * 测试场景：move before add fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveBeforeAddFails() {
     Schema schema =
@@ -1496,6 +1784,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move missing column: ts");
   }
 
+  /**
+   * 测试场景：move missing reference column fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveMissingReferenceColumnFails() {
     Schema schema =
@@ -1513,6 +1806,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move data after missing column: items");
   }
 
+  /**
+   * 测试场景：move primitive map key fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMovePrimitiveMapKeyFails() {
     Schema schema =
@@ -1530,6 +1828,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move fields in non-struct type: map<string, string>");
   }
 
+  /**
+   * 测试场景：move primitive map value fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMovePrimitiveMapValueFails() {
     Schema schema =
@@ -1547,6 +1850,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move fields in non-struct type: map<string, struct<>>");
   }
 
+  /**
+   * 测试场景：move primitive list element fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMovePrimitiveListElementFails() {
     Schema schema =
@@ -1561,6 +1869,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move fields in non-struct type: list<string>");
   }
 
+  /**
+   * 测试场景：move top level between structs fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopLevelBetweenStructsFails() {
     Schema schema =
@@ -1580,6 +1893,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move field a to a different struct");
   }
 
+  /**
+   * 测试场景：move between structs fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveBetweenStructsFails() {
     Schema schema =
@@ -1603,6 +1921,11 @@ public class TestSchemaUpdate {
         .hasMessage("Cannot move field s2.x to a different struct");
   }
 
+  /**
+   * 测试场景：add existing identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddExistingIdentifierFields() {
     Schema newSchema =
@@ -1614,6 +1937,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：add new identifier field columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNewIdentifierFieldColumns() {
     Schema newSchema =
@@ -1643,6 +1971,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：add nested identifier field columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNestedIdentifierFieldColumns() {
     Schema newSchema =
@@ -1702,6 +2035,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：add dotted identifier field columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDottedIdentifierFieldColumns() {
     Schema newSchema =
@@ -1718,6 +2056,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：remove identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveIdentifierFields() {
     Schema newSchema =
@@ -1751,6 +2094,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：set identifier fields fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @SuppressWarnings("MethodLength")
   @Test
   public void testSetIdentifierFieldsFails() {
@@ -1918,6 +2266,11 @@ public class TestSchemaUpdate {
                 + newSchema.findField("preferences"));
   }
 
+  /**
+   * 测试场景：delete identifier field columns。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteIdentifierFieldColumns() {
     Schema schemaWithIdentifierFields =
@@ -1942,6 +2295,11 @@ public class TestSchemaUpdate {
             .identifierFieldIds());
   }
 
+  /**
+   * 测试场景：delete identifier field columns fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteIdentifierFieldColumnsFails() {
     Schema schemaWithIdentifierFields =
@@ -1957,6 +2315,11 @@ public class TestSchemaUpdate {
             "Cannot delete identifier field 1: id: required int. To force deletion, also call setIdentifierFields to update identifier fields.");
   }
 
+  /**
+   * 测试场景：delete containing nested identifier field columns fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteContainingNestedIdentifierFieldColumnsFails() {
     Schema newSchema =
@@ -1979,6 +2342,11 @@ public class TestSchemaUpdate {
                 + "as it will delete nested identifier field 25: nested: required string");
   }
 
+  /**
+   * 测试场景：rename identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameIdentifierFields() {
     Schema schemaWithIdentifierFields =
@@ -1995,6 +2363,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：move identifier fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveIdentifierFields() {
     Schema schemaWithIdentifierFields =
@@ -2029,6 +2402,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：move identifier fields case insensitive。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveIdentifierFieldsCaseInsensitive() {
     Schema schemaWithIdentifierFields =
@@ -2068,6 +2446,11 @@ public class TestSchemaUpdate {
         newSchema.identifierFieldIds());
   }
 
+  /**
+   * 测试场景：move top deleted column after another column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopDeletedColumnAfterAnotherColumn() {
     Schema schema =
@@ -2092,6 +2475,11 @@ public class TestSchemaUpdate {
         "Should move deleted column correctly", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top deleted column before another column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopDeletedColumnBeforeAnotherColumn() {
     Schema schema =
@@ -2116,6 +2504,11 @@ public class TestSchemaUpdate {
         "Should move deleted column correctly", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move top deleted column to first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveTopDeletedColumnToFirst() {
     Schema schema =
@@ -2140,6 +2533,11 @@ public class TestSchemaUpdate {
         "Should move deleted column correctly", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move deleted nested struct field after another column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveDeletedNestedStructFieldAfterAnotherColumn() {
     Schema schema =
@@ -2175,6 +2573,11 @@ public class TestSchemaUpdate {
         "Should move deleted nested column correctly", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move deleted nested struct field before another column。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveDeletedNestedStructFieldBeforeAnotherColumn() {
     Schema schema =
@@ -2210,6 +2613,11 @@ public class TestSchemaUpdate {
         "Should move deleted nested column correctly", expected.asStruct(), actual.asStruct());
   }
 
+  /**
+   * 测试场景：move deleted nested struct field to first。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMoveDeletedNestedStructFieldToFirst() {
     Schema schema =

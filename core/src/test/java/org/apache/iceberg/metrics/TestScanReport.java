@@ -26,8 +26,20 @@ import org.apache.iceberg.expressions.Expressions;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestScanReport，用于验证 Scan Report 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Scan Report 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestScanReport {
 
+  /**
+   * 测试场景：missing fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void missingFields() {
     Assertions.assertThatThrownBy(() -> ImmutableScanReport.builder().build())
@@ -76,6 +88,11 @@ public class TestScanReport {
             "Cannot build ScanReport, some of required attributes are not set [scanMetrics]");
   }
 
+  /**
+   * 测试场景：from empty scan metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromEmptyScanMetrics() {
     String tableName = "x";
@@ -110,6 +127,11 @@ public class TestScanReport {
     Assertions.assertThat(scanReport.scanMetrics().totalDeleteFileSizeInBytes()).isNull();
   }
 
+  /**
+   * 测试场景：from scan metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void fromScanMetrics() {
     ScanMetrics scanMetrics = ScanMetrics.of(new DefaultMetricsContext());
@@ -151,6 +173,11 @@ public class TestScanReport {
     Assertions.assertThat(scanReport.scanMetrics().totalFileSizeInBytes().value()).isEqualTo(1024L);
   }
 
+  /**
+   * 测试场景：null scan metrics。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void nullScanMetrics() {
     Assertions.assertThatThrownBy(() -> ScanMetrics.of(null))

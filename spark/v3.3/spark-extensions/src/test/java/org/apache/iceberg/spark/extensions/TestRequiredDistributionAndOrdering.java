@@ -32,18 +32,28 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.junit.After;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRequiredDistributionAndOrdering 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 必需分布与排序 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase {
 
+  /** 测试必需分布与排序。 */
   public TestRequiredDistributionAndOrdering(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 删除测试表。 */
   @After
   public void dropTestTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试默认local排序带桶转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultLocalSortWithBucketTransforms() throws NoSuchTableException {
     sql(
@@ -73,6 +83,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试分区列areprepended用于range分布场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionColumnsArePrependedForRangeDistribution() throws NoSuchTableException {
     sql(
@@ -104,6 +115,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试排序顺序includes分区列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSortOrderIncludesPartitionColumns() throws NoSuchTableException {
     sql(
@@ -135,6 +147,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试哈希分布上bucketed列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHashDistributionOnBucketedColumn() throws NoSuchTableException {
     sql(
@@ -166,6 +179,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
         sql("SELECT count(*) FROM %s", tableName));
   }
 
+  /** 测试disabled分布与排序场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDisabledDistributionAndOrdering() {
     sql(
@@ -203,6 +217,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
         });
   }
 
+  /** 测试默认排序上十进制bucketed列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOnDecimalBucketedColumn() {
     sql(
@@ -222,6 +237,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试默认排序上字符串bucketed列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOnStringBucketedColumn() {
     sql(
@@ -237,6 +253,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试默认排序上二进制bucketed列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOnBinaryBucketedColumn() {
     sql(
@@ -254,6 +271,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试默认排序上十进制truncated列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOnDecimalTruncatedColumn() {
     sql(
@@ -270,6 +288,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试默认排序上长整型truncated列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDefaultSortOnLongTruncatedColumn() {
     sql(
@@ -285,6 +304,7 @@ public class TestRequiredDistributionAndOrdering extends SparkExtensionsTestBase
     assertEquals("Rows must match", expected, sql("SELECT * FROM %s ORDER BY c1", tableName));
   }
 
+  /** 测试range分布带quoted列names场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRangeDistributionWithQuotedColumnNames() throws NoSuchTableException {
     sql(

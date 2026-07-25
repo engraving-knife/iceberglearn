@@ -29,18 +29,32 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceSplitSerializer 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestIcebergSourceSplitSerializer 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceSplitSerializer {
 
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
   private final IcebergSourceSplitSerializer serializer = new IcebergSourceSplitSerializer(true);
 
+  /**
+   * 测试场景：Latest Version。
+   *
+   * <p>验证该方法在 Latest Version 条件下的行为是否符合预期。
+   */
   @Test
   public void testLatestVersion() throws Exception {
     serializeAndDeserialize(1, 1);
     serializeAndDeserialize(10, 2);
   }
 
+  /** 辅助方法：serializeAndDeserialize，serialize And Deserialize。 */
   private void serializeAndDeserialize(int splitCount, int filesPerSplit) throws Exception {
     final List<IcebergSourceSplit> splits =
         SplitHelpers.createSplitsFromTransientHadoopTable(
@@ -66,12 +80,18 @@ public class TestIcebergSourceSplitSerializer {
     }
   }
 
+  /**
+   * 测试场景：1。
+   *
+   * <p>验证该方法在 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testV1() throws Exception {
     serializeAndDeserializeV1(1, 1);
     serializeAndDeserializeV1(10, 2);
   }
 
+  /** 辅助方法：serializeAndDeserializeV1，serialize And Deserialize 1。 */
   private void serializeAndDeserializeV1(int splitCount, int filesPerSplit) throws Exception {
     final List<IcebergSourceSplit> splits =
         SplitHelpers.createSplitsFromTransientHadoopTable(
@@ -83,12 +103,18 @@ public class TestIcebergSourceSplitSerializer {
     }
   }
 
+  /**
+   * 测试场景：2。
+   *
+   * <p>验证该方法在 2 条件下的行为是否符合预期。
+   */
   @Test
   public void testV2() throws Exception {
     serializeAndDeserializeV2(1, 1);
     serializeAndDeserializeV2(10, 2);
   }
 
+  /** 辅助方法：serializeAndDeserializeV2，serialize And Deserialize 2。 */
   private void serializeAndDeserializeV2(int splitCount, int filesPerSplit) throws Exception {
     final List<IcebergSourceSplit> splits =
         SplitHelpers.createSplitsFromTransientHadoopTable(
@@ -100,6 +126,11 @@ public class TestIcebergSourceSplitSerializer {
     }
   }
 
+  /**
+   * 测试场景：Deserialize 1。
+   *
+   * <p>验证该方法在 Deserialize 1 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeserializeV1() throws Exception {
     final List<IcebergSourceSplit> splits =
@@ -111,6 +142,11 @@ public class TestIcebergSourceSplitSerializer {
     }
   }
 
+  /**
+   * 测试场景：Checkpointed Position。
+   *
+   * <p>验证该方法在 Checkpointed Position 条件下的行为是否符合预期。
+   */
   @Test
   public void testCheckpointedPosition() throws Exception {
     final AtomicInteger index = new AtomicInteger();
@@ -142,6 +178,7 @@ public class TestIcebergSourceSplitSerializer {
     }
   }
 
+  /** 辅助方法：assertSplitEquals，assert Split Equals。 */
   private void assertSplitEquals(IcebergSourceSplit expected, IcebergSourceSplit actual) {
     List<FileScanTask> expectedTasks = Lists.newArrayList(expected.task().tasks().iterator());
     List<FileScanTask> actualTasks = Lists.newArrayList(actual.task().tasks().iterator());

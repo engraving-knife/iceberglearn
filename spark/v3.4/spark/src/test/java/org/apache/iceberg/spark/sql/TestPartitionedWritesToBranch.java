@@ -22,15 +22,24 @@ import java.util.Map;
 import org.apache.iceberg.Table;
 import org.junit.Before;
 
+/**
+ * 文件级说明：测试 TestPartitionedWritesToBranch 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 分区写到分支 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestPartitionedWritesToBranch extends PartitionedWritesTestBase {
 
   private static final String BRANCH = "test";
 
+  /** 测试分区写到分支。 */
   public TestPartitionedWritesToBranch(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   @Override
   public void createTables() {
@@ -40,11 +49,13 @@ public class TestPartitionedWritesToBranch extends PartitionedWritesTestBase {
     sql("REFRESH TABLE " + tableName);
   }
 
+  /** 提交target。 */
   @Override
   protected String commitTarget() {
     return String.format("%s.branch_%s", tableName, BRANCH);
   }
 
+  /** 辅助方法：selectTarget。 */
   @Override
   protected String selectTarget() {
     return String.format("%s VERSION AS OF '%s'", tableName, BRANCH);

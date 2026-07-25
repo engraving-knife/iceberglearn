@@ -38,6 +38,23 @@ import org.apache.iceberg.util.BinPacking.ListPacker;
 import org.apache.iceberg.util.Exceptions;
 import org.apache.iceberg.util.Tasks;
 
+/**
+ * 文件级说明：Manifest 合并管理器（抽象基类），定义 manifest 文件合并的算法框架。
+ *
+ * <p>所属模块：iceberg-core。职责：为数据文件 manifest 和删除文件 manifest 提供统一的 合并策略——当 manifest 数量过多时，按大小阈值把多个小
+ * manifest 合并为大 manifest， 减少未来扫描的 manifest 读取次数。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>采用"分组后合并"策略：按分区分组，组内按文件数/大小排序后合并。
+ *   <li>抽象方法 {@code createMergeWriter} 由子类实现，区分 DataFile 和 DeleteFile manifest。
+ *   <li>合并阈值可配置（manifest-target-size-bytes 等）。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link MergingSnapshotProducer} 在 commit 时调用；子类 DataFileMergeManager /
+ * DeleteFileMergeManager 在 MergingSnapshotProducer 内部定义。
+ */
 abstract class ManifestMergeManager<F extends ContentFile<F>> {
   private final long targetSizeBytes;
   private final int minCountToMerge;
@@ -59,10 +76,20 @@ abstract class ManifestMergeManager<F extends ContentFile<F>> {
     this.workerPoolSupplier = executorSupplier;
   }
 
+  /**
+   * 获取当前快照 ID（抽象方法，子类实现）。
+   *
+   * @return 快照 ID
+   */
   protected abstract long snapshotId();
 
   protected abstract PartitionSpec spec(int specId);
 
+  /**
+   * 删除指定路径的文件（抽象方法，子类实现）。
+   *
+   * @param location 文件路径
+   */
   protected abstract void deleteFile(String location);
 
   protected abstract ManifestWriter<F> newManifestWriter(PartitionSpec spec);

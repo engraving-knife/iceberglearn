@@ -39,8 +39,20 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import scala.collection.mutable
 
+/**
+ * Spark Catalyst 分析阶段的规则或检查的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 RewriteRowLevelCommand。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+ */
 trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   protected def buildRowLevelOperation(
       table: SupportsRowLevelOperations,
       command: Command): RowLevelOperation = {
@@ -49,6 +61,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
     builder.build()
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   protected def buildReadRelation(
       relation: DataSourceV2Relation,
       table: RowLevelOperationTable,
@@ -59,6 +75,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
     relation.copy(table = table, output = attrs)
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   protected def dedupAttrs(attrs: Seq[AttributeReference]): Seq[AttributeReference] = {
     val exprIds = mutable.Set.empty[ExprId]
     attrs.flatMap { attr =>
@@ -71,6 +91,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
     }
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   protected def buildWriteDeltaProjections(
       plan: LogicalPlan,
       rowAttrs: Seq[Attribute],
@@ -95,6 +119,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
   }
 
   // the projection is done by name, ignoring expr IDs
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def newLazyProjection(
       plan: LogicalPlan,
       projectedAttrs: Seq[Attribute]): ProjectingInternalRow = {
@@ -104,6 +132,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
     ProjectingInternalRow(schema, projectedOrdinals)
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   protected def resolveRequiredMetadataAttrs(
       relation: DataSourceV2Relation,
       operation: RowLevelOperation): Seq[AttributeReference] = {
@@ -113,6 +145,10 @@ trait RewriteRowLevelCommand extends Rule[LogicalPlan] {
       relation)
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   protected def resolveRowIdAttrs(
       relation: DataSourceV2Relation,
       operation: RowLevelOperation): Seq[AttributeReference] = {

@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import org.apache.iceberg.DataFilesTable;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataTableUtils;
@@ -51,6 +50,15 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.internal.SQLConf;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkBinPackPositionDeletesRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewriter {
 
   private final SparkSession spark;
@@ -66,11 +74,22 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
     this.spark.conf().set(SQLConf.ADAPTIVE_EXECUTION_ENABLED().key(), false);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "BIN-PACK";
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param group 参数
+   * @return 结果对象
+   */
   @Override
   public Set<DeleteFile> rewrite(List<PositionDeletesScanTask> group) {
     String groupId = UUID.randomUUID().toString();
@@ -89,6 +108,7 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected void doRewrite(String groupId, List<PositionDeletesScanTask> group) {
     // all position deletes are of the same partition, because they are in same file group
     Preconditions.checkArgument(group.size() > 0, "Empty group");
@@ -121,7 +141,7 @@ class SparkBinPackPositionDeletesRewriter extends SizeBasedPositionDeletesRewrit
         .save(groupId);
   }
 
-  /** Returns entries of {@link DataFilesTable} of specified partition */
+  /** 执行该方法的具体逻辑。 */
   private Dataset<Row> dataFiles(Types.StructType partitionType, StructLike partition) {
     List<Types.NestedField> fields = partitionType.fields();
     Optional<Column> condition =

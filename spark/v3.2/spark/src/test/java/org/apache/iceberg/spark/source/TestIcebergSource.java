@@ -23,18 +23,28 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * 文件级说明：测试 TestIcebergSource 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Iceberg源 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestIcebergSource extends IcebergSource {
+  /** 辅助方法：shortName。 */
   @Override
   public String shortName() {
     return "iceberg-test";
   }
 
+  /** extract标识符。 */
   @Override
   public Identifier extractIdentifier(CaseInsensitiveStringMap options) {
     TableIdentifier ti = TableIdentifier.parse(options.get("iceberg.table.name"));
     return Identifier.of(ti.namespace().levels(), ti.name());
   }
 
+  /** extract目录。 */
   @Override
   public String extractCatalog(CaseInsensitiveStringMap options) {
     return SparkSession.active().sessionState().catalogManager().currentCatalog().name();

@@ -44,11 +44,19 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSingleMessageEncoding 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestSingleMessageEncoding 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestSingleMessageEncoding {
   private static final Schema SCHEMA_V1 =
       new Schema(
           required(0, "id", Types.IntegerType.get()), optional(1, "msg", Types.StringType.get()));
 
+  /** 辅助方法：v1Record。 */
   private static Record v1Record(int id, String msg) {
     Record rec = GenericRecord.create(SCHEMA_V1.asStruct());
     rec.setField("id", id);
@@ -65,6 +73,7 @@ public class TestSingleMessageEncoding {
           optional(1, "message", Types.StringType.get()),
           optional(2, "data", Types.DoubleType.get()));
 
+  /** 辅助方法：v2Record。 */
   private static Record v2Record(long id, String message, Double data) {
     Record rec = GenericRecord.create(SCHEMA_V2.asStruct());
     rec.setField("id", id);
@@ -80,6 +89,11 @@ public class TestSingleMessageEncoding {
           v2Record(7L, "m-7", 34.5),
           v2Record(8L, "m-8", 35.6));
 
+  /**
+   * 测试场景：Byte Buffer Round Trip。
+   *
+   * <p>验证该方法在 Byte Buffer Round Trip 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferRoundTrip() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);
@@ -91,6 +105,11 @@ public class TestSingleMessageEncoding {
     Assert.assertEquals("Record should be identical after round-trip", V2_RECORDS.get(0), copy);
   }
 
+  /**
+   * 测试场景：Schema Evolution。
+   *
+   * <p>验证该方法在 Schema Evolution 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaEvolution() throws Exception {
     List<ByteBuffer> buffers = Lists.newArrayList();
@@ -125,6 +144,11 @@ public class TestSingleMessageEncoding {
     Assert.assertEquals(allAsV2, decodedUsingV2);
   }
 
+  /**
+   * 测试场景：Compatible Read Fails Without Schema。
+   *
+   * <p>验证该方法在 Compatible Read Fails Without Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompatibleReadFailsWithoutSchema() throws Exception {
     MessageEncoder<Record> v1Encoder = new IcebergEncoder<>(SCHEMA_V1);
@@ -137,6 +161,11 @@ public class TestSingleMessageEncoding {
         .hasMessageContaining("Cannot resolve schema for fingerprint");
   }
 
+  /**
+   * 测试场景：Compatible Read With Schema。
+   *
+   * <p>验证该方法在 Compatible Read With Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompatibleReadWithSchema() throws Exception {
     MessageEncoder<Record> v1Encoder = new IcebergEncoder<>(SCHEMA_V1);
@@ -150,6 +179,11 @@ public class TestSingleMessageEncoding {
     Assert.assertEquals(v2Record(6L, "m-6", null), record);
   }
 
+  /**
+   * 测试场景：Compatible Read With Schema From Lookup。
+   *
+   * <p>验证该方法在 Compatible Read With Schema From Lookup 条件下的行为是否符合预期。
+   */
   @Test
   public void testCompatibleReadWithSchemaFromLookup() throws Exception {
     MessageEncoder<Record> v1Encoder = new IcebergEncoder<>(SCHEMA_V1);
@@ -165,6 +199,11 @@ public class TestSingleMessageEncoding {
     Assert.assertEquals(v2Record(4L, "m-4", null), record);
   }
 
+  /**
+   * 测试场景：Buffer Reuse。
+   *
+   * <p>验证该方法在 Buffer Reuse 条件下的行为是否符合预期。
+   */
   @Test
   public void testBufferReuse() throws Exception {
     // This test depends on the serialized version of record 1 being smaller or
@@ -182,6 +221,11 @@ public class TestSingleMessageEncoding {
         "Buffer was reused, decode(b0) should be record 1", V1_RECORDS.get(1), decoder.decode(b0));
   }
 
+  /**
+   * 测试场景：Buffer Copy。
+   *
+   * <p>验证该方法在 Buffer Copy 条件下的行为是否符合预期。
+   */
   @Test
   public void testBufferCopy() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V1);
@@ -197,6 +241,11 @@ public class TestSingleMessageEncoding {
         "Buffer was copied, decode(b0) should be record 0", V1_RECORDS.get(0), decoder.decode(b0));
   }
 
+  /**
+   * 测试场景：Byte Buffer Missing Payload。
+   *
+   * <p>验证该方法在 Byte Buffer Missing Payload 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferMissingPayload() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);
@@ -211,6 +260,11 @@ public class TestSingleMessageEncoding {
         .hasMessageContaining("Decoding datum failed");
   }
 
+  /**
+   * 测试场景：Byte Buffer Missing Full Header。
+   *
+   * <p>验证该方法在 Byte Buffer Missing Full Header 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferMissingFullHeader() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);
@@ -225,6 +279,11 @@ public class TestSingleMessageEncoding {
         .hasMessage("Not enough header bytes");
   }
 
+  /**
+   * 测试场景：Byte Buffer Bad Marker Byte。
+   *
+   * <p>验证该方法在 Byte Buffer Bad Marker Byte 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferBadMarkerByte() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);
@@ -238,6 +297,11 @@ public class TestSingleMessageEncoding {
         .hasMessageContaining("Unrecognized header bytes");
   }
 
+  /**
+   * 测试场景：Byte Buffer Bad Version Byte。
+   *
+   * <p>验证该方法在 Byte Buffer Bad Version Byte 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferBadVersionByte() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);
@@ -251,6 +315,11 @@ public class TestSingleMessageEncoding {
         .hasMessageContaining("Unrecognized header bytes");
   }
 
+  /**
+   * 测试场景：Byte Buffer Unknown Schema。
+   *
+   * <p>验证该方法在 Byte Buffer Unknown Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testByteBufferUnknownSchema() throws Exception {
     MessageEncoder<Record> encoder = new IcebergEncoder<>(SCHEMA_V2);

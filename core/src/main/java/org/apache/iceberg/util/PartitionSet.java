@@ -32,7 +32,25 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterators;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 分区集合：按 spec ID 分组管理多套分区规范下的分区值集合，实现 {@link Set} 接口。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：在表的多个 PartitionSpec 共存时，以 (specId, partitionValue) 为元素维护去重集合， 支持快速的包含判断、添加、删除与迭代。
+ *
+ * <p>设计意图：每个 spec 对应一个 {@link StructLikeSet}（基于分区结构类型的去重集合）， 按 specId 分桶存储，避免不同 spec 的分区值混淆。{@link
+ * StructLikeSet} 负责按值而非引用判等。
+ *
+ * <p>上下游关系：被扫描计划、分区统计等流程用于跟踪已知分区集合；依赖 {@link StructLikeSet} 与 {@link PartitionSpec}。
+ */
 public class PartitionSet implements Set<Pair<Integer, StructLike>> {
+  /**
+   * 创建分区集合。
+   *
+   * @param specsById 按 spec ID 索引的分区规范映射
+   * @return 新建的 PartitionSet
+   */
   public static PartitionSet create(Map<Integer, PartitionSpec> specsById) {
     return new PartitionSet(specsById);
   }
@@ -70,6 +88,13 @@ public class PartitionSet implements Set<Pair<Integer, StructLike>> {
     return false;
   }
 
+  /**
+   * 判断指定 spec 下的分区值是否存在于集合中。
+   *
+   * @param specId 分区规范 ID
+   * @param struct 分区值
+   * @return 存在返回 true
+   */
   public boolean contains(int specId, StructLike struct) {
     Set<StructLike> partitionSet = partitionSetById.get(specId);
     if (partitionSet != null) {
@@ -85,6 +110,13 @@ public class PartitionSet implements Set<Pair<Integer, StructLike>> {
     return add(pair.first(), pair.second());
   }
 
+  /**
+   * 添加指定 spec 下的分区值到集合。
+   *
+   * @param specId 分区规范 ID
+   * @param struct 分区值
+   * @return 集合因添加而改变返回 true
+   */
   public boolean add(int specId, StructLike struct) {
     Set<StructLike> partitionSet =
         partitionSetById.computeIfAbsent(
@@ -105,6 +137,13 @@ public class PartitionSet implements Set<Pair<Integer, StructLike>> {
     return false;
   }
 
+  /**
+   * 从指定 spec 下移除分区值。
+   *
+   * @param specId 分区规范 ID
+   * @param struct 分区值
+   * @return 集合因移除而改变返回 true
+   */
   public boolean remove(int specId, StructLike struct) {
     Set<StructLike> partitionSet = partitionSetById.get(specId);
     if (partitionSet != null) {

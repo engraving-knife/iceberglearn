@@ -34,6 +34,31 @@ import org.apache.iceberg.relocated.com.google.common.util.concurrent.ThreadFact
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 锁管理器工厂与基础实现集合，为 Iceberg 表提交提供乐观/悲观并发控制能力。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供默认的进程内 {@link InMemoryLockManager}，用于单 JVM 内的提交互斥。
+ *   <li>通过 {@link #from(Map)} 按 catalog 属性加载自定义 {@link LockManager} 实现（反射构造）。
+ *   <li>提供 {@link BaseLockManager} 抽象基类，封装获取锁超时、重试间隔、心跳间隔/超时等通用参数 及共享心跳调度器，供具体锁管理器继承。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>可插拔：锁实现通过 {@code lock.impl} 属性指定类名，用 {@link DynConstructors} 反射加载， 支持外部模块（如 Hive metastore
+ *       锁、Redis 锁等）扩展。
+ *   <li>心跳续约：长事务持锁期间通过定时心跳延长过期时间，避免因提交缓慢导致锁被误判失效。
+ *   <li>共享调度器：{@link BaseLockManager#scheduler()} 使用双重检查锁的单例模式，所有锁实例 共用一个 daemon 线程池，减少线程开销。
+ * </ul>
+ *
+ * <p>上下游关系：被各 Catalog 实现（如 HadoopCatalog、HiveCatalog 等）在提交时调用； 依赖 api 模块的 {@link LockManager} 接口与
+ * common 模块的 {@link DynConstructors}。
+ */
 public class LockManagers {
 
   private static final LockManager LOCK_MANAGER_DEFAULT =
@@ -41,10 +66,21 @@ public class LockManagers {
 
   private LockManagers() {}
 
+  /**
+   * 返回默认的进程内锁管理器实例（{@link InMemoryLockManager}）。
+   *
+   * @return 默认锁管理器
+   */
   public static LockManager defaultLockManager() {
     return LOCK_MANAGER_DEFAULT;
   }
 
+  /**
+   * 根据 catalog 属性创建锁管理器：若指定了 {@code lock.impl} 则反射加载对应实现并初始化， 否则返回默认的进程内锁管理器。
+   *
+   * @param properties catalog 属性集
+   * @return 锁管理器实例
+   */
   public static LockManager from(Map<String, String> properties) {
     if (properties.containsKey(CatalogProperties.LOCK_IMPL)) {
       return loadLockManager(properties.get(CatalogProperties.LOCK_IMPL), properties);
@@ -53,6 +89,17 @@ public class LockManagers {
     }
   }
 
+  /**
+   * 反射加载并初始化指定的锁管理器实现。
+   *
+   * <p>逻辑：用 {@link DynConstructors} 查找目标类的无参构造器，newInstance 创建实例后调用 {@code initialize(properties)}
+   * 完成配置；构造器缺失或类型不匹配时抛出 IllegalArgumentException。
+   *
+   * @param impl 锁管理器实现类全限定名
+   * @param properties catalog 属性集
+   * @return 已初始化的锁管理器
+   * @throws IllegalArgumentException 若类缺少无参构造器或未实现 LockManager
+   */
   private static LockManager loadLockManager(String impl, Map<String, String> properties) {
     DynConstructors.Ctor<LockManager> ctor;
     try {
@@ -75,6 +122,7 @@ public class LockManagers {
     return lockManager;
   }
 
+  /** 锁管理器抽象基类，封装通用的超时/重试/心跳参数及共享心跳调度器，供具体实现继承。 */
   public abstract static class BaseLockManager implements LockManager {
 
     private static volatile ScheduledExecutorService scheduler;
@@ -85,26 +133,39 @@ public class LockManagers {
     private long heartbeatTimeoutMs;
     private int heartbeatThreads;
 
+    /** 返回 心跳超时时间（毫秒），超过后锁自动失效。 */
     public long heartbeatTimeoutMs() {
       return heartbeatTimeoutMs;
     }
 
+    /** 返回 心跳发送间隔（毫秒）。 */
     public long heartbeatIntervalMs() {
       return heartbeatIntervalMs;
     }
 
+    /** 返回 获取锁失败后的重试间隔（毫秒）。 */
     public long acquireIntervalMs() {
       return acquireIntervalMs;
     }
 
+    /** 返回 获取锁的总超时时间（毫秒）。 */
     public long acquireTimeoutMs() {
       return acquireTimeoutMs;
     }
 
+    /** 返回 心跳线程池大小。 */
     public int heartbeatThreads() {
       return heartbeatThreads;
     }
 
+    /**
+     * 获取共享的心跳调度线程池（双重检查锁单例）。
+     *
+     * <p>逻辑：首次调用时创建一个 daemon 类型的 {@link ScheduledThreadPoolExecutor}，线程名以 "iceberg-lock-manager-%d"
+     * 标识；后续调用直接复用。使用 {@link MoreExecutors#getExitingScheduledExecutorService} 包装，使 JVM 退出时线程池自动关闭。
+     *
+     * @return 共享心跳调度器
+     */
     public ScheduledExecutorService scheduler() {
       if (scheduler == null) {
         synchronized (BaseLockManager.class) {
@@ -125,6 +186,11 @@ public class LockManagers {
       return scheduler;
     }
 
+    /**
+     * 从 catalog 属性中读取获取锁超时、重试间隔、心跳间隔/超时/线程数等参数。
+     *
+     * @param properties catalog 属性集
+     */
     @Override
     public void initialize(Map<String, String> properties) {
       this.acquireTimeoutMs =
@@ -156,9 +222,10 @@ public class LockManagers {
   }
 
   /**
-   * Implementation of {@link LockManager} that uses an in-memory concurrent map for locking. This
-   * implementation should only be used for testing, or if the caller only needs locking within the
-   * same JVM during table commits.
+   * 基于进程内并发 Map 的 {@link LockManager} 实现，仅适用于测试或单 JVM 内的提交互斥。
+   *
+   * <p>设计意图：使用 {@link java.util.concurrent.ConcurrentMap} 存储锁实体与心跳任务，跨进程不可见。 锁通过
+   * putIfAbsent/replace 的 CAS 语义保证并发安全；持锁期间以固定速率发送心跳延长过期时间。
    */
   static class InMemoryLockManager extends BaseLockManager {
 
@@ -171,6 +238,16 @@ public class LockManagers {
       initialize(properties);
     }
 
+    /**
+     * 尝试获取一次锁（不重试）。
+     *
+     * <p>逻辑：读取当前锁内容，若未过期则抛 IllegalStateException；否则计算新过期时间并用 putIfAbsent（锁不存在）或
+     * replace（锁已存在但已过期）CAS 写入。成功后取消旧心跳、注册新心跳 定时任务续约；失败则抛 IllegalStateException。
+     *
+     * @param entityId 被锁实体标识（如表 ID）
+     * @param ownerId 锁持有者标识
+     * @throws IllegalStateException 若锁被他人持有或 CAS 失败
+     */
     @VisibleForTesting
     void acquireOnce(String entityId, String ownerId) {
       InMemoryLockContent content = LOCKS.get(entityId);
@@ -221,6 +298,13 @@ public class LockManagers {
       }
     }
 
+    /**
+     * 带重试地获取锁：在超时时间内以指数退避策略反复调用 {@link #acquireOnce}。
+     *
+     * @param entityId 被锁实体标识
+     * @param ownerId 锁持有者标识
+     * @return 成功获取返回 true；超时未获取返回 false
+     */
     @Override
     public boolean acquire(String entityId, String ownerId) {
       try {
@@ -236,6 +320,13 @@ public class LockManagers {
       }
     }
 
+    /**
+     * 释放锁：校验持有者后取消心跳并移除锁条目。
+     *
+     * @param entityId 被锁实体标识
+     * @param ownerId 锁持有者标识
+     * @return 释放成功返回 true；锁不存在或持有者不匹配返回 false
+     */
     @Override
     public boolean release(String entityId, String ownerId) {
       InMemoryLockContent currentContent = LOCKS.get(entityId);
@@ -258,6 +349,7 @@ public class LockManagers {
       return true;
     }
 
+    /** 关闭锁管理器：取消所有心跳任务并清空锁表。 */
     @Override
     public void close() {
       HEARTBEATS.values().forEach(future -> future.cancel(false));
@@ -266,6 +358,7 @@ public class LockManagers {
     }
   }
 
+  /** 锁内容：记录持有者与过期时间，作为并发 Map 的值类型。 */
   private static class InMemoryLockContent {
     private final String ownerId;
     private final long expireMs;

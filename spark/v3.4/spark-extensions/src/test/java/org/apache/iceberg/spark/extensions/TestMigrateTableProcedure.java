@@ -32,8 +32,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestMigrateTableProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 迁移表存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
 
+  /** 测试迁移表存储过程。 */
   public TestMigrateTableProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
@@ -41,12 +49,14 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS %s_BACKUP_", tableName);
   }
 
+  /** 测试迁移场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrate() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -74,6 +84,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     sql("DROP TABLE IF EXISTS %s", tableName + "_BACKUP_");
   }
 
+  /** 测试迁移带选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateWithOptions() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -106,6 +117,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     sql("DROP TABLE IF EXISTS %s", tableName + "_BACKUP_");
   }
 
+  /** 测试迁移带删除backup场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateWithDropBackup() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -122,6 +134,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     Assert.assertFalse(spark.catalog().tableExists(tableName + "_BACKUP_"));
   }
 
+  /** 测试迁移带backup表name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateWithBackupTableName() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -142,6 +155,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     Assertions.assertThat(spark.catalog().tableExists(dbName + "." + backupTableName)).isTrue();
   }
 
+  /** 测试迁移带invalid指标配置场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateWithInvalidMetricsConfig() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -160,6 +174,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
         .hasMessageStartingWith("Invalid metrics config");
   }
 
+  /** 测试迁移带conflictingprops场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateWithConflictingProps() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -183,6 +198,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals("Should override user value", "true", table.properties().get("migrated"));
   }
 
+  /** 测试invalid迁移场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidMigrateCases() {
     Assertions.assertThatThrownBy(() -> sql("CALL %s.system.migrate()", catalogName))
@@ -199,6 +215,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
         .hasMessage("Cannot handle an empty identifier for argument table");
   }
 
+  /** 测试迁移分区带specialcharacter场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigratePartitionWithSpecialCharacter() throws IOException {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -216,6 +233,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试迁移空分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateEmptyPartitionedTable() throws Exception {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));
@@ -227,6 +245,7 @@ public class TestMigrateTableProcedure extends SparkExtensionsTestBase {
     Assert.assertEquals(0L, result);
   }
 
+  /** 测试迁移空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateEmptyTable() throws Exception {
     Assume.assumeTrue(catalogName.equals("spark_catalog"));

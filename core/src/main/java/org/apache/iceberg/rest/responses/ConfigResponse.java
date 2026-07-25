@@ -27,19 +27,21 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTResponse;
 
 /**
- * Represents a response to requesting server-side provided configuration for the REST catalog. This
- * allows client provided values to be overridden by the server or defaulted if not provided by the
- * client.
+ * 文件级说明：REST Catalog 服务端配置响应模型。
  *
- * <p>The catalog properties, with overrides and defaults applied, should be used to configure the
- * catalog and for all subsequent requests after this initial config request.
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
  *
- * <p>Configuration from the server consists of two sets of key/value pairs.
+ * <p>职责：封装服务端返回的配置信息，包含两组键值对：
  *
  * <ul>
- *   <li>defaults - properties that should be used as default configuration
- *   <li>overrides - properties that should be used to override client configuration
+ *   <li>defaults：默认配置，客户端未提供时使用。
+ *   <li>overrides：覆盖配置，强制覆盖客户端配置。
  * </ul>
+ *
+ * <p>设计意图：客户端初始化时先请求服务端配置，将 defaults 与 overrides 合并到客户端属性中， 使服务端能够控制客户端行为（如 warehouse
+ * location、认证方式等）。使用 Builder 模式保证不可变性。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.rest.RESTSessionCatalog} 在初始化时请求并消费。
  */
 public class ConfigResponse implements RESTResponse {
 

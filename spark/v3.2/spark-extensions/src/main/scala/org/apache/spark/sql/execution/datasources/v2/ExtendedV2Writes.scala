@@ -46,12 +46,20 @@ import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 
 /**
- * A rule that is inspired by V2Writes in Spark but supports Iceberg transforms.
+ * Spark 物理执行相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 ExtendedV2Writes。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 object ExtendedV2Writes extends Rule[LogicalPlan] with PredicateHelper {
 
   import DataSourceV2Implicits._
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     case a @ AppendData(r: DataSourceV2Relation, query, options, _, None) if isIcebergRelation(r) =>
       val writeBuilder = newWriteBuilder(r.table, query.schema, options)
@@ -119,10 +127,15 @@ object ExtendedV2Writes extends Rule[LogicalPlan] with PredicateHelper {
       }
   }
 
+  /** 判断是否truncate。 */
   private def isTruncate(filters: Array[Filter]): Boolean = {
     filters.length == 1 && filters(0).isInstanceOf[AlwaysTrue]
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   private def newWriteBuilder(
       table: Table,
       rowSchema: StructType,

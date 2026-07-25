@@ -24,6 +24,23 @@ import java.io.IOException;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * {@link CommitReport} 的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core，度量包内负责提交报告对象与 JSON 之间的双向转换， 供 REST 度量上报及本地持久化使用。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将 {@link CommitReport} 序列化为 JSON（含表名、快照 ID、序列号、操作、metrics、metadata）。
+ *   <li>从 JSON 还原 {@link CommitReport}，metrics 字段委托 {@link CommitMetricsResultParser} 处理。
+ *   <li>提供 {@link #toJsonWithoutStartEnd} 以便嵌入到更大的 JSON 结构中（如 REST 上报请求体）。
+ * </ul>
+ *
+ * <p>设计意图：无状态工具类，构造私有，仅暴露静态方法；metadata 为空时不写该字段以精简输出。
+ *
+ * <p>上下游关系：被 REST 模块 {@code ReportMetricsRequestParser} 调用；也被测试与上报流程直接使用。
+ */
 public class CommitReportParser {
   private static final String TABLE_NAME = "table-name";
   private static final String SNAPSHOT_ID = "snapshot-id";
@@ -34,14 +51,34 @@ public class CommitReportParser {
 
   private CommitReportParser() {}
 
+  /**
+   * 将提交报告序列化为紧凑 JSON 字符串。
+   *
+   * @param commitReport 提交报告
+   * @return JSON 字符串
+   */
   public static String toJson(CommitReport commitReport) {
     return toJson(commitReport, false);
   }
 
+  /**
+   * 将提交报告序列化为 JSON 字符串，可选择是否美化输出。
+   *
+   * @param commitReport 提交报告
+   * @param pretty 是否美化（缩进）输出
+   * @return JSON 字符串
+   */
   public static String toJson(CommitReport commitReport, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(commitReport, gen), pretty);
   }
 
+  /**
+   * 将提交报告写入 {@link JsonGenerator}，包含起始/结束对象边界。
+   *
+   * @param commitReport 提交报告，不能为 null
+   * @param gen JSON 生成器
+   * @throws IOException 写入失败时抛出
+   */
   public static void toJson(CommitReport commitReport, JsonGenerator gen) throws IOException {
     Preconditions.checkArgument(null != commitReport, "Invalid commit report: null");
 
@@ -51,12 +88,14 @@ public class CommitReportParser {
   }
 
   /**
-   * This serializes the {@link CommitReport} without writing a start/end object and is mainly used
-   * by {@link org.apache.iceberg.rest.requests.ReportMetricsRequestParser}.
+   * 将提交报告写入 {@link JsonGenerator}，但不写起始/结束对象边界。
    *
-   * @param commitReport The {@link CommitReport} to serialize
-   * @param gen The {@link JsonGenerator} to use
-   * @throws IOException If an error occurs while serializing
+   * <p>设计意图：主要供 {@link org.apache.iceberg.rest.requests.ReportMetricsRequestParser}
+   * 使用——该解析器需要把报告内容嵌入到外层请求体 JSON 中，故此处仅输出字段本身。
+   *
+   * @param commitReport 提交报告，不能为 null
+   * @param gen JSON 生成器
+   * @throws IOException 写入失败时抛出
    */
   public static void toJsonWithoutStartEnd(CommitReport commitReport, JsonGenerator gen)
       throws IOException {
@@ -75,10 +114,25 @@ public class CommitReportParser {
     }
   }
 
+  /**
+   * 从 JSON 字符串解析 {@link CommitReport}。
+   *
+   * @param json JSON 字符串
+   * @return 提交报告
+   */
   public static CommitReport fromJson(String json) {
     return JsonUtil.parse(json, CommitReportParser::fromJson);
   }
 
+  /**
+   * 从 {@link JsonNode} 解析 {@link CommitReport}。
+   *
+   * <p>逻辑：校验为对象后，依次读取表名、快照 ID、序列号、操作，并通过 {@link CommitMetricsResultParser} 解析 metrics 子对象；metadata
+   * 字段可选，存在时读取为字符串映射。
+   *
+   * @param json JSON 节点，不能为 null 且必须为对象
+   * @return 提交报告
+   */
   public static CommitReport fromJson(JsonNode json) {
     Preconditions.checkArgument(null != json, "Cannot parse commit report from null object");
     Preconditions.checkArgument(

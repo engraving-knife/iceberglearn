@@ -30,12 +30,11 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that sets the current snapshot in a table.
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SetCurrentSnapshotProcedure。
  *
- * @see org.apache.iceberg.ManageSnapshots#setCurrentSnapshot(long)
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
  */
 class SetCurrentSnapshotProcedure extends BaseProcedure {
 
@@ -52,29 +51,49 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
 
+  /** 构造并返回目标对象。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<SetCurrentSnapshotProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected SetCurrentSnapshotProcedure doBuild() {
+        /** 执行该方法的具体逻辑。 */
         return new SetCurrentSnapshotProcedure(tableCatalog());
       }
     };
   }
 
+  /** 构造 SetCurrentSnapshotProcedure 实例。 */
   private SetCurrentSnapshotProcedure(TableCatalog catalog) {
     super(catalog);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -93,6 +112,11 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
         });
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "SetCurrentSnapshotProcedure";

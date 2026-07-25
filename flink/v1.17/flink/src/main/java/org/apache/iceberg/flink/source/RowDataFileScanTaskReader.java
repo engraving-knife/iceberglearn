@@ -51,6 +51,25 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.util.PartitionUtil;
 
+/**
+ * 文件级说明：把 Iceberg 文件扫描任务读取为 Flink RowData 的 reader。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>根据文件格式（PARQUET/AVRO/ORC）创建对应的 Iterable。
+ *   <li>应用删除文件过滤（{@link DeleteFilter}）以保证读取最新数据。
+ *   <li>应用行级过滤、投影与分区常量下推。
+ * </ul>
+ *
+ * <p>设计意图：复用 Iceberg 的读取 builder（{@link Parquet}/{@link Avro}/{@link ORC}）， 通过 Flink 专属 reader
+ * 实现类把内部结构转换为 RowData； 通过 {@link FlinkDeleteFilter} 把等值/位置删除应用于流式读取。
+ *
+ * <p>上下游关系：上游为 {@link FileScanTask}， 下游为 Flink reader 实现（{@link FlinkParquetReaders}/{@link
+ * FlinkAvroReader}/{@link FlinkOrcReader}）。
+ */
 @Internal
 public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
 
@@ -60,6 +79,17 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
   private final boolean caseSensitive;
   private final FlinkSourceFilter rowFilter;
 
+  /**
+   * 构造 reader。
+   *
+   * <p>逻辑：若提供非空 filters，合并为单个表达式并构造 FlinkSourceFilter。
+   *
+   * @param tableSchema 表 schema
+   * @param projectedSchema 投影 schema
+   * @param nameMapping 名称映射，可为空
+   * @param caseSensitive 是否大小写敏感
+   * @param filters 过滤表达式列表
+   */
   public RowDataFileScanTaskReader(
       Schema tableSchema,
       Schema projectedSchema,
@@ -81,6 +111,21 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     }
   }
 
+  /**
+   * 打开文件扫描 task 的迭代器。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>选择分区 schema 并构建分区常量映射。
+   *   <li>用 FlinkDeleteFilter 包装原始 iterable 过滤删除行。
+   *   <li>若投影与 required schema 不同则再次投影去除元数据列。
+   * </ol>
+   *
+   * @param task 文件扫描任务
+   * @param inputFilesDecryptor 输入文件解密器
+   * @return RowData 迭代器
+   */
   @Override
   public CloseableIterator<RowData> open(
       FileScanTask task, InputFilesDecryptor inputFilesDecryptor) {
@@ -97,7 +142,7 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
         deletes.filter(
             newIterable(task, deletes.requiredSchema(), idToConstant, inputFilesDecryptor));
 
-    // Project the RowData to remove the extra meta columns.
+    // 投影 RowData 去除额外的元数据列
     if (!projectedSchema.sameSchema(deletes.requiredSchema())) {
       RowDataProjection rowDataProjection =
           RowDataProjection.create(
@@ -110,6 +155,18 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     return iterable.iterator();
   }
 
+  /**
+   * 按文件格式创建对应 iterable，并应用行级过滤。
+   *
+   * <p>逻辑：对 PARQUET/AVRO/ORC 分别调用 newParquetIterable/newAvroIterable/newOrcIterable； 若提供了 rowFilter
+   * 则包装一层过滤。
+   *
+   * @param task 文件扫描任务
+   * @param schema 读取 schema
+   * @param idToConstant 分区常量映射
+   * @param inputFilesDecryptor 输入文件解密器
+   * @return RowData iterable
+   */
   private CloseableIterable<RowData> newIterable(
       FileScanTask task,
       Schema schema,
@@ -144,6 +201,7 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     return iter;
   }
 
+  /** 创建 AVRO 文件的 iterable。 */
   private CloseableIterable<RowData> newAvroIterable(
       FileScanTask task,
       Schema schema,
@@ -163,6 +221,7 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     return builder.build();
   }
 
+  /** 创建 Parquet 文件的 iterable，带 residual 过滤与大小写敏感性。 */
   private CloseableIterable<RowData> newParquetIterable(
       FileScanTask task,
       Schema schema,
@@ -185,6 +244,11 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     return builder.build();
   }
 
+  /**
+   * 创建 ORC 文件的 iterable。
+   *
+   * <p>逻辑：ORC 不支持读取常量与元数据字段，先从 schema 中剔除这些列再投影。
+   */
   private CloseableIterable<RowData> newOrcIterable(
       FileScanTask task,
       Schema schema,
@@ -210,6 +274,12 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
     return builder.build();
   }
 
+  /**
+   * Flink 的删除文件过滤器，把 Iceberg 的 DeleteFilter 适配到 RowData。
+   *
+   * <p>逻辑：维护 required RowType 与 RowDataWrapper， 把 RowData 包装为 StructLike 以便父类执行等值/位置删除过滤； 通过
+   * inputFilesDecryptor 获取删除文件输入。
+   */
   private static class FlinkDeleteFilter extends DeleteFilter<RowData> {
     private final RowType requiredRowType;
     private final RowDataWrapper asStructLike;
@@ -226,15 +296,18 @@ public class RowDataFileScanTaskReader implements FileScanTaskReader<RowData> {
       this.inputFilesDecryptor = inputFilesDecryptor;
     }
 
+    /** 返回 required RowType。 */
     public RowType requiredRowType() {
       return requiredRowType;
     }
 
+    /** 把 RowData 包装为 StructLike 以便删除过滤。 */
     @Override
     protected StructLike asStructLike(RowData row) {
       return asStructLike.wrap(row);
     }
 
+    /** 通过 inputFilesDecryptor 获取指定路径的输入文件。 */
     @Override
     protected InputFile getInputFile(String location) {
       return inputFilesDecryptor.getInputFile(location);

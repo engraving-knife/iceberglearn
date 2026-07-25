@@ -36,15 +36,11 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 /**
- * Test class for running HiveQL queries, essentially acting like a Beeline shell in tests.
+ * 文件级说明：测试 TestHiveShell 的功能。
  *
- * <p>It spins up both an HS2 and a Metastore instance to work with. The shell will only accept
- * queries if it has been previously initialized via {@link #start()}, and a session has been opened
- * via {@link #openSession()}. Prior to calling {@link #start()}, the shell should first be
- * configured with props that apply across all test cases by calling {@link
- * #setHiveConfValue(String, String)} ()}. On the other hand, session-level conf can be applied
- * anytime via {@link #setHiveSessionValue(String, String)} ()}, once we've opened an active
- * session.
+ * <p>所属模块：iceberg-mr。职责：验证 HiveShell 相关功能，覆盖正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
  */
 public class TestHiveShell {
 
@@ -55,18 +51,21 @@ public class TestHiveShell {
   private HiveSession session;
   private boolean started;
 
+  /** 构造方法：TestHiveShell。 */
   public TestHiveShell() {
     metastore = new TestHiveMetastore();
     hs2Conf = initializeConf();
     hs2 = new HiveServer2();
   }
 
+  /** 辅助方法：集合Hive配置值。 */
   public void setHiveConfValue(String key, String value) {
     Preconditions.checkState(
         !started, "TestHiveShell has already been started. Cannot set Hive conf anymore.");
     hs2Conf.verifyAndSet(key, value);
   }
 
+  /** 辅助方法：集合Hive会话值。 */
   public void setHiveSessionValue(String key, String value) {
     Preconditions.checkState(session != null, "There is no open session for setting variables.");
     try {
@@ -76,10 +75,12 @@ public class TestHiveShell {
     }
   }
 
+  /** 辅助方法：集合Hive会话值。 */
   public void setHiveSessionValue(String key, boolean value) {
     setHiveSessionValue(key, Boolean.toString(value));
   }
 
+  /** 辅助方法：启动。 */
   public void start() {
     // Create a copy of the HiveConf for the metastore
     metastore.start(new HiveConf(hs2Conf), 10);
@@ -104,6 +105,7 @@ public class TestHiveShell {
     started = true;
   }
 
+  /** 辅助方法：停止。 */
   public void stop() throws Exception {
     if (client != null) {
       client.stop();
@@ -113,10 +115,12 @@ public class TestHiveShell {
     started = false;
   }
 
+  /** 辅助方法：元存储。 */
   public TestHiveMetastore metastore() {
     return metastore;
   }
 
+  /** 辅助方法：open会话。 */
   public void openSession() {
     Preconditions.checkState(
         started, "You have to start TestHiveShell first, before opening a session.");
@@ -131,6 +135,7 @@ public class TestHiveShell {
     }
   }
 
+  /** 辅助方法：close会话。 */
   public void closeSession() {
     Preconditions.checkState(session != null, "There is no open session to be closed.");
     try {
@@ -141,6 +146,7 @@ public class TestHiveShell {
     }
   }
 
+  /** 辅助方法：执行语句。 */
   public List<Object[]> executeStatement(String statement) {
     Preconditions.checkState(
         session != null,
@@ -165,6 +171,7 @@ public class TestHiveShell {
     }
   }
 
+  /** 辅助方法：获取Hive配置。 */
   public Configuration getHiveConf() {
     if (session != null) {
       return session.getHiveConf();
@@ -173,6 +180,7 @@ public class TestHiveShell {
     }
   }
 
+  /** 辅助方法：initialize配置。 */
   private HiveConf initializeConf() {
     HiveConf hiveConf = new HiveConf();
 

@@ -38,6 +38,15 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：批式数据读取器，读取数据文件并输出列式 ColumnarBatch。
+ *
+ * <p>设计意图：基于向量化读取器实现批量读取，提升吞吐。
+ *
+ * <p>上下游关系：由 SparkColumnarReaderFactory 创建；继承 BaseBatchReader。
+ */
 class BatchDataReader extends BaseBatchReader<FileScanTask>
     implements PartitionReader<ColumnarBatch> {
 
@@ -67,19 +76,19 @@ class BatchDataReader extends BaseBatchReader<FileScanTask>
     numSplits = taskGroup.tasks().size();
     LOG.debug("Reading {} file split(s) for table {}", numSplits, table.name());
   }
-
+  /** 执行 currentMetricsValues 相关操作。 */
   @Override
   public CustomTaskMetric[] currentMetricsValues() {
     return new CustomTaskMetric[] {
       new TaskNumSplits(numSplits), new TaskNumDeletes(counter().get())
     };
   }
-
+  /** 执行 referencedFiles 相关操作。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(FileScanTask task) {
     return Stream.concat(Stream.of(task.file()), task.deletes().stream());
   }
-
+  /** 打开资源。 */
   @Override
   protected CloseableIterator<ColumnarBatch> open(FileScanTask task) {
     String filePath = task.file().path().toString();

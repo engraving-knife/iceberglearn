@@ -46,19 +46,46 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.math.LongMath;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 表扫描任务相关静态工具方法集合。
+ *
+ * <p>所属模块：iceberg-core（util 子包）。职责：提供扫描任务的切分（split）、合并（merge）、 分组（combine）与 delete 文件匹配等通用能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>切分大文件：按目标 split 大小把 {@link SplittableScanTask} 切成多个子任务，最小 16MB。
+ *   <li>合并小任务：把同分区的小 {@link MergeableScanTask} 合并为一个 {@link ScanTaskGroup}，减少任务调度开销。
+ *   <li>delete 匹配：把 equality/position delete 文件与对应数据文件关联。
+ *   <li>无状态工具类：构造函数私有。
+ * </ul>
+ *
+ * <p>上下游关系：被各引擎的扫描计划层调用；依赖 {@link FileScanTask}、{@link ContentFile} 等。
+ */
 public class TableScanUtil {
 
   private static final long MIN_SPLIT_SIZE = 16 * 1024 * 1024; // 16 MB
 
+  /** 私有构造：工具类禁止实例化。 */
   private TableScanUtil() {}
 
+  /**
+   * 判断组合扫描任务中是否包含 delete 文件。
+   *
+   * @param task 组合扫描任务
+   * @return true 表示任一文件任务包含 delete 文件
+   */
   public static boolean hasDeletes(CombinedScanTask task) {
     return task.files().stream().anyMatch(TableScanUtil::hasDeletes);
   }
 
   /**
-   * This is temporarily introduced since we plan to support pos-delete vectorized read first, then
-   * get to the equality-delete support. We will remove this method once both are supported.
+   * 判断组合扫描任务中是否包含 equality delete 文件。
+   *
+   * <p>临时方法：在 equality delete 向量化读取完全实现前用于判断是否需要回退到非向量化读取。
+   *
+   * @param task 组合扫描任务
+   * @return true 表示任一文件任务包含 equality delete 文件
    */
   public static boolean hasEqDeletes(CombinedScanTask task) {
     return task.files().stream()
@@ -69,10 +96,23 @@ public class TableScanUtil {
                         deleteFile -> deleteFile.content().equals(FileContent.EQUALITY_DELETES)));
   }
 
+  /**
+   * 判断文件扫描任务是否包含 delete 文件。
+   *
+   * @param task 文件扫描任务
+   * @return true 表示该任务有 delete 文件
+   */
   public static boolean hasDeletes(FileScanTask task) {
     return !task.deletes().isEmpty();
   }
 
+  /**
+   * 按目标 split 大小切分文件扫描任务。
+   *
+   * @param tasks 待切分的文件扫描任务
+   * @param splitSize 目标 split 大小（字节）
+   * @return 切分后的文件扫描任务迭代器
+   */
   public static CloseableIterable<FileScanTask> splitFiles(
       CloseableIterable<FileScanTask> tasks, long splitSize) {
     Preconditions.checkArgument(splitSize > 0, "Split size must be > 0: %s", splitSize);
@@ -83,6 +123,17 @@ public class TableScanUtil {
     return CloseableIterable.combine(splitTasks, tasks);
   }
 
+  /**
+   * 基于切分后的文件任务规划组合扫描任务（bin-packing）。
+   *
+   * <p>权重函数考虑数据文件和 delete 文件的大小，避免因 delete 文件过小导致装箱不均衡。
+   *
+   * @param splitFiles 已切分的文件扫描任务
+   * @param splitSize 目标 split 大小
+   * @param lookback 装箱回溯窗口大小
+   * @param openFileCost 每个文件的打开成本（字节）
+   * @return 组合扫描任务迭代器
+   */
   public static CloseableIterable<CombinedScanTask> planTasks(
       CloseableIterable<FileScanTask> splitFiles, long splitSize, int lookback, long openFileCost) {
 
@@ -188,6 +239,14 @@ public class TableScanUtil {
     return taskGroups;
   }
 
+  /**
+   * 把分区值投影为 grouping key 值。
+   *
+   * @param groupingKeyProjection 分区到 grouping key 的投影
+   * @param groupingKeyType grouping key 类型
+   * @param partition 分区值
+   * @return 投影后的 grouping key
+   */
   private static StructLike projectGroupingKey(
       StructProjection groupingKeyProjection,
       Types.StructType groupingKeyType,
@@ -250,6 +309,16 @@ public class TableScanUtil {
     return mergedTasks;
   }
 
+  /**
+   * 根据扫描总大小与并行度调整 split 大小。
+   *
+   * <p>若配置的 splitSize 产生的 split 数不足以填满并行度，则适当缩小 split 大小 （但不低于 16MB），以提高并行度。
+   *
+   * @param scanSize 扫描总大小（字节）
+   * @param parallelism 目标并行度
+   * @param splitSize 配置的 split 大小
+   * @return 调整后的 split 大小
+   */
   public static long adjustSplitSize(long scanSize, int parallelism, long splitSize) {
     // use the configured split size if it produces at least one split per slot
     // otherwise, adjust the split size to target parallelism with a reasonable minimum
@@ -259,6 +328,13 @@ public class TableScanUtil {
     return splitCount < parallelism ? adjustedSplitSize : splitSize;
   }
 
+  /**
+   * 校验任务规划参数的合法性。
+   *
+   * @param splitSize split 大小，必须大于 0
+   * @param lookback 回溯窗口，必须大于 0
+   * @param openFileCost 文件打开成本，必须大于等于 0
+   */
   private static void validatePlanningArguments(long splitSize, int lookback, long openFileCost) {
     Preconditions.checkArgument(splitSize > 0, "Split size must be > 0: %s", splitSize);
     Preconditions.checkArgument(lookback > 0, "Split planning lookback must be > 0: %s", lookback);

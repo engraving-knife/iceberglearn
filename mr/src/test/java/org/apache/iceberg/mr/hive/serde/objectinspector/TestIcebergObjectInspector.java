@@ -34,6 +34,13 @@ import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestIcebergObjectInspector 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestIcebergObjectInspector 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIcebergObjectInspector {
 
   private final Schema schema =
@@ -70,6 +77,11 @@ public class TestIcebergObjectInspector {
               "struct comment"),
           required(21, "time_field", Types.TimeType.get(), "time comment"));
 
+  /**
+   * 测试场景：Iceberg Object Inspector。
+   *
+   * <p>验证该方法在 Iceberg Object Inspector 条件下的行为是否符合预期。
+   */
   @SuppressWarnings("MethodLength")
   @Test
   public void testIcebergObjectInspector() {
@@ -235,17 +247,20 @@ public class TestIcebergObjectInspector {
     Assert.assertEquals(IcebergTimeObjectInspector.get(), timeField.getFieldObjectInspector());
   }
 
+  /** 辅助方法：getPrimitiveObjectInspector。 */
   private static ObjectInspector getPrimitiveObjectInspector(Class<?> clazz) {
     PrimitiveTypeInfo typeInfo =
         (PrimitiveTypeInfo) TypeInfoFactory.getPrimitiveTypeInfoFromJavaPrimitive(clazz);
     return PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector(typeInfo);
   }
 
+  /** 辅助方法：getListObjectInspector。 */
   private static ObjectInspector getListObjectInspector(Class<?> clazz) {
     return ObjectInspectorFactory.getStandardListObjectInspector(
         getPrimitiveObjectInspector(clazz));
   }
 
+  /** 辅助方法：getMapObjectInspector。 */
   private static ObjectInspector getMapObjectInspector(Class<?> keyClazz, Class<?> valueClazz) {
     return ObjectInspectorFactory.getStandardMapObjectInspector(
         getPrimitiveObjectInspector(keyClazz), getPrimitiveObjectInspector(valueClazz));

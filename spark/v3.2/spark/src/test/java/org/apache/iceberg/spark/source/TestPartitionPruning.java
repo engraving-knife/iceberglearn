@@ -68,12 +68,20 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestPartitionPruning 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 分区pruning 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestPartitionPruning {
 
   private static final Configuration CONF = new Configuration();
   private static final HadoopTables TABLES = new HadoopTables(CONF);
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -88,6 +96,7 @@ public class TestPartitionPruning {
   private final String format;
   private final boolean vectorized;
 
+  /** 测试分区pruning。 */
   public TestPartitionPruning(String format, boolean vectorized) {
     this.format = format;
     this.vectorized = vectorized;
@@ -103,6 +112,7 @@ public class TestPartitionPruning {
   private static Transform<Object, Integer> hourTransform =
       Transforms.hour(Types.TimestampType.withoutZone());
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestPartitionPruning.spark = SparkSession.builder().master("local[2]").getOrCreate();
@@ -129,6 +139,7 @@ public class TestPartitionPruning {
             DataTypes.IntegerType);
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestPartitionPruning.spark;
@@ -157,6 +168,7 @@ public class TestPartitionPruning {
           LogMessage.warn("2020-02-04", "warn event 1", getInstant("2020-02-04T02:00:00")),
           LogMessage.debug("2020-02-04", "debug event 5", getInstant("2020-02-04T03:00:00")));
 
+  /** 获取instant。 */
   private static Instant getInstant(String timestampWithoutZone) {
     Long epochMicros =
         (Long) Literal.of(timestampWithoutZone).to(Types.TimestampType.withoutZone()).value();
@@ -174,6 +186,7 @@ public class TestPartitionPruning {
           .hour("timestamp")
           .build();
 
+  /** 测试分区pruning恒等字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionPruningIdentityString() {
     String filterCond = "date >= '2020-02-03' AND level = 'DEBUG'";
@@ -187,6 +200,7 @@ public class TestPartitionPruning {
     runTest(filterCond, partCondition);
   }
 
+  /** 测试分区pruningbucketing整数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionPruningBucketingInteger() {
     final int[] ids = new int[] {LOGS.get(3).getId(), LOGS.get(7).getId()};
@@ -204,6 +218,7 @@ public class TestPartitionPruning {
     runTest(filterCond, partCondition);
   }
 
+  /** 测试分区pruningtruncated字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionPruningTruncatedString() {
     String filterCond = "message like 'info event%'";
@@ -216,6 +231,7 @@ public class TestPartitionPruning {
     runTest(filterCond, partCondition);
   }
 
+  /** 测试分区pruningtruncated字符串comparing值shorterthan分区值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionPruningTruncatedStringComparingValueShorterThanPartitionValue() {
     String filterCond = "message like 'inf%'";
@@ -228,6 +244,7 @@ public class TestPartitionPruning {
     runTest(filterCond, partCondition);
   }
 
+  /** 测试分区pruninghourly分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionPruningHourlyPartition() {
     String filterCond;
@@ -250,6 +267,7 @@ public class TestPartitionPruning {
     runTest(filterCond, partCondition);
   }
 
+  /** run测试。 */
   private void runTest(String filterCond, Predicate<Row> partCondition) {
     File originTableLocation = createTempDir();
     Assert.assertTrue("Temp folder should exist", originTableLocation.exists());
@@ -285,6 +303,7 @@ public class TestPartitionPruning {
     assertAccessOnDataFiles(originTableLocation, table, partCondition);
   }
 
+  /** 创建tempdir。 */
   private File createTempDir() {
     try {
       return temp.newFolder();
@@ -293,12 +312,14 @@ public class TestPartitionPruning {
     }
   }
 
+  /** 创建表。 */
   private Table createTable(File originTableLocation) {
     String trackedTableLocation = CountOpenLocalFileSystem.convertPath(originTableLocation);
     Map<String, String> properties = ImmutableMap.of(TableProperties.DEFAULT_FILE_FORMAT, format);
     return TABLES.create(LOG_SCHEMA, spec, properties, trackedTableLocation);
   }
 
+  /** 创建测试dataset。 */
   private Dataset<Row> createTestDataset() {
     List<InternalRow> rows =
         LOGS.stream()
@@ -334,6 +355,7 @@ public class TestPartitionPruning {
             "hour(timestamp) AS ts_hour");
   }
 
+  /** 保存测试dataset到表。 */
   private void saveTestDatasetToTable(Dataset<Row> logs, Table table) {
     logs.orderBy("date", "level", "bucket_id", "truncated_message", "ts_hour")
         .select("id", "date", "level", "message", "timestamp")
@@ -343,6 +365,7 @@ public class TestPartitionPruning {
         .save(table.location());
   }
 
+  /** 断言access上数据文件。 */
   private void assertAccessOnDataFiles(
       File originTableLocation, Table table, Predicate<Row> partCondition) {
     // only use files in current table location to avoid side-effects on concurrent test runs
@@ -383,6 +406,7 @@ public class TestPartitionPruning {
         Sets.intersection(filesToNotRead, readFilesInQuery).isEmpty());
   }
 
+  /** extract文件路径matchingcondition上分区。 */
   private Set<String> extractFilePathsMatchingConditionOnPartition(
       List<Row> files, Predicate<Row> condition) {
     // idx 1: file_path, idx 3: partition
@@ -396,6 +420,7 @@ public class TestPartitionPruning {
         .collect(Collectors.toSet());
   }
 
+  /** extract文件路径非在。 */
   private Set<String> extractFilePathsNotIn(List<Row> files, Set<String> filePaths) {
     Set<String> allFilePaths =
         files.stream()

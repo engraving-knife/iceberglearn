@@ -40,6 +40,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：TestSnapshotUtil，用于验证 Snapshot Util 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Snapshot Util 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestSnapshotUtil {
   @TempDir private File tableDir;
   // Schema passed to create tables
@@ -69,15 +77,18 @@ public class TestSnapshotUtil {
   private long snapshotFork1Id;
   private long snapshotFork2Id;
 
+  /** 辅助方法：append file to。 */
   private Snapshot appendFileTo(String branch) {
     table.newFastAppend().appendFile(FILE_A).toBranch(branch).commit();
     return table.snapshot(branch);
   }
 
+  /** 辅助方法：append file to main。 */
   private Snapshot appendFileToMain() {
     return appendFileTo(SnapshotRef.MAIN_BRANCH);
   }
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() throws Exception {
     tableDir.delete(); // created by table create
@@ -106,11 +117,17 @@ public class TestSnapshotUtil {
     table.expireSnapshots().expireSnapshotId(snapshotFork0Id).commit();
   }
 
+  /** 辅助方法：cleanup tables。 */
   @AfterEach
   public void cleanupTables() {
     TestTables.clearTables();
   }
 
+  /**
+   * 测试场景：is parent ancestor of。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void isParentAncestorOf() {
     assertThat(SnapshotUtil.isParentAncestorOf(table, snapshotMain1Id, snapshotBaseId)).isTrue();
@@ -118,6 +135,11 @@ public class TestSnapshotUtil {
     assertThat(SnapshotUtil.isParentAncestorOf(table, snapshotFork2Id, snapshotFork0Id)).isTrue();
   }
 
+  /**
+   * 测试场景：is ancestor of。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void isAncestorOf() {
     assertThat(SnapshotUtil.isAncestorOf(table, snapshotMain1Id, snapshotBaseId)).isTrue();
@@ -128,6 +150,11 @@ public class TestSnapshotUtil {
     assertThat(SnapshotUtil.isAncestorOf(table, snapshotBranchId)).isFalse();
   }
 
+  /**
+   * 测试场景：current ancestors。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void currentAncestors() {
     Iterable<Snapshot> snapshots = SnapshotUtil.currentAncestors(table);
@@ -138,6 +165,11 @@ public class TestSnapshotUtil {
         .isEqualTo(new Long[] {snapshotMain2Id, snapshotMain1Id, snapshotBaseId});
   }
 
+  /**
+   * 测试场景：oldest ancestor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void oldestAncestor() {
     Snapshot snapshot = SnapshotUtil.oldestAncestor(table);
@@ -150,6 +182,11 @@ public class TestSnapshotUtil {
     assertThat(snapshot.snapshotId()).isEqualTo(snapshotMain1Id);
   }
 
+  /**
+   * 测试场景：snapshots between。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void snapshotsBetween() {
     List<Long> snapshotIdsBetween =
@@ -166,6 +203,11 @@ public class TestSnapshotUtil {
         new long[] {snapshotMain2Id, snapshotMain1Id, snapshotBaseId}, ancestorsBetween);
   }
 
+  /**
+   * 测试场景：ancestors of。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void ancestorsOf() {
     Iterable<Snapshot> snapshots = SnapshotUtil.ancestorsOf(snapshotFork2Id, table::snapshot);
@@ -180,6 +222,7 @@ public class TestSnapshotUtil {
     Assertions.assertThat(snapshotIter).isExhausted();
   }
 
+  /** 辅助方法：expected snapshots。 */
   private void expectedSnapshots(long[] snapshotIdExpected, Iterable<Snapshot> snapshotsActual) {
     long[] actualSnapshots =
         StreamSupport.stream(snapshotsActual.spliterator(), false)

@@ -24,6 +24,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 SparkCatalogTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark目录 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class SparkCatalogTestBase extends SparkTestBaseWithCatalog {
 
@@ -51,10 +58,12 @@ public abstract class SparkCatalogTestBase extends SparkTestBaseWithCatalog {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** Spark目录测试基类。 */
   public SparkCatalogTestBase(SparkCatalogConfig config) {
     super(config);
   }
 
+  /** Spark目录测试基类。 */
   public SparkCatalogTestBase(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);

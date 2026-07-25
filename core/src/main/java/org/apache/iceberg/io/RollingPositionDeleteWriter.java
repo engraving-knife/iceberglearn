@@ -29,8 +29,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.util.CharSequenceSet;
 
 /**
- * A rolling position delete writer that splits incoming deletes into multiple files within one
- * spec/partition based on the target file size.
+ * 文件级说明：position-delete 滚动写入器。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：继承 {@link RollingFileWriter}，在单个 spec/partition 内按目标文件大小滚动写入 position-delete 记录（数据文件路径 +
+ * 行号），产出多个 {@link DeleteFile} 及被引用数据文件集合。
+ *
+ * <p>设计意图：position-delete 通过"文件路径 + 行号"定位被删行，因此需要收集被引用的数据文件路径 （referencedDataFiles），供提交时用于 CDC
+ * 等场景。newWriter 委托给 {@link FileWriterFactory#newPositionDeleteWriter}。
+ *
+ * <p>上下游关系：由 {@link ClusteredPositionDeleteWriter} 和 {@link FanoutPositionOnlyDeleteWriter}
+ * 作为单分区写入单元创建；内部使用 {@link PositionDeleteWriter}。
+ *
+ * @param <T> 行记录类型
  */
 public class RollingPositionDeleteWriter<T>
     extends RollingFileWriter<PositionDelete<T>, PositionDeleteWriter<T>, DeleteWriteResult> {
@@ -39,6 +51,16 @@ public class RollingPositionDeleteWriter<T>
   private final List<DeleteFile> deleteFiles;
   private final CharSequenceSet referencedDataFiles;
 
+  /**
+   * 构造 position-delete 滚动写入器并立即打开第一个文件。
+   *
+   * @param writerFactory 写入器工厂
+   * @param fileFactory 输出文件工厂
+   * @param io FileIO 实例
+   * @param targetFileSizeInBytes 目标文件大小
+   * @param spec 分区规格
+   * @param partition 分区值
+   */
   public RollingPositionDeleteWriter(
       FileWriterFactory<T> writerFactory,
       OutputFileFactory fileFactory,
@@ -53,17 +75,20 @@ public class RollingPositionDeleteWriter<T>
     openCurrentWriter();
   }
 
+  /** 通过工厂创建 position-delete 写入器。 */
   @Override
   protected PositionDeleteWriter<T> newWriter(EncryptedOutputFile file) {
     return writerFactory.newPositionDeleteWriter(file, spec(), partition());
   }
 
+  /** 将删除文件和被引用数据文件路径加入聚合集合。 */
   @Override
   protected void addResult(DeleteWriteResult result) {
     deleteFiles.addAll(result.deleteFiles());
     referencedDataFiles.addAll(result.referencedDataFiles());
   }
 
+  /** 返回包含删除文件和被引用数据文件的聚合结果。 */
   @Override
   protected DeleteWriteResult aggregatedResult() {
     return new DeleteWriteResult(deleteFiles, referencedDataFiles);

@@ -70,6 +70,15 @@ import org.apache.spark.sql.sources.Not;
 import org.apache.spark.sql.sources.Or;
 import org.apache.spark.sql.sources.StringStartsWith;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 谓词过滤器转换工具（基于 DataSource V1 Filter），将 Spark Filter 转换为 Iceberg Expression。
+ *
+ * <p>设计意图：用于在旧版数据源 API 下推过滤条件到 Iceberg 扫描。
+ *
+ * <p>上下游关系：由 SparkScanBuilder / 各 Reader 使用。
+ */
 public class SparkFilters {
 
   private static final Pattern BACKTICKS_PATTERN = Pattern.compile("([`])(.|$)");
@@ -96,7 +105,7 @@ public class SparkFilters {
           .put(Not.class, Operation.NOT)
           .put(StringStartsWith.class, Operation.STARTS_WITH)
           .buildOrThrow();
-
+  /** 执行类型/值转换。 */
   public static Expression convert(Filter[] filters) {
     Expression expression = Expressions.alwaysTrue();
     for (Filter filter : filters) {
@@ -107,7 +116,7 @@ public class SparkFilters {
     }
     return expression;
   }
-
+  /** 执行类型/值转换。 */
   public static Expression convert(Filter filter) {
     // avoid using a chain of if instanceof statements by mapping to the expression enum.
     Operation op = FILTERS.get(filter.getClass());
@@ -225,7 +234,7 @@ public class SparkFilters {
 
     return null;
   }
-
+  /** 执行 convertLiteral 相关操作。 */
   private static Object convertLiteral(Object value) {
     if (value instanceof Timestamp) {
       return DateTimeUtils.fromJavaTimestamp((Timestamp) value);
@@ -240,7 +249,7 @@ public class SparkFilters {
     }
     return value;
   }
-
+  /** 执行 handleEqual 相关操作。 */
   private static Expression handleEqual(String attribute, Object value) {
     if (NaNUtil.isNaN(value)) {
       return isNaN(attribute);
@@ -248,12 +257,12 @@ public class SparkFilters {
       return equal(attribute, convertLiteral(value));
     }
   }
-
+  /** 执行 unquote 相关操作。 */
   private static String unquote(String attributeName) {
     Matcher matcher = BACKTICKS_PATTERN.matcher(attributeName);
     return matcher.replaceAll("$2");
   }
-
+  /** 判断是否存在 NoInFilter。 */
   private static boolean hasNoInFilter(Filter filter) {
     Operation op = FILTERS.get(filter.getClass());
 

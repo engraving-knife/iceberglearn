@@ -39,9 +39,17 @@ import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestFlinkOrcReaderWriter 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkOrcReaderWriter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkOrcReaderWriter extends DataTest {
   private static final int NUM_RECORDS = 100;
 
+  /** 辅助方法：writeAndValidate，write And Validate。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     RowType flinkSchema = FlinkSchemaUtil.convert(schema);

@@ -72,17 +72,26 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestDataFrameWrites 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 数据frame写 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestDataFrameWrites extends AvroDataTest {
   private static final Configuration CONF = new Configuration();
 
   private final String format;
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}")
   public static Object[] parameters() {
     return new Object[] {"parquet", "avro", "orc"};
   }
 
+  /** 测试数据frame写。 */
   public TestDataFrameWrites(String format) {
     this.format = format;
   }
@@ -123,12 +132,14 @@ public class TestDataFrameWrites extends AvroDataTest {
           "{\"optionalField\": \"d3\", \"requiredField\": \"bid_103\"}",
           "{\"optionalField\": \"d4\", \"requiredField\": \"bid_104\"}");
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestDataFrameWrites.spark = SparkSession.builder().master("local[2]").getOrCreate();
     TestDataFrameWrites.sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestDataFrameWrites.spark;
@@ -137,6 +148,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     currentSpark.stop();
   }
 
+  /** 写与校验。 */
   @Override
   protected void writeAndValidate(Schema schema) throws IOException {
     File location = createTableFolder();
@@ -144,6 +156,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     writeAndValidateWithLocations(table, location, new File(location, "data"));
   }
 
+  /** 测试写带自定义数据路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWriteWithCustomDataLocation() throws IOException {
     File location = createTableFolder();
@@ -156,6 +169,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     writeAndValidateWithLocations(table, location, tablePropertyDataLocation);
   }
 
+  /** 创建表folder。 */
   private File createTableFolder() throws IOException {
     File parent = temp.newFolder("parquet");
     File location = new File(parent, "test");
@@ -163,11 +177,13 @@ public class TestDataFrameWrites extends AvroDataTest {
     return location;
   }
 
+  /** 创建表。 */
   private Table createTable(Schema schema, File location) {
     HadoopTables tables = new HadoopTables(CONF);
     return tables.create(schema, PartitionSpec.unpartitioned(), location.toString());
   }
 
+  /** 写与校验带路径。 */
   private void writeAndValidateWithLocations(Table table, File location, File expectedDataDir)
       throws IOException {
     Schema tableSchema = table.schema(); // use the table schema because ids are reassigned
@@ -203,12 +219,14 @@ public class TestDataFrameWrites extends AvroDataTest {
                         .startsWith(expectedDataDir.getAbsolutePath())));
   }
 
+  /** 读表。 */
   private List<Row> readTable(String location) {
     Dataset<Row> result = spark.read().format("iceberg").load(location);
 
     return result.collectAsList();
   }
 
+  /** 写数据。 */
   private void writeData(Iterable<Record> records, Schema schema, String location)
       throws IOException {
     Dataset<Row> df = createDataset(records, schema);
@@ -216,6 +234,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     writer.save(location);
   }
 
+  /** 写数据带fail上分区。 */
   private void writeDataWithFailOnPartition(
       Iterable<Record> records, Schema schema, String location) throws IOException, SparkException {
     final int numPartitions = 10;
@@ -244,6 +263,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     writer.save(location);
   }
 
+  /** 创建dataset。 */
   private Dataset<Row> createDataset(Iterable<Record> records, Schema schema) throws IOException {
     // this uses the SparkAvroReader to create a DataFrame from the list of records
     // it assumes that SparkAvroReader is correct
@@ -280,6 +300,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     return spark.internalCreateDataFrame(JavaRDD.toRDD(rdd), convert(schema), false);
   }
 
+  /** 测试可空带写选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullableWithWriteOption() throws IOException {
     Assume.assumeTrue(
@@ -333,6 +354,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     Assert.assertEquals("Should contain 6 rows", 6, rows.size());
   }
 
+  /** 测试可空带SparkSQL选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullableWithSparkSqlOption() throws IOException {
     Assume.assumeTrue(
@@ -392,6 +414,7 @@ public class TestDataFrameWrites extends AvroDataTest {
     Assert.assertEquals("Should contain 6 rows", 6, rows.size());
   }
 
+  /** 测试faulttolerance上写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFaultToleranceOnWrite() throws IOException {
     File location = createTableFolder();

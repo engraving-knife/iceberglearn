@@ -28,6 +28,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 FastForwardBranchProcedure。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
+ */
 public class FastForwardBranchProcedure extends BaseProcedure {
 
   private static final ProcedureParameter[] PARAMETERS =
@@ -45,29 +52,49 @@ public class FastForwardBranchProcedure extends BaseProcedure {
             new StructField("updated_ref", DataTypes.LongType, false, Metadata.empty())
           });
 
+  /** 构造并返回目标对象。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new Builder<FastForwardBranchProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected FastForwardBranchProcedure doBuild() {
+        /** 执行该方法的具体逻辑。 */
         return new FastForwardBranchProcedure(tableCatalog());
       }
     };
   }
 
+  /** 构造 FastForwardBranchProcedure 实例。 */
   private FastForwardBranchProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -87,6 +114,11 @@ public class FastForwardBranchProcedure extends BaseProcedure {
         });
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "FastForwardBranchProcedure";

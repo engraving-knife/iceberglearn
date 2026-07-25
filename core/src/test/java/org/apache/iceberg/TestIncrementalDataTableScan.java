@@ -38,22 +38,38 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestIncrementalDataTableScan，用于验证 Incremental Data Table Scan 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Incremental Data Table Scan
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestIncrementalDataTableScan extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：incremental data table scan。 */
   public TestIncrementalDataTableScan(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setup table properties。 */
   @Before
   public void setupTableProperties() {
     table.updateProperties().set(TableProperties.MANIFEST_MIN_MERGE_COUNT, "3").commit();
   }
 
+  /**
+   * 测试场景：invalid scans。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInvalidScans() {
     add(table.newAppend(), files("A"));
@@ -73,6 +89,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
         .hasMessage("to snapshot id 3 not in existing snapshot ids range (1, 2]");
   }
 
+  /**
+   * 测试场景：appends。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppends() {
     add(table.newAppend(), files("A")); // 1
@@ -85,11 +106,13 @@ public class TestIncrementalDataTableScan extends TableTestBase {
 
       IncrementalScanEvent lastEvent = null;
 
+      /** 辅助方法：notify。 */
       @Override
       public void notify(IncrementalScanEvent event) {
         this.lastEvent = event;
       }
 
+      /** 辅助方法：event。 */
       public IncrementalScanEvent event() {
         return lastEvent;
       }
@@ -109,6 +132,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     Assert.assertEquals(false, listener1.event().isFromSnapshotInclusive());
   }
 
+  /**
+   * 测试场景：replace overwrites deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceOverwritesDeletes() {
     add(table.newAppend(), files("A")); // 1
@@ -141,6 +169,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
             "Found overwrite operation, cannot support incremental data in snapshots (8, 9]");
   }
 
+  /**
+   * 测试场景：transactions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTransactions() {
     Transaction transaction = table.newTransaction();
@@ -178,6 +211,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     filesMatch(Lists.newArrayList("I"), appendsBetweenScan(7, 8));
   }
 
+  /**
+   * 测试场景：rollbacks。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRollbacks() {
     add(table.newAppend(), files("A")); // 1
@@ -201,6 +239,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     filesMatch(Lists.newArrayList("B", "D", "E"), appendsAfterScan(1));
   }
 
+  /**
+   * 测试场景：ignore residuals。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testIgnoreResiduals() throws IOException {
     add(table.newAppend(), files("A"));
@@ -235,6 +278,11 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     }
   }
 
+  /**
+   * 测试场景：plan with executor。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPlanWithExecutor() throws IOException {
     add(table.newAppend(), files("A"));
@@ -260,6 +308,7 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     Assert.assertTrue("Thread should be created in provided pool", planThreadsIndex.get() > 0);
   }
 
+  /** 辅助方法：file。 */
   private static DataFile file(String name) {
     return DataFiles.builder(SPEC)
         .withPath(name + ".parquet")
@@ -269,6 +318,7 @@ public class TestIncrementalDataTableScan extends TableTestBase {
         .build();
   }
 
+  /** 辅助方法：add。 */
   private static void add(AppendFiles appendFiles, List<DataFile> adds) {
     for (DataFile f : adds) {
       appendFiles.appendFile(f);
@@ -276,6 +326,7 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     appendFiles.commit();
   }
 
+  /** 辅助方法：delete。 */
   private static void delete(DeleteFiles deleteFiles, List<DataFile> deletes) {
     for (DataFile f : deletes) {
       deleteFiles.deleteFile(f);
@@ -283,12 +334,14 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     deleteFiles.commit();
   }
 
+  /** 辅助方法：replace。 */
   private static void replace(
       RewriteFiles rewriteFiles, List<DataFile> deletes, List<DataFile> adds) {
     rewriteFiles.rewriteFiles(Sets.newHashSet(deletes), Sets.newHashSet(adds));
     rewriteFiles.commit();
   }
 
+  /** 辅助方法：overwrite。 */
   private static void overwrite(
       OverwriteFiles overwriteFiles, List<DataFile> adds, List<DataFile> deletes) {
     for (DataFile f : adds) {
@@ -300,15 +353,18 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     overwriteFiles.commit();
   }
 
+  /** 辅助方法：files。 */
   private static List<DataFile> files(String... names) {
     return Lists.transform(Lists.newArrayList(names), TestIncrementalDataTableScan::file);
   }
 
+  /** 辅助方法：appends after scan。 */
   private List<String> appendsAfterScan(long fromSnapshotId) {
     final TableScan appendsAfter = table.newScan().appendsAfter(fromSnapshotId);
     return filesToScan(appendsAfter);
   }
 
+  /** 辅助方法：appends between scan。 */
   private List<String> appendsBetweenScan(long fromSnapshotId, long toSnapshotId) {
     Snapshot s1 = table.snapshot(fromSnapshotId);
     Snapshot s2 = table.snapshot(toSnapshotId);
@@ -316,6 +372,7 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     return filesToScan(appendsBetween);
   }
 
+  /** 辅助方法：files to scan。 */
   private static List<String> filesToScan(TableScan tableScan) {
     Iterable<String> filesToRead =
         Iterables.transform(
@@ -327,6 +384,7 @@ public class TestIncrementalDataTableScan extends TableTestBase {
     return Lists.newArrayList(filesToRead);
   }
 
+  /** 辅助方法：files match。 */
   private static void filesMatch(List<String> expected, List<String> actual) {
     Collections.sort(expected);
     Collections.sort(actual);

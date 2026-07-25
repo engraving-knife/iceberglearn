@@ -21,4 +21,9 @@ package org.apache.iceberg.util;
 import java.io.Serializable;
 import java.util.function.Supplier;
 
+/**
+ * 可序列化的 {@link Supplier}：同时实现 {@link Supplier} 与 {@link Serializable}， 使 Supplier 可以在分布式引擎中序列化传输。
+ *
+ * <p>所属模块：iceberg-core。常用于 lambda 捕获 Hadoop Configuration 等场景。
+ */
 public interface SerializableSupplier<T> extends Supplier<T>, Serializable {}

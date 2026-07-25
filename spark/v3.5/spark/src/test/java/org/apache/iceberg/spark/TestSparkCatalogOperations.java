@@ -32,22 +32,33 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkCatalogOperations 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark目录操作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkCatalogOperations extends SparkCatalogTestBase {
+  /** 测试Spark目录操作。 */
   public TestSparkCatalogOperations(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTable() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试修改表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAlterTable() throws NoSuchTableException {
     BaseCatalog catalog = (BaseCatalog) spark.sessionState().catalogManager().catalog(catalogName);
@@ -79,6 +90,7 @@ public class TestSparkCatalogOperations extends SparkCatalogTestBase {
         table.properties().get(propsKey));
   }
 
+  /** 测试invalidate表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidateTable() {
     // load table to CachingCatalog

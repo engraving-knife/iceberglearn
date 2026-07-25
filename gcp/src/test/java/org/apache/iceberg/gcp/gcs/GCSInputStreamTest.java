@@ -37,6 +37,13 @@ import org.apache.iceberg.metrics.MetricsContext;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 GCSInputStreamTest 的功能。
+ *
+ * <p>所属模块：iceberg-gcp。职责：验证 GCSInputStreamTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class GCSInputStreamTest {
 
   private final Random random = new Random(1);
@@ -44,6 +51,11 @@ public class GCSInputStreamTest {
   private final GCPProperties gcpProperties = new GCPProperties();
   private final Storage storage = LocalStorageHelper.getOptions().getService();
 
+  /**
+   * 测试场景：Read。
+   *
+   * <p>验证该方法在 Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRead() throws Exception {
     BlobId uri = BlobId.fromGsUtilUri("gs://bucket/path/to/read.dat");
@@ -80,6 +92,11 @@ public class GCSInputStreamTest {
     }
   }
 
+  /**
+   * 测试场景：Read Single。
+   *
+   * <p>验证该方法在 Read Single 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadSingle() throws Exception {
     BlobId uri = BlobId.fromGsUtilUri("gs://bucket/path/to/read.dat");
@@ -96,6 +113,7 @@ public class GCSInputStreamTest {
     }
   }
 
+  /** 辅助方法：readAndCheck。 */
   private void readAndCheck(
       SeekableInputStream in, long rangeStart, int size, byte[] original, boolean buffered)
       throws IOException {
@@ -118,6 +136,11 @@ public class GCSInputStreamTest {
     assertThat(actual).isEqualTo(Arrays.copyOfRange(original, (int) rangeStart, (int) rangeEnd));
   }
 
+  /**
+   * 测试场景：Range Read。
+   *
+   * <p>验证该方法在 Range Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRangeRead() throws Exception {
     BlobId uri = BlobId.fromGsUtilUri("gs://bucket/path/to/read.dat");
@@ -152,6 +175,7 @@ public class GCSInputStreamTest {
     }
   }
 
+  /** 辅助方法：readAndCheckRanges。 */
   private void readAndCheckRanges(
       RangeReadable in, byte[] original, long position, byte[] buffer, int offset, int length)
       throws IOException {
@@ -161,6 +185,11 @@ public class GCSInputStreamTest {
         .isEqualTo(Arrays.copyOfRange(original, offset, offset + length));
   }
 
+  /**
+   * 测试场景：Close。
+   *
+   * <p>验证该方法在 Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testClose() throws Exception {
     BlobId blobId = BlobId.fromGsUtilUri("gs://bucket/path/to/closed.dat");
@@ -170,6 +199,11 @@ public class GCSInputStreamTest {
     assertThatThrownBy(() -> closed.seek(0)).isInstanceOf(IllegalStateException.class);
   }
 
+  /**
+   * 测试场景：Seek。
+   *
+   * <p>验证该方法在 Seek 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeek() throws Exception {
     BlobId blobId = BlobId.fromGsUtilUri("gs://bucket/path/to/seek.dat");
@@ -189,12 +223,14 @@ public class GCSInputStreamTest {
     }
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：writeGCSData。 */
   private void writeGCSData(BlobId blobId, byte[] data) throws IOException {
     storage.createFrom(BlobInfo.newBuilder(blobId).build(), new ByteArrayInputStream(data));
   }

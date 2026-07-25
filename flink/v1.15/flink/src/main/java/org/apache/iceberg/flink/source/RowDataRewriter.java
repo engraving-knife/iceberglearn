@@ -47,6 +47,13 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * RowData 重写工具，支持在 Flink 作业内重新读取与投影数据。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 schema 重新读取已写文件并应用投影/过滤。
+ *
+ * <p>设计意图：工具类；被 actions/rewrite 流程调用。
+ */
 public class RowDataRewriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(RowDataRewriter.class);

@@ -48,6 +48,32 @@ import org.apache.iceberg.relocated.com.google.common.util.concurrent.MoreExecut
 import org.apache.iceberg.relocated.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.iceberg.util.Tasks;
 
+/**
+ * 表迁移工具：把已存在的（非 Iceberg）分区目录中的文件列举为 Iceberg {@link DataFile}， 用于将外部表数据导入 Iceberg 表。
+ *
+ * <p>所属模块：iceberg-data（向 JVM 应用提供基于 {@link Record} 等通用模型的 Iceberg 表读写支持；
+ * 本类专注于“存量数据迁移”场景的文件列举与指标读取）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>按分区目录列举数据文件（过滤隐藏文件），读取每个文件的指标（行数、边界、Null 计数等）。
+ *   <li>支持 Avro/Parquet/ORC 三种格式：Parquet 与 ORC 从 footer 读取完整指标， Avro 仅能取行数（其余为 null）。
+ *   <li>支持按指定线程数并行读取文件指标，加速大分区的迁移列举。
+ *   <li>把文件状态与指标组装为 {@link DataFile}（含分区值、路径、大小、格式、指标）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>迁移场景下文件由外部系统写入，只能从 footer 反推指标；Iceberg 写入器才能产出的 指标（如 NaN 计数）此处无法填充。
+ *   <li>依赖 Hadoop {@link FileSystem} 列目录，复用 {@link HadoopInputFile} 读取文件。
+ *   <li>用 {@link Tasks} 工具做并行与失败重试，线程池在方法结束时关闭。
+ * </ul>
+ *
+ * <p>上下游关系：被表迁移/导入流程（如 {@code SparkTableUtil} 或各引擎的 migrate 操作）调用； 依赖 iceberg-core 的 {@link
+ * DataFiles}、{@link Metrics}、avro/parquet/orc 指标工具与 Hadoop FS。
+ */
 public class TableMigrationUtil {
   private static final PathFilter HIDDEN_PATH_FILTER =
       p -> !p.getName().startsWith("_") && !p.getName().startsWith(".");
@@ -55,22 +81,19 @@ public class TableMigrationUtil {
   private TableMigrationUtil() {}
 
   /**
-   * Returns the data files in a partition by listing the partition location.
+   * 列举分区目录下的数据文件并读取指标，单线程执行（委托给 {@link #listPartition(Map, String, String, PartitionSpec,
+   * Configuration, MetricsConfig, NameMapping, int)}， parallelism=1）。
    *
-   * <p>For Parquet and ORC partitions, this will read metrics from the file footer. For Avro
-   * partitions, metrics other than row count are set to null.
+   * <p>Parquet/ORC 从 footer 读取完整指标；Avro 仅取行数，其余指标为 null。 Iceberg 写入器专属指标（如 NaN 计数）无法从 footer 填充。
    *
-   * <p>Note: certain metrics, like NaN counts, that are only supported by Iceberg file writers but
-   * not file footers, will not be populated.
-   *
-   * @param partition map of column names to column values for the partition
-   * @param uri partition location URI
-   * @param format partition format, avro, parquet or orc
-   * @param spec a partition spec
-   * @param conf a Hadoop conf
-   * @param metricsConfig a metrics conf
-   * @param mapping a name mapping
-   * @return a List of DataFile
+   * @param partition 列名到分区值的映射
+   * @param uri 分区目录 URI
+   * @param format 分区格式（avro/parquet/orc）
+   * @param spec 分区 spec
+   * @param conf Hadoop 配置
+   * @param metricsConfig 指标配置
+   * @param mapping 字段名映射（用于 schema 演进场景）
+   * @return 数据文件列表
    */
   public static List<DataFile> listPartition(
       Map<String, String> partition,
@@ -84,24 +107,30 @@ public class TableMigrationUtil {
   }
 
   /**
-   * Returns the data files in a partition by listing the partition location. Metrics are read from
-   * the files and the file reading is done in parallel by a specified number of threads.
+   * 列举分区目录下的数据文件并读取指标，按指定线程数并行读取文件。
    *
-   * <p>For Parquet and ORC partitions, this will read metrics from the file footer. For Avro
-   * partitions, metrics other than row count are set to null.
+   * <p>逻辑：
    *
-   * <p>Note: certain metrics, like NaN counts, that are only supported by Iceberg file writers but
-   * not file footers, will not be populated.
+   * <ol>
+   *   <li>从 spec 字段名与 partition 映射构造分区值列表。
+   *   <li>用 Hadoop {@link FileSystem} 列出分区目录下非隐藏文件。
+   *   <li>按格式选择指标读取方式（Avro 行数 / Parquet footer / ORC footer）， 通过 {@link Tasks}
+   *       并行执行（parallelism&gt;1 时建线程池）。
+   *   <li>把每个文件状态与指标组装为 {@link DataFile} 并返回。
+   * </ol>
    *
-   * @param partition map of column names to column values for the partition
-   * @param partitionUri partition location URI
-   * @param format partition format, avro, parquet or orc
-   * @param spec a partition spec
-   * @param conf a Hadoop conf
-   * @param metricsSpec a metrics conf
-   * @param mapping a name mapping
-   * @param parallelism number of threads to use for file reading
-   * @return a List of DataFile
+   * <p>Parquet/ORC 从 footer 读取完整指标；Avro 仅取行数。Iceberg 写入器专属指标 （如 NaN 计数）无法从 footer 填充。IO 异常包装为
+   * RuntimeException，线程池在 finally 关闭。
+   *
+   * @param partition 列名到分区值的映射
+   * @param partitionUri 分区目录 URI
+   * @param format 分区格式（avro/parquet/orc）
+   * @param spec 分区 spec
+   * @param conf Hadoop 配置
+   * @param metricsSpec 指标配置
+   * @param mapping 字段名映射
+   * @param parallelism 并行读取的线程数
+   * @return 数据文件列表
    */
   public static List<DataFile> listPartition(
       Map<String, String> partition,
@@ -171,6 +200,13 @@ public class TableMigrationUtil {
     }
   }
 
+  /**
+   * 读取 Avro 文件的指标：仅能取行数，其余指标（边界/Null/NaN 计数等）为 null。
+   *
+   * @param path 文件路径
+   * @param conf Hadoop 配置
+   * @return 仅含行数的 Metrics
+   */
   private static Metrics getAvroMetrics(Path path, Configuration conf) {
     try {
       InputFile file = HadoopInputFile.fromPath(path, conf);
@@ -181,6 +217,15 @@ public class TableMigrationUtil {
     }
   }
 
+  /**
+   * 从 Parquet 文件 footer 读取指标。
+   *
+   * @param path 文件路径
+   * @param conf Hadoop 配置
+   * @param metricsSpec 指标配置
+   * @param mapping 字段名映射
+   * @return 文件指标
+   */
   private static Metrics getParquetMetrics(
       Path path, Configuration conf, MetricsConfig metricsSpec, NameMapping mapping) {
     try {
@@ -191,6 +236,15 @@ public class TableMigrationUtil {
     }
   }
 
+  /**
+   * 从 ORC 文件 footer 读取指标。
+   *
+   * @param path 文件路径
+   * @param conf Hadoop 配置
+   * @param metricsSpec 指标配置
+   * @param mapping 字段名映射
+   * @return 文件指标
+   */
   private static Metrics getOrcMetrics(
       Path path, Configuration conf, MetricsConfig metricsSpec, NameMapping mapping) {
     try {
@@ -200,6 +254,16 @@ public class TableMigrationUtil {
     }
   }
 
+  /**
+   * 把文件状态与指标组装为 Iceberg {@link DataFile}。
+   *
+   * @param stat Hadoop 文件状态（路径、大小）
+   * @param partitionValues 分区值列表
+   * @param spec 分区 spec
+   * @param metrics 文件指标
+   * @param format 文件格式名
+   * @return 构建好的 DataFile
+   */
   private static DataFile buildDataFile(
       FileStatus stat,
       List<String> partitionValues,
@@ -215,6 +279,12 @@ public class TableMigrationUtil {
         .build();
   }
 
+  /**
+   * 创建用于迁移的固定线程池，退出时自动回收线程。
+   *
+   * @param concurrentDeletes 线程数
+   * @return 退出时自动关闭的 ExecutorService
+   */
   private static ExecutorService migrationService(int concurrentDeletes) {
     return MoreExecutors.getExitingExecutorService(
         (ThreadPoolExecutor)

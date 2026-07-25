@@ -44,17 +44,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is the single (non-parallel) monitoring task which takes a {@link FlinkInputFormat}, it is
- * responsible for:
+ * 文件级说明：流式 Iceberg source 的单并行度监控算子。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source 子包）。
+ *
+ * <p>职责：
  *
  * <ol>
- *   <li>Monitoring snapshots of the Iceberg table.
- *   <li>Creating the {@link FlinkInputSplit splits} corresponding to the incremental files
- *   <li>Assigning them to downstream tasks for further processing.
+ *   <li>周期性监控 Iceberg 表的 snapshot。
+ *   <li>把新增的增量文件切分为 {@link FlinkInputSplit}。
+ *   <li>把 split 分发给下游 {@code StreamingReaderOperator}（并行度可大于 1）。
  * </ol>
  *
- * <p>The splits to be read are forwarded to the downstream {@link StreamingReaderOperator} which
- * can have parallelism greater than one.
+ * <p>设计意图：单线程监控避免重复扫描，使用 {@link ListState} 持久化 lastSnapshotId 保证故障恢复后能从上次位置继续；通过 checkpoint lock 保证
+ * emit 与状态更新原子。
+ *
+ * <p>上下游关系：上游为 Iceberg 表的 snapshot，下游为 {@code StreamingReaderOperator}。
  */
 public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit>
     implements CheckpointedFunction {
@@ -68,9 +73,7 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
 
   private volatile boolean isRunning = true;
 
-  // The checkpoint thread is not the same thread that running the function for SourceStreamTask
-  // now. It's necessary to
-  // mark this as volatile.
+  // SourceStreamTask 中 checkpoint 线程与运行线程不同，必须用 volatile 保证可见性。
   private volatile long lastSnapshotId = INIT_LAST_SNAPSHOT_ID;
 
   private transient SourceContext<FlinkInputSplit> sourceContext;
@@ -78,6 +81,12 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
   private transient ListState<Long> lastSnapshotIdState;
   private transient ExecutorService workerPool;
 
+  /**
+   * 构造监控算子，校验流式读取相关参数合法性。
+   *
+   * @param tableLoader 表加载器
+   * @param scanContext 扫描上下文
+   */
   public StreamingMonitorFunction(TableLoader tableLoader, ScanContext scanContext) {
     Preconditions.checkArgument(
         scanContext.snapshotId() == null, "Cannot set snapshot-id option for streaming reader");
@@ -96,6 +105,12 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     this.scanContext = scanContext;
   }
 
+  /**
+   * 打开算子，创建工作线程池。
+   *
+   * <p>逻辑：要求 RuntimeContext 为 StreamingRuntimeContext， 用算子 ID 命名工作池，并发度由
+   * scanContext.planParallelism 决定。
+   */
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
@@ -110,19 +125,30 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
             "iceberg-worker-pool-" + operatorID, scanContext.planParallelism());
   }
 
+  /**
+   * 初始化状态，加载表与 lastSnapshotId。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>打开 tableLoader 并加载表。
+   *   <li>从 Flink 状态恢复 lastSnapshotId（如果是从 checkpoint 恢复）。
+   *   <li>若未恢复且配置了 startTag/startSnapshotId，校验并设置为起始 snapshot。
+   * </ol>
+   */
   @Override
   public void initializeState(FunctionInitializationContext context) throws Exception {
-    // Load iceberg table from table loader.
+    // 通过 tableLoader 加载 Iceberg 表
     tableLoader.open();
     table = tableLoader.loadTable();
 
-    // Initialize the flink state for last snapshot id.
+    // 初始化 lastSnapshotId 的 Flink 状态
     lastSnapshotIdState =
         context
             .getOperatorStateStore()
             .getListState(new ListStateDescriptor<>("snapshot-id-state", LongSerializer.INSTANCE));
 
-    // Restore the last-snapshot-id from flink's state if possible.
+    // 若从 checkpoint 恢复，则恢复 lastSnapshotId
     if (context.isRestored()) {
       LOG.info("Restoring state for the {}.", getClass().getSimpleName());
       lastSnapshotId = lastSnapshotIdState.get().iterator().next();
@@ -157,12 +183,22 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     }
   }
 
+  /**
+   * 把 lastSnapshotId 持久化到 Flink 状态。
+   *
+   * <p>逻辑：清空旧值后写入当前 lastSnapshotId。
+   */
   @Override
   public void snapshotState(FunctionSnapshotContext context) throws Exception {
     lastSnapshotIdState.clear();
     lastSnapshotIdState.add(lastSnapshotId);
   }
 
+  /**
+   * 运行监控循环。
+   *
+   * <p>逻辑：循环调用 {@link #monitorAndForwardSplits}，按 monitorInterval 间隔休眠。
+   */
   @Override
   public void run(SourceContext<FlinkInputSplit> ctx) throws Exception {
     this.sourceContext = ctx;
@@ -172,6 +208,17 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     }
   }
 
+  /**
+   * 计算本次规划应消费到的 snapshot ID（包含）。
+   *
+   * <p>逻辑：若待消费 snapshot 数量不超过 maxPlanningSnapshotCount，返回当前 snapshot； 否则按提交时间降序取第 N 个，截断到
+   * maxPlanningSnapshotCount 个。
+   *
+   * @param lastConsumedSnapshotId 上次消费的 snapshot ID（不含）
+   * @param currentSnapshotId 当前 snapshot ID
+   * @param maxPlanningSnapshotCount 单次规划最大 snapshot 数
+   * @return 本次应消费到的 snapshot ID（包含）
+   */
   private long toSnapshotIdInclusive(
       long lastConsumedSnapshotId, long currentSnapshotId, int maxPlanningSnapshotCount) {
     List<Long> snapshotIds =
@@ -179,20 +226,31 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     if (snapshotIds.size() <= maxPlanningSnapshotCount) {
       return currentSnapshotId;
     } else {
-      // It uses reverted index since snapshotIdsBetween returns Ids that are ordered by committed
-      // time descending.
+      // snapshotIdsBetween 返回按提交时间降序的 ID，故用倒序索引。
       return snapshotIds.get(snapshotIds.size() - maxPlanningSnapshotCount);
     }
   }
 
+  /** 测试用：注入 SourceContext。 */
   @VisibleForTesting
   void sourceContext(SourceContext<FlinkInputSplit> ctx) {
     this.sourceContext = ctx;
   }
 
+  /**
+   * 监控表的新 snapshot 并把对应的 split 转发给下游。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>刷新表，取最新 snapshot。
+   *   <li>若 snapshot 与 lastSnapshotId 不同，按增量方式构建 ScanContext。
+   *   <li>调用 FlinkSplitPlanner 规划 split，加 checkpoint 锁 emit 并更新 lastSnapshotId。
+   * </ol>
+   */
   @VisibleForTesting
   void monitorAndForwardSplits() {
-    // Refresh the table to get the latest committed snapshot.
+    // 刷新表以获取最新已提交的 snapshot
     table.refresh();
 
     Snapshot snapshot = table.currentSnapshot();
@@ -221,7 +279,7 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
           splits.length,
           System.currentTimeMillis() - start);
 
-      // only need to hold the checkpoint lock when emitting the splits and updating lastSnapshotId
+      // 仅在 emit split 与更新 lastSnapshotId 时持有 checkpoint 锁
       start = System.currentTimeMillis();
       synchronized (sourceContext.getCheckpointLock()) {
         for (FlinkInputSplit split : splits) {
@@ -237,9 +295,10 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     }
   }
 
+  /** 取消监控循环并释放 tableLoader 资源。 */
   @Override
   public void cancel() {
-    // this is to cover the case where cancel() is called before the run()
+    // 处理 cancel() 在 run() 之前被调用的情况
     if (sourceContext != null) {
       synchronized (sourceContext.getCheckpointLock()) {
         isRunning = false;
@@ -248,7 +307,7 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
       isRunning = false;
     }
 
-    // Release all the resources here.
+    // 释放资源
     if (tableLoader != null) {
       try {
         tableLoader.close();
@@ -258,6 +317,7 @@ public class StreamingMonitorFunction extends RichSourceFunction<FlinkInputSplit
     }
   }
 
+  /** 关闭算子，先取消监控再关闭工作线程池。 */
   @Override
   public void close() {
     cancel();

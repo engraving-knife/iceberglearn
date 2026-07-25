@@ -43,8 +43,16 @@ import org.apache.spark.sql.sources.Not;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkFilters 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark过滤器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkFilters {
 
+  /** 测试 testQuotedAttributes 场景：验证 QuotedAttributes 相关操作的行为与结果。 */
   @Test
   public void testQuotedAttributes() {
     Map<String, String> attrMap = Maps.newHashMap();
@@ -110,6 +118,7 @@ public class TestSparkFilters {
         });
   }
 
+  /** 测试时间戳过滤器conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampFilterConversion() {
     Instant instant = Instant.parse("2018-10-18T00:00:57.907Z");
@@ -130,6 +139,7 @@ public class TestSparkFilters {
         instantExpression.toString());
   }
 
+  /** 测试local日期时间过滤器conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testLocalDateTimeFilterConversion() {
     LocalDateTime ldt = LocalDateTime.parse("2018-10-18T00:00:57");
@@ -145,6 +155,7 @@ public class TestSparkFilters {
         instantExpression.toString());
   }
 
+  /** 测试日期过滤器conversion场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateFilterConversion() {
     LocalDate localDate = LocalDate.parse("2018-10-18");
@@ -166,6 +177,7 @@ public class TestSparkFilters {
         dateExpression.toString());
   }
 
+  /** 测试嵌套在inside非场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNestedInInsideNot() {
     Not filter =
@@ -174,6 +186,7 @@ public class TestSparkFilters {
     Assert.assertNull("Expression should not be converted", converted);
   }
 
+  /** 测试非在场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNotIn() {
     Not filter = Not.apply(In.apply("col", new Integer[] {1, 2}));

@@ -35,18 +35,28 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSetCurrentSnapshotProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 集合当前快照存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
 
+  /** 测试集合当前快照存储过程。 */
   public TestSetCurrentSnapshotProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试集合当前快照使用位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetCurrentSnapshotUsingPositionalArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -82,6 +92,7 @@ public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试集合当前快照使用命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetCurrentSnapshotUsingNamedArgs() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -117,6 +128,7 @@ public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试集合当前快照wap场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetCurrentSnapshotWap() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -150,6 +162,7 @@ public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s", tableName));
   }
 
+  /** tes集合当前快照无explicit目录。 */
   @Test
   public void tesSetCurrentSnapshotWithoutExplicitCatalog() {
     Assume.assumeTrue("Working only with the session catalog", "spark_catalog".equals(catalogName));
@@ -186,6 +199,7 @@ public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
         sql("SELECT * FROM %s ORDER BY id", tableName));
   }
 
+  /** 测试集合当前快照到invalid快照场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSetCurrentSnapshotToInvalidSnapshot() {
     sql("CREATE TABLE %s (id bigint NOT NULL, data string) USING iceberg", tableName);
@@ -200,6 +214,7 @@ public class TestSetCurrentSnapshotProcedure extends SparkExtensionsTestBase {
         () -> sql("CALL %s.system.set_current_snapshot('%s', -1L)", catalogName, tableIdent));
   }
 
+  /** 测试invalid回滚到快照场景场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidRollbackToSnapshotCases() {
     AssertHelpers.assertThrows(

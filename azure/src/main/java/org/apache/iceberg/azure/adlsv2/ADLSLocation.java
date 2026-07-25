@@ -25,14 +25,17 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * This class represents a fully qualified location in Azure expressed as a URI.
+ * Azure Data Lake Storage Gen2（ADLSv2）位置解析类，不可变值对象。
  *
- * <p>Locations follow the conventions used by Hadoop's Azure support, i.e.
+ * <p>所属模块：iceberg-azure。职责：把 Azure ADLSv2 的 URI 解析为 storage account、container、 path 三个分量，供 {@code
+ * ADLSFileIO} 定位对象使用。
+ *
+ * <p>设计意图：位置遵循 Hadoop Azure 约定，格式为：
  *
  * <pre>{@code abfs[s]://[<container>@]<storage account host>/<file path>}</pre>
  *
- * <p>See <a href="https://hadoop.apache.org/docs/stable/hadoop-azure/abfs.html">Hadoop Azure
- * Support</a>
+ * 构造时用正则一次性解析并缓存各分量，后续读取零开销；对非法 scheme/空 location 尽早抛 {@link ValidationException}。详见 <a
+ * href="https://hadoop.apache.org/docs/stable/hadoop-azure/abfs.html">Hadoop Azure Support</a>
  */
 class ADLSLocation {
   private static final Pattern URI_PATTERN = Pattern.compile("^abfss?://([^/?#]+)(.*)?$");
@@ -42,9 +45,12 @@ class ADLSLocation {
   private final String path;
 
   /**
-   * Creates a new ADLSLocation from a fully qualified URI.
+   * 根据完全限定 URI 构造 {@link ADLSLocation}。
    *
-   * @param location fully qualified URI
+   * <p>逻辑：用 {@link #URI_PATTERN} 正则匹配 location，提取 authority 与 path； authority 按 "@" 拆分为 container 与
+   * storage account（无 "@" 时 container 为 null）； path 去除前导 "/" 并剥离 query/fragment。
+   *
+   * @param location 完全限定的 ADLS URI
    */
   ADLSLocation(String location) {
     Preconditions.checkArgument(location != null, "Invalid location: null");
@@ -68,17 +74,17 @@ class ADLSLocation {
     this.path = uriPath.split("\\?", -1)[0].split("#", -1)[0];
   }
 
-  /** Returns Azure storage account. */
+  /** 返回 Azure storage account。 */
   public String storageAccount() {
     return storageAccount;
   }
 
-  /** Returns Azure container name. */
+  /** 返回 Azure container 名称（可能为空）。 */
   public Optional<String> container() {
     return Optional.ofNullable(container);
   }
 
-  /** Returns ADLS path. */
+  /** 返回 ADLS 对象路径。 */
   public String path() {
     return path;
   }

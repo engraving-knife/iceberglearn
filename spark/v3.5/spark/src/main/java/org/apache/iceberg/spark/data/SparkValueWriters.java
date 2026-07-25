@@ -37,40 +37,59 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark 值写入器集合（Avro）。
+ *
+ * <p>所属模块：iceberg-spark（data 子包）。提供面向 Spark {@link InternalRow}/{@link ArrayData}/ {@link
+ * MapData}/{@link UTF8String}/{@link Decimal} 等内部类型的 Avro {@link ValueWriter} 实现 与工厂方法，供 {@link
+ * SparkAvroWriter} 在构建写入器树时使用。
+ *
+ * <p>设计意图：将 Iceberg 通用 Avro 写入逻辑与 Spark 内部类型适配分离；字符串/UUID/decimal 等 使用 ThreadLocal 缓冲减少分配，提升写入性能。
+ *
+ * <p>上下游关系：被 {@link SparkAvroWriter.WriteBuilder} 调用；底层依赖 Iceberg avro 的 {@link ValueWriter} 编码能力。
+ */
 public class SparkValueWriters {
 
   private SparkValueWriters() {}
 
+  /** 返回 UTF8String 写入器（单例）。 */
   static ValueWriter<UTF8String> strings() {
     return StringWriter.INSTANCE;
   }
 
+  /** 返回 UUID（以 UTF8String 表示）写入器（单例）。 */
   static ValueWriter<UTF8String> uuids() {
     return UUIDWriter.INSTANCE;
   }
 
+  /** 返回指定精度/标度的 Decimal 写入器。 */
   static ValueWriter<Decimal> decimal(int precision, int scale) {
     return new DecimalWriter(precision, scale);
   }
 
+  /** 返回数组写入器，按元素类型从 ArrayData 取值并写入。 */
   static <T> ValueWriter<ArrayData> array(ValueWriter<T> elementWriter, DataType elementType) {
     return new ArrayWriter<>(elementWriter, elementType);
   }
 
+  /** 返回以数组形式编码的 map 写入器。 */
   static <K, V> ValueWriter<MapData> arrayMap(
       ValueWriter<K> keyWriter, DataType keyType, ValueWriter<V> valueWriter, DataType valueType) {
     return new ArrayMapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /** 返回以 Avro map 编码的 map 写入器。 */
   static <K, V> ValueWriter<MapData> map(
       ValueWriter<K> keyWriter, DataType keyType, ValueWriter<V> valueWriter, DataType valueType) {
     return new MapWriter<>(keyWriter, keyType, valueWriter, valueType);
   }
 
+  /** 返回 struct 写入器，按各列类型从 InternalRow 取值并写入。 */
   static ValueWriter<InternalRow> struct(List<ValueWriter<?>> writers, List<DataType> types) {
     return new StructWriter(writers, types);
   }
 
+  /** UTF8String 写入器：复用底层字节数组以避免 toString 编码开销。 */
   private static class StringWriter implements ValueWriter<UTF8String> {
     private static final StringWriter INSTANCE = new StringWriter();
 
@@ -85,6 +104,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** UUID 写入器：用 ThreadLocal 的 16 字节大端缓冲转换 UUID 后写出。 */
   private static class UUIDWriter implements ValueWriter<UTF8String> {
     private static final ThreadLocal<ByteBuffer> BUFFER =
         ThreadLocal.withInitial(
@@ -108,6 +128,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** Decimal 写入器：用 ThreadLocal 字节数组以定长二进制编码写出。 */
   private static class DecimalWriter implements ValueWriter<Decimal> {
     private final int precision;
     private final int scale;
@@ -127,6 +148,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** 数组写入器：按 Avro 数组编码写出各元素。 */
   private static class ArrayWriter<T> implements ValueWriter<ArrayData> {
     private final ValueWriter<T> elementWriter;
     private final DataType elementType;
@@ -150,6 +172,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** 以数组形式编码的 map 写入器：键值成对作为数组元素写出。 */
   private static class ArrayMapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
@@ -184,6 +207,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** 以 Avro map 编码的 map 写入器：键值成对写出。 */
   private static class MapWriter<K, V> implements ValueWriter<MapData> {
     private final ValueWriter<K> keyWriter;
     private final ValueWriter<V> valueWriter;
@@ -218,6 +242,7 @@ public class SparkValueWriters {
     }
   }
 
+  /** struct 写入器：按列类型取值，空值直接写 null，非空委托子写入器。 */
   static class StructWriter implements ValueWriter<InternalRow> {
     private final ValueWriter<?>[] writers;
     private final DataType[] types;

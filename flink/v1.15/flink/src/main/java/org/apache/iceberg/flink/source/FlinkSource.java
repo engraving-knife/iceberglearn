@@ -48,6 +48,13 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg-Flink 读取入口（旧版 API），构建读取 Flink DataStream 的算子拓扑。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：配置扫描上下文，构造 SourceFunction/InputFormat 拓扑。
+ *
+ * <p>设计意图：构建器模式；被 FlinkDynamicTableFactory 调用。
+ */
 public class FlinkSource {
   private static final Logger LOG = LoggerFactory.getLogger(FlinkSource.class);
 

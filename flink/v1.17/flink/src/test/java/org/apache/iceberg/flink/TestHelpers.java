@@ -69,9 +69,18 @@ import org.apache.iceberg.util.DateTimeUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestHelpers {
+  /** 辅助方法：TestHelpers，Helpers。 */
   private TestHelpers() {}
 
+  /** 辅助方法：roundTripKryoSerialize，round Trip Kryo Serialize。 */
   public static <T> T roundTripKryoSerialize(Class<T> clazz, T table) throws IOException {
     KryoSerializer<T> kryo = new KryoSerializer<>(clazz, new ExecutionConfig());
 
@@ -82,6 +91,7 @@ public class TestHelpers {
     return kryo.deserialize(inputView);
   }
 
+  /** 辅助方法：copyRowData，copy Row Data。 */
   public static RowData copyRowData(RowData from, RowType rowType) {
     TypeSerializer[] fieldSerializers =
         rowType.getChildren().stream()
@@ -90,6 +100,7 @@ public class TestHelpers {
     return RowDataUtil.clone(from, null, rowType, fieldSerializers);
   }
 
+  /** 辅助方法：readRowData，read Row Data。 */
   public static void readRowData(FlinkInputFormat input, Consumer<RowData> visitor)
       throws IOException {
     for (FlinkInputSplit s : input.createInputSplits(0)) {
@@ -105,6 +116,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：readRowData，read Row Data。 */
   public static List<RowData> readRowData(FlinkInputFormat inputFormat, RowType rowType)
       throws IOException {
     List<RowData> results = Lists.newArrayList();
@@ -112,11 +124,13 @@ public class TestHelpers {
     return results;
   }
 
+  /** 辅助方法：readRows，read Rows。 */
   public static List<Row> readRows(FlinkInputFormat inputFormat, RowType rowType)
       throws IOException {
     return convertRowDataToRow(readRowData(inputFormat, rowType), rowType);
   }
 
+  /** 辅助方法：convertRowDataToRow，convert Row Data To Row。 */
   public static List<Row> convertRowDataToRow(List<RowData> rowDataList, RowType rowType) {
     DataStructureConverter<Object, Object> converter =
         DataStructureConverters.getConverter(TypeConversions.fromLogicalToDataType(rowType));
@@ -126,6 +140,7 @@ public class TestHelpers {
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：assertRecords，assert Records。 */
   public static void assertRecords(List<Row> results, List<Record> expectedRecords, Schema schema) {
     List<Row> expected = Lists.newArrayList();
     @SuppressWarnings("unchecked")
@@ -138,18 +153,22 @@ public class TestHelpers {
     assertRows(results, expected);
   }
 
+  /** 辅助方法：assertRows，assert Rows。 */
   public static void assertRows(List<RowData> results, List<RowData> expected, RowType rowType) {
     assertRows(convertRowDataToRow(results, rowType), convertRowDataToRow(expected, rowType));
   }
 
+  /** 辅助方法：assertRows，assert Rows。 */
   public static void assertRows(List<Row> results, List<Row> expected) {
     Assertions.assertThat(results).containsExactlyInAnyOrderElementsOf(expected);
   }
 
+  /** 辅助方法：assertRowData，assert Row Data。 */
   public static void assertRowData(Schema schema, StructLike expected, RowData actual) {
     assertRowData(schema.asStruct(), FlinkSchemaUtil.convert(schema), expected, actual);
   }
 
+  /** 辅助方法：assertRowData，assert Row Data。 */
   public static void assertRowData(
       Types.StructType structType,
       LogicalType rowType,
@@ -186,6 +205,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   private static void assertEquals(
       Type type, LogicalType logicalType, Object expected, Object actual) {
 
@@ -302,11 +322,13 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   public static void assertEquals(Schema schema, List<GenericData.Record> records, List<Row> rows) {
     Streams.forEachPair(
         records.stream(), rows.stream(), (record, row) -> assertEquals(schema, record, row));
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   public static void assertEquals(Schema schema, GenericData.Record record, Row row) {
     List<Types.NestedField> fields = schema.asStruct().fields();
     Assert.assertEquals(fields.size(), record.getSchema().getFields().size());
@@ -321,6 +343,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   private static void assertEquals(Types.StructType struct, GenericData.Record record, Row row) {
     List<Types.NestedField> fields = struct.fields();
     for (int i = 0; i < fields.size(); i += 1) {
@@ -331,6 +354,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertAvroEquals，assert Avro Equals。 */
   private static void assertAvroEquals(
       Type type, LogicalType logicalType, Object expected, Object actual) {
 
@@ -462,6 +486,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertArrayValues，assert Array Values。 */
   private static void assertArrayValues(
       Type type, LogicalType logicalType, Collection<?> expectedArray, ArrayData actualArray) {
     List<?> expectedElements = Lists.newArrayList(expectedArray);
@@ -481,6 +506,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertMapValues，assert Map Values。 */
   private static void assertMapValues(
       Types.MapType mapType, LogicalType type, Map<?, ?> expected, MapData actual) {
     Assert.assertEquals("map size should be equal", expected.size(), actual.size());
@@ -519,6 +545,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   public static void assertEquals(ManifestFile expected, ManifestFile actual) {
     if (expected == actual) {
       return;
@@ -580,6 +607,7 @@ public class TestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals，assert Equals。 */
   public static void assertEquals(ContentFile<?> expected, ContentFile<?> actual) {
     if (expected == actual) {
       return;

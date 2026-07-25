@@ -23,30 +23,55 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-/** Interface for vectorized Iceberg readers. */
+/**
+ * 文件级说明：Iceberg 向量化 Parquet 读取器接口。
+ *
+ * <p>所属模块：iceberg-parquet（向量化读取侧抽象，供 Spark 等引擎按批读取列式数据）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>按批次（numRows）读取数据，返回类型 T 的批量记录。
+ *   <li>设置批次大小、row group 信息（页源、列元数据、行偏移）。
+ *   <li>提供资源释放接口。
+ * </ul>
+ *
+ * <p>设计意图：与 {@link ParquetValueReader} 的逐行读取不同，向量化读取一次返回多行， 适配列式引擎（如 Spark 的
+ * ColumnarBatch）以减少虚函数调用与对象分配开销。
+ *
+ * <p>上下游关系：被 {@link VectorizedParquetReader} 与各引擎向量化读取实现使用； 依赖 {@link PageReadStore} 与 {@link
+ * ColumnChunkMetaData}。
+ */
 public interface VectorizedReader<T> {
 
   /**
-   * Reads a batch of type @param &lt;T&gt; and of size numRows
+   * 读取一批数据。
    *
-   * @param reuse container for the last batch to be reused for next batch
-   * @param numRows number of rows to read
-   * @return batch of records of type @param &lt;T&gt;
+   * @param reuse 可复用的容器，用于上一批对象复用以减少分配；可为 null
+   * @param numRows 要读取的行数
+   * @return 包含 numRows 行记录的批次对象
    */
   T read(T reuse, int numRows);
 
+  /**
+   * 设置目标批次大小，读取器据此预分配缓冲区。
+   *
+   * @param batchSize 批次大小（行数）
+   */
   void setBatchSize(int batchSize);
 
   /**
-   * Sets the row group information to be used with this reader
+   * 设置当前 row group 的信息。
    *
-   * @param pages row group information for all the columns
-   * @param metadata map of {@link ColumnPath} -&gt; {@link ColumnChunkMetaData} for the row group
-   * @param rowPosition the row group's row offset in the parquet file
+   * <p>逻辑：把页源、列元数据与行偏移下发给读取器，使其准备读取该 row group 的数据。
+   *
+   * @param pages 当前 row group 的页存储
+   * @param metadata ColumnPath 到 ColumnChunkMetaData 的映射
+   * @param rowPosition 当前 row group 在文件中的行偏移
    */
   void setRowGroupInfo(
       PageReadStore pages, Map<ColumnPath, ColumnChunkMetaData> metadata, long rowPosition);
 
-  /** Release any resources allocated. */
+  /** 释放读取器分配的所有资源。 */
   void close();
 }

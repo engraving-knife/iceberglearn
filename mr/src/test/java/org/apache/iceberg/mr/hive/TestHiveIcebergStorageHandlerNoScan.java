@@ -75,6 +75,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestHiveIcebergStorageHandlerNoScan 的功能。
+ *
+ * <p>所属模块：iceberg-mr。职责：验证 TestHiveIcebergStorageHandlerNoScan 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveIcebergStorageHandlerNoScan {
   private static final PartitionSpec SPEC = PartitionSpec.unpartitioned();
 
@@ -126,6 +133,7 @@ public class TestHiveIcebergStorageHandlerNoScan {
   private static final Set<String> IGNORED_PARAMS =
       ImmutableSet.of("bucketing_version", "numFilesErasureCoded");
 
+  /** 辅助方法：parameters。 */
   @Parameters(name = "catalog={0}")
   public static Collection<Object[]> parameters() {
     Collection<Object[]> testParams = Lists.newArrayList();
@@ -145,16 +153,19 @@ public class TestHiveIcebergStorageHandlerNoScan {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 辅助方法：beforeClass。 */
   @BeforeClass
   public static void beforeClass() {
     shell = HiveIcebergStorageHandlerTestUtils.shell();
   }
 
+  /** 辅助方法：afterClass。 */
   @AfterClass
   public static void afterClass() throws Exception {
     shell.stop();
   }
 
+  /** 辅助方法：before。 */
   @Before
   public void before() throws IOException {
     testTables = HiveIcebergStorageHandlerTestUtils.testTables(shell, testTableType, temp);
@@ -163,11 +174,17 @@ public class TestHiveIcebergStorageHandlerNoScan {
     HiveIcebergStorageHandlerTestUtils.init(shell, testTables, temp, "spark");
   }
 
+  /** 辅助方法：after。 */
   @After
   public void after() throws Exception {
     HiveIcebergStorageHandlerTestUtils.close(shell);
   }
 
+  /**
+   * 测试场景：Create Drop Table。
+   *
+   * <p>验证该方法在 Create Drop Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateDropTable() throws TException, IOException, InterruptedException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -235,6 +252,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Drop Table Non Default Catalog。
+   *
+   * <p>验证该方法在 Create Drop Table Non Default Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateDropTableNonDefaultCatalog() throws TException, InterruptedException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -268,6 +290,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
         .hasMessageStartingWith("Table does not exist");
   }
 
+  /**
+   * 测试场景：Create Table Without Spec。
+   *
+   * <p>验证该方法在 Create Table Without Spec 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithoutSpec() {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -291,6 +318,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     Assert.assertEquals(PartitionSpec.unpartitioned(), icebergTable.spec());
   }
 
+  /**
+   * 测试场景：Create Table With Unpartitioned Spec。
+   *
+   * <p>验证该方法在 Create Table With Unpartitioned Spec 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithUnpartitionedSpec() {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -320,6 +352,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     Assert.assertEquals(SPEC, icebergTable.spec());
   }
 
+  /**
+   * 测试场景：Create Table With Format 2 Through Table Property。
+   *
+   * <p>验证该方法在 Create Table With Format 2 Through Table Property 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithFormatV2ThroughTableProperty() {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -357,6 +394,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
         ((BaseTable) icebergTable).operations().current().formatVersion());
   }
 
+  /**
+   * 测试场景：Delete Backing Table。
+   *
+   * <p>验证该方法在 Delete Backing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteBackingTable() throws TException, IOException, InterruptedException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -409,6 +451,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Drop Table With Corrupted Metadata。
+   *
+   * <p>验证该方法在 Drop Table With Corrupted Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTableWithCorruptedMetadata()
       throws TException, IOException, InterruptedException {
@@ -446,6 +493,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
         .hasMessage("Table does not exist: default.customers");
   }
 
+  /**
+   * 测试场景：Create Table Error。
+   *
+   * <p>验证该方法在 Create Table Error 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableError() {
     TableIdentifier identifier = TableIdentifier.of("default", "withShell2");
@@ -503,6 +555,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Table Above Existing Table。
+   *
+   * <p>验证该方法在 Create Table Above Existing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableAboveExistingTable() throws IOException {
     // Create the Iceberg table
@@ -542,6 +599,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Partitioned Table With Properties And With Column Specification。
+   *
+   * <p>验证该方法在 Create Partitioned Table With Properties And With Column Specification 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreatePartitionedTableWithPropertiesAndWithColumnSpecification() {
     PartitionSpec spec =
@@ -568,6 +630,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
             "Provide only one of the following: Hive partition specification, or the iceberg.mr.table.partition.spec property");
   }
 
+  /**
+   * 测试场景：Create Table With Column Specification Hierarchy。
+   *
+   * <p>验证该方法在 Create Table With Column Specification Hierarchy 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithColumnSpecificationHierarchy() {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -589,6 +656,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     Assert.assertEquals(COMPLEX_SCHEMA.asStruct(), icebergTable.schema().asStruct());
   }
 
+  /**
+   * 测试场景：Create Table With All Supported Types。
+   *
+   * <p>验证该方法在 Create Table With All Supported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithAllSupportedTypes() {
     TableIdentifier identifier = TableIdentifier.of("default", "all_types");
@@ -619,6 +691,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     Assert.assertEquals(allSupportedSchema.asStruct(), icebergTable.schema().asStruct());
   }
 
+  /**
+   * 测试场景：Create Table With Not Supported Types。
+   *
+   * <p>验证该方法在 Create Table With Not Supported Types 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithNotSupportedTypes() {
     TableIdentifier identifier = TableIdentifier.of("default", "not_supported_types");
@@ -647,6 +724,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Table With Not Supported Types With Auto Conversion。
+   *
+   * <p>验证该方法在 Create Table With Not Supported Types With Auto Conversion 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithNotSupportedTypesWithAutoConversion() {
     TableIdentifier identifier = TableIdentifier.of("default", "not_supported_types");
@@ -680,6 +762,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Table With Column Comments。
+   *
+   * <p>验证该方法在 Create Table With Column Comments 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithColumnComments() {
     TableIdentifier identifier = TableIdentifier.of("default", "comment_table");
@@ -707,6 +794,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Create Table Without Column Comments。
+   *
+   * <p>验证该方法在 Create Table Without Column Comments 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithoutColumnComments() {
     TableIdentifier identifier = TableIdentifier.of("default", "without_comment_table");
@@ -732,6 +824,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Iceberg And Hms Table Properties。
+   *
+   * <p>验证该方法在 Iceberg And Hms Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testIcebergAndHmsTableProperties() throws Exception {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -872,6 +969,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     }
   }
 
+  /**
+   * 测试场景：Iceberg HMS Properties Translation。
+   *
+   * <p>验证该方法在 Iceberg HMS Properties Translation 条件下的行为是否符合预期。
+   */
   @Test
   public void testIcebergHMSPropertiesTranslation() throws Exception {
     Assume.assumeTrue(
@@ -908,6 +1010,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     Assert.assertNull(hmsParams.get(GC_ENABLED));
   }
 
+  /**
+   * 测试场景：Drop Table With Appended Data。
+   *
+   * <p>验证该方法在 Drop Table With Appended Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTableWithAppendedData() throws IOException {
     TableIdentifier identifier = TableIdentifier.of("default", "customers");
@@ -931,6 +1038,11 @@ public class TestHiveIcebergStorageHandlerNoScan {
     shell.executeStatement("DROP TABLE customers");
   }
 
+  /**
+   * 测试场景：Drop Hive Table Without Underlying Table。
+   *
+   * <p>验证该方法在 Drop Hive Table Without Underlying Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropHiveTableWithoutUnderlyingTable() throws IOException {
     Assume.assumeFalse(
@@ -962,6 +1074,7 @@ public class TestHiveIcebergStorageHandlerNoScan {
     shell.executeStatement("DROP TABLE " + identifier);
   }
 
+  /** 辅助方法：getCurrentSnapshotForHiveCatalogTable。 */
   private String getCurrentSnapshotForHiveCatalogTable(org.apache.iceberg.Table icebergTable) {
     return ((BaseMetastoreTableOperations) ((BaseTable) icebergTable).operations())
         .currentMetadataLocation();

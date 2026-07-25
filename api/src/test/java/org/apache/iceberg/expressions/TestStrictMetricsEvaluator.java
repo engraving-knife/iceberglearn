@@ -50,6 +50,13 @@ import org.apache.iceberg.types.Types.StringType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestStrictMetricsEvaluator 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestStrictMetricsEvaluator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestStrictMetricsEvaluator {
   private static final Schema SCHEMA =
       new Schema(
@@ -161,6 +168,11 @@ public class TestStrictMetricsEvaluator {
           // upper bounds
           ImmutableMap.of(5, toByteBuffer(StringType.get(), "bbb")));
 
+  /**
+   * 测试场景：All Nulls。
+   *
+   * <p>验证该方法在 All Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllNulls() {
     boolean shouldRead = new StrictMetricsEvaluator(SCHEMA, notNull("all_nulls")).eval(FILE);
@@ -178,6 +190,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: notEqual on all nulls column").isTrue();
   }
 
+  /**
+   * 测试场景：No Nulls。
+   *
+   * <p>验证该方法在 No Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testNoNulls() {
     boolean shouldRead = new StrictMetricsEvaluator(SCHEMA, isNull("all_nulls")).eval(FILE);
@@ -190,6 +207,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: no values are null").isFalse();
   }
 
+  /**
+   * 测试场景：Some Nulls。
+   *
+   * <p>验证该方法在 Some Nulls 条件下的行为是否符合预期。
+   */
   @Test
   public void testSomeNulls() {
     boolean shouldRead =
@@ -213,6 +235,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: equal on some nulls column").isFalse();
   }
 
+  /**
+   * 测试场景：Is Na N。
+   *
+   * <p>验证该方法在 Is Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testIsNaN() {
     boolean shouldRead = new StrictMetricsEvaluator(SCHEMA, isNaN("all_nans")).eval(FILE);
@@ -243,6 +270,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: null values are not nan").isFalse();
   }
 
+  /**
+   * 测试场景：Not Na N。
+   *
+   * <p>验证该方法在 Not Na N 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotNaN() {
     boolean shouldRead = new StrictMetricsEvaluator(SCHEMA, notNaN("all_nans")).eval(FILE);
@@ -269,6 +301,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: null values are not nan").isFalse();
   }
 
+  /**
+   * 测试场景：Required Column。
+   *
+   * <p>验证该方法在 Required Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredColumn() {
     boolean shouldRead = new StrictMetricsEvaluator(SCHEMA, notNull("required")).eval(FILE);
@@ -278,6 +315,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: required columns never contain null").isFalse();
   }
 
+  /**
+   * 测试场景：Missing Column。
+   *
+   * <p>验证该方法在 Missing Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingColumn() {
     Assertions.assertThatThrownBy(
@@ -286,6 +328,11 @@ public class TestStrictMetricsEvaluator {
         .hasMessageContaining("Cannot find field 'missing'");
   }
 
+  /**
+   * 测试场景：Missing Stats。
+   *
+   * <p>验证该方法在 Missing Stats 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingStats() {
     DataFile missingStats = new TestDataFile("file.parquet", Row.of(), 50);
@@ -312,6 +359,11 @@ public class TestStrictMetricsEvaluator {
     }
   }
 
+  /**
+   * 测试场景：Zero Record File。
+   *
+   * <p>验证该方法在 Zero Record File 条件下的行为是否符合预期。
+   */
   @Test
   public void testZeroRecordFile() {
     DataFile empty = new TestDataFile("file.parquet", Row.of(), 0);
@@ -336,6 +388,11 @@ public class TestStrictMetricsEvaluator {
     }
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -348,6 +405,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: not(true)").isFalse();
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -377,6 +439,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: range includes all data").isTrue();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     // this test case must use a real predicate, not alwaysTrue(), or binding will simplify it out
@@ -404,6 +471,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values match >= 30").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt。
+   *
+   * <p>验证该方法在 Integer Lt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLt() {
     boolean shouldRead =
@@ -420,6 +492,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values in range").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Lt Eq。
+   *
+   * <p>验证该方法在 Integer Lt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerLtEq() {
     boolean shouldRead =
@@ -439,6 +516,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values in range").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt。
+   *
+   * <p>验证该方法在 Integer Gt 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGt() {
     boolean shouldRead =
@@ -457,6 +539,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values in range").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Gt Eq。
+   *
+   * <p>验证该方法在 Integer Gt Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerGtEq() {
     boolean shouldRead =
@@ -476,6 +563,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values in range").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Eq。
+   *
+   * <p>验证该方法在 Integer Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerEq() {
     boolean shouldRead =
@@ -499,6 +591,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should match: all values == 5").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not Eq。
+   *
+   * <p>验证该方法在 Integer Not Eq 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEq() {
     boolean shouldRead =
@@ -524,6 +621,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should read: no values == 85").isTrue();
   }
 
+  /**
+   * 测试场景：Integer Not Eq Rewritten。
+   *
+   * <p>验证该方法在 Integer Not Eq Rewritten 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotEqRewritten() {
     boolean shouldRead =
@@ -549,6 +651,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should read: no values == 85").isTrue();
   }
 
+  /**
+   * 测试场景：Integer In。
+   *
+   * <p>验证该方法在 Integer In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerIn() {
     boolean shouldRead =
@@ -587,6 +694,11 @@ public class TestStrictMetricsEvaluator {
     assertThat(shouldRead).as("Should not match: no_nulls field does not have bounds").isFalse();
   }
 
+  /**
+   * 测试场景：Integer Not In。
+   *
+   * <p>验证该方法在 Integer Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testIntegerNotIn() {
     boolean shouldRead =

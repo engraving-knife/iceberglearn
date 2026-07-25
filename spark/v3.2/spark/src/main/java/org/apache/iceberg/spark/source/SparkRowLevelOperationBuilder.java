@@ -41,6 +41,15 @@ import org.apache.spark.sql.connector.iceberg.write.RowLevelOperation.Command;
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperationBuilder;
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperationInfo;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的构建器，负责分步骤构造目标对象。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkRowLevelOperationBuilder。
+ *
+ * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
 
   private final SparkSession spark;
@@ -57,18 +66,26 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     this.isolationLevel = isolationLevel(table.properties(), info.command());
   }
 
+  /**
+   * 构造并返回目标对象。
+   *
+   * @return 结果对象
+   */
   @Override
   public RowLevelOperation build() {
     switch (mode) {
       case COPY_ON_WRITE:
+        /** 执行该方法的具体逻辑。 */
         return new SparkCopyOnWriteOperation(spark, table, info, isolationLevel);
       case MERGE_ON_READ:
+        /** 执行该方法的具体逻辑。 */
         return new SparkPositionDeltaOperation(spark, table, info, isolationLevel);
       default:
         throw new IllegalArgumentException("Unsupported operation mode: " + mode);
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private RowLevelOperationMode mode(Map<String, String> properties, Command command) {
     String modeName;
 
@@ -89,6 +106,7 @@ class SparkRowLevelOperationBuilder implements RowLevelOperationBuilder {
     return RowLevelOperationMode.fromName(modeName);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private IsolationLevel isolationLevel(Map<String, String> properties, Command command) {
     String levelName;
 

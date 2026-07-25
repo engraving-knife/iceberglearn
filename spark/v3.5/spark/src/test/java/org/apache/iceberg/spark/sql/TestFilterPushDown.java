@@ -37,9 +37,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFilterPushDown 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 过滤器下推 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFilterPushDown extends SparkTestBaseWithCatalog {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "planningMode = {0}")
   public static Object[] parameters() {
     return new Object[] {LOCAL, DISTRIBUTED};
@@ -47,16 +55,19 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
 
   private final PlanningMode planningMode;
 
+  /** 测试过滤器下推。 */
   public TestFilterPushDown(PlanningMode planningMode) {
     this.planningMode = planningMode;
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS tmp_view");
   }
 
+  /** 测试过滤器下推带十进制值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithDecimalValues() {
     sql(
@@ -76,6 +87,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(2, new BigDecimal("100.05"), "d1")));
   }
 
+  /** 测试过滤器下推带恒等转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithIdentityTransform() {
     sql(
@@ -188,6 +200,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(5, 500, "d5")));
   }
 
+  /** 测试过滤器下推带hours转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithHoursTransform() {
     sql(
@@ -234,6 +247,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试过滤器下推带days转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithDaysTransform() {
     sql(
@@ -277,6 +291,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试过滤器下推带months转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithMonthsTransform() {
     sql(
@@ -320,6 +335,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试过滤器下推带years转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithYearsTransform() {
     sql(
@@ -363,6 +379,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试过滤器下推带桶转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithBucketTransform() {
     sql(
@@ -382,6 +399,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(1, 100, "d1")));
   }
 
+  /** 测试过滤器下推带截断转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithTruncateTransform() {
     sql(
@@ -407,6 +425,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(1, 100, "d1")));
   }
 
+  /** 测试过滤器下推带分区规格演进与恒等转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithSpecEvolutionAndIdentityTransforms() {
     sql(
@@ -448,6 +467,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(1, 100, "d1", "sd1")));
   }
 
+  /** 测试过滤器下推带分区规格演进与截断转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithSpecEvolutionAndTruncateTransform() {
     sql(
@@ -489,6 +509,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(1, 100, "d1")));
   }
 
+  /** 测试过滤器下推带分区规格演进与时间转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithSpecEvolutionAndTimeTransforms() {
     sql(
@@ -526,6 +547,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         });
   }
 
+  /** 测试过滤器下推带specialfloatingpoint分区值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testFilterPushdownWithSpecialFloatingPointPartitionValues() {
     sql(
@@ -565,12 +587,14 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         ImmutableList.of(row(4, Double.NEGATIVE_INFINITY)));
   }
 
+  /** 检查onlyIceberg过滤器。 */
   private void checkOnlyIcebergFilters(
       String predicate, String icebergFilters, List<Object[]> expectedRows) {
 
     checkFilters(predicate, null, icebergFilters, expectedRows);
   }
 
+  /** 检查过滤器。 */
   private void checkFilters(
       String predicate, String sparkFilter, String icebergFilters, List<Object[]> expectedRows) {
 
@@ -599,6 +623,7 @@ public class TestFilterPushDown extends SparkTestBaseWithCatalog {
         .contains("[filters=" + icebergFilters + ",");
   }
 
+  /** 时间戳。 */
   private Timestamp timestamp(String timestampAsString) {
     return Timestamp.from(Instant.parse(timestampAsString));
   }

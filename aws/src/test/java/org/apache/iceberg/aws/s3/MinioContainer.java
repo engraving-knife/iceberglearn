@@ -25,6 +25,13 @@ import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.utility.Base58;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 
+/**
+ * 文件级说明：测试 MinioContainer 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 MinioContainer 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class MinioContainer extends GenericContainer<MinioContainer> {
 
   private static final int DEFAULT_PORT = 9000;
@@ -37,10 +44,12 @@ public class MinioContainer extends GenericContainer<MinioContainer> {
   private static final String DEFAULT_STORAGE_DIRECTORY = "/data";
   private static final String HEALTH_ENDPOINT = "/minio/health/ready";
 
+  /** 辅助方法：MinioContainer。 */
   public MinioContainer(AwsCredentials credentials) {
     this(DEFAULT_IMAGE + ":" + DEFAULT_TAG, credentials);
   }
 
+  /** 辅助方法：MinioContainer。 */
   public MinioContainer(String image, AwsCredentials credentials) {
     super(image == null ? DEFAULT_IMAGE + ":" + DEFAULT_TAG : image);
     this.withNetworkAliases("minio-" + Base58.randomString(6))
@@ -62,6 +71,7 @@ public class MinioContainer extends GenericContainer<MinioContainer> {
             .withStartupTimeout(Duration.ofMinutes(2)));
   }
 
+  /** 辅助方法：getURI。 */
   public URI getURI() {
     return URI.create("http://" + getHost() + ":" + getMappedPort(DEFAULT_PORT));
   }

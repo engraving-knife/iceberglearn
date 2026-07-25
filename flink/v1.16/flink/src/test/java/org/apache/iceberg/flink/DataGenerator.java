@@ -24,8 +24,11 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.GenericRecord;
 
 /**
- * This interface defines test data generator. Different implementations for primitive and complex
- * nested fields are defined in {@link DataGenerators}.
+ * 文件级说明：测试 DataGenerator 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 DataGenerator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
  */
 public interface DataGenerator {
   Schema icebergSchema();

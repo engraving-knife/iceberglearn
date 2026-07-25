@@ -46,9 +46,13 @@ import org.apache.spark.sql.types.BooleanType
 import org.apache.spark.util.Utils
 
 /**
- * A rule similar to ReplaceNullWithFalseInPredicate in Spark but applies to Iceberg row-level commands.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：扩展的谓词中 NULL 替换为 FALSE 优化规则，在 Iceberg 行级命令条件下简化谓词。
+ * <p>设计意图：继承 Spark 原生优化并扩展到 Iceberg 命令，保证条件求值正确。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 object ExtendedReplaceNullWithFalseInPredicate extends Rule[LogicalPlan] {
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan.transformWithPruning(
     _.containsAnyPattern(NULL_LITERAL, TRUE_OR_FALSE_LITERAL, INSET)) {
@@ -109,11 +113,13 @@ object ExtendedReplaceNullWithFalseInPredicate extends Rule[LogicalPlan] {
         e
       }
   }
+  /** 判断是否 NullLiteral。 */
 
   private def isNullLiteral(e: Expression): Boolean = e match {
     case Literal(null, _) => true
     case _ => false
   }
+  /** 执行 replaceNullWithFalse 相关操作。 */
 
   private def replaceNullWithFalse(mergeActions: Seq[MergeAction]): Seq[MergeAction] = {
     mergeActions.map {

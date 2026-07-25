@@ -23,10 +23,22 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.flink.source.StreamingStartingStrategy;
 
-/** Flink source read options */
+/**
+ * 文件级说明：Iceberg Flink source 读取选项的集中定义。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块根包）。
+ *
+ * <p>职责：以 {@link ConfigOption} 形式声明所有与读取相关的可配置项， 包括快照选择、流式起始策略、分片大小、监控间隔、列统计、限制等。
+ *
+ * <p>设计意图：将所有读取相关选项集中到一处，便于使用者统一查阅， 同时作为 {@link FlinkReadConf} 解析配置的依据。
+ *
+ * <p>上下游关系：上游为 Flink SQL Hint 与全局配置，下游为 {@link FlinkReadConf} 与 {@link
+ * org.apache.iceberg.flink.source.ScanContext}。
+ */
 public class FlinkReadOptions {
   private static final String PREFIX = "connector.iceberg.";
 
+  /** 私有构造，配置项类禁止实例化。 */
   private FlinkReadOptions() {}
 
   public static final ConfigOption<Long> SNAPSHOT_ID =

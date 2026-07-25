@@ -29,29 +29,41 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
+/**
+ * 文件级说明：测试 BaseAzuriteTest 的功能。
+ *
+ * <p>所属模块：iceberg-azure。职责：验证 BaseAzuriteTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class BaseAzuriteTest {
   protected static final AzuriteContainer AZURITE_CONTAINER = new AzuriteContainer();
 
+  /** 辅助方法：beforeAll。 */
   @BeforeAll
   public static void beforeAll() {
     AZURITE_CONTAINER.start();
   }
 
+  /** 辅助方法：afterAll。 */
   @AfterAll
   public static void afterAll() {
     AZURITE_CONTAINER.stop();
   }
 
+  /** 辅助方法：baseBefore。 */
   @BeforeEach
   public void baseBefore() {
     AZURITE_CONTAINER.createStorageContainer();
   }
 
+  /** 辅助方法：baseAfter。 */
   @AfterEach
   public void baseAfter() {
     AZURITE_CONTAINER.deleteStorageContainer();
   }
 
+  /** 辅助方法：createFileIO。 */
   protected ADLSFileIO createFileIO() {
     AzureProperties azureProps = spy(new AzureProperties());
 

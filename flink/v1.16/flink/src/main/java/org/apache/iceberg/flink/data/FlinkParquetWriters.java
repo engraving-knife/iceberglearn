@@ -50,15 +50,26 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * Flink 专用的 Parquet 写入器工厂与内部实现集合。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按 Flink LogicalType 与 Parquet MessageType 构造 {@link
+ * ParquetValueWriter}，把 Flink {@link RowData} 写入 Parquet 列式存储。
+ *
+ * <p>设计意图：访问者模式 + 工厂方法，通过 {@link ParquetWithFlinkSchemaVisitor} 按类型构造写入器； 上下游：被 Flink Parquet
+ * 写入算子调用。
+ */
 public class FlinkParquetWriters {
   private FlinkParquetWriters() {}
 
+  /** 构造写入器入口，通过 ParquetWithFlinkSchemaVisitor 构造。 */
   @SuppressWarnings("unchecked")
   public static <T> ParquetValueWriter<T> buildWriter(LogicalType schema, MessageType type) {
     return (ParquetValueWriter<T>)
         ParquetWithFlinkSchemaVisitor.visit(schema, type, new WriteBuilder(type));
   }
 
+  /** Parquet schema 访问者实现，按 Flink 类型构造 ParquetValueWriter。 */
   private static class WriteBuilder extends ParquetWithFlinkSchemaVisitor<ParquetValueWriter<?>> {
     private final MessageType type;
 
@@ -66,12 +77,14 @@ public class FlinkParquetWriters {
       this.type = type;
     }
 
+    /** 构造 message（顶层 struct）的写入器。 */
     @Override
     public ParquetValueWriter<?> message(
         RowType sStruct, MessageType message, List<ParquetValueWriter<?>> fields) {
       return struct(sStruct, message.asGroupType(), fields);
     }
 
+    /** 构造 struct 写入器，包装可选字段并构造 RowDataWriter。 */
     @Override
     public ParquetValueWriter<?> struct(
         RowType sStruct, GroupType struct, List<ParquetValueWriter<?>> fieldWriters) {
@@ -87,6 +100,7 @@ public class FlinkParquetWriters {
       return new RowDataWriter(writers, flinkTypes);
     }
 
+    /** 构造 list 写入器，处理 Parquet repeated group。 */
     @Override
     public ParquetValueWriter<?> list(
         ArrayType sArray, GroupType array, ParquetValueWriter<?> elementWriter) {
@@ -103,6 +117,7 @@ public class FlinkParquetWriters {
           sArray.getElementType());
     }
 
+    /** 构造 map 写入器，处理 Parquet repeated key-value group。 */
     @Override
     public ParquetValueWriter<?> map(
         MapType sMap,
@@ -124,11 +139,18 @@ public class FlinkParquetWriters {
           sMap.getValueType());
     }
 
+    /** 包装写入器为可选字段写入器。 */
     private ParquetValueWriter<?> newOption(Type fieldType, ParquetValueWriter<?> writer) {
       int maxD = type.getMaxDefinitionLevel(path(fieldType.getName()));
       return ParquetValueWriters.option(fieldType, maxD, writer);
     }
 
+    /**
+     * 构造基本类型的写入器。
+     *
+     * <p>逻辑：先按 Parquet originalType 处理 ENUM/UTF8/INT/DECIMAL/TIME/TIMESTAMP 等； 再按 Flink 类型根区分
+     * tinyint/smallint/int 等。
+     */
     @Override
     public ParquetValueWriter<?> primitive(LogicalType fType, PrimitiveType primitive) {
       ColumnDescriptor desc = type.getColumnDescription(currentPath());
@@ -245,6 +267,7 @@ public class FlinkParquetWriters {
     return new ByteArrayWriter(desc);
   }
 
+  /** 字符串写入器：StringData 转 Binary。 */
   private static class StringDataWriter extends ParquetValueWriters.PrimitiveWriter<StringData> {
     private StringDataWriter(ColumnDescriptor desc) {
       super(desc);
@@ -256,6 +279,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 时间写入器：毫秒转微秒。 */
   private static class TimeMicrosWriter extends ParquetValueWriters.PrimitiveWriter<Integer> {
     private TimeMicrosWriter(ColumnDescriptor desc) {
       super(desc);
@@ -268,6 +292,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 精度 <=9 的 Decimal 写入器，存为 int。 */
   private static class IntegerDecimalWriter
       extends ParquetValueWriters.PrimitiveWriter<DecimalData> {
     private final int precision;
@@ -298,6 +323,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 精度 10-18 的 Decimal 写入器，存为 long。 */
   private static class LongDecimalWriter extends ParquetValueWriters.PrimitiveWriter<DecimalData> {
     private final int precision;
     private final int scale;
@@ -327,6 +353,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 定长 Decimal 写入器，存为 Binary。 */
   private static class FixedDecimalWriter extends ParquetValueWriters.PrimitiveWriter<DecimalData> {
     private final int precision;
     private final int scale;
@@ -348,6 +375,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 时间戳写入器，TimestampData 转微秒。 */
   private static class TimestampDataWriter
       extends ParquetValueWriters.PrimitiveWriter<TimestampData> {
     private TimestampDataWriter(ColumnDescriptor desc) {
@@ -361,6 +389,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 字节数组写入器。 */
   private static class ByteArrayWriter extends ParquetValueWriters.PrimitiveWriter<byte[]> {
     private ByteArrayWriter(ColumnDescriptor desc) {
       super(desc);
@@ -372,6 +401,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** 数组写入器，通过迭代元素写入 repeated group。 */
   private static class ArrayDataWriter<E> extends ParquetValueWriters.RepeatedWriter<ArrayData, E> {
     private final LogicalType elementType;
 
@@ -422,6 +452,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** map 写入器，通过迭代 entry 写入 repeated key-value group。 */
   private static class MapDataWriter<K, V>
       extends ParquetValueWriters.RepeatedKeyValueWriter<MapData, K, V> {
     private final LogicalType keyType;
@@ -485,6 +516,7 @@ public class FlinkParquetWriters {
     }
   }
 
+  /** RowData 写入器，通过 FieldGetter 按字段索引取值后委托子写入器。 */
   private static class RowDataWriter extends ParquetValueWriters.StructWriter<RowData> {
     private final RowData.FieldGetter[] fieldGetter;
 

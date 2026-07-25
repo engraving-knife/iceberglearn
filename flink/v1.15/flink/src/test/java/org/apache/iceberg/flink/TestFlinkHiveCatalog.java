@@ -33,10 +33,22 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestFlinkHiveCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkHiveCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkHiveCatalog extends FlinkTestBase {
 
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
+  /**
+   * 测试场景：Create Catalog With Warehouse Location。
+   *
+   * <p>验证该方法在 Create Catalog With Warehouse Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogWithWarehouseLocation() throws IOException {
     Map<String, String> props = Maps.newHashMap();
@@ -50,6 +62,11 @@ public class TestFlinkHiveCatalog extends FlinkTestBase {
     checkSQLQuery(props, warehouseDir);
   }
 
+  /**
+   * 测试场景：Create Catalog With Hive Conf Dir。
+   *
+   * <p>验证该方法在 Create Catalog With Hive Conf Dir 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateCatalogWithHiveConfDir() throws IOException {
     // Dump the hive conf into a local file.
@@ -76,6 +93,7 @@ public class TestFlinkHiveCatalog extends FlinkTestBase {
     checkSQLQuery(props, warehouseDir);
   }
 
+  /** 辅助方法：checkSQLQuery，check SQL Query。 */
   private void checkSQLQuery(Map<String, String> catalogProperties, File warehouseDir)
       throws IOException {
     sql(

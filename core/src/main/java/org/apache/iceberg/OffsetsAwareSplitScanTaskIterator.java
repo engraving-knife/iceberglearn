@@ -23,9 +23,18 @@ import java.util.NoSuchElementException;
 import org.apache.iceberg.util.ArrayUtil;
 
 /**
- * An iterator that splits tasks using split offsets such as row group offsets in Parquet.
+ * 基于已知偏移量（如 Parquet row group 偏移）切分扫描任务的迭代器。
  *
- * @param <T> the Java type of tasks produced by this iterator
+ * <p>所属模块：iceberg-core（扫描任务切分层）。
+ *
+ * <p>职责：根据给定的偏移量数组把一个父任务切分为多个子任务，每个子任务覆盖一个偏移区间。
+ *
+ * <p>设计意图：某些文件格式（如 Parquet）有天然的切分点（row group 边界），按这些边界切分 可以避免在 row group
+ * 中间断开导致的额外读取开销。本迭代器接收偏移量列表，计算每个 split 的 (offset, length)，并通过 {@link SplitScanTaskCreator} 创建子任务。
+ *
+ * <p>上下游关系：由 {@link SplittableScanTask} 的实现类在需要按已知偏移切分时使用。
+ *
+ * @param <T> 扫描任务类型
  */
 class OffsetsAwareSplitScanTaskIterator<T extends ScanTask> implements SplitScanTaskIterator<T> {
   private final T parentTask;
@@ -34,6 +43,14 @@ class OffsetsAwareSplitScanTaskIterator<T extends ScanTask> implements SplitScan
   private final long[] splitSizes;
   private int splitIndex = 0;
 
+  /**
+   * 构造一个基于偏移量切分的迭代器（List 版本）。
+   *
+   * @param parentTask 父任务
+   * @param parentTaskLength 父任务总长度
+   * @param offsets 切分偏移量列表
+   * @param splitTaskCreator 子任务创建器
+   */
   OffsetsAwareSplitScanTaskIterator(
       T parentTask,
       long parentTaskLength,
@@ -42,6 +59,16 @@ class OffsetsAwareSplitScanTaskIterator<T extends ScanTask> implements SplitScan
     this(parentTask, parentTaskLength, ArrayUtil.toLongArray(offsets), splitTaskCreator);
   }
 
+  /**
+   * 构造一个基于偏移量切分的迭代器（数组版本）。
+   *
+   * <p>逻辑：根据相邻偏移量之差计算每个 split 的长度；最后一个 split 的长度为父任务总长度 减去最后一个偏移量。
+   *
+   * @param parentTask 父任务
+   * @param parentTaskLength 父任务总长度
+   * @param offsets 切分偏移量数组
+   * @param splitTaskCreator 子任务创建器
+   */
   OffsetsAwareSplitScanTaskIterator(
       T parentTask,
       long parentTaskLength,
@@ -60,11 +87,18 @@ class OffsetsAwareSplitScanTaskIterator<T extends ScanTask> implements SplitScan
     }
   }
 
+  /** 是否还有未消费的 split。 */
   @Override
   public boolean hasNext() {
     return splitIndex < splitSizes.length;
   }
 
+  /**
+   * 返回下一个切分子任务。
+   *
+   * @return 下一个子任务
+   * @throws NoSuchElementException 若没有更多 split
+   */
   @Override
   public T next() {
     if (!hasNext()) {

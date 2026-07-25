@@ -46,8 +46,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The RESTCatalogServlet provides a servlet implementation used in combination with a
- * RESTCatalogAdaptor to proxy the REST Spec to any Catalog implementation.
+ * 测试类：RESTCatalogServlet，用于验证 REST Catalog Servlet 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 REST Catalog Servlet 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
  */
 public class RESTCatalogServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(RESTCatalogServlet.class);
@@ -56,34 +60,40 @@ public class RESTCatalogServlet extends HttpServlet {
   private final Map<String, String> responseHeaders =
       ImmutableMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
 
+  /** 辅助方法：rest catalog servlet。 */
   public RESTCatalogServlet(RESTCatalogAdapter restCatalogAdapter) {
     this.restCatalogAdapter = restCatalogAdapter;
   }
 
+  /** 辅助方法：do get。 */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     execute(ServletRequestContext.from(request), response);
   }
 
+  /** 辅助方法：do head。 */
   @Override
   protected void doHead(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     execute(ServletRequestContext.from(request), response);
   }
 
+  /** 辅助方法：do post。 */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     execute(ServletRequestContext.from(request), response);
   }
 
+  /** 辅助方法：do delete。 */
   @Override
   protected void doDelete(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     execute(ServletRequestContext.from(request), response);
   }
 
+  /** 辅助方法：execute。 */
   protected void execute(ServletRequestContext context, HttpServletResponse response)
       throws IOException {
     response.setStatus(HttpServletResponse.SC_OK);
@@ -118,6 +128,7 @@ public class RESTCatalogServlet extends HttpServlet {
     }
   }
 
+  /** 辅助方法：handle。 */
   protected Consumer<ErrorResponse> handle(HttpServletResponse response) {
     return (errorResponse) -> {
       response.setStatus(errorResponse.code());
@@ -139,10 +150,12 @@ public class RESTCatalogServlet extends HttpServlet {
 
     private ErrorResponse errorResponse;
 
+    /** 辅助方法：servlet request context。 */
     private ServletRequestContext(ErrorResponse errorResponse) {
       this.errorResponse = errorResponse;
     }
 
+    /** 辅助方法：servlet request context。 */
     private ServletRequestContext(
         HTTPMethod method,
         Route route,
@@ -193,30 +206,37 @@ public class RESTCatalogServlet extends HttpServlet {
       return new ServletRequestContext(method, route, path, headers, queryParams, requestBody);
     }
 
+    /** 辅助方法：method。 */
     public HTTPMethod method() {
       return method;
     }
 
+    /** 辅助方法：route。 */
     public Route route() {
       return route;
     }
 
+    /** 辅助方法：path。 */
     public String path() {
       return path;
     }
 
+    /** 辅助方法：headers。 */
     public Map<String, String> headers() {
       return headers;
     }
 
+    /** 辅助方法：query params。 */
     public Map<String, String> queryParams() {
       return queryParams;
     }
 
+    /** 辅助方法：body。 */
     public Object body() {
       return body;
     }
 
+    /** 辅助方法：error。 */
     public Optional<ErrorResponse> error() {
       return Optional.ofNullable(errorResponse);
     }

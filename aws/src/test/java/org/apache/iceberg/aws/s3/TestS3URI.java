@@ -25,8 +25,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestS3URI 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3URI 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3URI {
 
+  /**
+   * 测试场景：Location Parsing。
+   *
+   * <p>验证该方法在 Location Parsing 条件下的行为是否符合预期。
+   */
   @Test
   public void testLocationParsing() {
     String p1 = "s3://bucket/path/to/file";
@@ -37,6 +49,11 @@ public class TestS3URI {
     Assertions.assertThat(uri1.toString()).isEqualTo(p1);
   }
 
+  /**
+   * 测试场景：Encoded String。
+   *
+   * <p>验证该方法在 Encoded String 条件下的行为是否符合预期。
+   */
   @Test
   public void testEncodedString() {
     String p1 = "s3://bucket/path%20to%20file";
@@ -47,6 +64,11 @@ public class TestS3URI {
     Assertions.assertThat(uri1.toString()).isEqualTo(p1);
   }
 
+  /**
+   * 测试场景：Missing Scheme。
+   *
+   * <p>验证该方法在 Missing Scheme 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingScheme() {
 
@@ -55,6 +77,11 @@ public class TestS3URI {
         .hasMessage("Invalid S3 URI, cannot determine scheme: /path/to/file");
   }
 
+  /**
+   * 测试场景：Only Bucket Name Location。
+   *
+   * <p>验证该方法在 Only Bucket Name Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testOnlyBucketNameLocation() {
     String p1 = "s3://bucket";
@@ -65,6 +92,11 @@ public class TestS3URI {
     Assertions.assertThat(url1.toString()).isEqualTo(p1);
   }
 
+  /**
+   * 测试场景：Query And Fragment。
+   *
+   * <p>验证该方法在 Query And Fragment 条件下的行为是否符合预期。
+   */
   @Test
   public void testQueryAndFragment() {
     String p1 = "s3://bucket/path/to/file?query=foo#bar";
@@ -75,6 +107,11 @@ public class TestS3URI {
     Assertions.assertThat(uri1.toString()).isEqualTo(p1);
   }
 
+  /**
+   * 测试场景：Valid Schemes。
+   *
+   * <p>验证该方法在 Valid Schemes 条件下的行为是否符合预期。
+   */
   @Test
   public void testValidSchemes() {
     for (String scheme : Lists.newArrayList("https", "s3", "s3a", "s3n", "gs")) {
@@ -84,6 +121,11 @@ public class TestS3URI {
     }
   }
 
+  /**
+   * 测试场景：3 URI With Bucket To Access Point Mapping。
+   *
+   * <p>验证该方法在 3 URI With Bucket To Access Point Mapping 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3URIWithBucketToAccessPointMapping() {
     String p1 = "s3://bucket/path/to/file?query=foo#bar";

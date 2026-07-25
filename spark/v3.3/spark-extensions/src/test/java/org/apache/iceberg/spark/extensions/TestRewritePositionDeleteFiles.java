@@ -74,6 +74,13 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestRewritePositionDeleteFiles 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 重写位置删除文件 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
 
   private static final Map<String, String> CATALOG_PROPS =
@@ -90,6 +97,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
 
   @Parameterized.Parameters(
       name = "formatVersion = {0}, catalogName = {1}, implementation = {2}, config = {3}")
+  /** 参数。 */
   public static Object[][] parameters() {
     return new Object[][] {
       {
@@ -102,16 +110,19 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 测试重写位置删除文件。 */
   public TestRewritePositionDeleteFiles(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 辅助方法：cleanup。 */
   @After
   public void cleanup() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试日期分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDatePartition() throws Exception {
     createTable("date");
@@ -120,6 +131,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试布尔分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBooleanPartition() throws Exception {
     createTable("boolean");
@@ -127,6 +139,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete(2);
   }
 
+  /** 测试时间戳分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimestampPartition() throws Exception {
     createTable("timestamp");
@@ -135,6 +148,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试byte分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBytePartition() throws Exception {
     createTable("byte");
@@ -142,6 +156,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试十进制分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDecimalPartition() throws Exception {
     createTable("decimal(18, 10)");
@@ -150,6 +165,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试二进制分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBinaryPartition() throws Exception {
     createTable("binary");
@@ -157,6 +173,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试char分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCharPartition() throws Exception {
     createTable("char(10)");
@@ -164,6 +181,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试varchar分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testVarcharPartition() throws Exception {
     createTable("varchar(10)");
@@ -171,6 +189,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试int分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testIntPartition() throws Exception {
     createTable("int");
@@ -178,6 +197,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试days分区转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDaysPartitionTransform() throws Exception {
     createTable("timestamp", PARTITION_COL, String.format("days(%s)", PARTITION_COL));
@@ -186,6 +206,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete();
   }
 
+  /** 测试空值转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testNullTransform() throws Exception {
     createTable("int");
@@ -193,6 +214,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete(2);
   }
 
+  /** 测试分区col带dot场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionColWithDot() throws Exception {
     String partitionColWithDot = "`partition.col`";
@@ -201,14 +223,17 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     testDanglingDelete(partitionColWithDot, NUM_DATA_FILES);
   }
 
+  /** 测试dangling删除场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testDanglingDelete() throws Exception {
     testDanglingDelete(NUM_DATA_FILES);
   }
 
+  /** 测试dangling删除场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testDanglingDelete(int numDataFiles) throws Exception {
     testDanglingDelete(PARTITION_COL, numDataFiles);
   }
 
+  /** 测试dangling删除场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testDanglingDelete(String partitionCol, int numDataFiles) throws Exception {
     Table table = Spark3Util.loadIcebergTable(spark, tableName);
 
@@ -241,10 +266,12 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 创建表。 */
   private void createTable(String partitionType) {
     createTable(partitionType, PARTITION_COL, PARTITION_COL);
   }
 
+  /** 创建表。 */
   private void createTable(String partitionType, String partitionCol, String partitionTransform) {
     sql(
         "CREATE TABLE %s (id long, %s %s, c1 string, c2 string) "
@@ -254,15 +281,18 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
         tableName, partitionCol, partitionType, partitionTransform);
   }
 
+  /** 插入数据。 */
   private void insertData(Function<Integer, ?> partitionValueFunction) throws Exception {
     insertData(partitionValueFunction, NUM_DATA_FILES);
   }
 
+  /** 插入数据。 */
   private void insertData(Function<Integer, ?> partitionValueFunction, int numDataFiles)
       throws Exception {
     insertData(PARTITION_COL, partitionValueFunction, numDataFiles);
   }
 
+  /** 插入数据。 */
   private void insertData(
       String partitionCol, Function<Integer, ?> partitionValue, int numDataFiles) throws Exception {
     for (int i = 0; i < numDataFiles; i++) {
@@ -276,12 +306,14 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     }
   }
 
+  /** 追加作为文件。 */
   private void appendAsFile(Dataset<Row> df) throws Exception {
     // ensure the schema is precise
     StructType sparkSchema = spark.table(tableName).schema();
     spark.createDataFrame(df.rdd(), sparkSchema).coalesce(1).writeTo(tableName).append();
   }
 
+  /** 写pos删除用于文件。 */
   private void writePosDeletesForFiles(Table table, List<DataFile> files) throws IOException {
 
     Map<StructLike, List<DataFile>> filesByPartition =
@@ -323,6 +355,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     rowDelta.commit();
   }
 
+  /** 写删除文件。 */
   private DeleteFile writeDeleteFile(
       Table table, OutputFile out, StructLike partition, List<Pair<CharSequence, Long>> deletes)
       throws IOException {
@@ -341,29 +374,35 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
     return writer.toDeleteFile();
   }
 
+  /** 辅助方法：encrypt。 */
   private static EncryptedOutputFile encrypt(OutputFile out) {
     return EncryptedFiles.encryptedOutput(out, EncryptionKeyMetadata.EMPTY);
   }
 
+  /** 默认格式。 */
   private static FileFormat defaultFormat(Map<String, String> properties) {
     String formatString = properties.getOrDefault(DEFAULT_FILE_FORMAT, DEFAULT_FILE_FORMAT_DEFAULT);
     return FileFormat.fromString(formatString);
   }
 
+  /** 记录。 */
   private List<Object[]> records(String table, String partitionCol) {
     return rowsToJava(
         spark.read().format("iceberg").load(table).sort(partitionCol, "id").collectAsList());
   }
 
+  /** 辅助方法：size。 */
   private long size(List<DeleteFile> deleteFiles) {
     return deleteFiles.stream().mapToLong(DeleteFile::fileSizeInBytes).sum();
   }
 
+  /** 数据文件。 */
   private List<DataFile> dataFiles(Table table) {
     CloseableIterable<FileScanTask> tasks = table.newScan().includeColumnStats().planFiles();
     return Lists.newArrayList(CloseableIterable.transform(tasks, FileScanTask::file));
   }
 
+  /** 删除文件。 */
   private List<DeleteFile> deleteFiles(Table table) {
     Table deletesTable =
         MetadataTableUtils.createMetadataTableInstance(table, MetadataTableType.POSITION_DELETES);
@@ -372,6 +411,7 @@ public class TestRewritePositionDeleteFiles extends SparkExtensionsTestBase {
         CloseableIterable.transform(tasks, t -> ((PositionDeletesScanTask) t).file()));
   }
 
+  /** 检查结果。 */
   private void checkResult(
       Result result,
       List<DeleteFile> rewrittenDeletes,

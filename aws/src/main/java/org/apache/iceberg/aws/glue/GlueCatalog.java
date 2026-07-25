@@ -83,6 +83,35 @@ import software.amazon.awssdk.services.glue.model.Table;
 import software.amazon.awssdk.services.glue.model.TableInput;
 import software.amazon.awssdk.services.glue.model.UpdateDatabaseRequest;
 
+/**
+ * 文件级说明：基于 AWS Glue Data Catalog 实现的 Iceberg Catalog。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成的入口模块，位于 api/core 之上）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 Iceberg {@link org.apache.iceberg.catalog.Catalog} 与 {@link SupportsNamespaces} SPI， 把
+ *       Glue 数据库/表映射为 Iceberg Namespace/TableIdentifier。
+ *   <li>通过 {@link GlueTableOperations} 把表元数据 commit 到 Glue（含乐观锁/分布式锁）， 并以 S3 为底层数据与元数据文件存储。
+ *   <li>支持 Lake Formation 凭证下发、表/库标签透传、warehouse 默认路径推导等 AWS 特有能力。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link BaseMetastoreCatalog}：复用 Iceberg 通用的元数据存储 catalog 抽象， 仅实现 Glue 特有的 CRUD 与命名空间操作。
+ *   <li>乐观锁优先：若运行环境 SDK 支持 UpdateTableRequest.versionId，则优先使用 Glue 乐观锁； 否则回退到分布式锁管理器（推荐
+ *       DynamoDB），保证 commit 原子性。
+ *   <li>表级 FileIO 缓存：每个 {@link GlueTableOperations} 持有自己的 FileIO（可能基于表级 Lake Formation 凭证或标签配置），用
+ *       Caffeine weakKey 缓存并在 GC 时关闭 FileIO， 避免内存泄漏。
+ *   <li>Configurable：实现 Hadoop Configurable 以接收引擎传入的 Hadoop 配置。
+ * </ul>
+ *
+ * <p>上下游关系：由 Iceberg 引擎层（Spark/Flink 等）通过 CatalogUtil 加载；依赖 {@link AwsClientFactories} 构造
+ * GlueClient、{@link AwsProperties}/{@link S3FileIOProperties} 解析配置、{@link LockManagers}
+ * 构造锁管理器；底层数据通过 S3FileIO 读写。
+ */
 public class GlueCatalog extends BaseMetastoreCatalog
     implements Closeable, SupportsNamespaces, Configurable<Configuration> {
 
@@ -108,12 +137,27 @@ public class GlueCatalog extends BaseMetastoreCatalog
           .build();
 
   /**
-   * No-arg constructor to load the catalog dynamically.
+   * 无参构造器，供 Iceberg 动态加载 catalog 时反射调用。
    *
-   * <p>All fields are initialized by calling {@link GlueCatalog#initialize(String, Map)} later.
+   * <p>所有字段需通过后续 {@link #initialize(String, Map)} 完成初始化。
    */
   public GlueCatalog() {}
 
+  /**
+   * 初始化 GlueCatalog：根据 properties 构造 GlueClient、AwsProperties、S3FileIOProperties 与锁管理器。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>若启用 Lake Formation：校验/补齐 client.factory 为 LakeFormationAwsClientFactory， 构造工厂并断言其类型。
+   *   <li>否则直接从 properties 构造 AwsClientFactory 并获取 GlueClient。
+   *   <li>委托给 {@link #initialize(String, String, AwsProperties, S3FileIOProperties, GlueClient,
+   *       LockManager)} 完成字段装配。
+   * </ol>
+   *
+   * @param name catalog 名称
+   * @param properties catalog 配置键值
+   */
   @Override
   public void initialize(String name, Map<String, String> properties) {
     this.catalogProperties = ImmutableMap.copyOf(properties);
@@ -150,6 +194,12 @@ public class GlueCatalog extends BaseMetastoreCatalog
         initializeLockManager(properties));
   }
 
+  /**
+   * 根据运行环境与配置选择锁管理器：用户显式配置优先；否则若 SDK 不支持乐观锁则回退到 内存锁（仅单机安全）；若支持乐观锁则返回 null（不使用外部锁）。
+   *
+   * @param properties catalog 配置
+   * @return 锁管理器实例，可能为 null
+   */
   private LockManager initializeLockManager(Map<String, String> properties) {
     if (properties.containsKey(CatalogProperties.LOCK_IMPL)) {
       return LockManagers.from(properties);
@@ -165,6 +215,7 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return null;
   }
 
+  /** 供测试使用的初始化入口，允许传入额外 catalogProps。 */
   @VisibleForTesting
   void initialize(
       String name,
@@ -178,6 +229,16 @@ public class GlueCatalog extends BaseMetastoreCatalog
     initialize(name, path, properties, s3Properties, client, lock);
   }
 
+  /**
+   * 装配 GlueCatalog 各字段并构造资源关闭组与 FileIO 缓存。
+   *
+   * @param name catalog 名称
+   * @param path warehouse 路径
+   * @param properties AWS 配置
+   * @param s3Properties S3 FileIO 配置
+   * @param client Glue 客户端
+   * @param lock 锁管理器（可为 null）
+   */
   @VisibleForTesting
   void initialize(
       String name,
@@ -201,6 +262,15 @@ public class GlueCatalog extends BaseMetastoreCatalog
     this.fileIOCloser = newFileIOCloser();
   }
 
+  /**
+   * 为指定表构造 {@link GlueTableOperations}，必要时叠加表级标签与 Lake Formation 配置。
+   *
+   * <p>逻辑：基于 catalogProperties 复制一份表级配置，按需追加 Iceberg 表/命名空间 S3 标签 与 Lake Formation 库表名参数，再以此构造
+   * GlueTableOperations 并把其 FileIO 注册到 fileIOCloser 缓存，确保表操作 GC 时关闭对应 FileIO。
+   *
+   * @param tableIdentifier 表标识
+   * @return 表操作实例
+   */
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
     if (catalogProperties != null) {
@@ -261,9 +331,10 @@ public class GlueCatalog extends BaseMetastoreCatalog
   }
 
   /**
-   * This method produces the same result as using a HiveCatalog. If databaseUri exists for the Glue
-   * database URI, the default location is databaseUri/tableName. If not, the default location is
-   * warehousePath/databaseName.db/tableName
+   * 推导表的默认 warehouse 路径，与 HiveCatalog 行为一致。
+   *
+   * <p>逻辑：若 Glue 数据库已设置 locationUri，则使用 locationUri/tableName； 否则使用
+   * warehousePath/databaseName.db/tableName，并校验 warehousePath 非空。
    *
    * @param tableIdentifier table id
    * @return default warehouse path
@@ -296,6 +367,15 @@ public class GlueCatalog extends BaseMetastoreCatalog
         tableIdentifier.name());
   }
 
+  /**
+   * 列举指定命名空间下的所有 Iceberg 表，按 Glue 分页 token 循环拉取。
+   *
+   * <p>逻辑：循环调用 getTables 直到 nextToken 为空；过滤出 {@link #isGlueIcebergTable} 为真的表，转换为 Iceberg
+   * TableIdentifier。
+   *
+   * @param namespace 命名空间
+   * @return 表标识列表
+   */
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     namespaceExists(namespace);
@@ -326,12 +406,28 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return results;
   }
 
+  /**
+   * 判断 Glue 表是否为 Iceberg 表：检查 parameters 中 table_type 是否为 ICEBERG。
+   *
+   * @param table Glue 表
+   * @return 是 Iceberg 表返回 true
+   */
   private boolean isGlueIcebergTable(Table table) {
     return table.parameters() != null
         && BaseMetastoreTableOperations.ICEBERG_TABLE_TYPE_VALUE.equalsIgnoreCase(
             table.parameters().get(BaseMetastoreTableOperations.TABLE_TYPE_PROP));
   }
 
+  /**
+   * 从 Glue 删除表，可选地清理底层 S3 数据。
+   *
+   * <p>逻辑：若 purge 为 true 则先加载最新元数据；调用 deleteTable 删除 Glue 表项； 再用 {@link CatalogUtil#dropTableData}
+   * 删除数据文件。表不存在视为失败返回 false。
+   *
+   * @param identifier 表标识
+   * @param purge 是否清理数据文件
+   * @return 删除成功返回 true
+   */
   @Override
   public boolean dropTable(TableIdentifier identifier, boolean purge) {
     try {
@@ -373,7 +469,10 @@ public class GlueCatalog extends BaseMetastoreCatalog
   }
 
   /**
-   * Rename table in Glue is a drop table and create table.
+   * 重命名表：Glue 不支持原子 rename，这里通过“建新表 + 删旧表”实现，并保留原元数据指针。
+   *
+   * <p>逻辑：校验目标命名空间存在；读取源表信息；用相同的 owner/tableType/parameters/ storageDescriptor
+   * 创建目标表；删除源表；若删除失败则回滚删除目标表。
    *
    * @param from identifier of the table to rename
    * @param to new table name
@@ -446,6 +545,7 @@ public class GlueCatalog extends BaseMetastoreCatalog
     LOG.info("Successfully renamed table from {} to {}", from, to);
   }
 
+  /** 在 Glue 中创建数据库（命名空间），已存在则抛 AlreadyExistsException。 */
   @Override
   public void createNamespace(Namespace namespace, Map<String, String> metadata) {
     try {
@@ -463,6 +563,15 @@ public class GlueCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /**
+   * 列举 Glue 中所有数据库（命名空间），按分页 token 循环拉取。
+   *
+   * <p>Glue 不支持嵌套命名空间，传入非空 namespace 时仅做存在性校验。
+   *
+   * @param namespace 命名空间，空表示列举所有
+   * @return 命名空间列表
+   * @throws NoSuchNamespaceException 当传入非空且不存在时
+   */
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
     if (!namespace.isEmpty()) {
@@ -497,6 +606,13 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return results;
   }
 
+  /**
+   * 加载 Glue 数据库的元数据，并补充 locationUri 与 description 到返回 Map。
+   *
+   * @param namespace 命名空间
+   * @return 元数据键值
+   * @throws NoSuchNamespaceException 数据库不存在时
+   */
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
@@ -533,6 +649,13 @@ public class GlueCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /**
+   * 删除 Glue 数据库，若库内仍有表则抛 NamespaceNotEmptyException。
+   *
+   * @param namespace 命名空间
+   * @return 删除成功返回 true
+   * @throws NamespaceNotEmptyException 库非空时
+   */
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
     namespaceExists(namespace);
@@ -569,6 +692,14 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return true;
   }
 
+  /**
+   * 为 Glue 数据库设置属性：合并现有元数据与新属性后整体更新。
+   *
+   * @param namespace 命名空间
+   * @param properties 待设置属性
+   * @return 成功返回 true
+   * @throws NoSuchNamespaceException 数据库不存在时
+   */
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException {
@@ -590,6 +721,14 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return true;
   }
 
+  /**
+   * 从 Glue 数据库移除属性：加载现有元数据、删除指定键后整体更新。
+   *
+   * @param namespace 命名空间
+   * @param properties 待移除属性键集合
+   * @return 成功返回 true
+   * @throws NoSuchNamespaceException 数据库不存在时
+   */
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
@@ -613,6 +752,12 @@ public class GlueCatalog extends BaseMetastoreCatalog
     return true;
   }
 
+  /**
+   * 校验表标识是否合法：若开启跳过校验直接返回 true，否则校验命名空间与表名格式。
+   *
+   * @param tableIdentifier 表标识
+   * @return 合法返回 true
+   */
   @Override
   protected boolean isValidIdentifier(TableIdentifier tableIdentifier) {
     if (awsProperties.glueCatalogSkipNameValidation()) {
@@ -623,11 +768,17 @@ public class GlueCatalog extends BaseMetastoreCatalog
         && IcebergToGlueConverter.isValidTableName(tableIdentifier.name());
   }
 
+  /** 返回 catalog 名称。 */
   @Override
   public String name() {
     return catalogName;
   }
 
+  /**
+   * 关闭 catalog：关闭 GlueClient、锁管理器与所有缓存的 FileIO。
+   *
+   * @throws IOException 关闭异常
+   */
   @Override
   public void close() throws IOException {
     closeableGroup.close();
@@ -637,16 +788,22 @@ public class GlueCatalog extends BaseMetastoreCatalog
     }
   }
 
+  /** 接收 Hadoop Configuration，供 FileIO 等组件使用。 */
   @Override
   public void setConf(Configuration conf) {
     this.hadoopConf = conf;
   }
 
+  /** 返回 catalog 配置（不可变），未初始化时返回空 Map。 */
   @Override
   protected Map<String, String> properties() {
     return catalogProperties == null ? ImmutableMap.of() : catalogProperties;
   }
 
+  /**
+   * 构造 FileIO 关闭缓存：以 TableOperations 弱引用为 key，当 TableOperations 被 GC 时 自动关闭对应的 FileIO，避免表操作生命周期与
+   * FileIO 不一致导致的资源泄漏。
+   */
   private Cache<TableOperations, FileIO> newFileIOCloser() {
     return Caffeine.newBuilder()
         .weakKeys()

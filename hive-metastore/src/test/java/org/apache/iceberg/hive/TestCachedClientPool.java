@@ -35,8 +35,20 @@ import org.apache.iceberg.hive.CachedClientPool.Key;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestCachedClientPool 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestCachedClientPool 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestCachedClientPool extends HiveMetastoreTest {
 
+  /**
+   * 测试场景：Client Pool Cleaner。
+   *
+   * <p>验证该方法在 Client Pool Cleaner 条件下的行为是否符合预期。
+   */
   @Test
   public void testClientPoolCleaner() throws InterruptedException {
     CachedClientPool clientPool = new CachedClientPool(hiveConf, Collections.emptyMap());
@@ -59,6 +71,11 @@ public class TestCachedClientPool extends HiveMetastoreTest {
     assertThat(clientPool2.isClosed()).isTrue();
   }
 
+  /**
+   * 测试场景：Cache Key。
+   *
+   * <p>验证该方法在 Cache Key 条件下的行为是否符合预期。
+   */
   @Test
   public void testCacheKey() throws Exception {
     UserGroupInformation current = UserGroupInformation.getCurrentUser();
@@ -130,6 +147,11 @@ public class TestCachedClientPool extends HiveMetastoreTest {
         .hasMessageContaining("Conf key element k1 already specified");
   }
 
+  /**
+   * 测试场景：Hms Catalog。
+   *
+   * <p>验证该方法在 Hms Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testHmsCatalog() {
     Map<String, String> properties =

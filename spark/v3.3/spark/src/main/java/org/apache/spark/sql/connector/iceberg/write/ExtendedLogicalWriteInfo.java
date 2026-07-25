@@ -21,11 +21,17 @@ package org.apache.spark.sql.connector.iceberg.write;
 import org.apache.spark.sql.connector.write.LogicalWriteInfo;
 import org.apache.spark.sql.types.StructType;
 
-/** A class that holds logical write information not covered by LogicalWriteInfo in Spark. */
+/**
+ * Spark DataSource V2 连接器扩展的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 ExtendedLogicalWriteInfo。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface ExtendedLogicalWriteInfo extends LogicalWriteInfo {
-  /** The schema of the input metadata from Spark to data source. */
+  /** 执行该方法的具体逻辑。 */
   StructType metadataSchema();
 
-  /** The schema of the ID columns from Spark to data source. */
+  /** 执行该方法的具体逻辑。 */
   StructType rowIdSchema();
 }

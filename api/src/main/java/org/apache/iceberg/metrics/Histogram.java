@@ -18,43 +18,98 @@
  */
 package org.apache.iceberg.metrics;
 
+/**
+ * 直方图接口：用于记录一系列观测值并计算其分布统计量。
+ *
+ * <p>所属模块：iceberg-api。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>接收观测值（{@link #update(long)}）并维护内部样本集合。
+ *   <li>提供观测次数与基于样本的统计快照（均值、标准差、最值、分位数等）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>接口只定义采集与查询语义，不约束采样策略；实现可采用蓄水池采样 （如 {@link FixedReservoirHistogram}）或精确存储，由 {@link
+ *       MetricsContext} 决定。
+ *   <li>{@link Statistics} 作为不可变快照返回，使调用方在拿快照后无需持锁即可多次查询。
+ * </ul>
+ *
+ * <p>上下游关系：由 {@link MetricsContext#histogram(String)} 创建；被 core 模块用于统计 数据量、耗时等分布型指标。
+ */
 public interface Histogram {
-  /** Update the histogram with a new value observed. */
+  /**
+   * 更新直方图，记录一个新观测值。
+   *
+   * @param value 观测值
+   */
   void update(long value);
 
-  /** Return the number of observations. */
+  /**
+   * 返回已观测的次数。
+   *
+   * @return 观测次数
+   */
   int count();
 
-  /** Calculate the statistics of the observed values. */
+  /**
+   * 基于已观测样本计算统计快照。
+   *
+   * @return 当前样本的 {@link Statistics}
+   */
   Statistics statistics();
 
+  /**
+   * 统计快照接口：基于直方图当前样本计算得到的不可变统计结果。
+   *
+   * <p>设计意图：作为一次性的快照返回，调用方可多次查询而无需持锁，避免统计期间阻塞 观测写入。
+   */
   interface Statistics {
     /**
-     * Return the number of values that the statistics computation is based on.
+     * 返回统计计算所基于的样本数量。
      *
-     * <p>If the number of sampling is less than the reservoir size, the sampling count should be
-     * returned. Otherwise, the reservoir size is returned.
+     * <p>若采样次数小于蓄水池容量，返回实际采样次数；否则返回蓄水池容量。
+     *
+     * @return 样本数量
      */
     int size();
 
-    /** Returns the mean value of the histogram observations. */
+    /**
+     * 返回观测值的均值。
+     *
+     * @return 均值
+     */
     double mean();
 
-    /** Returns the standard deviation of the histogram distribution. */
+    /**
+     * 返回观测值分布的标准差。
+     *
+     * @return 标准差
+     */
     double stdDev();
 
-    /** Returns the maximum value of the histogram observations. */
+    /**
+     * 返回观测值中的最大值。
+     *
+     * @return 最大值
+     */
     long max();
 
-    /** Returns the minimum value of the histogram observations. */
+    /**
+     * 返回观测值中的最小值。
+     *
+     * @return 最小值
+     */
     long min();
 
     /**
-     * Returns the percentile value based on the histogram statistics.
+     * 返回指定分位点对应的观测值。
      *
-     * @param percentile percentile point in double. E.g., 0.75 means 75 percentile. It is up to the
-     *     implementation to decide what valid percentile points are supported.
-     * @return Value for the given percentile
+     * @param percentile 分位点，例如 0.75 表示 75 分位；具体支持的分位点由实现决定
+     * @return 该分位点对应的值
      */
     long percentile(double percentile);
   }

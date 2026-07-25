@@ -58,6 +58,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkOrcReadMetadataColumns 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 SparkORC读元数据列 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkOrcReadMetadataColumns {
   private static final Schema DATA_SCHEMA =
@@ -95,6 +102,7 @@ public class TestSparkOrcReadMetadataColumns {
     }
   }
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "vectorized = {0}")
   public static Object[] parameters() {
     return new Object[] {false, true};
@@ -105,10 +113,12 @@ public class TestSparkOrcReadMetadataColumns {
   private boolean vectorized;
   private File testFile;
 
+  /** 测试SparkORC读元数据列。 */
   public TestSparkOrcReadMetadataColumns(boolean vectorized) {
     this.vectorized = vectorized;
   }
 
+  /** 写文件。 */
   @Before
   public void writeFile() throws IOException {
     testFile = temp.newFile();
@@ -127,17 +137,20 @@ public class TestSparkOrcReadMetadataColumns {
     }
   }
 
+  /** 测试读行numbers场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadRowNumbers() throws IOException {
     readAndValidate(null, null, null, EXPECTED_ROWS);
   }
 
+  /** 测试读行numbers带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadRowNumbersWithFilter() throws IOException {
     readAndValidate(
         Expressions.greaterThanOrEqual("id", 500), null, null, EXPECTED_ROWS.subList(500, 1000));
   }
 
+  /** 测试读行numbers带splits场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReadRowNumbersWithSplits() throws IOException {
     Reader reader;
@@ -162,6 +175,7 @@ public class TestSparkOrcReadMetadataColumns {
     }
   }
 
+  /** 读与校验。 */
   private void readAndValidate(
       Expression filter, Long splitStart, Long splitLength, List<InternalRow> expected)
       throws IOException {
@@ -212,6 +226,7 @@ public class TestSparkOrcReadMetadataColumns {
     }
   }
 
+  /** batches到行。 */
   private CloseableIterable<InternalRow> batchesToRows(CloseableIterable<ColumnarBatch> batches) {
     return CloseableIterable.combine(
         Iterables.concat(Iterables.transform(batches, b -> (Iterable<InternalRow>) b::rowIterator)),

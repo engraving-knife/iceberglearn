@@ -46,6 +46,13 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import scala.collection.JavaConverters;
 
+/**
+ * 文件级说明：测试 TestCallStatementParser 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 调用语句解析器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCallStatementParser {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
@@ -53,6 +60,7 @@ public class TestCallStatementParser {
   private static SparkSession spark = null;
   private static ParserInterface parser = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestCallStatementParser.spark =
@@ -64,6 +72,7 @@ public class TestCallStatementParser {
     TestCallStatementParser.parser = spark.sessionState().sqlParser();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestCallStatementParser.spark;
@@ -72,6 +81,7 @@ public class TestCallStatementParser {
     currentSpark.stop();
   }
 
+  /** 测试调用带位置参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallWithPositionalArgs() throws ParseException {
     CallStatement call =
@@ -90,6 +100,7 @@ public class TestCallStatementParser {
     checkArg(call, 6, new BigDecimal("900e-1"), DataTypes.createDecimalType(3, 1));
   }
 
+  /** 测试调用带命名参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallWithNamedArgs() throws ParseException {
     CallStatement call =
@@ -104,6 +115,7 @@ public class TestCallStatementParser {
     checkArg(call, 2, "c3", true, DataTypes.BooleanType);
   }
 
+  /** 测试调用带mixed参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallWithMixedArgs() throws ParseException {
     CallStatement call = (CallStatement) parser.parsePlan("CALL cat.system.func(c1 => 1, '2')");
@@ -116,6 +128,7 @@ public class TestCallStatementParser {
     checkArg(call, 1, "2", DataTypes.StringType);
   }
 
+  /** 测试调用带时间戳参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallWithTimestampArg() throws ParseException {
     CallStatement call =
@@ -130,6 +143,7 @@ public class TestCallStatementParser {
         call, 0, Timestamp.from(Instant.parse("2017-02-03T10:37:30.00Z")), DataTypes.TimestampType);
   }
 
+  /** 测试调用带varsubstitution场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallWithVarSubstitution() throws ParseException {
     CallStatement call =
@@ -142,6 +156,7 @@ public class TestCallStatementParser {
     checkArg(call, 0, "value", DataTypes.StringType);
   }
 
+  /** 测试调用parseerror场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallParseError() {
     AssertHelpers.assertThrows(
@@ -151,6 +166,7 @@ public class TestCallStatementParser {
         () -> parser.parsePlan("CALL cat.system radish kebab"));
   }
 
+  /** 测试调用stripscomments场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCallStripsComments() throws ParseException {
     List<String> callStatementsWithComments =
@@ -176,11 +192,13 @@ public class TestCallStatementParser {
     }
   }
 
+  /** 检查参数。 */
   private void checkArg(
       CallStatement call, int index, Object expectedValue, DataType expectedType) {
     checkArg(call, index, null, expectedValue, expectedType);
   }
 
+  /** 检查参数。 */
   private void checkArg(
       CallStatement call,
       int index,
@@ -202,10 +220,12 @@ public class TestCallStatementParser {
     Assert.assertEquals("Arg must match", expectedExpr, actualExpr);
   }
 
+  /** 到Spark字面量。 */
   private Literal toSparkLiteral(Object value, DataType dataType) {
     return Literal$.MODULE$.create(value, dataType);
   }
 
+  /** 检查转换。 */
   private <T> T checkCast(Object value, Class<T> expectedClass) {
     Assert.assertTrue(
         "Expected instance of " + expectedClass.getName(), expectedClass.isInstance(value));

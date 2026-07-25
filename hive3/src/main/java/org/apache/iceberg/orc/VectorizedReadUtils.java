@@ -25,21 +25,36 @@ import org.apache.orc.impl.OrcTail;
 import org.apache.orc.impl.ReaderImpl;
 
 /**
- * Utilities that rely on Iceberg code from org.apache.iceberg.orc package and are required for ORC
- * vectorization.
+ * 文件级说明：ORC 向量化读取所需的工具方法集合。
+ *
+ * <p>所属模块：iceberg-hive3（Iceberg 与 Hive3 集成模块）。
+ *
+ * <p>职责：依赖 org.apache.iceberg.orc 包中的 Iceberg 代码，提供 ORC 向量化读取
+ * 所需的辅助方法，例如从 Iceberg InputFile 中提取 OrcTail 元数据。
+ *
+ * <p>设计意图：Hive 的 ORC 读取器需要 OrcTail 元数据来正确处理文件尾，
+ * 但 Iceberg 的 InputFile 抽象未直接暴露 OrcTail。本类通过序列化技巧绕过 API 限制，
+ * 取出所需元数据供 Hive 向量化读取使用。
+ *
+ * <p>上下游关系：上游为 {@code HiveVectorizedReader} 的 ORC 分支，下游为
+ * Iceberg ORC 文件读取实现（{@link ORC#newFileReader}）。
  */
 public class VectorizedReadUtils {
 
+  /** 私有构造，工具类禁止实例化。 */
   private VectorizedReadUtils() {}
 
   /**
-   * Opens the ORC inputFile and reads the metadata information to construct the OrcTail content.
-   * Unfortunately the API doesn't allow simple access to OrcTail, so we need the serialization
-   * trick.
+   * 打开 ORC 输入文件并读取元数据以构造 OrcTail。
    *
-   * @param inputFile - the ORC file
-   * @param job - JobConf instance for the current task
-   * @throws IOException - errors relating to accessing the ORC file
+   * <p>逻辑：由于 API 不允许直接访问 OrcTail，借助序列化方式间接取得：
+   * 先通过 {@link ORC#newFileReader} 创建 reader，再调用
+   * {@link ReaderImpl#extractFileTail} 反序列化得到 OrcTail。
+   *
+   * @param inputFile 待读取的 ORC 文件
+   * @param job 当前任务的 JobConf
+   * @return 反序列化得到的 OrcTail 元数据
+   * @throws IOException 当访问 ORC 文件失败时抛出
    */
   public static OrcTail getOrcTail(InputFile inputFile, JobConf job) throws IOException {
 

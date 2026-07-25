@@ -42,14 +42,32 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：将 Iceberg {@link Type} 转换为 Flink {@link LogicalType} 的访问器。
+ *
+ * <p>所属模块：iceberg-flink（Flink 集成模块），继承 Iceberg core 的 {@link TypeUtil.SchemaVisitor}。
+ *
+ * <p>职责：递归访问 Iceberg schema 的每个类型节点，映射为对应的 Flink LogicalType。
+ *
+ * <p>设计意图：通过 Visitor 模式实现 Iceberg → Flink 的类型转换。 类型映射规则见 {@link FlinkSchemaUtil} 的类注释。UUID 映射为
+ * BinaryType(16)， String 映射为 VarCharType，Time/Timestamp 映射为微秒精度。
+ *
+ * <p>上下游关系：被 {@link FlinkSchemaUtil#convert(Schema)} 和 {@link FlinkSchemaUtil#convert(Type)} 调用。
+ */
 class TypeToFlinkType extends TypeUtil.SchemaVisitor<LogicalType> {
   TypeToFlinkType() {}
 
+  /** schema 节点直接返回 struct 类型结果。 */
   @Override
   public LogicalType schema(Schema schema, LogicalType structType) {
     return structType;
   }
 
+  /**
+   * 构建 Flink RowType。
+   *
+   * <p>逻辑：遍历 Iceberg struct 字段，将每个字段的类型结果转为 Flink RowField， 保留字段名和可空性。
+   */
   @Override
   public LogicalType struct(Types.StructType struct, List<LogicalType> fieldResults) {
     List<Types.NestedField> fields = struct.fields();

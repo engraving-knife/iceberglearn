@@ -51,6 +51,19 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 将外部文件/表导入 Iceberg 表的存储过程。
+ *
+ * <p>所属模块：iceberg-spark（procedures 子包）。通过 {@code CALL system.add_files} 把已有 parquet/orc/avro 文件或
+ * Spark catalog 表的数据文件导入到指定 Iceberg 表，复用既有数据而无需重写。
+ *
+ * <p>职责：解析目标表与源标识，校验分区规范兼容性，确保 NameMapping 存在；按源是文件路径还是 catalog 表分别调用
+ * importFileTable/importCatalogTable 完成导入，并返回新增文件数与变更分区数。
+ *
+ * <p>设计意图：支持将存量数据"就地"纳入 Iceberg 管理而不拷贝数据；通过分区过滤与重复文件检查 提供安全控制。仅支持恒等分区（非恒等变换不兼容）。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册；依赖 {@link SparkTableUtil} 与 {@link Spark3Util} 完成实际文件列举与导入。
+ */
 class AddFilesProcedure extends BaseProcedure {
 
   private static final ProcedureParameter TABLE_PARAM =
@@ -74,12 +87,15 @@ class AddFilesProcedure extends BaseProcedure {
             new StructField("changed_partition_count", DataTypes.LongType, false, Metadata.empty()),
           });
 
+  /** 以所属 Catalog 构造。 */
   private AddFilesProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /** 返回本过程构建器。 */
   public static SparkProcedures.ProcedureBuilder builder() {
     return new BaseProcedure.Builder<AddFilesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected AddFilesProcedure doBuild() {
         return new AddFilesProcedure(tableCatalog());
@@ -87,16 +103,23 @@ class AddFilesProcedure extends BaseProcedure {
     };
   }
 
+  /** 返回参数定义（table、source_table、partition_filter、check_duplicate_files）。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /** 返回输出结构（新增文件数、变更分区数）。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行导入。
+   *
+   * <p>逻辑：解析目标表标识；源表用 v2SessionCatalog 解析；读取分区过滤与重复检查开关； 调用 {@link #importToIceberg} 完成导入。
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     ProcedureInput input = new ProcedureInput(spark(), tableCatalog(), PARAMETERS, args);
@@ -114,6 +137,7 @@ class AddFilesProcedure extends BaseProcedure {
     return importToIceberg(tableIdent, sourceIdent, partitionFilter, checkDuplicateFiles);
   }
 
+  /** 由快照摘要构造输出行（新增文件数、变更分区数）。 */
   private InternalRow[] toOutputRows(Snapshot snapshot) {
     Map<String, String> summary = snapshot.summary();
     return new InternalRow[] {
@@ -123,6 +147,7 @@ class AddFilesProcedure extends BaseProcedure {
     };
   }
 
+  /** 判断标识是否为文件源（命名空间为 orc/parquet/avro）。 */
   private boolean isFileIdentifier(Identifier ident) {
     String[] namespace = ident.namespace();
     return namespace.length == 1
@@ -131,6 +156,7 @@ class AddFilesProcedure extends BaseProcedure {
             || namespace[0].equalsIgnoreCase("avro"));
   }
 
+  /** 在修改目标表上下文中执行导入：校验分区规范、确保 NameMapping，按源类型分发到文件导入或 catalog 表导入，返回输出行。 */
   private InternalRow[] importToIceberg(
       Identifier destIdent,
       Identifier sourceIdent,
@@ -156,6 +182,7 @@ class AddFilesProcedure extends BaseProcedure {
         });
   }
 
+  /** 确保目标表配置默认 NameMapping，以按名而非按位置解析字段。 */
   private static void ensureNameMappingPresent(Table table) {
     if (table.properties().get(TableProperties.DEFAULT_NAME_MAPPING) == null) {
       // Forces Name based resolution instead of position based resolution
@@ -165,6 +192,7 @@ class AddFilesProcedure extends BaseProcedure {
     }
   }
 
+  /** 导入文件型源：通过 Spark 内存文件接口列举分区，非分区表校验后构造全局分区， 分区表校验非空后调用 {@link #importPartitions}。 */
   private void importFileTable(
       Table table,
       Path tableLocation,
@@ -194,6 +222,7 @@ class AddFilesProcedure extends BaseProcedure {
     }
   }
 
+  /** 导入 Spark catalog 表：转 v1 标识后调用 {@link SparkTableUtil#importSparkTable}。 */
   private void importCatalogTable(
       Table table,
       Identifier sourceIdent,
@@ -210,6 +239,7 @@ class AddFilesProcedure extends BaseProcedure {
         checkDuplicateFiles);
   }
 
+  /** 调用 {@link SparkTableUtil#importSparkPartitions} 将分区导入目标表。 */
   private void importPartitions(
       Table table, List<SparkTableUtil.SparkPartition> partitions, boolean checkDuplicateFiles) {
     String stagingLocation = getMetadataLocation(table);
@@ -217,17 +247,23 @@ class AddFilesProcedure extends BaseProcedure {
         spark(), partitions, table, table.spec(), stagingLocation, checkDuplicateFiles);
   }
 
+  /** 计算元数据暂存位置：优先表属性指定，否则 location + "/metadata"。 */
   private String getMetadataLocation(Table table) {
     String defaultValue = LocationUtil.stripTrailingSlash(table.location()) + "/metadata";
     return LocationUtil.stripTrailingSlash(
         table.properties().getOrDefault(TableProperties.WRITE_METADATA_LOCATION, defaultValue));
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "AddFiles";
   }
 
+  /**
+   * 校验目标表分区规范与分区过滤的兼容性。
+   *
+   * <p>逻辑：禁止非恒等分区变换；分区表带过滤时校验过滤列数不超过分区列数且均为合法分区列； 非分区表禁止带过滤。
+   */
   private void validatePartitionSpec(Table table, Map<String, String> partitionFilter) {
     List<PartitionField> partitionFields = table.spec().fields();
     Set<String> partitionNames =

@@ -36,12 +36,25 @@ import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 文件级说明：测试 TestReadProjection 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestReadProjection 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestReadProjection {
+  /** 辅助方法：writeAndRead。 */
   protected abstract Record writeAndRead(
       String desc, Schema writeSchema, Schema readSchema, Record record) throws IOException;
 
   @TempDir protected Path temp;
 
+  /**
+   * 测试场景：Full Projection。
+   *
+   * <p>验证该方法在 Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testFullProjection() throws Exception {
     Schema schema =
@@ -62,6 +75,11 @@ public abstract class TestReadProjection {
         .isEqualTo("test");
   }
 
+  /**
+   * 测试场景：Reordered Full Projection。
+   *
+   * <p>验证该方法在 Reordered Full Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testReorderedFullProjection() throws Exception {
     Schema schema =
@@ -86,6 +104,11 @@ public abstract class TestReadProjection {
     assertThat(projected.get(1)).as("Should contain the correct 1 value").isEqualTo(34L);
   }
 
+  /**
+   * 测试场景：Reordered Projection。
+   *
+   * <p>验证该方法在 Reordered Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testReorderedProjection() throws Exception {
     Schema schema =
@@ -112,6 +135,11 @@ public abstract class TestReadProjection {
     assertThat(projected.get(2)).as("Should contain the correct 2 value").isNull();
   }
 
+  /**
+   * 测试场景：Empty Projection。
+   *
+   * <p>验证该方法在 Empty Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyProjection() throws Exception {
     Schema schema =
@@ -130,6 +158,11 @@ public abstract class TestReadProjection {
     assertThatThrownBy(() -> projected.get(0)).isInstanceOf(ArrayIndexOutOfBoundsException.class);
   }
 
+  /**
+   * 测试场景：Basic Projection。
+   *
+   * <p>验证该方法在 Basic Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicProjection() throws Exception {
     Schema writeSchema =
@@ -157,6 +190,11 @@ public abstract class TestReadProjection {
         .isEqualTo("test");
   }
 
+  /**
+   * 测试场景：Rename。
+   *
+   * <p>验证该方法在 Rename 条件下的行为是否符合预期。
+   */
   @Test
   public void testRename() throws Exception {
     Schema writeSchema =
@@ -182,6 +220,11 @@ public abstract class TestReadProjection {
         .isEqualTo("test");
   }
 
+  /**
+   * 测试场景：Nested Struct Projection。
+   *
+   * <p>验证该方法在 Nested Struct Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedStructProjection() throws Exception {
     Schema writeSchema =
@@ -254,6 +297,11 @@ public abstract class TestReadProjection {
         .isCloseTo(-1.539054f, within(0.000001f));
   }
 
+  /**
+   * 测试场景：Map Projection。
+   *
+   * <p>验证该方法在 Map Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapProjection() throws IOException {
     Schema writeSchema =
@@ -298,6 +346,7 @@ public abstract class TestReadProjection {
         .isEqualTo(properties);
   }
 
+  /** 辅助方法：toStringMap。 */
   private Map<String, ?> toStringMap(Map<?, ?> map) {
     Map<String, Object> stringMap = Maps.newHashMap();
     for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -310,6 +359,11 @@ public abstract class TestReadProjection {
     return stringMap;
   }
 
+  /**
+   * 测试场景：Map Of Structs Projection。
+   *
+   * <p>验证该方法在 Map Of Structs Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testMapOfStructsProjection() throws IOException {
     Schema writeSchema =
@@ -426,6 +480,11 @@ public abstract class TestReadProjection {
     TestHelpers.assertEmptyAvroField(projectedL2, "long");
   }
 
+  /**
+   * 测试场景：List Projection。
+   *
+   * <p>验证该方法在 List Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testListProjection() throws IOException {
     Schema writeSchema =
@@ -457,6 +516,11 @@ public abstract class TestReadProjection {
     assertThat(projected.get("values")).as("Should project entire list").isEqualTo(values);
   }
 
+  /**
+   * 测试场景：List Of Structs Projection。
+   *
+   * <p>验证该方法在 List Of Structs Projection 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("unchecked")
   public void testListOfStructsProjection() throws IOException {

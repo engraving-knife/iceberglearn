@@ -31,6 +31,25 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：流式 Iceberg source 的协调器（Enumerator），持续发现 split 并分配给 reader。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/enumerator 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>周期性调用 {@link ContinuousSplitPlanner} 发现新增 snapshot 对应的 split。
+ *   <li>把发现的 split 加入 {@link SplitAssigner}，由其按 reader 请求分配。
+ *   <li>维护枚举位置（{@link IcebergEnumeratorPosition}）与历史记录以支持限流。
+ * </ul>
+ *
+ * <p>设计意图：通过 {@code maxPlanningSnapshotCount} 控制单次枚举的最大 snapshot 数， 通过 {@link EnumerationHistory}
+ * 跟踪每次枚举的 split 数以实现发现限流， 避免短时间产生过多 split 压垮系统。
+ *
+ * <p>上下游关系：上游为 Iceberg 表的 snapshot 与 {@link ContinuousSplitPlanner}， 下游为 {@link SplitAssigner}（分配
+ * split 给 reader）。
+ */
 @Internal
 public class ContinuousIcebergEnumerator extends AbstractIcebergEnumerator {
 

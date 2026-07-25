@@ -46,6 +46,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergConnector 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestIcebergConnector 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergConnector extends FlinkTestBase {
 
@@ -58,6 +65,7 @@ public class TestIcebergConnector extends FlinkTestBase {
   private final boolean isStreaming;
   private volatile TableEnvironment tEnv;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "catalogName = {0}, properties = {1}, isStreaming={2}")
   public static Iterable<Object[]> parameters() {
     return Lists.newArrayList(
@@ -161,6 +169,7 @@ public class TestIcebergConnector extends FlinkTestBase {
         });
   }
 
+  /** 辅助方法：TestIcebergConnector，Iceberg Connector。 */
   public TestIcebergConnector(
       String catalogName, Map<String, String> properties, boolean isStreaming) {
     this.catalogName = catalogName;
@@ -168,6 +177,7 @@ public class TestIcebergConnector extends FlinkTestBase {
     this.isStreaming = isStreaming;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     if (tEnv == null) {
@@ -198,6 +208,7 @@ public class TestIcebergConnector extends FlinkTestBase {
     return tEnv;
   }
 
+  /** 辅助方法：after，after。 */
   @After
   public void after() throws TException {
     sql("DROP TABLE IF EXISTS %s", TABLE_NAME);
@@ -220,6 +231,11 @@ public class TestIcebergConnector extends FlinkTestBase {
     }
   }
 
+  /**
+   * 测试场景：Create Connector Table。
+   *
+   * <p>验证该方法在 Create Connector Table 条件下的行为是否符合预期。
+   */
   private void testCreateConnectorTable() {
     Map<String, String> tableProps = createTableProps();
 
@@ -248,11 +264,21 @@ public class TestIcebergConnector extends FlinkTestBase {
         Sets.newHashSet(sql("SELECT * FROM %s", TABLE_NAME)));
   }
 
+  /**
+   * 测试场景：Create Table Under Default Database。
+   *
+   * <p>验证该方法在 Create Table Under Default Database 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableUnderDefaultDatabase() {
     testCreateConnectorTable();
   }
 
+  /**
+   * 测试场景：Catalog Database Conflict With Flink Database。
+   *
+   * <p>验证该方法在 Catalog Database Conflict With Flink Database 条件下的行为是否符合预期。
+   */
   @Test
   public void testCatalogDatabaseConflictWithFlinkDatabase() {
     sql("CREATE DATABASE IF NOT EXISTS `%s`", databaseName());
@@ -274,6 +300,11 @@ public class TestIcebergConnector extends FlinkTestBase {
     }
   }
 
+  /**
+   * 测试场景：Connector Table In Iceberg Catalog。
+   *
+   * <p>验证该方法在 Connector Table In Iceberg Catalog 条件下的行为是否符合预期。
+   */
   @Test
   public void testConnectorTableInIcebergCatalog() {
     // Create the catalog properties
@@ -306,6 +337,7 @@ public class TestIcebergConnector extends FlinkTestBase {
     }
   }
 
+  /** 辅助方法：createTableProps，create Table Props。 */
   private Map<String, String> createTableProps() {
     Map<String, String> tableProps = Maps.newHashMap(properties);
     tableProps.put("catalog-name", catalogName);
@@ -316,26 +348,32 @@ public class TestIcebergConnector extends FlinkTestBase {
     return tableProps;
   }
 
+  /** 辅助方法：isHiveCatalog，is Hive Catalog。 */
   private boolean isHiveCatalog() {
     return "testhive".equalsIgnoreCase(catalogName);
   }
 
+  /** 辅助方法：isDefaultDatabaseName，is Default Database Name。 */
   private boolean isDefaultDatabaseName() {
     return FlinkCatalogFactory.DEFAULT_DATABASE_NAME.equalsIgnoreCase(databaseName());
   }
 
+  /** 辅助方法：tableName，table Name。 */
   private String tableName() {
     return properties.getOrDefault("catalog-table", TABLE_NAME);
   }
 
+  /** 辅助方法：databaseName，database Name。 */
   private String databaseName() {
     return properties.getOrDefault("catalog-database", "default_database");
   }
 
+  /** 辅助方法：toWithClause，to With Clause。 */
   private String toWithClause(Map<String, String> props) {
     return FlinkCatalogTestBase.toWithClause(props);
   }
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   private static String createWarehouse() {
     try {
       return String.format("file://%s", WAREHOUSE.newFolder().getAbsolutePath());

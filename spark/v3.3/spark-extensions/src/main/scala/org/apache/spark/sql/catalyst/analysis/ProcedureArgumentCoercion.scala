@@ -25,7 +25,18 @@ import org.apache.spark.sql.catalyst.plans.logical.Call
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.rules.Rule
 
+/**
+ * Spark Catalyst 分析阶段的规则或检查，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 ProcedureArgumentCoercion。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
+ */
 object ProcedureArgumentCoercion extends Rule[LogicalPlan] {
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case c @ Call(procedure, args) if c.resolved =>
       val params = procedure.parameters

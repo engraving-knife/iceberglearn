@@ -20,13 +20,22 @@ package org.apache.iceberg.spark;
 
 import org.apache.iceberg.DeleteFile;
 
+/**
+ * Iceberg Spark 集成相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 PositionDeletesRewriteCoordinator。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ */
 public class PositionDeletesRewriteCoordinator extends BaseFileRewriteCoordinator<DeleteFile> {
 
   private static final PositionDeletesRewriteCoordinator INSTANCE =
       new PositionDeletesRewriteCoordinator();
 
+  /** 构造 PositionDeletesRewriteCoordinator 实例。 */
   private PositionDeletesRewriteCoordinator() {}
 
+  /** 执行该方法的具体逻辑。 */
   public static PositionDeletesRewriteCoordinator get() {
     return INSTANCE;
   }

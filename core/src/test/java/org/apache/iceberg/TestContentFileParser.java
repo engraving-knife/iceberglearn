@@ -34,7 +34,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * 测试类：TestContentFileParser，用于验证 Content File Parser 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Content File Parser 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestContentFileParser {
+  /**
+   * 测试场景：null arguments。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNullArguments() throws Exception {
     Assertions.assertThatThrownBy(() -> ContentFileParser.toJson(null, TableTestBase.SPEC))
@@ -61,6 +74,11 @@ public class TestContentFileParser {
         .hasMessage("Invalid partition spec: null");
   }
 
+  /**
+   * 测试场景：data file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @MethodSource("provideSpecAndDataFile")
   public void testDataFile(PartitionSpec spec, DataFile dataFile, String expectedJson)
@@ -73,6 +91,11 @@ public class TestContentFileParser {
     assertContentFileEquals(dataFile, deserializedContentFile, spec);
   }
 
+  /**
+   * 测试场景：delete file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @MethodSource("provideSpecAndDeleteFile")
   public void testDeleteFile(PartitionSpec spec, DeleteFile deleteFile, String expectedJson)
@@ -85,6 +108,7 @@ public class TestContentFileParser {
     assertContentFileEquals(deleteFile, deserializedContentFile, spec);
   }
 
+  /** 辅助方法：provide spec and data file。 */
   private static Stream<Arguments> provideSpecAndDataFile() {
     return Stream.of(
         Arguments.of(
@@ -105,6 +129,7 @@ public class TestContentFileParser {
             dataFileJsonWithAllOptional(TableTestBase.SPEC)));
   }
 
+  /** 辅助方法：data file with required only。 */
   private static DataFile dataFileWithRequiredOnly(PartitionSpec spec) {
     DataFiles.Builder builder =
         DataFiles.builder(spec)
@@ -120,6 +145,7 @@ public class TestContentFileParser {
     return builder.build();
   }
 
+  /** 辅助方法：data file json with required only。 */
   private static String dataFileJsonWithRequiredOnly(PartitionSpec spec) {
     if (spec.isUnpartitioned()) {
       return "{\"spec-id\":0,\"content\":\"DATA\",\"file-path\":\"/path/to/data-a.parquet\",\"file-format\":\"PARQUET\","
@@ -130,6 +156,7 @@ public class TestContentFileParser {
     }
   }
 
+  /** 辅助方法：data file json with all optional。 */
   private static String dataFileJsonWithAllOptional(PartitionSpec spec) {
     if (spec.isUnpartitioned()) {
       return "{\"spec-id\":0,\"content\":\"DATA\",\"file-path\":\"/path/to/data-with-stats.parquet\","
@@ -156,6 +183,7 @@ public class TestContentFileParser {
     }
   }
 
+  /** 辅助方法：data file with all optional。 */
   private static DataFile dataFileWithAllOptional(PartitionSpec spec) {
     DataFiles.Builder builder =
         DataFiles.builder(spec)
@@ -196,6 +224,7 @@ public class TestContentFileParser {
     return builder.build();
   }
 
+  /** 辅助方法：provide spec and delete file。 */
   private static Stream<Arguments> provideSpecAndDeleteFile() {
     return Stream.of(
         Arguments.of(
@@ -216,6 +245,7 @@ public class TestContentFileParser {
             deleteFileJsonWithAllOptional(TableTestBase.SPEC)));
   }
 
+  /** 辅助方法：delete file with required only。 */
   private static DeleteFile deleteFileWithRequiredOnly(PartitionSpec spec) {
     PartitionData partitionData = null;
     if (spec.isPartitioned()) {
@@ -237,6 +267,7 @@ public class TestContentFileParser {
         null);
   }
 
+  /** 辅助方法：delete file with all optional。 */
   private static DeleteFile deleteFileWithAllOptional(PartitionSpec spec) {
     PartitionData partitionData = new PartitionData(spec.partitionType());
     if (spec.isPartitioned()) {
@@ -276,6 +307,7 @@ public class TestContentFileParser {
         ByteBuffer.wrap(new byte[16]));
   }
 
+  /** 辅助方法：delete file json with required only。 */
   private static String deleteFileJsonWithRequiredOnly(PartitionSpec spec) {
     if (spec.isUnpartitioned()) {
       return "{\"spec-id\":0,\"content\":\"POSITION_DELETES\",\"file-path\":\"/path/to/delete-a.parquet\","
@@ -286,6 +318,7 @@ public class TestContentFileParser {
     }
   }
 
+  /** 辅助方法：delete file json with all optional。 */
   private static String deleteFileJsonWithAllOptional(PartitionSpec spec) {
     if (spec.isUnpartitioned()) {
       return "{\"spec-id\":0,\"content\":\"EQUALITY_DELETES\",\"file-path\":\"/path/to/delete-with-stats.parquet\","

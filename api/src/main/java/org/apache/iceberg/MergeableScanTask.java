@@ -19,26 +19,36 @@
 package org.apache.iceberg;
 
 /**
- * A scan task that can be potentially merged with other scan tasks.
+ * 可合并扫描任务：可与其它扫描任务合并以减少任务数量的扫描任务。
  *
- * @param <ThisT> the child Java API class
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：在 {@link ScanTask} 基础上提供 {@link #canMerge(ScanTask)} 与 {@link #merge(ScanTask)}
+ * 两个方法，使扫描规划器可以把相邻、同源的小任务合并成较大的任务，从而降低调度与读取开销。
+ *
+ * <p>设计意图：通过"先询问 canMerge 再调用 merge"的两阶段协议，把合并合法性判断与 实际合并动作解耦，避免无效合并。泛型 {@code ThisT} 用于让 merge
+ * 返回类型保持具体子类型。
+ *
+ * <p>上下游关系：被扫描规划器（如 core 模块的任务合并器）在 {@code planTasks} 阶段调用。
+ *
+ * @param <ThisT> 子类型自身，用于 merge 返回类型收敛
  */
 public interface MergeableScanTask<ThisT> extends ScanTask {
   /**
-   * Checks if this task can merge with a given task.
+   * 判断本任务是否可以与给定任务合并。
    *
-   * @param other another task
-   * @return whether the tasks can be merged
+   * @param other 另一个任务
+   * @return 是否可合并
    */
   boolean canMerge(ScanTask other);
 
   /**
-   * Merges this task with a given task.
+   * 把本任务与给定任务合并，返回合并后的新任务。
    *
-   * <p>Note this method will be called only if {@link #canMerge(ScanTask)} returns true.
+   * <p>本方法仅会在 {@link #canMerge(ScanTask)} 返回 true 时被调用。
    *
-   * @param other another task
-   * @return a new merged task
+   * @param other 另一个任务
+   * @return 合并后的新任务
    */
   ThisT merge(ScanTask other);
 }

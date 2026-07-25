@@ -18,24 +18,35 @@
  */
 package org.apache.iceberg.aliyun.oss.mock;
 
+/**
+ * 文件级说明：测试 Range 的功能。
+ *
+ * <p>所属模块：iceberg-aliyun。职责：验证 Range 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class Range {
 
   private final long start;
   private final long end;
 
+  /** 辅助方法：Range。 */
   public Range(long start, long end) {
     this.start = start;
     this.end = end;
   }
 
+  /** 辅助方法：start。 */
   public long start() {
     return start;
   }
 
+  /** 辅助方法：end。 */
   public long end() {
     return end;
   }
 
+  /** 辅助方法：toString。 */
   @Override
   public String toString() {
     return String.format("%d-%d", start, end);

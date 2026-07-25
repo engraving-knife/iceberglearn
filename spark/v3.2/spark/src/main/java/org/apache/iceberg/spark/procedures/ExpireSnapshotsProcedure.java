@@ -18,12 +18,10 @@
  */
 package org.apache.iceberg.spark.procedures;
 
-import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.ExpireSnapshots;
 import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.spark.actions.ExpireSnapshotsSparkAction;
-import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.procedures.SparkProcedures.ProcedureBuilder;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
@@ -38,9 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A procedure that expires snapshots in a table.
+ * Iceberg 存储过程，通过 Spark SQL CALL 调用，封装为可通过 SQL CALL 调用的存储过程。
  *
- * @see SparkActions#expireSnapshots(Table)
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 ExpireSnapshotsProcedure。
+ *
+ * <p>上下游：由 SparkSessionProcedures 注册，被 Spark SQL CALL 语句调用。
  */
 public class ExpireSnapshotsProcedure extends BaseProcedure {
 
@@ -72,29 +72,49 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
                 "deleted_statistics_files_count", DataTypes.LongType, true, Metadata.empty())
           });
 
+  /** 构造并返回目标对象。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<ExpireSnapshotsProcedure>() {
+      /** 执行该方法的具体逻辑。 */
       @Override
       protected ExpireSnapshotsProcedure doBuild() {
+        /** 执行该方法的具体逻辑。 */
         return new ExpireSnapshotsProcedure(tableCatalog());
       }
     };
   }
 
+  /** 构造 ExpireSnapshotsProcedure 实例。 */
   private ExpireSnapshotsProcedure(TableCatalog tableCatalog) {
     super(tableCatalog);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param args 参数
+   * @return 结果对象
+   */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public InternalRow[] call(InternalRow args) {
@@ -154,6 +174,7 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
         });
   }
 
+  /** 转换为outputrows。 */
   private InternalRow[] toOutputRows(ExpireSnapshots.Result result) {
     InternalRow row =
         newInternalRow(
@@ -166,6 +187,11 @@ public class ExpireSnapshotsProcedure extends BaseProcedure {
     return new InternalRow[] {row};
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String description() {
     return "ExpireSnapshotProcedure";

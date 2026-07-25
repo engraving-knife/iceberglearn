@@ -69,10 +69,16 @@ import org.apache.spark.sql.sources.Not;
 import org.apache.spark.sql.sources.Or;
 import org.apache.spark.sql.sources.StringStartsWith;
 
+/**
+ * Iceberg Spark 集成相关组件，实现数据过滤逻辑。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkFilters。
+ */
 public class SparkFilters {
 
   private static final Pattern BACKTICKS_PATTERN = Pattern.compile("([`])(.|$)");
 
+  /** 构造 SparkFilters 实例。 */
   private SparkFilters() {}
 
   private static final Map<Class<? extends Filter>, Operation> FILTERS =
@@ -96,6 +102,7 @@ public class SparkFilters {
           .put(StringStartsWith.class, Operation.STARTS_WITH)
           .buildOrThrow();
 
+  /** 把输入转换为另一种表示。 */
   public static Expression convert(Filter[] filters) {
     Expression expression = Expressions.alwaysTrue();
     for (Filter filter : filters) {
@@ -107,6 +114,7 @@ public class SparkFilters {
     return expression;
   }
 
+  /** 把输入转换为另一种表示。 */
   public static Expression convert(Filter filter) {
     // avoid using a chain of if instanceof statements by mapping to the expression enum.
     Operation op = FILTERS.get(filter.getClass());
@@ -225,6 +233,7 @@ public class SparkFilters {
     return null;
   }
 
+  /** 把输入转换为另一种表示。 */
   private static Object convertLiteral(Object value) {
     if (value instanceof Timestamp) {
       return DateTimeUtils.fromJavaTimestamp((Timestamp) value);
@@ -238,6 +247,7 @@ public class SparkFilters {
     return value;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static Expression handleEqual(String attribute, Object value) {
     if (NaNUtil.isNaN(value)) {
       return isNaN(attribute);
@@ -246,11 +256,13 @@ public class SparkFilters {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static String unquote(String attributeName) {
     Matcher matcher = BACKTICKS_PATTERN.matcher(attributeName);
     return matcher.replaceAll("$2");
   }
 
+  /** 判断是否包含noinfilter。 */
   private static boolean hasNoInFilter(Filter filter) {
     Operation op = FILTERS.get(filter.getClass());
 

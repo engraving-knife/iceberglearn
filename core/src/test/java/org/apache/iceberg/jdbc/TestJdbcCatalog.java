@@ -77,6 +77,14 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 测试类：TestJdbcCatalog，用于验证 Jdbc Catalog 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Jdbc Catalog 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
 
   static final Schema SCHEMA =
@@ -92,21 +100,25 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
 
   @TempDir java.nio.file.Path tableDir;
 
+  /** 辅助方法：catalog。 */
   @Override
   protected JdbcCatalog catalog() {
     return catalog;
   }
 
+  /** 辅助方法：supports namespace properties。 */
   @Override
   protected boolean supportsNamespaceProperties() {
     return true;
   }
 
+  /** 辅助方法：supports nested namespaces。 */
   @Override
   protected boolean supportsNestedNamespaces() {
     return true;
   }
 
+  /** 辅助方法：metadata version files。 */
   protected List<String> metadataVersionFiles(String location) {
     return Stream.of(new File(location).listFiles())
         .filter(file -> !file.isDirectory())
@@ -115,6 +127,7 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：manifest files。 */
   protected List<String> manifestFiles(String location) {
     return Stream.of(new File(location).listFiles())
         .filter(file -> !file.isDirectory())
@@ -123,11 +136,13 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：setup table。 */
   @BeforeEach
   public void setupTable() throws Exception {
     catalog = initCatalog("test_jdbc_catalog", Maps.newHashMap());
   }
 
+  /** 辅助方法：init catalog。 */
   private JdbcCatalog initCatalog(String catalogName, Map<String, String> props) {
     Map<String, String> properties = Maps.newHashMap();
     properties.put(
@@ -146,6 +161,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     return jdbcCatalog;
   }
 
+  /**
+   * 测试场景：initialize。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testInitialize() {
     Map<String, String> properties = Maps.newHashMap();
@@ -159,6 +179,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     jdbcCatalog.initialize("test_jdbc_catalog", properties);
   }
 
+  /**
+   * 测试场景：create table builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableBuilder() {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -176,6 +201,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(table.properties()).containsEntry("key1", "value1").containsEntry("key2", "value2");
   }
 
+  /**
+   * 测试场景：create table txn builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableTxnBuilder() {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -193,6 +223,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(table.properties()).containsEntry("key1", "testval1");
   }
 
+  /**
+   * 测试场景：replace txn builder。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testReplaceTxnBuilder(int formatVersion) {
@@ -243,6 +278,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(table.properties()).containsEntry("key1", "value1").containsEntry("key2", "value2");
   }
 
+  /**
+   * 测试场景：create table default sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableDefaultSortOrder() {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -253,6 +293,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(sortOrder.isUnsorted()).as("Order must unsorted").isTrue();
   }
 
+  /**
+   * 测试场景：create table custom sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableCustomSortOrder() {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -277,6 +322,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .isEqualTo(transform);
   }
 
+  /**
+   * 测试场景：basic catalog。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicCatalog() throws Exception {
     TableIdentifier testTable = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -294,6 +344,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     catalog.dropTable(testTable);
   }
 
+  /**
+   * 测试场景：create and drop table without namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateAndDropTableWithoutNamespace() throws Exception {
     TableIdentifier testTable = TableIdentifier.of("tbl");
@@ -309,6 +364,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     catalog.dropTable(testTable, true);
   }
 
+  /**
+   * 测试场景：default warehouse location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDefaultWarehouseLocation() throws Exception {
     TableIdentifier testTable = TableIdentifier.of("tbl");
@@ -319,6 +379,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .isEqualTo(catalog.defaultWarehouseLocation(testTable2));
   }
 
+  /**
+   * 测试场景：concurrent commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentCommit() throws IOException {
     TableIdentifier tableIdentifier = TableIdentifier.of("db", "table");
@@ -350,6 +415,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
             "Failed to load table db.table from catalog test_jdbc_catalog: dropped by another process");
   }
 
+  /**
+   * 测试场景：commit history。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCommitHistory() throws IOException {
     TableIdentifier testTable = TableIdentifier.of("db", "ns", "tbl");
@@ -390,6 +460,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(table.history()).hasSize(3);
   }
 
+  /**
+   * 测试场景：drop table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTable() {
     TableIdentifier testTable = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -407,6 +482,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.dropTable(TableIdentifier.of("db", "tbl-not-exists"))).isFalse();
   }
 
+  /**
+   * 测试场景：drop table without metadata file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTableWithoutMetadataFile() {
     TableIdentifier testTable = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -420,6 +500,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessageContaining("Table does not exist:");
   }
 
+  /**
+   * 测试场景：rename table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameTable() {
     TableIdentifier from = TableIdentifier.of("db", "tbl1");
@@ -442,6 +527,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessage("Table already exists: db.tbl2-newtable");
   }
 
+  /**
+   * 测试场景：list tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListTables() {
     TableIdentifier tbl1 = TableIdentifier.of("db", "tbl1");
@@ -466,6 +556,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessage("Namespace does not exist: db.ns1.ns2");
   }
 
+  /**
+   * 测试场景：calling location provider when no current metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCallingLocationProviderWhenNoCurrentMetadata() {
     TableIdentifier tableIdent = TableIdentifier.of("ns1", "ns2", "table1");
@@ -477,6 +572,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     catalog.dropTable(tableIdent, true);
   }
 
+  /**
+   * 测试场景：existing table update。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExistingTableUpdate() {
     TableIdentifier tableIdent = TableIdentifier.of("ns1", "ns2", "table1");
@@ -494,6 +594,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(icebergTable.schema().asStruct().toString()).contains("Coll3");
   }
 
+  /**
+   * 测试场景：table name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableName() {
     TableIdentifier tableIdent = TableIdentifier.of("db", "ns1", "ns2", "tbl");
@@ -509,6 +614,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .isEqualTo(catalog.name() + ".db.ns1.ns2.tbl.snapshots");
   }
 
+  /**
+   * 测试场景：list namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListNamespace() {
     TableIdentifier tbl1 = TableIdentifier.of("db", "ns1", "ns2", "metadata");
@@ -543,6 +653,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessage("Namespace does not exist: db.db2.ns2");
   }
 
+  /**
+   * 测试场景：load namespace meta。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadNamespaceMeta() {
     TableIdentifier tbl1 = TableIdentifier.of("db", "ns1", "ns2", "metadata");
@@ -561,6 +676,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessage("Namespace does not exist: db.db2.ns2");
   }
 
+  /**
+   * 测试场景：namespace exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceExists() {
     TableIdentifier tbl1 = TableIdentifier.of("db", "ns1", "ns2", "metadata");
@@ -578,6 +698,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：drop namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropNamespace() {
     assertThat(catalog.dropNamespace(Namespace.of("db", "ns1_not_exitss")))
@@ -606,6 +731,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .hasMessage("Namespace db is not empty. 1 tables exist.");
   }
 
+  /**
+   * 测试场景：create namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -622,6 +752,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(Namespace.of("testDb", "ns1", "ns2", "ns3"))).isFalse();
   }
 
+  /**
+   * 测试场景：create namespace with backslash character。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespaceWithBackslashCharacter() {
     Namespace testNamespace = Namespace.of("test\\Db", "ns\\1", "ns3");
@@ -646,6 +781,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(Namespace.of("test\\_Db2"))).isFalse();
   }
 
+  /**
+   * 测试场景：create namespace with percent character。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespaceWithPercentCharacter() {
     Namespace testNamespace = Namespace.of("testDb%", "ns%1");
@@ -660,6 +800,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(Namespace.of("testDb%", "ns%"))).isFalse();
   }
 
+  /**
+   * 测试场景：create namespace with underscore character。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespaceWithUnderscoreCharacter() {
     Namespace testNamespace = Namespace.of("test_Db", "ns_1", "ns_");
@@ -674,6 +819,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(Namespace.of("test_Db", "ns_%"))).isFalse();
   }
 
+  /**
+   * 测试场景：create table in non existing namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableInNonExistingNamespace() {
     try (JdbcCatalog jdbcCatalog = initCatalog("non_strict_jdbc_catalog", ImmutableMap.of())) {
@@ -688,6 +838,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     }
   }
 
+  /**
+   * 测试场景：create table in non existing namespace strict mode。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTableInNonExistingNamespaceStrictMode() {
     try (JdbcCatalog jdbcCatalog =
@@ -712,6 +867,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     }
   }
 
+  /**
+   * 测试场景：create namespace with metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespaceWithMetadata() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -723,6 +883,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(testNamespace)).isTrue();
   }
 
+  /**
+   * 测试场景：namespace location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceLocation() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -734,6 +899,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     Assertions.assertThat(catalog.loadNamespaceMetadata(testNamespace)).containsKey("location");
   }
 
+  /**
+   * 测试场景：namespace custom location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceCustomLocation() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -747,6 +917,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
         .containsEntry("location", namespaceLocation);
   }
 
+  /**
+   * 测试场景：set properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetProperties() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -786,6 +961,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     }
   }
 
+  /**
+   * 测试场景：remove properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveProperties() {
     Namespace testNamespace = Namespace.of("testDb", "ns1", "ns2");
@@ -810,6 +990,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(catalog.namespaceExists(testNamespace)).isTrue();
   }
 
+  /**
+   * 测试场景：conversions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConversions() {
     Namespace ns = Namespace.of("db", "db2", "ns2");
@@ -817,6 +1002,11 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
     assertThat(JdbcUtil.stringToNamespace(nsString)).isEqualTo(ns);
   }
 
+  /**
+   * 测试场景：catalog with custom metrics reporter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCatalogWithCustomMetricsReporter() throws IOException {
     JdbcCatalog catalogWithCustomReporter =
@@ -850,6 +1040,7 @@ public class TestJdbcCatalog extends CatalogTests<JdbcCatalog> {
   public static class CustomMetricsReporter implements MetricsReporter {
     static final AtomicInteger COUNTER = new AtomicInteger(0);
 
+    /** 辅助方法：report。 */
     @Override
     public void report(MetricsReport report) {
       COUNTER.incrementAndGet();

@@ -40,12 +40,48 @@ import org.apache.iceberg.util.ByteBuffers;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 单个类型值与 JSON 互转的工具。
+ *
+ * <p>所属模块：iceberg-core。职责：把某个 {@link Type} 对应的单个字面值在 Java 对象与 JSON 节点之间互转， 用于默认值、分区值等单值场景的持久化。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>按类型 ID 分发：boolean/int/long/decimal/binary/uuid/string/list/map 等各自处理。
+ *   <li>二进制用 base64：ByteBuffer 与 JSON 之间通过 BaseEncoding 转换。
+ *   <li>时间类型走 {@link DateTimeUtil}：保证时区/格式一致。
+ * </ul>
+ *
+ * <p>上下游关系：被 schema/分区/默认值相关解析逻辑调用；依赖 {@link JsonUtil}、{@link ByteBuffers}。
+ */
 public class SingleValueParser {
+
+  /** 私有构造：工具类禁止实例化。 */
   private SingleValueParser() {}
 
   private static final String KEYS = "keys";
   private static final String VALUES = "values";
 
+  /**
+   * 把 JSON 节点按 {@link Type} 解析为对应的 Java 对象。
+   *
+   * <p>步骤：null 节点返回 null；其他按类型 ID 分发：
+   *
+   * <ul>
+   *   <li>布尔/整数/浮点：直接取对应 Java 数值；
+   *   <li>decimal：解析 BigDecimal 并校验 scale；
+   *   <li>string/uuid：取文本，UUID 校验长度 36；
+   *   <li>date/time/timestamp：通过 {@link DateTimeUtil} 转 ISO 字符串为 days/micros；
+   *   <li>fixed/binary：base16 解码为 ByteBuffer；
+   *   <li>list/map/struct：递归调用对应方法。
+   * </ul>
+   *
+   * @param type 期望的类型
+   * @param defaultValue JSON 节点
+   * @return 解析得到的 Java 对象，null 节点返回 null
+   * @throws IllegalArgumentException 当 JSON 与类型不匹配时
+   */
   public static Object fromJson(Type type, JsonNode defaultValue) {
     if (defaultValue == null || defaultValue.isNull()) {
       return null;
@@ -171,6 +207,15 @@ public class SingleValueParser {
     }
   }
 
+  /**
+   * 从 JSON 节点解析 StructType 默认值，构造 {@link GenericRecord}。
+   *
+   * <p>步骤：按字段 id（字符串形式）查 JSON 对象，存在则递归解析后 set 到对应位置。
+   *
+   * @param type struct 类型
+   * @param defaultValue JSON 节点
+   * @return 解析得到的 StructLike
+   */
   private static StructLike structFromJson(Type type, JsonNode defaultValue) {
     Preconditions.checkArgument(
         defaultValue.isObject(), "Cannot parse default as a %s value: %s", type, defaultValue);
@@ -188,6 +233,15 @@ public class SingleValueParser {
     return defaultRecord;
   }
 
+  /**
+   * 从 JSON 节点解析 MapType 默认值。
+   *
+   * <p>JSON 形式为 {keys:[...], values:[...]}，长度必须相等。
+   *
+   * @param type map 类型
+   * @param defaultValue JSON 节点
+   * @return 解析得到的不可变 map
+   */
   private static Map<Object, Object> mapFromJson(Type type, JsonNode defaultValue) {
     Preconditions.checkArgument(
         defaultValue.isObject()
@@ -217,6 +271,13 @@ public class SingleValueParser {
     return mapBuilder.build();
   }
 
+  /**
+   * 从 JSON 节点解析 ListType 默认值。
+   *
+   * @param type list 类型
+   * @param defaultValue JSON 节点（必须是数组）
+   * @return 解析得到的元素列表
+   */
   private static List<Object> listFromJson(Type type, JsonNode defaultValue) {
     Preconditions.checkArgument(
         defaultValue.isArray(), "Cannot parse default as a %s value: %s", type, defaultValue);
@@ -224,18 +285,50 @@ public class SingleValueParser {
     return Lists.newArrayList(Iterables.transform(defaultValue, e -> fromJson(elementType, e)));
   }
 
+  /**
+   * 把 JSON 字符串按 {@link Type} 解析为对应的 Java 对象。
+   *
+   * @param type 期望的类型
+   * @param defaultValue JSON 字符串
+   * @return 解析得到的 Java 对象
+   */
   public static Object fromJson(Type type, String defaultValue) {
     return JsonUtil.parse(defaultValue, node -> SingleValueParser.fromJson(type, node));
   }
 
+  /**
+   * 把 Java 对象按 {@link Type} 序列化为 JSON 字符串（紧凑形式）。
+   *
+   * @param type 值的类型
+   * @param defaultValue Java 对象
+   * @return JSON 字符串
+   */
   public static String toJson(Type type, Object defaultValue) {
     return toJson(type, defaultValue, false);
   }
 
+  /**
+   * 把 Java 对象按 {@link Type} 序列化为 JSON 字符串，可选择是否美化输出。
+   *
+   * @param type 值的类型
+   * @param defaultValue Java 对象
+   * @param pretty 是否美化输出
+   * @return JSON 字符串
+   */
   public static String toJson(Type type, Object defaultValue, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(type, defaultValue, gen), pretty);
   }
 
+  /**
+   * 把 Java 对象按 {@link Type} 写入 JSON 生成器。
+   *
+   * <p>步骤：null 写 writeNull；其他按类型 ID 分发到对应的写入分支， 复杂类型（list/map/struct）递归调用本方法。
+   *
+   * @param type 值的类型
+   * @param defaultValue Java 对象
+   * @param generator JSON 生成器
+   * @throws IOException 写入失败
+   */
   @SuppressWarnings("checkstyle:MethodLength")
   public static void toJson(Type type, Object defaultValue, JsonGenerator generator)
       throws IOException {

@@ -21,41 +21,56 @@ package org.apache.iceberg;
 import java.util.Collection;
 
 /**
- * A scan task that may include partial input files, multiple input files or both.
+ * 文件级说明：扫描任务组接口，可能包含部分输入文件、多个输入文件或两者兼有。
  *
- * @param <T> the type of scan tasks
+ * <p>所属模块：iceberg-api（核心接口层，由 core 实现）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>将多个 {@link ScanTask} 聚合为一个组，便于引擎按组调度执行。
+ *   <li>提供 grouping key（分组键），描述本组所有任务产出行的公共值（如分桶序号）。
+ *   <li>聚合组内所有任务的统计信息（字节数、行数、文件数）。
+ * </ul>
+ *
+ * <p>设计意图：扫描规划阶段可将多个相关任务（如同一分桶的数据文件任务）组合为一个组， 便于引擎按分组键做本地化处理（如广播 join 优化）。分组键类型在规划时确定，同一扫描产出的
+ * 所有任务组共享相同的分组键类型。若分组随机或未知，实现应返回空 struct。
+ *
+ * <p>上下游关系：由 {@link Scan} 规划产出（如 {@link CombinedScanTask} 是其特化）； 被引擎读取器消费。
+ *
+ * @param <T> 扫描任务的类型
  */
 public interface ScanTaskGroup<T extends ScanTask> extends ScanTask {
   /**
-   * Returns a grouping key for this task group.
+   * 返回本任务组的分组键。
    *
-   * <p>A grouping key is a set of values that are common amongst all rows produced by the tasks in
-   * this task group. The values may be the result of transforming the underlying data. For example,
-   * a grouping key can consist of a bucket ordinal computed by applying a bucket transform to a
-   * column of the underlying rows. The grouping key type is determined at planning time and is
-   * identical across all task groups produced by a scan.
+   * <p>分组键是本组所有任务产出行共有的值集合，可以是底层数据经变换后的结果。例如，分组键可以 是对底层行列应用 bucket 变换后计算出的分桶序号。分组键类型在规划时确定，同一扫描产出的
+   * 所有任务组共享相同的分组键类型。
    *
-   * <p>Implementations should return an empty struct if the data grouping is random or unknown.
+   * <p>若数据分组是随机的或未知，实现应返回空 struct。
    *
-   * @return a grouping key for this task group
+   * @return 本任务组的分组键
    */
   default StructLike groupingKey() {
     return EmptyStructLike.get();
   }
 
-  /** Returns scan tasks in this group. */
+  /** 返回本组中的扫描任务集合。 */
   Collection<T> tasks();
 
+  /** 返回本组所有任务的字节数总和。 */
   @Override
   default long sizeBytes() {
     return tasks().stream().mapToLong(ScanTask::sizeBytes).sum();
   }
 
+  /** 返回本组所有任务的估计行数总和。 */
   @Override
   default long estimatedRowsCount() {
     return tasks().stream().mapToLong(ScanTask::estimatedRowsCount).sum();
   }
 
+  /** 返回本组所有任务的文件数总和。 */
   @Override
   default int filesCount() {
     return tasks().stream().mapToInt(ScanTask::filesCount).sum();

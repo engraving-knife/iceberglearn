@@ -24,6 +24,11 @@ import org.apache.iceberg.relocated.com.google.common.base.Splitter;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.spark.sql.connector.catalog.Identifier;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 PathIdentifier。
+ */
 public class PathIdentifier implements Identifier {
   private static final Splitter SPLIT = Splitter.on("/");
   private static final Joiner JOIN = Joiner.on("/");
@@ -31,6 +36,7 @@ public class PathIdentifier implements Identifier {
   private final String location;
   private final String name;
 
+  /** 构造 PathIdentifier 实例。 */
   public PathIdentifier(String location) {
     this.location = location;
     List<String> pathParts = SPLIT.splitToList(location);
@@ -41,16 +47,31 @@ public class PathIdentifier implements Identifier {
             : new String[0];
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String[] namespace() {
     return namespace;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String name() {
     return name;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String location() {
     return location;
   }

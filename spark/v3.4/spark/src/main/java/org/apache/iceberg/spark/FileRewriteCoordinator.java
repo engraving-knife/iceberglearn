@@ -20,12 +20,21 @@ package org.apache.iceberg.spark;
 
 import org.apache.iceberg.DataFile;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：数据文件重写协调器，管理 Executor 端通过 ScanTaskSetManager 写出的新数据文件，并在 Driver 端完成提交。
+ *
+ * <p>设计意图：使用静态 ConcurrentMap 注册表按表+扫描 ID 隔离不同重写任务的结果。
+ *
+ * <p>上下游关系：继承 BaseFileRewriteCoordinator；由 RewriteDataFilesSparkAction 与 SparkBatch 写入链路调用。
+ */
 public class FileRewriteCoordinator extends BaseFileRewriteCoordinator<DataFile> {
 
   private static final FileRewriteCoordinator INSTANCE = new FileRewriteCoordinator();
 
   private FileRewriteCoordinator() {}
-
+  /** 返回值。 */
   public static FileRewriteCoordinator get() {
     return INSTANCE;
   }

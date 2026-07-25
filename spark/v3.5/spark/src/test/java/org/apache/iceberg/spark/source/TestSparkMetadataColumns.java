@@ -64,6 +64,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkMetadataColumns 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark元数据列 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkMetadataColumns extends SparkTestBase {
 
@@ -79,6 +86,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
           SCHEMA,
           "{ \"spec-id\": 1, \"fields\": [ { \"name\": \"id_zero\", \"transform\": \"zero\", \"source-id\": 1 } ] }");
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "fileFormat = {0}, vectorized = {1}, formatVersion = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -103,12 +111,14 @@ public class TestSparkMetadataColumns extends SparkTestBase {
 
   private Table table = null;
 
+  /** 测试Spark元数据列。 */
   public TestSparkMetadataColumns(FileFormat fileFormat, boolean vectorized, int formatVersion) {
     this.fileFormat = fileFormat;
     this.vectorized = vectorized;
     this.formatVersion = formatVersion;
   }
 
+  /** 初始化Spark。 */
   @BeforeClass
   public static void setupSpark() {
     ImmutableMap<String, String> config =
@@ -123,16 +133,19 @@ public class TestSparkMetadataColumns extends SparkTestBase {
         (key, value) -> spark.conf().set("spark.sql.catalog.spark_catalog." + key, value));
   }
 
+  /** 初始化表。 */
   @Before
   public void setupTable() throws IOException {
     createAndInitTable();
   }
 
+  /** 删除表。 */
   @After
   public void dropTable() {
     TestTables.clearTables();
   }
 
+  /** 测试分区规格与分区元数据列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSpecAndPartitionMetadataColumns() {
     // TODO: support metadata structs in vectorized ORC reads
@@ -167,6 +180,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
         sql("SELECT _spec_id, _partition FROM %s ORDER BY _spec_id", TABLE_NAME));
   }
 
+  /** 测试位置元数据列带多个行分组场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPositionMetadataColumnWithMultipleRowGroups() throws NoSuchTableException {
     Assume.assumeTrue(fileFormat == FileFormat.PARQUET);
@@ -191,6 +205,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
     assertEquals("Rows must match", expectedRows, sql("SELECT _pos FROM %s", TABLE_NAME));
   }
 
+  /** 测试位置元数据列带多个batches场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPositionMetadataColumnWithMultipleBatches() throws NoSuchTableException {
     Assume.assumeTrue(fileFormat == FileFormat.PARQUET);
@@ -215,6 +230,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
     assertEquals("Rows must match", expectedRows, sql("SELECT _pos FROM %s", TABLE_NAME));
   }
 
+  /** 测试分区元数据列带unknown转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionMetadataColumnWithUnknownTransforms() {
     // replace the table spec to include an unknown transform
@@ -227,6 +243,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
         .hasMessage("Cannot build table partition type, unknown transforms: [zero]");
   }
 
+  /** 测试conflicting列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testConflictingColumns() {
     table
@@ -262,6 +279,7 @@ public class TestSparkMetadataColumns extends SparkTestBase {
         sql("SELECT _spec_id, _partition, _renamed_spec_id FROM %s", TABLE_NAME));
   }
 
+  /** 创建与init表。 */
   private void createAndInitTable() throws IOException {
     Map<String, String> properties = Maps.newHashMap();
     properties.put(FORMAT_VERSION, String.valueOf(formatVersion));

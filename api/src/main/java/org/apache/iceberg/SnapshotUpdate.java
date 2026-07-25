@@ -22,48 +22,68 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
- * API for table changes that produce snapshots. This interface contains common methods for all
- * updates that create a new table {@link Snapshot}.
+ * 会生成新快照的表变更 API。本接口汇总所有创建新 {@link Snapshot} 的更新操作的公共方法。
  *
- * @param <ThisT> the child Java API class, returned by method chaining.
+ * <p>所属模块：iceberg-api（表更新操作接口层）。
+ *
+ * <p>职责：为所有产生快照的更新操作（Append/Delete/Rewrite 等）提供统一的辅助能力， 包括设置快照 summary、自定义删除回调、仅暂存不提交、并行扫描
+ * manifest、提交到分支等。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>通过泛型 {@code <ThisT>}（CRTP 风格）让链式方法返回具体子类型，避免调用方强转。
+ *   <li>{@link #stageOnly()} 支持"暂存快照但不切换当前快照 ID"的 WAP（Write-Audit-Publish） 场景。
+ *   <li>{@link #toBranch(String)} 等默认方法以抛 UnsupportedOperationException 的方式提供 可选能力，由具体实现覆盖。
+ * </ul>
+ *
+ * <p>上下游关系：继承 {@link PendingUpdate}；被 {@link AppendFiles}、{@link DeleteFiles}、 {@link
+ * RewriteManifests} 等接口继承；由 core 模块实现。
+ *
+ * @param <ThisT> 子 API 类型，用于链式方法返回
  */
 public interface SnapshotUpdate<ThisT> extends PendingUpdate<Snapshot> {
   /**
-   * Set a summary property in the snapshot produced by this update.
+   * 在本更新产生的快照中设置一个 summary 属性。
    *
-   * @param property a String property name
-   * @param value a String property value
-   * @return this for method chaining
+   * @param property 属性名
+   * @param value 属性值
+   * @return this，便于链式调用
    */
   ThisT set(String property, String value);
 
   /**
-   * Set a callback to delete files instead of the table's default.
+   * 设置自定义文件删除回调，替代表默认的删除实现。
    *
-   * @param deleteFunc a String consumer used to delete locations.
-   * @return this for method chaining
+   * @param deleteFunc 用于删除文件位置的消费者
+   * @return this，便于链式调用
    */
   ThisT deleteWith(Consumer<String> deleteFunc);
 
   /**
-   * Called to stage a snapshot in table metadata, but not update the current snapshot id.
+   * 仅把快照暂存到表元数据中，不更新当前快照 ID。
    *
-   * @return this for method chaining
+   * <p>设计意图：用于 WAP（Write-Audit-Publish）场景，先暂存待审计后再发布。
+   *
+   * @return this，便于链式调用
    */
   ThisT stageOnly();
 
   /**
-   * Use a particular executor to scan manifests. The default worker pool will be used by default.
+   * 指定用于扫描 manifest 的执行器。未调用时使用默认 worker 池。
    *
-   * @param executorService the provided executor
-   * @return this for method chaining
+   * @param executorService 提供的执行器
+   * @return this，便于链式调用
    */
   ThisT scanManifestsWith(ExecutorService executorService);
 
   /**
-   * Perform operations on a particular branch
+   * 把本次操作提交到指定分支。
    *
-   * @param branch which is name of SnapshotRef of type branch.
+   * <p>默认实现：抛 {@link UnsupportedOperationException}，由支持分支的具体实现覆盖。
+   *
+   * @param branch 分支名（类型为 branch 的 SnapshotRef 名）
+   * @return this，便于链式调用
    */
   default ThisT toBranch(String branch) {
     throw new UnsupportedOperationException(

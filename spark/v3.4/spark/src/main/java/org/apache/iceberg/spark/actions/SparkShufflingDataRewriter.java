@@ -46,6 +46,15 @@ import org.apache.spark.sql.connector.write.RequiresDistributionAndOrdering;
 import org.apache.spark.sql.execution.datasources.v2.DistributionAndOrderingUtils$;
 import scala.Option;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：需要 shuffle 的数据文件重写器基类，为排序类重写提供 shuffle + sort 的通用骨架。
+ *
+ * <p>设计意图：在重写前按排序键 shuffle 数据，保证写出文件内部有序。
+ *
+ * <p>上下游关系：被 SparkSortDataRewriter / SparkZOrderDataRewriter 继承。
+ */
 abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
 
   /**
@@ -83,12 +92,12 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
   protected SparkShufflingDataRewriter(SparkSession spark, Table table) {
     super(spark, table);
   }
-
+  /** 执行 sortOrder 相关操作。 */
   protected abstract org.apache.iceberg.SortOrder sortOrder();
-
+  /** 执行 sortedDF 相关操作。 */
   protected abstract Dataset<Row> sortedDF(
       Dataset<Row> df, Function<Dataset<Row>, Dataset<Row>> sortFunc);
-
+  /** 执行 validOptions 相关操作。 */
   @Override
   public Set<String> validOptions() {
     return ImmutableSet.<String>builder()
@@ -97,14 +106,14 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
         .add(SHUFFLE_PARTITIONS_PER_FILE)
         .build();
   }
-
+  /** 初始化。 */
   @Override
   public void init(Map<String, String> options) {
     super.init(options);
     this.compressionFactor = compressionFactor(options);
     this.numShufflePartitionsPerFile = numShufflePartitionsPerFile(options);
   }
-
+  /** 执行 doRewrite 相关操作。 */
   @Override
   public void doRewrite(String groupId, List<FileScanTask> group) {
     Dataset<Row> scanDF =
@@ -125,13 +134,13 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
         .mode("append")
         .save(groupId);
   }
-
+  /** 执行 sortFunction 相关操作。 */
   private Function<Dataset<Row>, Dataset<Row>> sortFunction(List<FileScanTask> group) {
     SortOrder[] ordering = Spark3Util.toOrdering(outputSortOrder(group));
     int numShufflePartitions = numShufflePartitions(group);
     return (df) -> transformPlan(df, plan -> sortPlan(plan, ordering, numShufflePartitions));
   }
-
+  /** 执行 sortPlan 相关操作。 */
   private LogicalPlan sortPlan(LogicalPlan plan, SortOrder[] ordering, int numShufflePartitions) {
     SparkFunctionCatalog catalog = SparkFunctionCatalog.get();
     OrderedWrite write = new OrderedWrite(ordering, numShufflePartitions);
@@ -146,11 +155,11 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
       return new OrderAwareCoalesce(numOutputPartitions, coalescer, sortPlan);
     }
   }
-
+  /** 执行 transformPlan 相关操作。 */
   private Dataset<Row> transformPlan(Dataset<Row> df, Function<LogicalPlan, LogicalPlan> func) {
     return new Dataset<>(spark(), func.apply(df.logicalPlan()), df.encoder());
   }
-
+  /** 执行 outputSortOrder 相关操作。 */
   private org.apache.iceberg.SortOrder outputSortOrder(List<FileScanTask> group) {
     boolean includePartitionColumns = !group.get(0).spec().equals(table().spec());
     if (includePartitionColumns) {
@@ -161,12 +170,12 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
       return sortOrder();
     }
   }
-
+  /** 执行 numShufflePartitions 相关操作。 */
   private int numShufflePartitions(List<FileScanTask> group) {
     int numOutputFiles = (int) numOutputFiles((long) (inputSize(group) * compressionFactor));
     return Math.max(1, numOutputFiles * numShufflePartitionsPerFile);
   }
-
+  /** 执行 compressionFactor 相关操作。 */
   private double compressionFactor(Map<String, String> options) {
     double value =
         PropertyUtil.propertyAsDouble(options, COMPRESSION_FACTOR, COMPRESSION_FACTOR_DEFAULT);
@@ -174,7 +183,7 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
         value > 0, "'%s' is set to %s but must be > 0", COMPRESSION_FACTOR, value);
     return value;
   }
-
+  /** 执行 numShufflePartitionsPerFile 相关操作。 */
   private int numShufflePartitionsPerFile(Map<String, String> options) {
     int value =
         PropertyUtil.propertyAsInt(
@@ -198,22 +207,22 @@ abstract class SparkShufflingDataRewriter extends SparkSizeBasedDataRewriter {
       this.ordering = ordering;
       this.numShufflePartitions = numShufflePartitions;
     }
-
+    /** 执行 requiredDistribution 相关操作。 */
     @Override
     public Distribution requiredDistribution() {
       return distribution;
     }
-
+    /** 执行 distributionStrictlyRequired 相关操作。 */
     @Override
     public boolean distributionStrictlyRequired() {
       return true;
     }
-
+    /** 执行 requiredNumPartitions 相关操作。 */
     @Override
     public int requiredNumPartitions() {
       return numShufflePartitions;
     }
-
+    /** 执行 requiredOrdering 相关操作。 */
     @Override
     public SortOrder[] requiredOrdering() {
       return ordering;

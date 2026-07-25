@@ -26,6 +26,15 @@ import org.apache.iceberg.util.Pair;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Spark 压缩比估算工具，根据目标文件大小与压缩比估算重写后的数据文件大小。
+ *
+ * <p>设计意图：用于在 bin-pack 重写中合理分片，平衡文件数量与单文件大小。
+ *
+ * <p>上下游关系：被 SparkBinPackDataRewriter / SparkBinPackPositionDeletesRewriter 调用。
+ */
 class SparkCompressionUtil {
 
   private static final String LZ4 = "lz4";
@@ -67,34 +76,34 @@ class SparkCompressionUtil {
       return 1.0;
     }
   }
-
+  /** 执行 shuffleCodec 相关操作。 */
   private static String shuffleCodec(SparkSession spark) {
     SparkConf sparkConf = spark.sparkContext().conf();
     return shuffleCompressionEnabled(sparkConf) ? sparkCodec(sparkConf) : NONE;
   }
-
+  /** 执行 shuffleCompressionEnabled 相关操作。 */
   private static boolean shuffleCompressionEnabled(SparkConf sparkConf) {
     return sparkConf.getBoolean(SHUFFLE_COMPRESSION_ENABLED, SHUFFLE_COMPRESSION_ENABLED_DEFAULT);
   }
-
+  /** 执行 sparkCodec 相关操作。 */
   private static String sparkCodec(SparkConf sparkConf) {
     return sparkConf.get(SPARK_COMPRESSION_CODEC, SPARK_COMPRESSION_CODEC_DEFAULT);
   }
-
+  /** 执行 columnarCompression 相关操作。 */
   private static double columnarCompression(String shuffleCodec, String outputCodec) {
     Pair<String, String> key = Pair.of(normalize(shuffleCodec), normalize(outputCodec));
     return COLUMNAR_COMPRESSIONS.getOrDefault(key, DEFAULT_COLUMNAR_COMPRESSION);
   }
-
+  /** 执行 rowBasedCompression 相关操作。 */
   private static double rowBasedCompression(String shuffleCodec, String outputCodec) {
     Pair<String, String> key = Pair.of(normalize(shuffleCodec), normalize(outputCodec));
     return ROW_BASED_COMPRESSIONS.getOrDefault(key, DEFAULT_ROW_BASED_COMPRESSION);
   }
-
+  /** 执行 normalize 相关操作。 */
   private static String normalize(String value) {
     return value != null ? value.toLowerCase(Locale.ROOT) : null;
   }
-
+  /** 执行 initColumnarCompressions 相关操作。 */
   private static Map<Pair<String, String>, Double> initColumnarCompressions() {
     Map<Pair<String, String>, Double> compressions = Maps.newHashMap();
 
@@ -124,7 +133,7 @@ class SparkCompressionUtil {
 
     return compressions;
   }
-
+  /** 执行 initRowBasedCompressions 相关操作。 */
   private static Map<Pair<String, String>, Double> initRowBasedCompressions() {
     Map<Pair<String, String>, Double> compressions = Maps.newHashMap();
 

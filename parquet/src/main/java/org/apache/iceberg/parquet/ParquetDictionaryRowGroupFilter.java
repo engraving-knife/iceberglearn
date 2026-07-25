@@ -49,14 +49,54 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
+/**
+ * 文件级说明：基于 Parquet 字典的 row group 过滤器，利用列字典内容评估表达式是否可能命中。
+ *
+ * <p>所属模块：iceberg-parquet（读取侧 row group 裁剪，下推过滤优化）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>对给定 row group，读取各列的字典页，把字典值解码为 Java 集合。
+ *   <li>用 {@link BoundExpressionVisitor} 遍历已绑定表达式，对 eq/lt/gt/in/startsWith 等 谓词在字典集合上求值，判断该 row
+ *       group 是否可能包含匹配行。
+ *   <li>对含非字典页（fallback 到 plain 编码）的列，保守返回可能匹配。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>字典下推：当列值基数低且使用字典编码时，字典集合远小于全量数据，可在读取前 快速排除不匹配的 row group，减少 IO。
+ *   <li>缓存与懒加载：dict() 方法按字段 ID 缓存解码后的字典集合，避免重复解码。
+ *   <li>保守策略：isNull/notNull 因字典不含 null 无法判断，统一返回可能匹配； 含非字典页的列也无法确定，返回可能匹配。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ParquetReader} / 读取入口在读取 row group 前调用； 依赖 {@link DictionaryPageReadStore} 与
+ * {@link ParquetConversions}。
+ */
 public class ParquetDictionaryRowGroupFilter {
   private final Schema schema;
   private final Expression expr;
 
+  /**
+   * 构造字典过滤器，默认大小写敏感。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定表达式
+   */
   public ParquetDictionaryRowGroupFilter(Schema schema, Expression unbound) {
     this(schema, unbound, true);
   }
 
+  /**
+   * 构造字典过滤器。
+   *
+   * <p>逻辑：把未绑定表达式通过 {@link Binder#bind} 绑定到 schema，并重写 not 操作。
+   *
+   * @param schema Iceberg schema
+   * @param unbound 未绑定表达式
+   * @param caseSensitive 是否大小写敏感
+   */
   public ParquetDictionaryRowGroupFilter(Schema schema, Expression unbound, boolean caseSensitive) {
     this.schema = schema;
     StructType struct = schema.asStruct();
@@ -64,11 +104,12 @@ public class ParquetDictionaryRowGroupFilter {
   }
 
   /**
-   * Test whether the dictionaries for a row group may contain records that match the expression.
+   * 判断 row group 的字典是否可能包含匹配表达式的记录。
    *
-   * @param fileSchema schema for the Parquet file
-   * @param dictionaries a dictionary page read store
-   * @return false if the file cannot contain rows that match the expression, true otherwise.
+   * @param fileSchema Parquet 文件 schema
+   * @param rowGroup row group 元数据
+   * @param dictionaries 字典页读取存储
+   * @return false 表示该 row group 不可能包含匹配行，可跳过；true 表示可能匹配
    */
   public boolean shouldRead(
       MessageType fileSchema, BlockMetaData rowGroup, DictionaryPageReadStore dictionaries) {
@@ -78,6 +119,12 @@ public class ParquetDictionaryRowGroupFilter {
   private static final boolean ROWS_MIGHT_MATCH = true;
   private static final boolean ROWS_CANNOT_MATCH = false;
 
+  /**
+   * 字典评估访问者：在字典集合上对已绑定表达式求值。
+   *
+   * <p>设计意图：持有字典页存储与缓存（dictCache/isFallback/mayContainNulls），
+   * 每个谓词方法先检查列是否含非字典页（fallback），若是则保守返回可能匹配； 否则在解码后的字典集合上判断是否存在满足谓词的值。
+   */
   private class EvalVisitor extends BoundExpressionVisitor<Boolean> {
     private DictionaryPageReadStore dictionaries = null;
     private Map<Integer, Set<?>> dictCache = null;
@@ -86,6 +133,17 @@ public class ParquetDictionaryRowGroupFilter {
     private Map<Integer, ColumnDescriptor> cols = null;
     private Map<Integer, Function<Object, Object>> conversions = null;
 
+    /**
+     * 初始化评估上下文并求值表达式。
+     *
+     * <p>逻辑：保存字典存储；遍历文件 schema 的列建立 fieldId->ColumnDescriptor 与类型转换器映射； 遍历 rowGroup 列元数据建立
+     * isFallback（是否含非字典页）与 mayContainNulls 映射； 最后用 ExpressionVisitors 求值表达式。
+     *
+     * @param fileSchema Parquet 文件 schema
+     * @param rowGroup row group 元数据
+     * @param dictionaryReadStore 字典页读取存储
+     * @return true 表示可能匹配，false 表示不可能匹配
+     */
     private boolean eval(
         MessageType fileSchema,
         BlockMetaData rowGroup,
@@ -406,6 +464,18 @@ public class ParquetDictionaryRowGroupFilter {
       return ROWS_CANNOT_MATCH;
     }
 
+    /**
+     * 读取并解码指定字段的字典，缓存后返回。
+     *
+     * <p>逻辑：先查缓存；未命中则读取字典页，按编码初始化 Dictionary， 按物理类型逐个解码字典值并经类型转换器转为 Iceberg 类型，存入 TreeSet 后缓存。
+     *
+     * @param id 字段 ID
+     * @param comparator 用于 TreeSet 排序的比较器
+     * @param <T> 值类型
+     * @return 解码后的字典值集合
+     * @throws IllegalStateException 字典页不存在
+     * @throws IllegalArgumentException 不支持的字典物理类型
+     */
     @SuppressWarnings("unchecked")
     private <T> Set<T> dict(int id, Comparator<T> comparator) {
       Preconditions.checkNotNull(dictionaries, "Dictionary is required");
@@ -471,6 +541,14 @@ public class ParquetDictionaryRowGroupFilter {
     }
   }
 
+  /**
+   * 判断列块是否可能包含 null 值。
+   *
+   * <p>逻辑：统计为空或 numNulls != 0 时返回 true。
+   *
+   * @param meta 列块元数据
+   * @return true 表示可能含 null
+   */
   private static boolean mayContainNull(ColumnChunkMetaData meta) {
     return meta.getStatistics() == null || meta.getStatistics().getNumNulls() != 0;
   }

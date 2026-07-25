@@ -30,6 +30,13 @@ import org.apache.iceberg.io.CloseableIterator;
  * batched records.
  */
 @FunctionalInterface
+/**
+ * 数据迭代器分批接口，把 DataIterator 切分为记录批次。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定义批次构造契约，支持数组池/列表等实现。
+ *
+ * <p>设计意图：策略接口；被 IcebergSourceSplitReader 调用。
+ */
 public interface DataIteratorBatcher<T> extends Serializable {
   CloseableIterator<RecordsWithSplitIds<RecordAndPosition<T>>> batch(
       String splitId, DataIterator<T> inputIterator);

@@ -25,7 +25,19 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDates 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDates 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDates {
+  /**
+   * 测试场景：Deprecated Date Transform。
+   *
+   * <p>验证该方法在 Deprecated Date Transform 条件下的行为是否符合预期。
+   */
   @Test
   @SuppressWarnings("deprecation")
   public void testDeprecatedDateTransform() {
@@ -52,6 +64,11 @@ public class TestDates {
     assertThat((int) days.apply(nd.value())).isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：Date Transform。
+   *
+   * <p>验证该方法在 Date Transform 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateTransform() {
     Types.DateType type = Types.DateType.get();
@@ -88,6 +105,11 @@ public class TestDates {
     assertThat((int) days.bind(type).apply(nd.value())).isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：Date To Human String。
+   *
+   * <p>验证该方法在 Date To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateToHumanString() {
     Types.DateType type = Types.DateType.get();
@@ -104,6 +126,11 @@ public class TestDates {
     assertThat(day.toHumanString(type, day.bind(type).apply(date.value()))).isEqualTo("2017-12-01");
   }
 
+  /**
+   * 测试场景：Negative Date To Human String。
+   *
+   * <p>验证该方法在 Negative Date To Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDateToHumanString() {
     Types.DateType type = Types.DateType.get();
@@ -120,6 +147,11 @@ public class TestDates {
     assertThat(day.toHumanString(type, day.bind(type).apply(date.value()))).isEqualTo("1969-12-30");
   }
 
+  /**
+   * 测试场景：Date To Human String Lower Bound。
+   *
+   * <p>验证该方法在 Date To Human String Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testDateToHumanStringLowerBound() {
     Types.DateType type = Types.DateType.get();
@@ -136,6 +168,11 @@ public class TestDates {
     assertThat(day.toHumanString(type, day.bind(type).apply(date.value()))).isEqualTo("1970-01-01");
   }
 
+  /**
+   * 测试场景：Negative Date To Human String Lower Bound。
+   *
+   * <p>验证该方法在 Negative Date To Human String Lower Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDateToHumanStringLowerBound() {
     Types.DateType type = Types.DateType.get();
@@ -152,6 +189,11 @@ public class TestDates {
     assertThat(day.toHumanString(type, day.bind(type).apply(date.value()))).isEqualTo("1969-01-01");
   }
 
+  /**
+   * 测试场景：Negative Date To Human String Upper Bound。
+   *
+   * <p>验证该方法在 Negative Date To Human String Upper Bound 条件下的行为是否符合预期。
+   */
   @Test
   public void testNegativeDateToHumanStringUpperBound() {
     Types.DateType type = Types.DateType.get();
@@ -168,6 +210,11 @@ public class TestDates {
     assertThat(day.toHumanString(type, day.bind(type).apply(date.value()))).isEqualTo("1969-12-31");
   }
 
+  /**
+   * 测试场景：Null Human String。
+   *
+   * <p>验证该方法在 Null Human String 条件下的行为是否符合预期。
+   */
   @Test
   public void testNullHumanString() {
     Types.DateType type = Types.DateType.get();
@@ -182,6 +229,11 @@ public class TestDates {
         .isEqualTo("null");
   }
 
+  /**
+   * 测试场景：Dates Return Type。
+   *
+   * <p>验证该方法在 Dates Return Type 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatesReturnType() {
     Types.DateType type = Types.DateType.get();

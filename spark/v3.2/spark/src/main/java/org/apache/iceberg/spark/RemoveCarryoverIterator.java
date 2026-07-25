@@ -23,28 +23,11 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * An iterator that removes the carry-over rows from changelog tables within a single Spark task. It
- * assumes that rows are partitioned by identifier(or all) columns, and it is sorted by both
- * identifier(or all) columns and change type.
+ * Iceberg Spark 集成相关组件的迭代器，按行或按批产出数据。
  *
- * <p>Carry-over rows are the result of a removal and insertion of the same row within an operation
- * because of the copy-on-write mechanism. For example, given a file which contains row1 (id=1,
- * data='a') and row2 (id=2, data='b'). A copy-on-write delete of row2 would require erasing this
- * file and preserving row1 in a new file. The change-log table would report this as follows,
- * despite it not being an actual change to the table.
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 RemoveCarryoverIterator。
  *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='a', op='INSERT')
- *   <li>(id=2, data='b', op='DELETE')
- * </ul>
- *
- * The iterator finds the carry-over rows and removes them from the result. For example, the above
- * rows will be converted to:
- *
- * <ul>
- *   <li>(id=2, data='b', op='DELETE')
- * </ul>
+ * <p>设计意图：迭代器模式，统一遍历接口。
  */
 class RemoveCarryoverIterator extends ChangelogIterator {
   private final int[] indicesToIdentifySameRow;
@@ -58,6 +41,7 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     this.indicesToIdentifySameRow = generateIndicesToIdentifySameRow(rowType.size());
   }
 
+  /** 判断是否包含next。 */
   @Override
   public boolean hasNext() {
     if (hasCachedDeleteRow() || cachedNextRecord != null) {
@@ -66,6 +50,11 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     return rowIterator().hasNext();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 对应结果
+   */
   @Override
   public Row next() {
     Row currentRow;
@@ -123,22 +112,22 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     }
   }
 
-  /**
-   * The iterator returns a cached delete row if there are delete rows cached and the next row is
-   * not the same record or there is no next row.
-   */
+  /** 执行该方法的具体逻辑。 */
   private boolean returnCachedDeleteRow() {
     return hitBoundary() && hasCachedDeleteRow();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private boolean hitBoundary() {
     return !rowIterator().hasNext() || cachedNextRecord != null;
   }
 
+  /** 判断是否包含cacheddeleterow。 */
   private boolean hasCachedDeleteRow() {
     return cachedDeletedRow != null;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private int[] generateIndicesToIdentifySameRow(int columnSize) {
     int[] indices = new int[columnSize - 1];
     for (int i = 0; i < indices.length; i++) {
@@ -151,6 +140,7 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     return indices;
   }
 
+  /** 判断是否samerecord。 */
   private boolean isSameRecord(Row currentRow, Row nextRow) {
     for (int idx : indicesToIdentifySameRow) {
       if (isDifferentValue(currentRow, nextRow, idx)) {

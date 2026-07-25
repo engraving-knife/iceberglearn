@@ -24,59 +24,42 @@ import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * A logical representation of a data source DELETE, UPDATE, or MERGE operation that requires
- * rewriting data.
+ * Spark DataSource V2 连接器扩展。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 RowLevelOperation。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
  */
 public interface RowLevelOperation {
 
-  /** The SQL operation being performed. */
+  /**
+   * Spark DataSource V2 连接器扩展。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：枚举 Command。
+   *
+   * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+   */
   enum Command {
     DELETE,
     UPDATE,
     MERGE
   }
 
-  /** Returns the description associated with this row-level operation. */
+  /** 执行该方法的具体逻辑。 */
   default String description() {
     return this.getClass().toString();
   }
 
-  /** Returns the actual SQL operation being performed. */
+  /** 执行该方法的具体逻辑。 */
   Command command();
 
-  /**
-   * Returns a scan builder to configure a scan for this row-level operation.
-   *
-   * <p>Sources fall into two categories: those that can handle a delta of rows and those that need
-   * to replace groups (e.g. partitions, files). Sources that handle deltas allow Spark to quickly
-   * discard unchanged rows and have no requirements for input scans. Sources that replace groups of
-   * rows can discard deleted rows but need to keep unchanged rows to be passed back into the
-   * source. This means that scans for such data sources must produce all rows in a group if any are
-   * returned. Some sources will avoid pushing filters into files (file granularity), while others
-   * will avoid pruning files within a partition (partition granularity).
-   *
-   * <p>For example, if a source can only replace partitions, all rows from a partition must be
-   * returned by the scan, even if a filter can narrow the set of changes to a single file in the
-   * partition. Similarly, a source that can swap individual files must produce all rows of files
-   * where at least one record must be changed, not just the rows that must be changed.
-   */
+  /** 执行该方法的具体逻辑。 */
   ScanBuilder newScanBuilder(CaseInsensitiveStringMap options);
 
-  /**
-   * Returns a write builder to configure a write for this row-level operation.
-   *
-   * <p>Note that Spark will first configure the scan and then the write, allowing data sources to
-   * pass information from the scan to the write. For example, the scan can report which condition
-   * was used to read the data that may be needed by the write under certain isolation levels.
-   */
+  /** 执行该方法的具体逻辑。 */
   WriteBuilder newWriteBuilder(ExtendedLogicalWriteInfo info);
 
-  /**
-   * Returns metadata attributes that are required to perform this row-level operation.
-   *
-   * <p>Data sources that can use this method to project metadata columns needed for writing the
-   * data back (e.g. metadata columns for grouping data).
-   */
+  /** 执行该方法的具体逻辑。 */
   default NamedReference[] requiredMetadataAttributes() {
     return new NamedReference[0];
   }

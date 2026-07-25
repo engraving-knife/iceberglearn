@@ -38,22 +38,9 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.internal.SQLConf;
 
 /**
- * A class for common Iceberg configs for Spark writes.
+ * Iceberg Spark 集成相关组件的写入组件，负责数据写入与提交。
  *
- * <p>If a config is set at multiple levels, the following order of precedence is used (top to
- * bottom):
- *
- * <ol>
- *   <li>Write options
- *   <li>Session configuration
- *   <li>Table metadata
- * </ol>
- *
- * The most specific value is set in write options and takes precedence over all other configs. If
- * no write option is provided, this class checks the session configuration for any overrides. If no
- * applicable value is found in the session configuration, this class uses the table metadata.
- *
- * <p>Note this class is NOT meant to be serialized and sent to executors.
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkWriteConf。
  */
 public class SparkWriteConf {
 
@@ -63,10 +50,12 @@ public class SparkWriteConf {
   private final Map<String, String> writeOptions;
   private final SparkConfParser confParser;
 
+  /** 构造 SparkWriteConf 实例。 */
   public SparkWriteConf(SparkSession spark, Table table, Map<String, String> writeOptions) {
     this(spark, table, null, writeOptions);
   }
 
+  /** 构造 SparkWriteConf 实例。 */
   public SparkWriteConf(
       SparkSession spark, Table table, String branch, Map<String, String> writeOptions) {
     this.table = table;
@@ -76,6 +65,11 @@ public class SparkWriteConf {
     this.confParser = new SparkConfParser(spark, table, writeOptions);
   }
 
+  /**
+   * 校验前置条件或参数。
+   *
+   * @return 结果对象
+   */
   public boolean checkNullability() {
     return confParser
         .booleanConf()
@@ -85,6 +79,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 校验前置条件或参数。
+   *
+   * @return 结果对象
+   */
   public boolean checkOrdering() {
     return confParser
         .booleanConf()
@@ -95,17 +94,9 @@ public class SparkWriteConf {
   }
 
   /**
-   * Enables writing a timestamp with time zone as a timestamp without time zone.
+   * 执行该方法的具体逻辑。
    *
-   * <p>Generally, this is not safe as a timestamp without time zone is supposed to represent the
-   * wall-clock time, i.e. no matter the reader/writer timezone 3PM should always be read as 3PM,
-   * but a timestamp with time zone represents instant semantics, i.e. the timestamp is adjusted so
-   * that the corresponding time in the reader timezone is displayed.
-   *
-   * <p>When set to false (default), an exception must be thrown if the table contains a timestamp
-   * without time zone.
-   *
-   * @return boolean indicating if writing timestamps without timezone is allowed
+   * @return 结果对象
    */
   public boolean handleTimestampWithoutZone() {
     return confParser
@@ -116,11 +107,21 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String overwriteMode() {
     String overwriteMode = writeOptions.get(SparkWriteOptions.OVERWRITE_MODE);
     return overwriteMode != null ? overwriteMode.toLowerCase(Locale.ROOT) : null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean wapEnabled() {
     return confParser
         .booleanConf()
@@ -129,10 +130,20 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String wapId() {
     return sessionConf.get(SparkSQLProperties.WAP_ID, null);
   }
 
+  /**
+   * 合并数据。
+   *
+   * @return 结果对象
+   */
   public boolean mergeSchema() {
     return confParser
         .booleanConf()
@@ -142,6 +153,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public int outputSpecId() {
     int outputSpecId =
         confParser
@@ -156,6 +172,11 @@ public class SparkWriteConf {
     return outputSpecId;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public FileFormat dataFileFormat() {
     String valueAsString =
         confParser
@@ -167,6 +188,11 @@ public class SparkWriteConf {
     return FileFormat.fromString(valueAsString);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public long targetDataFileSize() {
     return confParser
         .longConf()
@@ -176,6 +202,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean fanoutWriterEnabled() {
     return confParser
         .booleanConf()
@@ -185,6 +216,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @return 结果对象
+   */
   public FileFormat deleteFileFormat() {
     String valueAsString =
         confParser
@@ -195,6 +231,11 @@ public class SparkWriteConf {
     return valueAsString != null ? FileFormat.fromString(valueAsString) : dataFileFormat();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public long targetDeleteFileSize() {
     return confParser
         .longConf()
@@ -204,6 +245,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Map<String, String> extraSnapshotMetadata() {
     Map<String, String> extraSnapshotMetadata = Maps.newHashMap();
 
@@ -218,6 +264,11 @@ public class SparkWriteConf {
     return extraSnapshotMetadata;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String rewrittenFileSetId() {
     return confParser
         .stringConf()
@@ -225,6 +276,11 @@ public class SparkWriteConf {
         .parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public DistributionMode distributionMode() {
     String modeName =
         confParser
@@ -242,6 +298,7 @@ public class SparkWriteConf {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private DistributionMode adjustWriteDistributionMode(DistributionMode mode) {
     if (mode == RANGE && table.spec().isUnpartitioned() && table.sortOrder().isUnsorted()) {
       return NONE;
@@ -252,6 +309,7 @@ public class SparkWriteConf {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private DistributionMode defaultWriteDistributionMode() {
     if (table.sortOrder().isSorted()) {
       return RANGE;
@@ -262,6 +320,11 @@ public class SparkWriteConf {
     }
   }
 
+  /**
+   * 删除数据或文件。
+   *
+   * @return 结果对象
+   */
   public DistributionMode deleteDistributionMode() {
     String deleteModeName =
         confParser
@@ -274,6 +337,11 @@ public class SparkWriteConf {
     return DistributionMode.fromName(deleteModeName);
   }
 
+  /**
+   * 更新数据或状态。
+   *
+   * @return 结果对象
+   */
   public DistributionMode updateDistributionMode() {
     String updateModeName =
         confParser
@@ -286,6 +354,11 @@ public class SparkWriteConf {
     return DistributionMode.fromName(updateModeName);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public DistributionMode copyOnWriteMergeDistributionMode() {
     String mergeModeName =
         confParser
@@ -307,6 +380,11 @@ public class SparkWriteConf {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public DistributionMode positionDeltaMergeDistributionMode() {
     String mergeModeName =
         confParser
@@ -319,6 +397,11 @@ public class SparkWriteConf {
     return DistributionMode.fromName(mergeModeName);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean useTableDistributionAndOrdering() {
     return confParser
         .booleanConf()
@@ -327,6 +410,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 校验前置条件或参数。
+   *
+   * @return 结果对象
+   */
   public Long validateFromSnapshotId() {
     return confParser
         .longConf()
@@ -334,12 +422,22 @@ public class SparkWriteConf {
         .parseOptional();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 布尔结果
+   */
   public IsolationLevel isolationLevel() {
     String isolationLevelName =
         confParser.stringConf().option(SparkWriteOptions.ISOLATION_LEVEL).parseOptional();
     return isolationLevelName != null ? IsolationLevel.fromName(isolationLevelName) : null;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public boolean caseSensitive() {
     return confParser
         .booleanConf()
@@ -348,6 +446,11 @@ public class SparkWriteConf {
         .parse();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String branch() {
     if (wapEnabled()) {
       String wapId = wapId();

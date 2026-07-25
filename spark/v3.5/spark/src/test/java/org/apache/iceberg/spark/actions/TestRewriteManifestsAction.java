@@ -65,6 +65,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestRewriteManifestsAction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 重写清单动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestRewriteManifestsAction extends SparkTestBase {
 
@@ -75,6 +82,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
           optional(2, "c2", Types.StringType.get()),
           optional(3, "c3", Types.StringType.get()));
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "snapshotIdInheritanceEnabled = {0}")
   public static Object[] parameters() {
     return new Object[] {"true", "false"};
@@ -85,16 +93,19 @@ public class TestRewriteManifestsAction extends SparkTestBase {
   private final String snapshotIdInheritanceEnabled;
   private String tableLocation = null;
 
+  /** 测试重写清单动作。 */
   public TestRewriteManifestsAction(String snapshotIdInheritanceEnabled) {
     this.snapshotIdInheritanceEnabled = snapshotIdInheritanceEnabled;
   }
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     File tableDir = temp.newFolder();
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** 测试重写清单空表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsEmptyTable() throws IOException {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -115,6 +126,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertNull("Table must stay empty", table.currentSnapshot());
   }
 
+  /** 测试重写small清单不存在的分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteSmallManifestsNonPartitionedTable() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -168,6 +180,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试重写清单带提交stateunknownexception场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsWithCommitStateUnknownException() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -234,6 +247,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试重写small清单分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteSmallManifestsPartitionedTable() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c1").truncate("c2", 2).build();
@@ -314,6 +328,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试重写imported清单场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteImportedManifests() throws IOException {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c3").build();
@@ -369,6 +384,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     }
   }
 
+  /** 测试重写large清单分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteLargeManifestsPartitionedTable() throws IOException {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c3").build();
@@ -424,6 +440,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", records, actualRecords);
   }
 
+  /** 测试重写清单带谓词场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteManifestsWithPredicate() throws IOException {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).identity("c1").truncate("c2", 2).build();
@@ -493,6 +510,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 测试重写small清单不存在的分区v2表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteSmallManifestsNonPartitionedV2Table() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
@@ -554,11 +572,13 @@ public class TestRewriteManifestsAction extends SparkTestBase {
     Assert.assertEquals("Rows must match", expectedRecords, actualRecords);
   }
 
+  /** 写记录。 */
   private void writeRecords(List<ThreeColumnRecord> records) {
     Dataset<Row> df = spark.createDataFrame(records, ThreeColumnRecord.class);
     writeDF(df);
   }
 
+  /** 写df。 */
   private void writeDF(Dataset<Row> df) {
     df.select("c1", "c2", "c3")
         .write()
@@ -568,6 +588,7 @@ public class TestRewriteManifestsAction extends SparkTestBase {
         .save(tableLocation);
   }
 
+  /** compute清单条目sizebytes。 */
   private long computeManifestEntrySizeBytes(List<ManifestFile> manifests) {
     long totalSize = 0L;
     int numEntries = 0;

@@ -54,13 +54,12 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * A benchmark that evaluates the performance of remove orphan files action in Spark.
+ * 文件级说明：DeleteOrphanFilesBenchmark 性能基准测试。
  *
- * <p>To run this benchmark for spark-3.3: <code>
- *   ./gradlew -DsparkVersions=3.3 :iceberg-spark:iceberg-spark-3.3_2.12:jmh
- *       -PjmhIncludeRegex=DeleteOrphanFilesBenchmark
- *       -PjmhOutputPath=benchmark/delete-orphan-files-benchmark-results.txt
- * </code>
+ * <p>所属模块：iceberg-spark（v3.4）。职责：对 删除孤儿文件 相关读写操作进行 JMH 性能基准测试， 衡量吞吐与单次执行延迟等性能指标。
+ *
+ * <p>测试策略：基于 JMH 框架，使用 @Benchmark 方法配合 @Setup/@TearDown 准备与回收测试数据， 通过 Blackhole 消费结果以避免 JIT
+ * 死代码消除，覆盖不同参数组合下的性能表现。
  */
 @Fork(1)
 @State(Scope.Benchmark)
@@ -78,6 +77,7 @@ public class DeleteOrphanFilesBenchmark {
   private final List<String> validAndOrphanPaths = Lists.newArrayList();
   private Table table;
 
+  /** 初始化：setupBench，为基准测试准备测试数据与运行环境。 */
   @Setup
   public void setupBench() {
     setupSpark();
@@ -86,11 +86,17 @@ public class DeleteOrphanFilesBenchmark {
     addOrphans();
   }
 
+  /** 清理：teardownBench，回收基准测试占用的临时数据与资源。 */
   @TearDown
   public void teardownBench() {
     tearDownSpark();
   }
 
+  /**
+   * 基准测试场景：测试删除孤儿文件。
+   *
+   * <p>测量该操作在当前参数组合下的吞吐与单次执行延迟， 通过 Blackhole 消费结果以避免 JIT 死代码消除，确保性能数据有效。
+   */
   @Benchmark
   @Threads(1)
   public void testDeleteOrphanFiles(Blackhole blackhole) {
@@ -108,6 +114,7 @@ public class DeleteOrphanFilesBenchmark {
     blackhole.consume(results);
   }
 
+  /** 辅助方法：init表。 */
   private void initTable() {
     spark.sql(
         String.format(
@@ -117,6 +124,7 @@ public class DeleteOrphanFilesBenchmark {
             TABLE_NAME));
   }
 
+  /** 辅助方法：追加数据。 */
   private void appendData() {
     String location = table().location();
     PartitionSpec partitionSpec = table().spec();
@@ -138,6 +146,7 @@ public class DeleteOrphanFilesBenchmark {
     }
   }
 
+  /** 辅助方法：添加孤儿。 */
   private void addOrphans() {
     String location = table.location();
     // Generate 10% orphan files
@@ -148,6 +157,7 @@ public class DeleteOrphanFilesBenchmark {
     }
   }
 
+  /** 辅助方法：表。 */
   private Table table() {
     if (table == null) {
       try {
@@ -159,10 +169,12 @@ public class DeleteOrphanFilesBenchmark {
     return table;
   }
 
+  /** 辅助方法：目录warehouse。 */
   private String catalogWarehouse() {
     return Files.createTempDir().getAbsolutePath() + "/" + UUID.randomUUID() + "/";
   }
 
+  /** 辅助方法：初始化Spark。 */
   private void setupSpark() {
     SparkSession.Builder builder =
         SparkSession.builder()
@@ -173,6 +185,7 @@ public class DeleteOrphanFilesBenchmark {
     spark = builder.getOrCreate();
   }
 
+  /** 辅助方法：tear下推Spark。 */
   private void tearDownSpark() {
     spark.stop();
   }

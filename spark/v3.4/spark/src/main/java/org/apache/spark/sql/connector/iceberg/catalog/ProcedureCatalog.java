@@ -23,10 +23,13 @@ import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 import org.apache.spark.sql.connector.catalog.Identifier;
 
 /**
- * A catalog API for working with stored procedures.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>Implementations should implement this interface if they expose stored procedures that can be
- * called via CALL statements.
+ * <p>职责：支持存储过程的目录接口，声明目录可按名加载 Procedure。
+ *
+ * <p>设计意图：以接口隔离过程能力，使目录可选地提供存储过程。
+ *
+ * <p>上下游关系：由 SparkCatalog 实现；由 ResolveProcedures / CallExec 使用。
  */
 public interface ProcedureCatalog extends CatalogPlugin {
   /**

@@ -20,15 +20,24 @@ package org.apache.iceberg.spark.source.metrics;
 
 import org.apache.spark.sql.connector.metric.CustomSumMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：已扫描数据文件数指标，定义指标名与聚合方式。
+ *
+ * <p>设计意图：实现 Spark CustomMetric，统计扫描的数据文件数量。
+ *
+ * <p>上下游关系：由 BaseReader 上报；由 Spark UI 展示。
+ */
 public class ScannedDataFiles extends CustomSumMetric {
 
   static final String NAME = "scannedDataFiles";
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return NAME;
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "number of scanned data files";

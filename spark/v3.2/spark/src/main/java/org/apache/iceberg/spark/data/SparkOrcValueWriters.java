@@ -38,41 +38,71 @@ import org.apache.spark.sql.catalyst.util.MapData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkOrcValueWriters。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 class SparkOrcValueWriters {
+  /** 构造 SparkOrcValueWriters 实例。 */
   private SparkOrcValueWriters() {}
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> strings() {
     return StringWriter.INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> uuids() {
     return UUIDWriter.INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> timestampTz() {
     return TimestampTzWriter.INSTANCE;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> decimal(int precision, int scale) {
     if (precision <= 18) {
+      /** 执行该方法的具体逻辑。 */
       return new Decimal18Writer(scale);
     } else {
+      /** 执行该方法的具体逻辑。 */
       return new Decimal38Writer();
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> list(OrcValueWriter<?> element, List<TypeDescription> orcType) {
     return new ListWriter<>(element, orcType);
   }
 
+  /** 执行该方法的具体逻辑。 */
   static OrcValueWriter<?> map(
       OrcValueWriter<?> keyWriter, OrcValueWriter<?> valueWriter, List<TypeDescription> orcTypes) {
     return new MapWriter<>(keyWriter, valueWriter, orcTypes);
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 StringWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class StringWriter implements OrcValueWriter<UTF8String> {
     private static final StringWriter INSTANCE = new StringWriter();
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param data 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, UTF8String data, ColumnVector output) {
       byte[] value = data.getBytes();
@@ -80,9 +110,23 @@ class SparkOrcValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 UUIDWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class UUIDWriter implements OrcValueWriter<UTF8String> {
     private static final UUIDWriter INSTANCE = new UUIDWriter();
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param data 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, UTF8String data, ColumnVector output) {
       // ((BytesColumnVector) output).setRef(..) just stores a reference to the passed byte[], so
@@ -93,9 +137,23 @@ class SparkOrcValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 TimestampTzWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class TimestampTzWriter implements OrcValueWriter<Long> {
     private static final TimestampTzWriter INSTANCE = new TimestampTzWriter();
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param micros 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, Long micros, ColumnVector output) {
       TimestampColumnVector cv = (TimestampColumnVector) output;
@@ -104,6 +162,13 @@ class SparkOrcValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 Decimal18Writer。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class Decimal18Writer implements OrcValueWriter<Decimal> {
     private final int scale;
 
@@ -111,6 +176,13 @@ class SparkOrcValueWriters {
       this.scale = scale;
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param decimal 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, Decimal decimal, ColumnVector output) {
       ((DecimalColumnVector) output)
@@ -118,8 +190,22 @@ class SparkOrcValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 Decimal38Writer。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class Decimal38Writer implements OrcValueWriter<Decimal> {
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param decimal 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, Decimal decimal, ColumnVector output) {
       ((DecimalColumnVector) output)
@@ -127,6 +213,13 @@ class SparkOrcValueWriters {
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 ListWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class ListWriter<T> implements OrcValueWriter<ArrayData> {
     private final OrcValueWriter<T> writer;
     private final SparkOrcWriter.FieldGetter<T> fieldGetter;
@@ -142,6 +235,13 @@ class SparkOrcValueWriters {
           (SparkOrcWriter.FieldGetter<T>) SparkOrcWriter.createFieldGetter(orcTypes.get(0));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param value 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, ArrayData value, ColumnVector output) {
       ListColumnVector cv = (ListColumnVector) output;
@@ -157,12 +257,24 @@ class SparkOrcValueWriters {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public Stream<FieldMetrics<?>> metrics() {
       return writer.metrics();
     }
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 MapWriter。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class MapWriter<K, V> implements OrcValueWriter<MapData> {
     private final OrcValueWriter<K> keyWriter;
     private final OrcValueWriter<V> valueWriter;
@@ -186,6 +298,13 @@ class SparkOrcValueWriters {
           (SparkOrcWriter.FieldGetter<V>) SparkOrcWriter.createFieldGetter(orcTypes.get(1));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param rowId 参数
+     * @param map 参数
+     * @param output 参数
+     */
     @Override
     public void nonNullWrite(int rowId, MapData map, ColumnVector output) {
       ArrayData key = map.keyArray();
@@ -206,12 +325,18 @@ class SparkOrcValueWriters {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @return 结果对象
+     */
     @Override
     public Stream<FieldMetrics<?>> metrics() {
       return Stream.concat(keyWriter.metrics(), valueWriter.metrics());
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static void growColumnVector(ColumnVector cv, int requestedSize) {
     if (cv.isNull.length < requestedSize) {
       // Use growth factor of 3 to avoid frequent array allocations

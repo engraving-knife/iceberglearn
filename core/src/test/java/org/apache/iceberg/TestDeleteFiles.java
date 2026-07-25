@@ -41,6 +41,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestDeleteFiles，用于验证 Delete Files 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Delete Files 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestDeleteFiles extends TableTestBase {
 
@@ -80,6 +88,7 @@ public class TestDeleteFiles extends TableTestBase {
 
   private final String branch;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}, branch = {1}")
   public static Object[] parameters() {
     return new Object[][] {
@@ -90,11 +99,17 @@ public class TestDeleteFiles extends TableTestBase {
     };
   }
 
+  /** 辅助方法：delete files。 */
   public TestDeleteFiles(int formatVersion, String branch) {
     super(formatVersion);
     this.branch = branch;
   }
 
+  /**
+   * 测试场景：multiple deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleDeletes() {
     commit(
@@ -124,6 +139,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.DELETED, Status.EXISTING));
   }
 
+  /**
+   * 测试场景：already deleted files are ignored during deletes by row filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAlreadyDeletedFilesAreIgnoredDuringDeletesByRowFilter() {
     PartitionSpec spec = table.spec();
@@ -198,6 +218,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：delete some files by row filter without partition predicates。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteSomeFilesByRowFilterWithoutPartitionPredicates() {
     // add both data files
@@ -230,6 +255,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.EXISTING, Status.DELETED));
   }
 
+  /**
+   * 测试场景：delete some files by row filter with combined predicates。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteSomeFilesByRowFilterWithCombinedPredicates() {
     // add both data files
@@ -263,6 +293,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.EXISTING, Status.DELETED));
   }
 
+  /**
+   * 测试场景：cannot delete file where not all rows match partition filter。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCannotDeleteFileWhereNotAllRowsMatchPartitionFilter() {
     Assume.assumeTrue(formatVersion == 2);
@@ -295,6 +330,11 @@ public class TestDeleteFiles extends TableTestBase {
         .hasMessageStartingWith("Cannot delete file where some, but not all, rows match filter");
   }
 
+  /**
+   * 测试场景：delete case sensitivity。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteCaseSensitivity() {
     commit(table, table.newFastAppend().appendFile(DATA_FILE_BUCKET_0_IDS_0_2), branch);
@@ -327,6 +367,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.DELETED));
   }
 
+  /**
+   * 测试场景：delete files on independent branches。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFilesOnIndependentBranches() {
     String testBranch = "testBranch";
@@ -355,6 +400,11 @@ public class TestDeleteFiles extends TableTestBase {
         statuses(Status.EXISTING, Status.DELETED, Status.DELETED));
   }
 
+  /**
+   * 测试场景：delete with collision。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteWithCollision() {
     Schema schema = new Schema(Types.NestedField.of(0, false, "x", Types.StringType.get()));
@@ -412,6 +462,11 @@ public class TestDeleteFiles extends TableTestBase {
         afterDeletePartitions);
   }
 
+  /**
+   * 测试场景：delete validate file existence。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteValidateFileExistence() {
     commit(table, table.newFastAppend().appendFile(FILE_B), branch);
@@ -428,6 +483,11 @@ public class TestDeleteFiles extends TableTestBase {
         .isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * 测试场景：delete files no validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFilesNoValidation() {
     commit(table, table.newFastAppend().appendFile(FILE_B), branch);
@@ -443,6 +503,7 @@ public class TestDeleteFiles extends TableTestBase {
     Assertions.assertThat(delete2.removedDataFiles(FILE_IO).iterator().hasNext()).isFalse();
   }
 
+  /** 辅助方法：long to buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

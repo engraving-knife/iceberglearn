@@ -87,6 +87,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 文件级说明：测试 TestHiveCatalog 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 TestHiveCatalog 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHiveCatalog extends HiveMetastoreTest {
   private static ImmutableMap meta =
       ImmutableMap.of(
@@ -96,12 +103,18 @@ public class TestHiveCatalog extends HiveMetastoreTest {
 
   @TempDir private Path temp;
 
+  /** 辅助方法：getTestSchema。 */
   private Schema getTestSchema() {
     return new Schema(
         required(1, "id", Types.IntegerType.get(), "unique ID"),
         required(2, "data", Types.StringType.get()));
   }
 
+  /**
+   * 测试场景：Create Table Builder。
+   *
+   * <p>验证该方法在 Create Table Builder 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableBuilder() throws Exception {
     Schema schema = getTestSchema();
@@ -134,6 +147,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Table With Caching。
+   *
+   * <p>验证该方法在 Create Table With Caching 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithCaching() throws Exception {
     Schema schema = getTestSchema();
@@ -161,6 +179,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Initialize。
+   *
+   * <p>验证该方法在 Initialize 条件下的行为是否符合预期。
+   */
   @Test
   public void testInitialize() {
     assertThatNoException()
@@ -171,6 +194,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
             });
   }
 
+  /**
+   * 测试场景：To String Without Set Conf。
+   *
+   * <p>验证该方法在 To String Without Set Conf 条件下的行为是否符合预期。
+   */
   @Test
   public void testToStringWithoutSetConf() {
     assertThatNoException()
@@ -181,6 +209,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
             });
   }
 
+  /**
+   * 测试场景：Initialize Catalog With Properties。
+   *
+   * <p>验证该方法在 Initialize Catalog With Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testInitializeCatalogWithProperties() {
     Map<String, String> properties = Maps.newHashMap();
@@ -194,6 +227,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isEqualTo("/user/hive/testwarehouse");
   }
 
+  /**
+   * 测试场景：Create Table Txn Builder。
+   *
+   * <p>验证该方法在 Create Table Txn Builder 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableTxnBuilder() throws Exception {
     Schema schema = getTestSchema();
@@ -214,6 +252,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Replace Txn Builder。
+   *
+   * <p>验证该方法在 Replace Txn Builder 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   public void testReplaceTxnBuilder(int formatVersion) {
@@ -269,6 +312,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Table With Owner。
+   *
+   * <p>验证该方法在 Create Table With Owner 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableWithOwner() throws Exception {
     createTableAndVerifyOwner(
@@ -283,6 +331,7 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         UserGroupInformation.getCurrentUser().getShortUserName());
   }
 
+  /** 辅助方法：createTableAndVerifyOwner。 */
   private void createTableAndVerifyOwner(
       String db, String tbl, Map<String, String> properties, String owner)
       throws IOException, TException {
@@ -301,6 +350,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Table Default Sort Order。
+   *
+   * <p>验证该方法在 Create Table Default Sort Order 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableDefaultSortOrder() throws Exception {
     Schema schema = getTestSchema();
@@ -320,6 +374,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Table Custom Sort Order。
+   *
+   * <p>验证该方法在 Create Table Custom Sort Order 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateTableCustomSortOrder() throws Exception {
     Schema schema = getTestSchema();
@@ -353,6 +412,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Create Namespace。
+   *
+   * <p>验证该方法在 Create Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespace() throws Exception {
     Namespace namespace1 = Namespace.of("noLocation");
@@ -386,6 +450,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isEqualTo(database2.getLocationUri());
   }
 
+  /**
+   * 测试场景：Create Namespace With Ownership。
+   *
+   * <p>验证该方法在 Create Namespace With Ownership 条件下的行为是否符合预期。
+   */
   @Test
   public void testCreateNamespaceWithOwnership() throws Exception {
     createNamespaceAndVerifyOwnership(
@@ -454,6 +523,7 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .hasMessageStartingWith("No enum constant " + PrincipalType.class.getCanonicalName());
   }
 
+  /** 辅助方法：createNamespaceAndVerifyOwnership。 */
   private void createNamespaceAndVerifyOwnership(
       String name, Map<String, String> prop, String expectedOwner, PrincipalType expectedOwnerType)
       throws TException {
@@ -466,6 +536,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(db.getOwnerType()).isEqualTo(expectedOwnerType);
   }
 
+  /**
+   * 测试场景：List Namespace。
+   *
+   * <p>验证该方法在 List Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespace() throws TException {
     List<Namespace> namespaces;
@@ -481,6 +556,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(namespaces).as("Hive db not hive the namespace 'dbname2'").contains(namespace2);
   }
 
+  /**
+   * 测试场景：Load Namespace Meta。
+   *
+   * <p>验证该方法在 Load Namespace Meta 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadNamespaceMeta() throws TException {
     Namespace namespace = Namespace.of("dbname_load");
@@ -495,6 +575,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isEqualTo(nameMata.get("location"));
   }
 
+  /**
+   * 测试场景：Namespace Exists。
+   *
+   * <p>验证该方法在 Namespace Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testNamespaceExists() throws TException {
     Namespace namespace = Namespace.of("dbname_exists");
@@ -507,6 +592,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Set Namespace Properties。
+   *
+   * <p>验证该方法在 Set Namespace Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetNamespaceProperties() throws TException {
     Namespace namespace = Namespace.of("dbname_set");
@@ -531,6 +621,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .hasMessage("Namespace does not exist: db2.db2.ns2");
   }
 
+  /**
+   * 测试场景：Set Namespace Ownership。
+   *
+   * <p>验证该方法在 Set Namespace Ownership 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetNamespaceOwnership() throws TException {
     setNamespaceOwnershipAndVerify(
@@ -638,6 +733,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
             "No enum constant org.apache.hadoop.hive.metastore.api.PrincipalType.invalidOwnerType");
   }
 
+  /**
+   * 测试场景：Set Namespace Ownership Noop。
+   *
+   * <p>验证该方法在 Set Namespace Ownership Noop 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetNamespaceOwnershipNoop() throws TException, IOException {
     setNamespaceOwnershipAndVerify(
@@ -693,6 +793,7 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         PrincipalType.GROUP);
   }
 
+  /** 辅助方法：setNamespaceOwnershipAndVerify。 */
   private void setNamespaceOwnershipAndVerify(
       String name,
       Map<String, String> propToCreate,
@@ -712,6 +813,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(database.getOwnerType()).isEqualTo(expectedOwnerTypePostSet);
   }
 
+  /**
+   * 测试场景：Remove Namespace Properties。
+   *
+   * <p>验证该方法在 Remove Namespace Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testRemoveNamespaceProperties() throws TException {
     Namespace namespace = Namespace.of("dbname_remove");
@@ -733,6 +839,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .hasMessage("Namespace does not exist: db2.db2.ns2");
   }
 
+  /**
+   * 测试场景：Remove Namespace Ownership。
+   *
+   * <p>验证该方法在 Remove Namespace Ownership 条件下的行为是否符合预期。
+   */
   @Test
   public void testRemoveNamespaceOwnership() throws TException, IOException {
     removeNamespaceOwnershipAndVerify(
@@ -838,6 +949,7 @@ public class TestHiveCatalog extends HiveMetastoreTest {
                 HiveCatalog.HMS_DB_OWNER_TYPE, HiveCatalog.HMS_DB_OWNER));
   }
 
+  /** 辅助方法：removeNamespaceOwnershipAndVerify。 */
   private void removeNamespaceOwnershipAndVerify(
       String name,
       Map<String, String> propToCreate,
@@ -858,6 +970,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(database.getOwnerType()).isEqualTo(expectedOwnerTypePostRemove);
   }
 
+  /**
+   * 测试场景：Drop Namespace。
+   *
+   * <p>验证该方法在 Drop Namespace 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropNamespace() throws TException {
     Namespace namespace = Namespace.of("dbname_drop");
@@ -885,6 +1002,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .hasMessage("Namespace does not exist: dbname_drop");
   }
 
+  /**
+   * 测试场景：Drop Table Without Metadata File。
+   *
+   * <p>验证该方法在 Drop Table Without Metadata File 条件下的行为是否符合预期。
+   */
   @Test
   public void testDropTableWithoutMetadataFile() {
     TableIdentifier identifier = TableIdentifier.of(DB_NAME, "tbl");
@@ -899,6 +1021,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .hasMessageContaining("Table does not exist:");
   }
 
+  /**
+   * 测试场景：Table Name。
+   *
+   * <p>验证该方法在 Table Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableName() {
     Schema schema = getTestSchema();
@@ -921,6 +1048,7 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /** 辅助方法：defaultUri。 */
   private String defaultUri(Namespace namespace) throws TException {
     return metastoreClient.getConfigValue("hive.metastore.warehouse.dir", "")
         + "/"
@@ -928,6 +1056,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         + ".db";
   }
 
+  /**
+   * 测试场景：UUI Din Table Properties。
+   *
+   * <p>验证该方法在 UUI Din Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testUUIDinTableProperties() throws Exception {
     Schema schema = getTestSchema();
@@ -943,6 +1076,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Snapshot Stats Table Properties。
+   *
+   * <p>验证该方法在 Snapshot Stats Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshotStatsTableProperties() throws Exception {
     Schema schema = getTestSchema();
@@ -988,6 +1126,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Set Snapshot Summary。
+   *
+   * <p>验证该方法在 Set Snapshot Summary 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetSnapshotSummary() throws Exception {
     Configuration conf = new Configuration();
@@ -1021,6 +1164,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：Not Expose Table Properties。
+   *
+   * <p>验证该方法在 Not Expose Table Properties 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotExposeTableProperties() {
     Configuration conf = new Configuration();
@@ -1052,6 +1200,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(parameters).doesNotContainKey(DEFAULT_SORT_ORDER);
   }
 
+  /**
+   * 测试场景：Set Default Partition Spec。
+   *
+   * <p>验证该方法在 Set Default Partition Spec 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetDefaultPartitionSpec() throws Exception {
     Schema schema = getTestSchema();
@@ -1072,6 +1225,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Set Current Schema。
+   *
+   * <p>验证该方法在 Set Current Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetCurrentSchema() throws Exception {
     Schema schema = getTestSchema();
@@ -1097,11 +1255,17 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /** 辅助方法：hmsTableParameters。 */
   private Map<String, String> hmsTableParameters() throws TException {
     org.apache.hadoop.hive.metastore.api.Table hmsTable = metastoreClient.getTable(DB_NAME, "tbl");
     return hmsTable.getParameters();
   }
 
+  /**
+   * 测试场景：Constructor Warehouse Path With End Slash。
+   *
+   * <p>验证该方法在 Constructor Warehouse Path With End Slash 条件下的行为是否符合预期。
+   */
   @Test
   public void testConstructorWarehousePathWithEndSlash() {
     HiveCatalog catalogWithSlash = new HiveCatalog();
@@ -1114,6 +1278,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
         .isEqualTo(wareHousePath);
   }
 
+  /**
+   * 测试场景：Table Props Defined At Catalog Level。
+   *
+   * <p>验证该方法在 Table Props Defined At Catalog Level 条件下的行为是否符合预期。
+   */
   @Test
   public void testTablePropsDefinedAtCatalogLevel() {
     Schema schema = getTestSchema();
@@ -1166,6 +1335,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     }
   }
 
+  /**
+   * 测试场景：Database Location With Slash In Warehouse Dir。
+   *
+   * <p>验证该方法在 Database Location With Slash In Warehouse Dir 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseLocationWithSlashInWarehouseDir() {
     Configuration conf = new Configuration();
@@ -1180,6 +1354,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(database.getLocationUri()).isEqualTo("s3://bucket/database.db");
   }
 
+  /**
+   * 测试场景：Register Table。
+   *
+   * <p>验证该方法在 Register Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterTable() {
     TableIdentifier identifier = TableIdentifier.of(DB_NAME, "t1");
@@ -1198,6 +1377,11 @@ public class TestHiveCatalog extends HiveMetastoreTest {
     assertThat(catalog.dropTable(identifier)).isTrue();
   }
 
+  /**
+   * 测试场景：Register Existing Table。
+   *
+   * <p>验证该方法在 Register Existing Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testRegisterExistingTable() {
     TableIdentifier identifier = TableIdentifier.of(DB_NAME, "t1");

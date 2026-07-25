@@ -29,6 +29,13 @@ import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.table.data.RowData;
 
 @Internal
+/**
+ * DataStatisticsOrRecord 的 Flink 序列化器，用于 checkpoint 持久化。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：把统计或记录的复合对象序列化为字节流。
+ *
+ * <p>设计意图：适配 Flink TypeSerializer；被算子状态后端调用。
+ */
 class DataStatisticsOrRecordSerializer<D extends DataStatistics<D, S>, S>
     extends TypeSerializer<DataStatisticsOrRecord<D, S>> {
   private final TypeSerializer<DataStatistics<D, S>> statisticsSerializer;

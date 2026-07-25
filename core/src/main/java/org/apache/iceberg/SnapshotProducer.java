@@ -67,6 +67,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("UnnecessaryAnonymousClass")
+
+/**
+ * 快照提交生产者基类（创建新快照的提交骨架）。
+ *
+ * <p>所属模块：iceberg-core。职责：为所有"产生新快照"的写操作（append/overwrite/rewrite 等）提供统一 的提交流程：生成新 manifest、写入
+ * manifest-list、构造新 {@link Snapshot}、提交 {@link TableOperations} 并处理冲突重试。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>模板方法：子类实现 {@code apply} 等钩子，本类负责提交编排、冲突处理、指标上报。
+ *   <li>OCC 重试：捕获 {@link CommitFailedException}，刷新元数据后基于新基线重试。
+ *   <li>任务指标：通过 {@link CommitMetrics} 上报提交耗时/重试次数。
+ *   <li>事件通知：提交成功后通过 {@link Listeners} 触发 {@link CreateSnapshotEvent}。
+ *   <li>失败清理：对 {@link CleanableFailure} 清理已写入的 manifest 文件。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link MergeAppendFiles}、{@link OverwriteData} 等具体写操作继承； 依赖 {@link
+ * TableOperations}、{@link ManifestList}、{@link ManifestWriter}。
+ */
 abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
   private static final Logger LOG = LoggerFactory.getLogger(SnapshotProducer.class);
   static final Set<ManifestFile> EMPTY_SET = Sets.newHashSet();
@@ -100,6 +120,11 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
   private String targetBranch = SnapshotRef.MAIN_BRANCH;
   private CommitMetrics commitMetrics;
 
+  /**
+   * 构造方法：初始化 SnapshotProducer 实例。
+   *
+   * @param ops 参数
+   */
   protected SnapshotProducer(TableOperations ops) {
     this.ops = ops;
     this.strictCleanup = ops.requireStrictCleanup();
@@ -118,20 +143,41 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
             .propertyAsLong(MANIFEST_TARGET_SIZE_BYTES, MANIFEST_TARGET_SIZE_BYTES_DEFAULT);
   }
 
+  /**
+   * 返回当前实例（用于链式调用）。
+   *
+   * @return 返回值
+   */
   protected abstract ThisT self();
 
+  /**
+   * 设置是否仅 stage（不设为 current）。
+   *
+   * @return 返回值
+   */
   @Override
   public ThisT stageOnly() {
     this.stageOnly = true;
     return self();
   }
 
+  /**
+   * 使用指定线程池规划 manifest 文件。
+   *
+   * @param executorService 参数
+   * @return 返回值
+   */
   @Override
   public ThisT scanManifestsWith(ExecutorService executorService) {
     this.workerPool = executorService;
     return self();
   }
 
+  /**
+   * 提交变更到底层 TableOperations。
+   *
+   * @return 返回值
+   */
   protected CommitMetrics commitMetrics() {
     if (commitMetrics == null) {
       this.commitMetrics = CommitMetrics.of(new DefaultMetricsContext());
@@ -140,13 +186,21 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
     return commitMetrics;
   }
 
+  /**
+   * 设置提交报告回调。
+   *
+   * @param newReporter 参数
+   * @return 返回值
+   */
   protected ThisT reportWith(MetricsReporter newReporter) {
     this.reporter = newReporter;
     return self();
   }
 
   /**
-   * A setter for the target branch on which snapshot producer operation should be performed
+   * 构造方法：初始化 targetBranch 实例。
+   *
+   * <p>A setter for the target branch on which snapshot producer operation should be performed
    *
    * @param branch to set as target branch
    */
@@ -160,14 +214,30 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
     this.targetBranch = branch;
   }
 
+  /**
+   * 设置目标分支。
+   *
+   * @return 返回值
+   */
   protected String targetBranch() {
     return targetBranch;
   }
 
+  /**
+   * 设置工作线程池。
+   *
+   * @return 返回值
+   */
   protected ExecutorService workerPool() {
     return this.workerPool;
   }
 
+  /**
+   * 移除With。
+   *
+   * @param deleteCallback 参数
+   * @return 返回值
+   */
   @Override
   public ThisT deleteWith(Consumer<String> deleteCallback) {
     Preconditions.checkArgument(
@@ -177,7 +247,9 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
   }
 
   /**
-   * Clean up any uncommitted manifests that were created.
+   * 构造方法：初始化 cleanUncommitted 实例。
+   *
+   * <p>Clean up any uncommitted manifests that were created.
    *
    * <p>Manifests may not be committed if apply is called more because a commit conflict has
    * occurred. Implementations may keep around manifests because the same changes will be made by
@@ -189,14 +261,18 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
   protected abstract void cleanUncommitted(Set<ManifestFile> committed);
 
   /**
-   * A string that describes the action that produced the new snapshot.
+   * 返回操作类型。
+   *
+   * <p>A string that describes the action that produced the new snapshot.
    *
    * @return a string operation
    */
   protected abstract String operation();
 
   /**
-   * Validate the current metadata.
+   * 构造方法：初始化 validate 实例。
+   *
+   * <p>Validate the current metadata.
    *
    * <p>Child operations can override this to add custom validation.
    *
@@ -206,7 +282,9 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
   protected void validate(TableMetadata currentMetadata, Snapshot snapshot) {}
 
   /**
-   * Apply the update's changes to the given metadata and snapshot. Return the new manifest list.
+   * 应用累积变更，生成新的表元数据。
+   *
+   * <p>Apply the update's changes to the given metadata and snapshot. Return the new manifest list.
    *
    * @param metadataToUpdate the base table metadata to apply changes to
    * @param snapshot snapshot to apply the changes to
@@ -214,6 +292,11 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
    */
   protected abstract List<ManifestFile> apply(TableMetadata metadataToUpdate, Snapshot snapshot);
 
+  /**
+   * 应用累积变更，生成新的表元数据。
+   *
+   * @return 返回值
+   */
   @Override
   public Snapshot apply() {
     refresh();
@@ -346,10 +429,20 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
     return builder.build();
   }
 
+  /**
+   * 返回当前表元数据。
+   *
+   * @return 返回值
+   */
   protected TableMetadata current() {
     return base;
   }
 
+  /**
+   * 刷新表元数据。
+   *
+   * @return 返回值
+   */
   protected TableMetadata refresh() {
     this.base = ops.refresh();
     return base;
@@ -478,10 +571,20 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
     cleanUncommitted(EMPTY_SET);
   }
 
+  /**
+   * 构造方法：初始化 deleteFile 实例。
+   *
+   * @param path 参数
+   */
   protected void deleteFile(String path) {
     deleteFunc.accept(path);
   }
 
+  /**
+   * 返回 manifest 列表文件路径。
+   *
+   * @return 返回值
+   */
   protected OutputFile manifestListPath() {
     return ops.io()
         .newOutputFile(
@@ -491,6 +594,11 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
                         "snap-%d-%d-%s", snapshotId(), attempt.incrementAndGet(), commitUUID))));
   }
 
+  /**
+   * 创建新的 manifest 输出文件。
+   *
+   * @return 返回值
+   */
   protected OutputFile newManifestOutput() {
     return ops.io()
         .newOutputFile(
@@ -498,33 +606,74 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
                 FileFormat.AVRO.addExtension(commitUUID + "-m" + manifestCount.getAndIncrement())));
   }
 
+  /**
+   * 创建新的 manifest writer。
+   *
+   * @param spec 参数
+   * @return {@code ManifestWriter<DataFile>} 返回值
+   */
   protected ManifestWriter<DataFile> newManifestWriter(PartitionSpec spec) {
     return ManifestFiles.write(
         ops.current().formatVersion(), spec, newManifestOutput(), snapshotId());
   }
 
+  /**
+   * 创建新的删除文件 manifest writer。
+   *
+   * @param spec 参数
+   * @return {@code ManifestWriter<DeleteFile>} 返回值
+   */
   protected ManifestWriter<DeleteFile> newDeleteManifestWriter(PartitionSpec spec) {
     return ManifestFiles.writeDeleteManifest(
         ops.current().formatVersion(), spec, newManifestOutput(), snapshotId());
   }
 
+  /**
+   * 创建滚动写入的 manifest writer。
+   *
+   * @param spec 参数
+   * @return {@code RollingManifestWriter<DataFile>} 返回值
+   */
   protected RollingManifestWriter<DataFile> newRollingManifestWriter(PartitionSpec spec) {
     return new RollingManifestWriter<>(() -> newManifestWriter(spec), targetManifestSizeBytes);
   }
 
+  /**
+   * 创建滚动写入的删除文件 manifest writer。
+   *
+   * @param spec 参数
+   * @return {@code RollingManifestWriter<DeleteFile>} 返回值
+   */
   protected RollingManifestWriter<DeleteFile> newRollingDeleteManifestWriter(PartitionSpec spec) {
     return new RollingManifestWriter<>(
         () -> newDeleteManifestWriter(spec), targetManifestSizeBytes);
   }
 
+  /**
+   * 创建 manifest reader。
+   *
+   * @param manifest 参数
+   * @return {@code ManifestReader<DataFile>} 返回值
+   */
   protected ManifestReader<DataFile> newManifestReader(ManifestFile manifest) {
     return ManifestFiles.read(manifest, ops.io(), ops.current().specsById());
   }
 
+  /**
+   * 创建删除文件 manifest reader。
+   *
+   * @param manifest 参数
+   * @return {@code ManifestReader<DeleteFile>} 返回值
+   */
   protected ManifestReader<DeleteFile> newDeleteManifestReader(ManifestFile manifest) {
     return ManifestFiles.readDeleteManifest(manifest, ops.io(), ops.current().specsById());
   }
 
+  /**
+   * 返回快照 id。
+   *
+   * @return 返回值
+   */
   protected long snapshotId() {
     if (snapshotId == null) {
       synchronized (this) {
@@ -536,6 +685,13 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
     return snapshotId;
   }
 
+  /**
+   * 添加Metadata。
+   *
+   * @param ops 参数
+   * @param manifest 参数
+   * @return 返回值
+   */
   private static ManifestFile addMetadata(TableOperations ops, ManifestFile manifest) {
     try (ManifestReader<DataFile> reader =
         ManifestFiles.read(manifest, ops.io(), ops.current().specsById())) {

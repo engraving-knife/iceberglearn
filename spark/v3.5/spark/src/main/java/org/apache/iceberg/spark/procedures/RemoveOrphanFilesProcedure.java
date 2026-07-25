@@ -45,7 +45,18 @@ import org.slf4j.LoggerFactory;
 import scala.runtime.BoxedUnit;
 
 /**
- * A procedure that removes orphan files in a table.
+ * Spark 存储过程：清理表中的孤儿文件（orphan files）。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），procedures 子包。对应 {@code system.remove_orphan_files(table
+ * => '...', older_than => ..., ...)}。
+ *
+ * <p>职责：委托 {@link DeleteOrphanFilesSparkAction} 找出并删除不被任何快照/元数据引用的文件， 支持按时间阈值、自定义
+ * location、dry_run、并发删除数、文件列表视图对比、URI scheme/authority 等价映射、 前缀不匹配模式等选项。返回孤儿文件路径列表。
+ *
+ * <p>设计意图：作为薄包装层把过程参数转换为 action 链式调用；older_than 在非测试环境下强制 >= 24 小时， 防止误删正在写入的文件；支持 bulk IO
+ * 时忽略并发删除参数。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册；依赖 {@link SparkActions#deleteOrphanFiles}。
  *
  * @see SparkActions#deleteOrphanFiles(Table)
  */
@@ -71,8 +82,10 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
             new StructField("orphan_file_location", DataTypes.StringType, false, Metadata.empty())
           });
 
+  /** 返回构造本过程的 builder。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RemoveOrphanFilesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RemoveOrphanFilesProcedure doBuild() {
         return new RemoveOrphanFilesProcedure(tableCatalog());
@@ -80,20 +93,31 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
     };
   }
 
+  /** 构造过程，绑定所在 catalog。 */
   private RemoveOrphanFilesProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行孤儿文件清理。
+   *
+   * <p>逻辑：解析表标识符与各可选参数；构造 DeleteOrphanFilesSparkAction； 按参数配置 older_than（非测试校验 >=
+   * 24h）、location、dry_run（注入空删除函数）、 max_concurrent_deletes（bulk IO 时告警忽略）、file_list_view
+   * 对比、equal_schemes/authorities、 prefix_mismatch_mode；执行并返回孤儿文件路径行数组。
+   *
+   * @param args 输入参数行
+   * @return 孤儿文件路径列表
+   */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public InternalRow[] call(InternalRow args) {
@@ -188,6 +212,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
         });
   }
 
+  /** 把结果中的孤儿文件路径可迭代对象转为 InternalRow 数组。 */
   private InternalRow[] toOutputRows(DeleteOrphanFiles.Result result) {
     Iterable<String> orphanFileLocations = result.orphanFileLocations();
 
@@ -203,6 +228,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
     return rows;
   }
 
+  /** 校验 older_than 与当前时间间隔不小于 24 小时，防止误删正在写入的文件。 */
   private void validateInterval(long olderThanMillis) {
     long intervalMillis = System.currentTimeMillis() - olderThanMillis;
     if (intervalMillis < TimeUnit.DAYS.toMillis(1)) {
@@ -214,7 +240,7 @@ public class RemoveOrphanFilesProcedure extends BaseProcedure {
               + "to remove orphan files with an arbitrary interval.");
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RemoveOrphanFilesProcedure";

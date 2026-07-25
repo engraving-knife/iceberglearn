@@ -21,8 +21,17 @@ package org.apache.spark.sql.connector.iceberg.write;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.write.DataWriterFactory;
 
-/** A factory for creating and initializing delta writers at the executor side. */
+/**
+ * Spark DataSource V2 连接器扩展的工厂，负责创建实例。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：接口 DeltaWriterFactory。
+ *
+ * <p>设计意图：工厂模式，集中创建逻辑便于扩展。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface DeltaWriterFactory extends DataWriterFactory {
+  /** 创建并返回新实例。 */
   @Override
   DeltaWriter<InternalRow> createWriter(int partitionId, long taskId);
 }

@@ -19,55 +19,61 @@
 package org.apache.iceberg.io;
 
 import java.io.Closeable;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.StructLike;
 
 /**
- * A writer capable of writing data and equality deletes that may belong to different specs and
- * partitions.
+ * 文件级说明：基于等值删除的增量写入器接口。
  *
- * @param <T> the row type
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：支持向不同 spec/partition 插入数据行（insert）、按完整行删除（delete）和 按等值字段删除（deleteKey），用于实现 MERGE-INTO 等场景下的
+ * upsert 语义。
+ *
+ * <p>设计意图：equality-delete 通过等值字段（如主键）匹配并删除已有行。delete 写入完整行， deleteKey 仅写入等值字段值。两者在读取端都需要与数据文件做 join
+ * 匹配，成本高于 position-delete， 但不需要知道被删行的精确位置。{@link BaseTaskWriter.BaseEqualityDeltaWriter} 是其内部实现。
+ *
+ * <p>上下游关系：由引擎的 MERGE/DELETE 操作调用；core 中由 {@link BaseTaskWriter.BaseEqualityDeltaWriter} 实现。
+ *
+ * @param <T> 行记录类型
  */
 public interface EqualityDeltaWriter<T> extends Closeable {
 
   /**
-   * Inserts a row to the provided spec/partition.
+   * 向指定 spec/partition 插入一行数据。
    *
-   * @param row a data record
-   * @param spec a partition spec
-   * @param partition a partition or null if the spec is unpartitioned
+   * @param row 数据记录
+   * @param spec 分区规格
+   * @param partition 分区值，非分区表传 null
    */
   void insert(T row, PartitionSpec spec, StructLike partition);
 
   /**
-   * Deletes a row from the provided spec/partition.
+   * 按完整行删除指定 spec/partition 中的匹配行。
    *
-   * <p>This method assumes the delete record has the same schema as the rows that will be inserted.
+   * <p>删除记录使用与插入行相同的 schema。
    *
-   * @param row a delete record
-   * @param spec a partition spec
-   * @param partition a partition or null if the spec is unpartitioned
+   * @param row 删除记录
+   * @param spec 分区规格
+   * @param partition 分区值，非分区表传 null
    */
   void delete(T row, PartitionSpec spec, StructLike partition);
 
   /**
-   * Deletes a key from the provided spec/partition.
+   * 按等值字段删除指定 spec/partition 中的匹配行。
    *
-   * <p>This method assumes the delete key contains values only for equality fields.
+   * <p>删除键仅包含等值字段的值。
    *
-   * @param key a delete key
-   * @param spec a partition spec
-   * @param partition a partition or null if the spec is unpartitioned
+   * @param key 删除键（仅含等值字段）
+   * @param spec 分区规格
+   * @param partition 分区值，非分区表传 null
    */
   void deleteKey(T key, PartitionSpec spec, StructLike partition);
 
   /**
-   * Returns a result that contains information about written {@link DataFile}s or {@link
-   * DeleteFile}s. The result is valid only after the writer is closed.
+   * 返回包含已写数据文件和删除文件的结果。仅在写入器关闭后有效。
    *
-   * @return the writer result
+   * @return 写入结果
    */
   WriteResult result();
 }

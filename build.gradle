@@ -27,6 +27,11 @@ buildscript {
   }
   dependencies {
     classpath 'com.github.johnrengelman:shadow:8.1.1'
+    // shadow 8.1.1 传递依赖 ASM 9.4（仅支持到 Java 19），无法读取 jackson-core 2.15.4 等
+    // 多版本 JAR 中 META-INF/versions/21 下的 Java 21 字节码（major version 65），
+    // 此处强制升级 ASM 至 9.7 以支持 Java 21/22 的 class 文件。
+    classpath 'org.ow2.asm:asm:9.7'
+    classpath 'org.ow2.asm:asm-commons:9.7'
     classpath 'com.palantir.baseline:gradle-baseline-java:4.42.0'
     // com.palantir.baseline:gradle-baseline-java:4.42.0 (the last version supporting Java 8) pulls
     // in an old version of the errorprone, which doesn't work w/ Gradle 8, so bump errorpone as

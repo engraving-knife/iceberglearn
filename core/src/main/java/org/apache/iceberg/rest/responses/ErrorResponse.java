@@ -25,7 +25,19 @@ import java.util.List;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.RESTResponse;
 
-/** Standard response body for all API errors */
+/**
+ * 文件级说明：REST API 错误响应的标准模型。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 响应模型层）。
+ *
+ * <p>职责：封装错误响应的结构化信息，包括 HTTP 状态码（code）、错误类型（type）、 消息（message）和可选的堆栈跟踪（stack）。
+ *
+ * <p>设计意图：遵循 Iceberg REST Catalog 规范的错误响应格式，使客户端能根据 type 字段 精确映射到对应的 Iceberg 异常。使用 Builder
+ * 模式保证不可变性。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.rest.ErrorHandler} 解析， 由 {@link ErrorResponseParser}
+ * 序列化/反序列化。
+ */
 public class ErrorResponse implements RESTResponse {
 
   private String message;

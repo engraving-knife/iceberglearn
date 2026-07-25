@@ -37,10 +37,20 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.RandomUtil;
 
+/**
+ * 测试类：RandomAvroData，用于验证 Random Avro Data 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Random Avro Data 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class RandomAvroData {
 
+  /** 辅助方法：random avro data。 */
   private RandomAvroData() {}
 
+  /** 辅助方法：generate。 */
   public static List<Record> generate(Schema schema, int numRecords, long seed) {
     RandomDataGenerator generator = new RandomDataGenerator(schema, seed);
     List<Record> records = Lists.newArrayListWithExpectedSize(numRecords);
@@ -55,16 +65,19 @@ public class RandomAvroData {
     private final Map<Type, org.apache.avro.Schema> typeToSchema;
     private final Random random;
 
+    /** 辅助方法：random data generator。 */
     private RandomDataGenerator(Schema schema, long seed) {
       this.typeToSchema = AvroSchemaUtil.convertTypes(schema.asStruct(), "test");
       this.random = new Random(seed);
     }
 
+    /** 辅助方法：schema。 */
     @Override
     public Record schema(Schema schema, Supplier<Object> structResult) {
       return (Record) structResult.get();
     }
 
+    /** 辅助方法：struct。 */
     @Override
     public Record struct(Types.StructType struct, Iterable<Object> fieldResults) {
       Record rec = new Record(typeToSchema.get(struct));
@@ -77,6 +90,7 @@ public class RandomAvroData {
       return rec;
     }
 
+    /** 辅助方法：field。 */
     @Override
     public Object field(Types.NestedField field, Supplier<Object> fieldResult) {
       // return null 5% of the time when the value is optional
@@ -86,6 +100,7 @@ public class RandomAvroData {
       return fieldResult.get();
     }
 
+    /** 辅助方法：list。 */
     @Override
     public Object list(Types.ListType list, Supplier<Object> elementResult) {
       int numElements = random.nextInt(20);
@@ -103,6 +118,7 @@ public class RandomAvroData {
       return result;
     }
 
+    /** 辅助方法：map。 */
     @Override
     public Object map(Types.MapType map, Supplier<Object> keyResult, Supplier<Object> valueResult) {
       int numEntries = random.nextInt(20);
@@ -136,6 +152,7 @@ public class RandomAvroData {
       return result;
     }
 
+    /** 辅助方法：primitive。 */
     @Override
     public Object primitive(Type.PrimitiveType primitive) {
       Object result = RandomUtil.generatePrimitive(primitive, random);

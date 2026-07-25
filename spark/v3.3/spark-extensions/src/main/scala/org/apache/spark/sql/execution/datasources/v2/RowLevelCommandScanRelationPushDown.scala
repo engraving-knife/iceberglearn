@@ -42,9 +42,20 @@ import org.apache.spark.sql.execution.datasources.DataSourceStrategy
 import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 
+/**
+ * Spark 物理执行相关组件的扫描组件，负责构建和执行数据读取计划。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 RowLevelCommandScanRelationPushDown。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with PredicateHelper {
   import ExtendedDataSourceV2Implicits._
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
     // use native Spark planning for delta-based plans
     // unlike other commands, these plans have filters that can be pushed down directly
@@ -157,6 +168,10 @@ object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with Predic
     (pushedFilters, newJoinCond)
   }
 
+  /**
+   * 转换为outputattrs。
+   * @return 结果对象
+   */
   private def toOutputAttrs(
       schema: StructType,
       relation: DataSourceV2Relation): Seq[AttributeReference] = {
@@ -169,9 +184,20 @@ object RowLevelCommandScanRelationPushDown extends Rule[LogicalPlan] with Predic
   }
 }
 
+/**
+ * Spark 物理执行相关组件，实现 MERGE INTO 行级操作。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 UnplannedGroupBasedMergeOperation。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 object UnplannedGroupBasedMergeOperation {
   type ReturnType = (RowLevelCommand, ReplaceIcebergData, Join, DataSourceV2Relation)
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def unapply(plan: LogicalPlan): Option[ReturnType] = plan match {
     case m @ MergeIntoIcebergTable(_, _, _, _, _, Some(rewritePlan)) =>
       rewritePlan match {

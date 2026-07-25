@@ -44,12 +44,24 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * Spark {@link InternalRow} 的文件写入器工厂。
+ *
+ * <p>所属模块：iceberg-spark（source 子包）。继承 {@link BaseFileWriterFactory}，为数据文件、 equality 删除文件、position
+ * 删除文件按 Avro/Parquet/ORC 三种格式配置对应的 Spark 写入器 （{@link SparkAvroWriter}/{@link
+ * SparkParquetWriters}/{@link SparkOrcWriter}）。
+ *
+ * <p>设计意图：把"按格式 + 文件类型创建写入器函数"的模板逻辑放在父类，本类只负责 Spark 特定 的写入器构造与 Spark 类型转换；Spark 类型按需懒转换并缓存。
+ *
+ * <p>上下游关系：由 {@link SparkWrite} 等通过 {@link #builderFor(Table)} 构建后交给 Iceberg IO 层创建具体写入器。
+ */
 class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
   private StructType dataSparkType;
   private StructType equalityDeleteSparkType;
   private StructType positionDeleteSparkType;
   private Map<String, String> writeProperties;
 
+  /** 全参数构造，初始化各文件类型对应的 Spark 类型与写入属性。 */
   SparkFileWriterFactory(
       Table table,
       FileFormat dataFileFormat,
@@ -82,22 +94,26 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     this.writeProperties = writeProperties != null ? writeProperties : ImmutableMap.of();
   }
 
+  /** 返回构建器，默认数据/删除格式取自表属性。 */
   static Builder builderFor(Table table) {
     return new Builder(table);
   }
 
+  /** 配置 Avro 数据写入：使用 {@link SparkAvroWriter} 并设置写入属性。 */
   @Override
   protected void configureDataWrite(Avro.DataWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(dataSparkType()));
     builder.setAll(writeProperties);
   }
 
+  /** 配置 Avro equality 删除写入：使用 {@link SparkAvroWriter}。 */
   @Override
   protected void configureEqualityDelete(Avro.DeleteWriteBuilder builder) {
     builder.createWriterFunc(ignored -> new SparkAvroWriter(equalityDeleteSparkType()));
     builder.setAll(writeProperties);
   }
 
+  /** 配置 Avro position 删除写入：含行时按行 Spark 类型构造写入器。 */
   @Override
   protected void configurePositionDelete(Avro.DeleteWriteBuilder builder) {
     boolean withRow =
@@ -112,12 +128,14 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.setAll(writeProperties);
   }
 
+  /** 配置 Parquet 数据写入：使用 {@link SparkParquetWriters#buildWriter}。 */
   @Override
   protected void configureDataWrite(Parquet.DataWriteBuilder builder) {
     builder.createWriterFunc(msgType -> SparkParquetWriters.buildWriter(dataSparkType(), msgType));
     builder.setAll(writeProperties);
   }
 
+  /** 配置 Parquet equality 删除写入。 */
   @Override
   protected void configureEqualityDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -125,6 +143,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.setAll(writeProperties);
   }
 
+  /** 配置 Parquet position 删除写入，并将路径转为 UTF8String。 */
   @Override
   protected void configurePositionDelete(Parquet.DeleteWriteBuilder builder) {
     builder.createWriterFunc(
@@ -133,18 +152,21 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.setAll(writeProperties);
   }
 
+  /** 配置 ORC 数据写入：使用 {@link SparkOrcWriter}。 */
   @Override
   protected void configureDataWrite(ORC.DataWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.setAll(writeProperties);
   }
 
+  /** 配置 ORC equality 删除写入。 */
   @Override
   protected void configureEqualityDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
     builder.setAll(writeProperties);
   }
 
+  /** 配置 ORC position 删除写入，并将路径转为 UTF8String。 */
   @Override
   protected void configurePositionDelete(ORC.DeleteWriteBuilder builder) {
     builder.createWriterFunc(SparkOrcWriter::new);
@@ -152,6 +174,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     builder.setAll(writeProperties);
   }
 
+  /** 懒转换并返回数据 Spark 类型。 */
   private StructType dataSparkType() {
     if (dataSparkType == null) {
       Preconditions.checkNotNull(dataSchema(), "Data schema must not be null");
@@ -161,6 +184,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return dataSparkType;
   }
 
+  /** 懒转换并返回 equality 删除 Spark 类型。 */
   private StructType equalityDeleteSparkType() {
     if (equalityDeleteSparkType == null) {
       Preconditions.checkNotNull(
@@ -171,6 +195,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return equalityDeleteSparkType;
   }
 
+  /** 懒构造并返回 position 删除 Spark 类型（含 path/position 与可选行）。 */
   private StructType positionDeleteSparkType() {
     if (positionDeleteSparkType == null) {
       // wrap the optional row schema into the position delete schema containing path and position
@@ -181,6 +206,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
     return positionDeleteSparkType;
   }
 
+  /** {@link SparkFileWriterFactory} 的构建器，收集各文件类型配置。 */
   static class Builder {
     private final Table table;
     private FileFormat dataFileFormat;
@@ -270,6 +296,7 @@ class SparkFileWriterFactory extends BaseFileWriterFactory<InternalRow> {
       return this;
     }
 
+    /** 构建工厂：校验 equality 字段 ID 与 schema 必须同时设置或同时不设置。 */
     SparkFileWriterFactory build() {
       boolean noEqualityDeleteConf = equalityFieldIds == null && equalityDeleteRowSchema == null;
       boolean fullEqualityDeleteConf = equalityFieldIds != null && equalityDeleteRowSchema != null;

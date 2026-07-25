@@ -38,6 +38,15 @@ import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 批式读取的 Batch 实现，提供 InputPartition 列表与分区读取器工厂。
+ *
+ * <p>设计意图：实现 Spark Batch 接口，将扫描任务拆分为可并行读取的分区。
+ *
+ * <p>上下游关系：由 SparkBatchQueryScan 创建；产出 SparkInputPartition 与读取器工厂。
+ */
 class SparkBatch implements Batch {
 
   private final JavaSparkContext sparkContext;
@@ -70,7 +79,7 @@ class SparkBatch implements Batch {
     this.localityEnabled = readConf.localityEnabled();
     this.scanHashCode = scanHashCode;
   }
-
+  /** 执行 planInputPartitions 相关操作。 */
   @Override
   public InputPartition[] planInputPartitions() {
     // broadcast the table metadata as input partitions will be sent to executors
@@ -97,7 +106,7 @@ class SparkBatch implements Batch {
 
     return partitions;
   }
-
+  /** 执行 createReaderFactory 相关操作。 */
   @Override
   public PartitionReaderFactory createReaderFactory() {
     if (useParquetBatchReads()) {
@@ -122,7 +131,7 @@ class SparkBatch implements Batch {
         && expectedSchema.columns().stream().allMatch(this::supportsParquetBatchReads)
         && taskGroups.stream().allMatch(this::supportsParquetBatchReads);
   }
-
+  /** 执行 supportsParquetBatchReads 相关操作。 */
   private boolean supportsParquetBatchReads(ScanTask task) {
     if (task instanceof ScanTaskGroup) {
       ScanTaskGroup<?> taskGroup = (ScanTaskGroup<?>) task;
@@ -136,7 +145,7 @@ class SparkBatch implements Batch {
       return false;
     }
   }
-
+  /** 执行 supportsParquetBatchReads 相关操作。 */
   private boolean supportsParquetBatchReads(Types.NestedField field) {
     return field.type().isPrimitiveType() || MetadataColumns.isMetadataColumn(field.fieldId());
   }
@@ -148,7 +157,7 @@ class SparkBatch implements Batch {
     return readConf.orcVectorizationEnabled()
         && taskGroups.stream().allMatch(this::supportsOrcBatchReads);
   }
-
+  /** 执行 supportsOrcBatchReads 相关操作。 */
   private boolean supportsOrcBatchReads(ScanTask task) {
     if (task instanceof ScanTaskGroup) {
       ScanTaskGroup<?> taskGroup = (ScanTaskGroup<?>) task;
@@ -162,7 +171,7 @@ class SparkBatch implements Batch {
       return false;
     }
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -176,7 +185,7 @@ class SparkBatch implements Batch {
     SparkBatch that = (SparkBatch) o;
     return table.name().equals(that.table.name()) && scanHashCode == that.scanHashCode;
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table.name(), scanHashCode);

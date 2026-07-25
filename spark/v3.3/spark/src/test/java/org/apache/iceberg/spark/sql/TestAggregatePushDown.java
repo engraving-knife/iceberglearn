@@ -40,13 +40,22 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestAggregatePushDown 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 聚合下推 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAggregatePushDown extends SparkCatalogTestBase {
 
+  /** 测试聚合下推。 */
   public TestAggregatePushDown(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 启动元存储与Spark。 */
   @BeforeClass
   public static void startMetastoreAndSpark() {
     SparkTestBase.metastore = new TestHiveMetastore();
@@ -72,21 +81,25 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     }
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试different数据类型聚合下推在分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDifferentDataTypesAggregatePushDownInPartitionedTable() {
     testDifferentDataTypesAggregatePushDown(true);
   }
 
+  /** 测试different数据类型聚合下推在不存在的分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDifferentDataTypesAggregatePushDownInNonPartitionedTable() {
     testDifferentDataTypesAggregatePushDown(false);
   }
 
+  /** 测试different数据类型聚合下推场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   private void testDifferentDataTypesAggregatePushDown(boolean hasPartitionCol) {
     String createTable;
@@ -181,6 +194,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("min/max/count push down", expected, actual);
   }
 
+  /** 测试日期与时间戳带分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDateAndTimestampWithPartition() {
     sql(
@@ -225,6 +239,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("min/max/count push down", expected, actual);
   }
 
+  /** 测试聚合非下推ifonecant下推场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregateNotPushDownIfOneCantPushDown() {
     sql("CREATE TABLE %s (id LONG, data DOUBLE) USING iceberg", tableName);
@@ -249,6 +264,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected, actual);
   }
 
+  /** 测试聚合下推带指标模式场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownWithMetricsMode() {
     sql("CREATE TABLE %s (id LONG, data DOUBLE) USING iceberg", tableName);
@@ -318,6 +334,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected3, actual3);
   }
 
+  /** 测试聚合非下推用于字符串类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregateNotPushDownForStringType() {
     sql("CREATE TABLE %s (id LONG, data STRING) USING iceberg", tableName);
@@ -380,16 +397,19 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected3, actual3);
   }
 
+  /** 测试聚合下推带数据过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownWithDataFilter() {
     testAggregatePushDownWithFilter(false);
   }
 
+  /** 测试聚合下推带分区过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownWithPartitionFilter() {
     testAggregatePushDownWithFilter(true);
   }
 
+  /** 测试聚合下推带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testAggregatePushDownWithFilter(boolean partitionFilerOnly) {
     String createTable;
     if (!partitionFilerOnly) {
@@ -436,6 +456,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected, actual);
   }
 
+  /** 测试聚合带复合类型场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregateWithComplexType() {
     sql("CREATE TABLE %s (id INT, complex STRUCT<c1:INT,c2:STRING>) USING iceberg", tableName);
@@ -470,6 +491,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     Assert.assertFalse("max not pushed down for complex types", explainContainsPushDownAggregates);
   }
 
+  /** 测试聚合下推在删除复制上写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownInDeleteCopyOnWrite() {
     sql("CREATE TABLE %s (id LONG, data INT) USING iceberg", tableName);
@@ -496,6 +518,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("min/max/count push down", expected, actual);
   }
 
+  /** 测试聚合下推用于时间旅行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAggregatePushDownForTimeTravel() {
     sql("CREATE TABLE %s (id LONG, data INT) USING iceberg", tableName);
@@ -535,6 +558,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("count push down", expected2, actual2);
   }
 
+  /** 测试所有空值场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllNull() {
     sql("CREATE TABLE %s (id int, data int) USING iceberg PARTITIONED BY (id)", tableName);
@@ -566,6 +590,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("min/max/count push down", expected, actual);
   }
 
+  /** 测试所有nan场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAllNaN() {
     sql("CREATE TABLE %s (id int, data float) USING iceberg PARTITIONED BY (id)", tableName);
@@ -597,6 +622,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected, actual);
   }
 
+  /** 测试 testNaN 场景：验证 NaN 相关操作的行为与结果。 */
   @Test
   public void testNaN() {
     sql("CREATE TABLE %s (id int, data float) USING iceberg PARTITIONED BY (id)", tableName);
@@ -628,6 +654,7 @@ public class TestAggregatePushDown extends SparkCatalogTestBase {
     assertEquals("expected and actual should equal", expected, actual);
   }
 
+  /** 测试 testInfinity 场景：验证 Infinity 相关操作的行为与结果。 */
   @Test
   public void testInfinity() {
     sql(

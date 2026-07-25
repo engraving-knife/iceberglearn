@@ -27,6 +27,13 @@ import org.apache.flink.metrics.Histogram;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.iceberg.io.WriteResult;
 
+/**
+ * Iceberg 流式写入算子的 metrics 容器，统计写入字节数与记录数。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：注册与更新 writer 相关的 Flink 指标。
+ *
+ * <p>设计意图：辅助类；被 IcebergStreamWriter 调用。
+ */
 class IcebergStreamWriterMetrics {
   // 1,024 reservoir size should cost about 8KB, which is quite small.
   // It should also produce good accuracy for histogram distribution (like percentiles).

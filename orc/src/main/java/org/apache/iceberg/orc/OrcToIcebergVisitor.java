@@ -24,10 +24,36 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.types.Types;
 import org.apache.orc.TypeDescription;
 
-/** Converts an ORC schema to Iceberg. */
+/**
+ * 把 ORC TypeDescription 树转为 Iceberg NestedField 树的访问器。
+ *
+ * <p>所属模块：iceberg-orc。是 {@link ORCSchemaUtil#convert(TypeDescription)} 的核心实现， 把带 Iceberg id 属性的 ORC
+ * schema 还原为 Iceberg Schema。
+ *
+ * <p>职责：遍历 ORC TypeDescription，按节点 category 和 Iceberg 属性（id/required/binary-type/
+ * long-type/length）构造对应的 Iceberg NestedField（包装在 Optional 中）。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>无 Iceberg id 的节点返回 Optional.empty()，struct 中全部子字段为 empty 时整个 struct 也为 empty， 实现“无 id
+ *       的列被忽略”。
+ *   <li>LONG 类别按 ICEBERG_LONG_TYPE_ATTRIBUTE 区分 TIME/LONG；BINARY 类别按 ICEBERG_BINARY_TYPE_ATTRIBUTE
+ *       区分 UUID/FIXED/BINARY（FIXED 还需读 length）。
+ *   <li>list/map 的元素 required/optional 从 ORC 子节点的 ICEBERG_REQUIRED_ATTRIBUTE 推断。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link ORCSchemaUtil#convert(TypeDescription)} 调用。
+ */
 class OrcToIcebergVisitor extends OrcSchemaVisitor<Optional<Types.NestedField>> {
 
   @Override
+  /**
+   * 把 ORC struct 转为 Iceberg NestedField（含 StructType）。
+   *
+   * <p>逻辑：若自身无 id 或所有子字段都为 empty 则返回 empty；否则收集非 empty 子字段 构建 StructType，用 currentFieldName()
+   * 作为字段名。
+   */
   public Optional<Types.NestedField> record(
       TypeDescription record, List<String> names, List<Optional<Types.NestedField>> fields) {
     boolean isOptional = ORCSchemaUtil.isOptional(record);
@@ -47,6 +73,11 @@ class OrcToIcebergVisitor extends OrcSchemaVisitor<Optional<Types.NestedField>> 
   }
 
   @Override
+  /**
+   * 把 ORC list 转为 Iceberg NestedField（含 ListType）。
+   *
+   * <p>逻辑：若自身或元素无 id 则返回 empty；否则按 ORC 子节点的 required 属性 构建 ListType.ofOptional/ofRequired。
+   */
   public Optional<Types.NestedField> list(
       TypeDescription array, Optional<Types.NestedField> element) {
     boolean isOptional = ORCSchemaUtil.isOptional(array);
@@ -67,6 +98,12 @@ class OrcToIcebergVisitor extends OrcSchemaVisitor<Optional<Types.NestedField>> 
   }
 
   @Override
+  /**
+   * 把 ORC map 转为 Iceberg NestedField（含 MapType）。
+   *
+   * <p>逻辑：若自身/key/value 任一无 id 则返回 empty；否则按 ORC value 子节点的 required 属性 构建
+   * MapType.ofOptional/ofRequired。
+   */
   public Optional<Types.NestedField> map(
       TypeDescription map, Optional<Types.NestedField> key, Optional<Types.NestedField> value) {
     boolean isOptional = ORCSchemaUtil.isOptional(map);
@@ -90,6 +127,15 @@ class OrcToIcebergVisitor extends OrcSchemaVisitor<Optional<Types.NestedField>> 
   }
 
   @Override
+  /**
+   * 把 ORC 叶子类型转为 Iceberg NestedField。
+   *
+   * <p>逻辑：若无 id 返回 empty；否则按 ORC category 查表映射为 Iceberg 类型， LONG 按 ICEBERG_LONG_TYPE_ATTRIBUTE 区分
+   * TIME/LONG，BINARY 按 ICEBERG_BINARY_TYPE_ATTRIBUTE 区分 UUID/FIXED/BINARY，
+   * TIMESTAMP/TIMESTAMP_INSTANT 映射为 withoutZone/withZone。
+   *
+   * @throws IllegalArgumentException 出现未覆盖的 ORC category
+   */
   public Optional<Types.NestedField> primitive(TypeDescription primitive) {
     boolean isOptional = ORCSchemaUtil.isOptional(primitive);
     Optional<Integer> icebergIdOpt = ORCSchemaUtil.icebergID(primitive);

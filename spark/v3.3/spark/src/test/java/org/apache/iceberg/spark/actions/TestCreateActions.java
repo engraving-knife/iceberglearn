@@ -81,6 +81,13 @@ import scala.Some;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
+/**
+ * 文件级说明：测试 TestCreateActions 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 创建动作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestCreateActions extends SparkCatalogTestBase {
   private static final String CREATE_PARTITIONED_PARQUET =
       "CREATE TABLE %s (id INT, data STRING) " + "using parquet PARTITIONED BY (id) LOCATION '%s'";
@@ -94,6 +101,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
 
   private static final String NAMESPACE = "default";
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "Catalog Name {0} - Options {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -144,12 +152,14 @@ public class TestCreateActions extends SparkCatalogTestBase {
   private final String type;
   private final TableCatalog catalog;
 
+  /** 测试创建动作。 */
   public TestCreateActions(String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
     this.catalog = (TableCatalog) spark.sessionState().catalogManager().catalog(catalogName);
     this.type = config.get("type");
   }
 
+  /** 前。 */
   @Before
   public void before() {
     try {
@@ -179,12 +189,14 @@ public class TestCreateActions extends SparkCatalogTestBase {
         .saveAsTable(baseTableName);
   }
 
+  /** 后。 */
   @After
   public void after() throws IOException {
     // Drop the hive table.
     spark.sql(String.format("DROP TABLE IF EXISTS %s", baseTableName));
   }
 
+  /** 测试迁移分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigratePartitioned() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -196,6 +208,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertMigratedFileCount(SparkActions.get().migrateTable(source), source, dest);
   }
 
+  /** 测试分区表带unrecovered分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedTableWithUnRecoveredPartitions() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -219,6 +232,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertMigratedFileCount(SparkActions.get().migrateTable(source), source, dest);
   }
 
+  /** 测试分区表带自定义分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedTableWithCustomPartitions() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -243,6 +257,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertMigratedFileCount(SparkActions.get().migrateTable(source), source, dest);
   }
 
+  /** 测试添加列上migrated表atend场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumnOnMigratedTableAtEnd() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -283,6 +298,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", results2, expected2);
   }
 
+  /** 测试添加列上migrated表atmiddle场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddColumnOnMigratedTableAtMiddle() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -317,6 +333,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", results, expected);
   }
 
+  /** 移除列atend。 */
   @Test
   public void removeColumnsAtEnd() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -364,6 +381,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected2, results2);
   }
 
+  /** 移除列从middle。 */
   @Test
   public void removeColumnFromMiddle() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -396,6 +414,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** 测试迁移非分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateUnpartitioned() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -407,6 +426,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertMigratedFileCount(SparkActions.get().migrateTable(source), source, dest);
   }
 
+  /** 测试快照分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotPartitioned() throws Exception {
     Assume.assumeTrue(
@@ -423,6 +443,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertIsolatedSnapshot(source, dest);
   }
 
+  /** 测试快照非分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotUnpartitioned() throws Exception {
     Assume.assumeTrue(
@@ -439,6 +460,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertIsolatedSnapshot(source, dest);
   }
 
+  /** 测试快照hive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotHiveTable() throws Exception {
     Assume.assumeTrue(
@@ -455,6 +477,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertIsolatedSnapshot(source, dest);
   }
 
+  /** 测试迁移hive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateHiveTable() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -464,6 +487,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertMigratedFileCount(SparkActions.get().migrateTable(source), source, dest);
   }
 
+  /** 测试快照managedhive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotManagedHiveTable() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -478,6 +502,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertIsolatedSnapshot(source, dest);
   }
 
+  /** 测试迁移managedhive表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMigrateManagedHiveTable() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -491,6 +516,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
         dest);
   }
 
+  /** 测试属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testProperties() throws Exception {
     String source = sourceName("test_properties_table");
@@ -526,6 +552,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     }
   }
 
+  /** 测试Spark表reserved属性场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkTableReservedProperties() throws Exception {
     String destTableName = "iceberg_reserved_properties";
@@ -576,6 +603,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
         "Identifier fields aren't correct", "[id]", table.properties().get("identifier-fields"));
   }
 
+  /** 测试快照默认路径场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSnapshotDefaultLocation() throws Exception {
     String source = sourceName("test_snapshot_default");
@@ -585,6 +613,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertIsolatedSnapshot(source, dest);
   }
 
+  /** 模式演进测试带Sparkapi。 */
   @Test
   public void schemaEvolutionTestWithSparkAPI() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -639,6 +668,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expectedAfterAddColumn, afterMigarteAfterAddResults);
   }
 
+  /** 模式演进测试带SparkSQL。 */
   @Test
   public void schemaEvolutionTestWithSparkSQL() throws Exception {
     Assume.assumeTrue("Cannot migrate to a hadoop based catalog", !type.equals("hadoop"));
@@ -686,46 +716,55 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expectedAfterAddColumn, afterMigarteAfterAddResults);
   }
 
+  /** 测试hivestylethree级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiveStyleThreeLevelList() throws Exception {
     threeLevelList(true);
   }
 
+  /** 测试three级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testThreeLevelList() throws Exception {
     threeLevelList(false);
   }
 
+  /** 测试hivestylethree级别列表带嵌套结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiveStyleThreeLevelListWithNestedStruct() throws Exception {
     threeLevelListWithNestedStruct(true);
   }
 
+  /** 测试three级别列表带嵌套结构体场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testThreeLevelListWithNestedStruct() throws Exception {
     threeLevelListWithNestedStruct(false);
   }
 
+  /** 测试hivestylethree级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiveStyleThreeLevelLists() throws Exception {
     threeLevelLists(true);
   }
 
+  /** 测试three级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testThreeLevelLists() throws Exception {
     threeLevelLists(false);
   }
 
+  /** 测试hivestyle结构体的three级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHiveStyleStructOfThreeLevelLists() throws Exception {
     structOfThreeLevelLists(true);
   }
 
+  /** 测试结构体的three级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testStructOfThreeLevelLists() throws Exception {
     structOfThreeLevelLists(false);
   }
 
+  /** 测试two级别列表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTwoLevelList() throws IOException {
     spark.conf().set("spark.sql.parquet.writeLegacyFormat", true);
@@ -810,6 +849,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** three级别列表。 */
   private void threeLevelList(boolean useLegacyMode) throws Exception {
     spark.conf().set("spark.sql.parquet.writeLegacyFormat", useLegacyMode);
 
@@ -832,6 +872,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** three级别列表带嵌套结构体。 */
   private void threeLevelListWithNestedStruct(boolean useLegacyMode) throws Exception {
     spark.conf().set("spark.sql.parquet.writeLegacyFormat", useLegacyMode);
 
@@ -857,6 +898,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** three级别列表。 */
   private void threeLevelLists(boolean useLegacyMode) throws Exception {
     spark.conf().set("spark.sql.parquet.writeLegacyFormat", useLegacyMode);
 
@@ -884,6 +926,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** 结构体的three级别列表。 */
   private void structOfThreeLevelLists(boolean useLegacyMode) throws Exception {
     spark.conf().set("spark.sql.parquet.writeLegacyFormat", useLegacyMode);
 
@@ -908,11 +951,13 @@ public class TestCreateActions extends SparkCatalogTestBase {
     assertEquals("Output must match", expected, results);
   }
 
+  /** 加载表。 */
   private SparkTable loadTable(String name) throws NoSuchTableException, ParseException {
     return (SparkTable)
         catalog.loadTable(Spark3Util.catalogAndIdentifier(spark, name).identifier());
   }
 
+  /** 加载会话表。 */
   private CatalogTable loadSessionTable(String name)
       throws NoSuchTableException, NoSuchDatabaseException, ParseException {
     Identifier identifier = Spark3Util.catalogAndIdentifier(spark, name).identifier();
@@ -923,6 +968,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
         .getTableMetadata(new TableIdentifier(identifier.name(), namespace));
   }
 
+  /** 创建源表。 */
   private void createSourceTable(String createStatement, String tableName)
       throws IOException, NoSuchTableException, NoSuchDatabaseException, ParseException {
     File location = temp.newFolder();
@@ -963,6 +1009,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
         snapshotTableResult.importedDataFilesCount());
   }
 
+  /** 校验表。 */
   private void validateTables(String source, String dest)
       throws NoSuchTableException, ParseException {
     List<Row> expected = spark.table(source).collectAsList();
@@ -979,6 +1026,7 @@ public class TestCreateActions extends SparkCatalogTestBase {
         expected.containsAll(actual) && actual.containsAll(expected));
   }
 
+  /** 期望文件计数。 */
   private long expectedFilesCount(String source)
       throws NoSuchDatabaseException, NoSuchTableException, ParseException {
     CatalogTable sourceTable = loadSessionTable(source);
@@ -1027,10 +1075,12 @@ public class TestCreateActions extends SparkCatalogTestBase {
     Assert.assertEquals("Added row not found in snapshot", 1, snapshot.size());
   }
 
+  /** 源name。 */
   private String sourceName(String source) {
     return NAMESPACE + "." + catalog.name() + "_" + type + "_" + source;
   }
 
+  /** 辅助方法：destName。 */
   private String destName(String dest) {
     if (catalog.name().equals("spark_catalog")) {
       return NAMESPACE + "." + catalog.name() + "_" + type + "_" + dest;

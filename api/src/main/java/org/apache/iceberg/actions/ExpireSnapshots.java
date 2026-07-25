@@ -20,101 +20,122 @@ package org.apache.iceberg.actions;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
-import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.io.SupportsBulkOperations;
 
 /**
- * An action that expires snapshots in a table.
+ * 过期（expire）表中快照的动作。
  *
- * <p>Similar to {@link org.apache.iceberg.ExpireSnapshots} but may use a query engine to distribute
- * parts of the work.
+ * <p>所属模块：iceberg-api。继承自 {@link Action}，用于表的时间旅行与存储清理。
+ *
+ * <p>职责：按快照 ID、时间戳或保留最近 N 个祖先等策略过期快照，并删除不再被有效快照引用的 清单与内容文件。
+ *
+ * <p>设计意图：与核心层 {@link org.apache.iceberg.ExpireSnapshots} 语义一致，但本 Action 版本
+ * 可借助查询引擎分布式执行删除工作，适用于大规模表的高效清理。
+ *
+ * <p>上下游关系：由引擎模块实现；删除执行依赖 {@link org.apache.iceberg.io.FileIO} 或自定义 deleteFunc；结果通过 {@link Result}
+ * 返回各类文件删除计数。
  */
 public interface ExpireSnapshots extends Action<ExpireSnapshots, ExpireSnapshots.Result> {
   /**
-   * Expires a specific {@link Snapshot} identified by id.
+   * 过期指定 ID 的快照。
    *
-   * <p>Identical to {@link org.apache.iceberg.ExpireSnapshots#expireSnapshotId(long)}
+   * <p>语义同 {@link org.apache.iceberg.ExpireSnapshots#expireSnapshotId(long)}。
    *
-   * @param snapshotId id of the snapshot to expire
-   * @return this for method chaining
+   * @param snapshotId 待过期快照的 ID
+   * @return this，便于链式调用
    */
   ExpireSnapshots expireSnapshotId(long snapshotId);
 
   /**
-   * Expires all snapshots older than the given timestamp.
+   * 过期所有早于给定时间戳的快照。
    *
-   * <p>Identical to {@link org.apache.iceberg.ExpireSnapshots#expireOlderThan(long)}
+   * <p>语义同 {@link org.apache.iceberg.ExpireSnapshots#expireOlderThan(long)}。
    *
-   * @param timestampMillis a long timestamp, as returned by {@link System#currentTimeMillis()}
-   * @return this for method chaining
+   * @param timestampMillis 时间戳，单位毫秒，由 {@link System#currentTimeMillis()} 返回
+   * @return this，便于链式调用
    */
   ExpireSnapshots expireOlderThan(long timestampMillis);
 
   /**
-   * Retains the most recent ancestors of the current snapshot.
+   * 保留当前快照最近的若干个祖先快照。
    *
-   * <p>If a snapshot would be expired because it is older than the expiration timestamp, but is one
-   * of the {@code numSnapshots} most recent ancestors of the current state, it will be retained.
-   * This will not cause snapshots explicitly identified by id from expiring.
+   * <p>若某快照因早于过期时间戳本应被过期，但属于当前状态最近 {@code numSnapshots} 个祖先之一， 则予以保留。该策略不会阻止通过 ID 显式指定过期的快照。
    *
-   * <p>Identical to {@link org.apache.iceberg.ExpireSnapshots#retainLast(int)}
+   * <p>语义同 {@link org.apache.iceberg.ExpireSnapshots#retainLast(int)}。
    *
-   * @param numSnapshots the number of snapshots to retain
-   * @return this for method chaining
+   * @param numSnapshots 保留的快照数量
+   * @return this，便于链式调用
    */
   ExpireSnapshots retainLast(int numSnapshots);
 
   /**
-   * Passes an alternative delete implementation that will be used for manifests, data and delete
-   * files.
+   * 指定用于删除清单、数据文件和删除文件的自定义删除函数。
    *
-   * <p>Manifest files that are no longer used by valid snapshots will be deleted. Content files
-   * that were marked as logically deleted by snapshots that are expired will be deleted as well.
+   * <p>不再被有效快照使用的清单文件将被删除；被过期快照逻辑删除的内容文件也会被物理删除。 即使不调用本方法，冗余清单与内容文件仍会被删除。
    *
-   * <p>If this method is not called, unnecessary manifests and content files will still be deleted.
+   * <p>语义同 {@link org.apache.iceberg.ExpireSnapshots#deleteWith(Consumer)}。
    *
-   * <p>Identical to {@link org.apache.iceberg.ExpireSnapshots#deleteWith(Consumer)}
-   *
-   * @param deleteFunc a function that will be called to delete manifests and data files
-   * @return this for method chaining
+   * @param deleteFunc 接收文件路径的删除函数
+   * @return this，便于链式调用
    */
   ExpireSnapshots deleteWith(Consumer<String> deleteFunc);
 
   /**
-   * Passes an alternative executor service that will be used for files removal. This service will
-   * only be used if a custom delete function is provided by {@link #deleteWith(Consumer)} or if the
-   * FileIO does not {@link SupportsBulkOperations support bulk deletes}. Otherwise, parallelism
-   * should be controlled by the IO specific {@link SupportsBulkOperations#deleteFiles(Iterable)
-   * deleteFiles} method.
+   * 指定用于删除文件的替代执行器服务。
    *
-   * <p>If this method is not called and bulk deletes are not supported, unnecessary manifests and
-   * content files will still be deleted in the current thread.
+   * <p>仅当通过 {@link #deleteWith(Consumer)} 提供自定义删除函数、或 FileIO 不 {@link SupportsBulkOperations
+   * 支持批量删除}时才会使用该执行器；否则并行度由 IO 专属的 {@link SupportsBulkOperations#deleteFiles(Iterable) deleteFiles}
+   * 控制。若未调用且不支持 批量删除，冗余清单与内容文件仍会在当前线程被删除。
    *
-   * <p>Identical to {@link org.apache.iceberg.ExpireSnapshots#executeDeleteWith(ExecutorService)}
+   * <p>语义同 {@link org.apache.iceberg.ExpireSnapshots#executeDeleteWith(ExecutorService)}。
    *
-   * @param executorService the service to use
-   * @return this for method chaining
+   * @param executorService 使用的执行器服务
+   * @return this，便于链式调用
    */
   ExpireSnapshots executeDeleteWith(ExecutorService executorService);
 
-  /** The action result that contains a summary of the execution. */
+  /** 动作执行结果，包含执行摘要统计。 */
   interface Result {
-    /** Returns the number of deleted data files. */
+    /**
+     * 返回已删除的数据文件数量。
+     *
+     * @return 已删除数据文件数
+     */
     long deletedDataFilesCount();
 
-    /** Returns the number of deleted equality delete files. */
+    /**
+     * 返回已删除的等值删除文件数量。
+     *
+     * @return 已删除等值删除文件数
+     */
     long deletedEqualityDeleteFilesCount();
 
-    /** Returns the number of deleted position delete files. */
+    /**
+     * 返回已删除的位置删除文件数量。
+     *
+     * @return 已删除位置删除文件数
+     */
     long deletedPositionDeleteFilesCount();
 
-    /** Returns the number of deleted manifests. */
+    /**
+     * 返回已删除的清单（manifest）文件数量。
+     *
+     * @return 已删除清单文件数
+     */
     long deletedManifestsCount();
 
-    /** Returns the number of deleted manifest lists. */
+    /**
+     * 返回已删除的清单列表（manifest list）数量。
+     *
+     * @return 已删除清单列表数
+     */
     long deletedManifestListsCount();
 
-    /** Returns the number of deleted statistics files. */
+    /**
+     * 返回已删除的统计文件数量。默认返回 0，兼容未实现该统计的实现。
+     *
+     * @return 已删除统计文件数
+     */
     default long deletedStatisticsFilesCount() {
       return 0L;
     }

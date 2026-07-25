@@ -21,35 +21,24 @@ package org.apache.spark.sql.connector.iceberg.write;
 import java.io.IOException;
 import org.apache.spark.sql.connector.write.DataWriter;
 
-/** A data writer responsible for writing a delta of rows. */
+/**
+ * Spark DataSource V2 连接器扩展的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 DeltaWriter。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface DeltaWriter<T> extends DataWriter<T> {
-  /**
-   * Passes information for a row that must be deleted.
-   *
-   * @param metadata values for metadata columns that were projected but are not part of the row ID
-   * @param id a row ID to delete
-   * @throws IOException if the write process encounters an error
-   */
+  /** 删除数据或文件。 */
   void delete(T metadata, T id) throws IOException;
 
-  /**
-   * Passes information for a row that must be updated together with the updated row.
-   *
-   * @param metadata values for metadata columns that were projected but are not part of the row ID
-   * @param id a row ID to update
-   * @param row a row with updated values
-   * @throws IOException if the write process encounters an error
-   */
+  /** 更新数据或状态。 */
   void update(T metadata, T id, T row) throws IOException;
 
-  /**
-   * Passes a row to insert.
-   *
-   * @param row a row to insert
-   * @throws IOException if the write process encounters an error
-   */
+  /** 执行该方法的具体逻辑。 */
   void insert(T row) throws IOException;
 
+  /** 写入数据。 */
   @Override
   default void write(T row) throws IOException {
     insert(row);

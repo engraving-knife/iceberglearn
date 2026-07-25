@@ -36,6 +36,13 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestFlinkMergingMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkMergingMetrics 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkMergingMetrics extends TestMergingMetrics<RowData> {
 
   @ClassRule public static final TemporaryFolder TEMP_FOLDER = new TemporaryFolder();
@@ -44,10 +51,12 @@ public class TestFlinkMergingMetrics extends TestMergingMetrics<RowData> {
   public final HadoopTableResource tableResource =
       new HadoopTableResource(TEMP_FOLDER, "test_db", "test_table", SCHEMA);
 
+  /** 辅助方法：TestFlinkMergingMetrics，Flink Merging Metrics。 */
   public TestFlinkMergingMetrics(FileFormat fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：writeAndGetAppender，write And Get Appender。 */
   @Override
   protected FileAppender<RowData> writeAndGetAppender(List<Record> records) throws IOException {
     RowType flinkSchema = FlinkSchemaUtil.convert(SCHEMA);

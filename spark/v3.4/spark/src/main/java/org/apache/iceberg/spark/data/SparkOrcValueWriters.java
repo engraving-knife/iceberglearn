@@ -38,21 +38,30 @@ import org.apache.spark.sql.catalyst.util.MapData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：ORC 值写入器工厂集合，提供各 Spark 类型的 ORC 列写入器实例。
+ *
+ * <p>设计意图：以工厂方法集中创建写入器，复用公共逻辑。
+ *
+ * <p>上下游关系：由 SparkOrcWriter 使用。
+ */
 class SparkOrcValueWriters {
   private SparkOrcValueWriters() {}
-
+  /** 执行 strings 相关操作。 */
   static OrcValueWriter<?> strings() {
     return StringWriter.INSTANCE;
   }
-
+  /** 执行 uuids 相关操作。 */
   static OrcValueWriter<?> uuids() {
     return UUIDWriter.INSTANCE;
   }
-
+  /** 执行 timestampTz 相关操作。 */
   static OrcValueWriter<?> timestampTz() {
     return TimestampTzWriter.INSTANCE;
   }
-
+  /** 执行 decimal 相关操作。 */
   static OrcValueWriter<?> decimal(int precision, int scale) {
     if (precision <= 18) {
       return new Decimal18Writer(scale);
@@ -60,11 +69,11 @@ class SparkOrcValueWriters {
       return new Decimal38Writer();
     }
   }
-
+  /** 执行 list 相关操作。 */
   static OrcValueWriter<?> list(OrcValueWriter<?> element, List<TypeDescription> orcType) {
     return new ListWriter<>(element, orcType);
   }
-
+  /** 执行 map 相关操作。 */
   static OrcValueWriter<?> map(
       OrcValueWriter<?> keyWriter, OrcValueWriter<?> valueWriter, List<TypeDescription> orcTypes) {
     return new MapWriter<>(keyWriter, valueWriter, orcTypes);
@@ -72,7 +81,7 @@ class SparkOrcValueWriters {
 
   private static class StringWriter implements OrcValueWriter<UTF8String> {
     private static final StringWriter INSTANCE = new StringWriter();
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, UTF8String data, ColumnVector output) {
       byte[] value = data.getBytes();
@@ -82,7 +91,7 @@ class SparkOrcValueWriters {
 
   private static class UUIDWriter implements OrcValueWriter<UTF8String> {
     private static final UUIDWriter INSTANCE = new UUIDWriter();
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, UTF8String data, ColumnVector output) {
       // ((BytesColumnVector) output).setRef(..) just stores a reference to the passed byte[], so
@@ -95,7 +104,7 @@ class SparkOrcValueWriters {
 
   private static class TimestampTzWriter implements OrcValueWriter<Long> {
     private static final TimestampTzWriter INSTANCE = new TimestampTzWriter();
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, Long micros, ColumnVector output) {
       TimestampColumnVector cv = (TimestampColumnVector) output;
@@ -110,7 +119,7 @@ class SparkOrcValueWriters {
     Decimal18Writer(int scale) {
       this.scale = scale;
     }
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, Decimal decimal, ColumnVector output) {
       ((DecimalColumnVector) output)
@@ -119,7 +128,7 @@ class SparkOrcValueWriters {
   }
 
   private static class Decimal38Writer implements OrcValueWriter<Decimal> {
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, Decimal decimal, ColumnVector output) {
       ((DecimalColumnVector) output)
@@ -141,7 +150,7 @@ class SparkOrcValueWriters {
       this.fieldGetter =
           (SparkOrcWriter.FieldGetter<T>) SparkOrcWriter.createFieldGetter(orcTypes.get(0));
     }
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, ArrayData value, ColumnVector output) {
       ListColumnVector cv = (ListColumnVector) output;
@@ -156,7 +165,7 @@ class SparkOrcValueWriters {
         writer.write((int) (e + cv.offsets[rowId]), fieldGetter.getFieldOrNull(value, e), cv.child);
       }
     }
-
+    /** 执行 metrics 相关操作。 */
     @Override
     public Stream<FieldMetrics<?>> metrics() {
       return writer.metrics();
@@ -185,7 +194,7 @@ class SparkOrcValueWriters {
       this.valueFieldGetter =
           (SparkOrcWriter.FieldGetter<V>) SparkOrcWriter.createFieldGetter(orcTypes.get(1));
     }
-
+    /** 执行 nonNullWrite 相关操作。 */
     @Override
     public void nonNullWrite(int rowId, MapData map, ColumnVector output) {
       ArrayData key = map.keyArray();
@@ -205,13 +214,13 @@ class SparkOrcValueWriters {
         valueWriter.write(pos, valueFieldGetter.getFieldOrNull(value, e), cv.values);
       }
     }
-
+    /** 执行 metrics 相关操作。 */
     @Override
     public Stream<FieldMetrics<?>> metrics() {
       return Stream.concat(keyWriter.metrics(), valueWriter.metrics());
     }
   }
-
+  /** 执行 growColumnVector 相关操作。 */
   private static void growColumnVector(ColumnVector cv, int requestedSize) {
     if (cv.isNull.length < requestedSize) {
       // Use growth factor of 3 to avoid frequent array allocations

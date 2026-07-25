@@ -22,24 +22,38 @@ import java.io.Serializable;
 import org.apache.iceberg.io.TaskWriter;
 
 /**
- * Factory to create {@link TaskWriter}
+ * 文件级说明：{@link TaskWriter} 工厂接口。
  *
- * @param <T> data type of record.
+ * <p>所属模块：iceberg-flink（sink 子包），定义创建 Iceberg 任务写入器的契约。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>以 taskId 和 attemptId 初始化工厂（用于生成唯一文件名）。
+ *   <li>创建新的 {@link TaskWriter} 实例（每个 checkpoint 周期创建一个）。
+ * </ul>
+ *
+ * <p>设计意图：实现 Serializable 以支持 Flink 序列化分发到各 TaskManager。 每次 checkpoint 后由 {@link
+ * IcebergStreamWriter} 调用 create() 重建 writer。
+ *
+ * @param <T> 记录数据类型
  */
 public interface TaskWriterFactory<T> extends Serializable {
 
   /**
-   * Initialize the factory with a given taskId and attemptId.
+   * 以 taskId 和 attemptId 初始化工厂。
    *
-   * @param taskId the identifier of task.
-   * @param attemptId the attempt id of this task.
+   * @param taskId 任务 id
+   * @param attemptId 任务尝试 id（用于区分重试）
    */
   void initialize(int taskId, int attemptId);
 
   /**
-   * Initialize a {@link TaskWriter} with given task id and attempt id.
+   * 创建新的 {@link TaskWriter} 实例。
    *
-   * @return a newly created task writer.
+   * <p>设计要点：每个 checkpoint 周期调用一次，创建全新的 writer。
+   *
+   * @return 新创建的任务写入器
    */
   TaskWriter<T> create();
 }

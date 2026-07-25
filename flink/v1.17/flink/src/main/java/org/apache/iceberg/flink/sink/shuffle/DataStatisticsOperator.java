@@ -36,10 +36,32 @@ import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTest
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * DataStatisticsOperator collects traffic distribution statistics. A custom partitioner shall be
- * attached to the DataStatisticsOperator output. The custom partitioner leverages the statistics to
- * shuffle record to improve data clustering while maintaining relative balanced traffic
- * distribution to downstream subtasks.
+ * 文件级说明：数据统计算子，收集流量分布统计并传递给下游自定义分区器。
+ *
+ * <p>所属模块：iceberg-flink（sink/shuffle 子包），继承 Flink 的 {@link AbstractStreamOperator}。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>收集本地（当前子任务）数据统计：通过 keySelector 从 RowData 提取 key 并更新 localStatistics。
+ *   <li>在 checkpoint 时将本地统计上报给 {@link DataStatisticsCoordinator}。
+ *   <li>接收协调器下发的全局统计（globalStatistics），供下游自定义分区器使用。
+ *   <li>将数据和统计封装为 {@link DataStatisticsOrRecord} 输出给下游。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>localStatistics 在每个 checkpoint 周期内累积，checkpoint 后上报并重置。
+ *   <li>globalStatistics 通过 OperatorEvent 从协调器接收，存储在 union list state 中以支持故障恢复。
+ *   <li>数据流向：RowData → DataStatisticsOrRecord（含统计或记录），下游分区器据此分发。
+ * </ul>
+ *
+ * <p>上下游关系：上游为 RowData 数据流；下游为自定义分区器 + IcebergStreamWriter； 与 {@link DataStatisticsCoordinator} 通过
+ * OperatorEvent 通信。
+ *
+ * @param <D> 数据统计类型
+ * @param <S> 统计结果类型
  */
 @Internal
 class DataStatisticsOperator<D extends DataStatistics<D, S>, S>
@@ -56,6 +78,14 @@ class DataStatisticsOperator<D extends DataStatistics<D, S>, S>
   private transient volatile DataStatistics<D, S> globalStatistics;
   private transient ListState<DataStatistics<D, S>> globalStatisticsState;
 
+  /**
+   * 构造方法。
+   *
+   * @param operatorName 算子名称
+   * @param keySelector 从 RowData 提取统计 key 的选择器
+   * @param operatorEventGateway 算子事件网关（与协调器通信）
+   * @param statisticsSerializer 数据统计序列化器
+   */
   DataStatisticsOperator(
       String operatorName,
       KeySelector<RowData, RowData> keySelector,
@@ -67,6 +97,12 @@ class DataStatisticsOperator<D extends DataStatistics<D, S>, S>
     this.statisticsSerializer = statisticsSerializer;
   }
 
+  /**
+   * 初始化算子状态。
+   *
+   * <p>逻辑：创建 localStatistics → 从 union list state 恢复 globalStatisticsState → 若从 checkpoint
+   * 恢复则读取已保存的全局统计。
+   */
   @Override
   public void initializeState(StateInitializationContext context) throws Exception {
     localStatistics = statisticsSerializer.createInstance();

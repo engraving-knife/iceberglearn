@@ -25,9 +25,18 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 DataTestHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 DataTestHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class DataTestHelpers {
+  /** 辅助方法：DataTestHelpers。 */
   private DataTestHelpers() {}
 
+  /** 辅助方法：assertEquals。 */
   public static void assertEquals(Types.StructType struct, Record expected, Record actual) {
     List<Types.NestedField> fields = struct.fields();
     for (int i = 0; i < fields.size(); i += 1) {
@@ -40,6 +49,7 @@ public class DataTestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals。 */
   public static void assertEquals(Types.ListType list, List<?> expected, List<?> actual) {
     Type elementType = list.elementType();
 
@@ -53,6 +63,7 @@ public class DataTestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals。 */
   public static void assertEquals(Types.MapType map, Map<?, ?> expected, Map<?, ?> actual) {
     Type valueType = map.valueType();
 
@@ -66,6 +77,7 @@ public class DataTestHelpers {
     }
   }
 
+  /** 辅助方法：assertEquals。 */
   private static void assertEquals(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;

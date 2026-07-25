@@ -38,6 +38,24 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：FLIP-27 source 中的 SplitReader 实现，从 Iceberg split 中读取数据。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source/reader 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>从队列中取出待读取 split，逐个调用 {@link ReaderFunction} 创建数据迭代器。
+ *   <li>处理新增 split 的添加（支持按 comparator 排序）。
+ *   <li>split 读取完成后清理状态并上报指标。
+ * </ul>
+ *
+ * <p>设计意图：单线程读取模型下，一次只处理一个 split，避免并发读取引发的状态混乱； 通过 comparator 支持自定义 split 处理顺序。
+ *
+ * <p>上下游关系：上游为 {@link IcebergSourceReader}（调用 fetch）， 下游为 {@link ReaderFunction}（创建每个 split
+ * 的数据迭代器）。
+ */
 class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, IcebergSourceSplit> {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergSourceSplitReader.class);
 
@@ -51,6 +69,7 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
   private IcebergSourceSplit currentSplit;
   private String currentSplitId;
 
+  /** 构造 SplitReader，传入指标、split 打开函数、排序比较器与 reader 上下文。 */
   IcebergSourceSplitReader(
       IcebergSourceReaderMetrics metrics,
       ReaderFunction<T> openSplitFunction,
@@ -63,6 +82,15 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
     this.splits = new ArrayDeque<>();
   }
 
+  /**
+   * 拉取下一批记录。
+   *
+   * <p>逻辑：若当前无 reader 则从队列取出下一个 split 并打开； 若队列也为空，返回空结果让 fetcher 进入空闲状态； 若当前 reader
+   * 还有数据则返回下一批，否则结束当前 split。
+   *
+   * @return 当前 split 的下一批记录
+   * @throws IOException 读取失败时抛出
+   */
   @Override
   public RecordsWithSplitIds<RecordAndPosition<T>> fetch() throws IOException {
     metrics.incrementSplitReaderFetchCalls(1);
@@ -73,15 +101,13 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
         currentSplitId = nextSplit.splitId();
         currentReader = openSplitFunction.apply(currentSplit);
       } else {
-        // return an empty result, which will lead to split fetch to be idle.
-        // SplitFetcherManager will then close idle fetcher.
+        // 返回空结果，使 split fetch 进入空闲，SplitFetcherManager 会关闭空闲 fetcher。
         return new RecordsBySplits(Collections.emptyMap(), Collections.emptySet());
       }
     }
 
     if (currentReader.hasNext()) {
-      // Because Iterator#next() doesn't support checked exception,
-      // we need to wrap and unwrap the checked IOException with UncheckedIOException
+      // Iterator#next() 不支持受检异常，因此用 UncheckedIOException 包装再解包。
       try {
         return currentReader.next();
       } catch (UncheckedIOException e) {
@@ -92,6 +118,13 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
     }
   }
 
+  /**
+   * 处理 split 变更，仅支持新增 split。
+   *
+   * <p>逻辑：若提供 comparator 则按其排序后再加入队列，否则直接加入； 同时更新分配的 split 与字节数指标。
+   *
+   * @param splitsChange split 变更
+   */
   @Override
   public void handleSplitsChanges(SplitsChange<IcebergSourceSplit> splitsChange) {
     if (!(splitsChange instanceof SplitsAddition)) {
@@ -112,9 +145,11 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
     metrics.incrementAssignedBytes(calculateBytes(splitsChange));
   }
 
+  /** 空实现，由 fetcher 线程在 fetch 时被阻塞才需要唤醒，此处无阻塞读取。 */
   @Override
   public void wakeUp() {}
 
+  /** 关闭当前 reader 并清理状态。 */
   @Override
   public void close() throws Exception {
     currentSplitId = null;
@@ -123,14 +158,24 @@ class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, I
     }
   }
 
+  /** 计算单个 split 中所有文件的总字节数。 */
   private long calculateBytes(IcebergSourceSplit split) {
     return split.task().files().stream().map(FileScanTask::length).reduce(0L, Long::sum);
   }
 
+  /** 计算变更中所有 split 的总字节数。 */
   private long calculateBytes(SplitsChange<IcebergSourceSplit> splitsChanges) {
     return splitsChanges.splits().stream().map(this::calculateBytes).reduce(0L, Long::sum);
   }
 
+  /**
+   * 结束当前 split 读取。
+   *
+   * <p>逻辑：关闭当前 reader，返回完成标记记录，并上报完成的 split 数与字节数。
+   *
+   * @return 标记 split 完成的记录
+   * @throws IOException 关闭 reader 失败时抛出
+   */
   private ArrayBatchRecords<T> finishSplit() throws IOException {
     if (currentReader != null) {
       currentReader.close();

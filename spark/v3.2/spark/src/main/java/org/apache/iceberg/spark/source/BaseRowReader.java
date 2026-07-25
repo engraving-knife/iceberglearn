@@ -38,12 +38,22 @@ import org.apache.iceberg.spark.data.SparkParquetReaders;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 BaseRowReader。
+ *
+ * <p>设计意图：模板方法模式，抽取公共流程供子类复用。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow, T> {
   BaseRowReader(
       Table table, ScanTaskGroup<T> taskGroup, Schema expectedSchema, boolean caseSensitive) {
     super(table, taskGroup, expectedSchema, caseSensitive);
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected CloseableIterable<InternalRow> newIterable(
       InputFile file,
       FileFormat format,
@@ -67,6 +77,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<InternalRow> newAvroIterable(
       InputFile file, long start, long length, Schema projection, Map<Integer, ?> idToConstant) {
     return Avro.read(file)
@@ -78,6 +89,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
         .build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<InternalRow> newParquetIterable(
       InputFile file,
       long start,
@@ -97,6 +109,7 @@ abstract class BaseRowReader<T extends ScanTask> extends BaseReader<InternalRow,
         .build();
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<InternalRow> newOrcIterable(
       InputFile file,
       long start,

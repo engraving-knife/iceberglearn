@@ -21,127 +21,130 @@ package org.apache.iceberg;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ValidationException;
 
-/** A transaction for performing multiple updates to a table. */
+/**
+ * 事务接口：把多个表更新操作打包为一次原子提交。
+ *
+ * <p>所属模块：iceberg-api（顶层公共 API 模块）。
+ *
+ * <p>职责：提供与 {@link Table} 几乎一致的更新入口（追加、覆写、删除、schema 演进等）， 但所有操作在 {@link #commitTransaction()}
+ * 时一次性提交，保证原子性。
+ *
+ * <p>设计意图：事务内部维护一个"暂存"表视图，各更新操作基于该视图累积变更，互不干扰； 提交时把全部变更应用到最新表元数据上，若冲突则抛出 {@link
+ * CommitFailedException}。
+ *
+ * <p>上下游关系：由 {@link Table#newTransaction()} 创建；下游实现位于 core 模块。
+ */
 public interface Transaction {
   /**
-   * Return the {@link Table} that this transaction will update.
+   * 返回本事务将更新的 {@link Table}（事务暂存视图）。
    *
-   * @return this transaction's table
+   * @return 事务关联的表
    */
   Table table();
 
   /**
-   * Create a new {@link UpdateSchema} to alter the columns of this table.
+   * 创建 {@link UpdateSchema} 以修改本表列（事务内）。
    *
-   * @return a new {@link UpdateSchema}
+   * @return 新的 schema 更新器
    */
   UpdateSchema updateSchema();
 
   /**
-   * Create a new {@link UpdatePartitionSpec} to alter the partition spec of this table.
+   * 创建 {@link UpdatePartitionSpec} 以修改分区规范（事务内）。
    *
-   * @return a new {@link UpdatePartitionSpec}
+   * @return 新的分区规范更新器
    */
   UpdatePartitionSpec updateSpec();
 
   /**
-   * Create a new {@link UpdateProperties} to update table properties.
+   * 创建 {@link UpdateProperties} 以更新表属性（事务内）。
    *
-   * @return a new {@link UpdateProperties}
+   * @return 新的属性更新器
    */
   UpdateProperties updateProperties();
 
   /**
-   * Create a new {@link ReplaceSortOrder} to set a table sort order and commit the change.
+   * 创建 {@link ReplaceSortOrder} 以设置排序顺序（事务内）。
    *
-   * @return a new {@link ReplaceSortOrder}
+   * @return 新的排序顺序替换器
    */
   ReplaceSortOrder replaceSortOrder();
 
   /**
-   * Create a new {@link UpdateLocation} to update table location.
+   * 创建 {@link UpdateLocation} 以更新表存储位置（事务内）。
    *
-   * @return a new {@link UpdateLocation}
+   * @return 新的位置更新器
    */
   UpdateLocation updateLocation();
 
   /**
-   * Create a new {@link AppendFiles append API} to add files to this table.
+   * 创建 {@link AppendFiles} 追加 API（事务内）。
    *
-   * @return a new {@link AppendFiles}
+   * @return 新的追加 API
    */
   AppendFiles newAppend();
 
   /**
-   * Create a new {@link AppendFiles append API} to add files to this table.
+   * 创建快速追加 {@link AppendFiles} API（事务内）。
    *
-   * <p>Using this method signals to the underlying implementation that the append should not
-   * perform extra work in order to commit quickly. Fast appends are not recommended for normal
-   * writes because the fast commit may cause split planning to slow down over time.
+   * <p>逻辑：通知底层实现跳过额外工作以尽快提交。不推荐用于常规写入，因为快速提交可能 导致后续分片规划变慢。若实现不支持快速追加，则退化为 {@link #newAppend()}。
    *
-   * <p>Implementations may not support fast appends, in which case this will return the same
-   * appender as {@link #newAppend()}.
-   *
-   * @return a new {@link AppendFiles}
+   * @return 新的追加 API
    */
   default AppendFiles newFastAppend() {
     return newAppend();
   }
 
   /**
-   * Create a new {@link RewriteFiles rewrite API} to replace files in this table.
+   * 创建 {@link RewriteFiles} 重写 API（事务内）。
    *
-   * @return a new {@link RewriteFiles}
+   * @return 新的文件重写 API
    */
   RewriteFiles newRewrite();
 
   /**
-   * Create a new {@link RewriteManifests rewrite manifests API} to replace manifests for this
-   * table.
+   * 创建 {@link RewriteManifests} 清单重写 API（事务内）。
    *
-   * @return a new {@link RewriteManifests}
+   * @return 新的清单重写 API
    */
   RewriteManifests rewriteManifests();
 
   /**
-   * Create a new {@link OverwriteFiles overwrite API} to overwrite files by a filter expression.
+   * 创建 {@link OverwriteFiles} 覆写 API（事务内）。
    *
-   * @return a new {@link OverwriteFiles}
+   * @return 新的覆写 API
    */
   OverwriteFiles newOverwrite();
 
   /**
-   * Create a new {@link RowDelta row-level delta API} to remove or replace rows in existing data
-   * files.
+   * 创建 {@link RowDelta} 行级增量 API（事务内）。
    *
-   * @return a new {@link RowDelta}
+   * @return 新的行级增量 API
    */
   RowDelta newRowDelta();
 
   /**
-   * Not recommended: Create a new {@link ReplacePartitions replace partitions API} to dynamically
-   * overwrite partitions in the table with new data.
+   * 不推荐：创建 {@link ReplacePartitions} 分区替换 API（事务内）。
    *
-   * <p>This is provided to implement SQL compatible with Hive table operations but is not
-   * recommended. Instead, use the {@link OverwriteFiles overwrite API} to explicitly overwrite
-   * data.
+   * <p>主要为兼容 Hive 风格 SQL 提供，推荐优先使用 {@link OverwriteFiles}。
    *
-   * @return a new {@link ReplacePartitions}
+   * @return 新的分区替换 API
    */
   ReplacePartitions newReplacePartitions();
 
   /**
-   * Create a new {@link DeleteFiles delete API} to replace files in this table.
+   * 创建 {@link DeleteFiles} 删除 API（事务内）。
    *
-   * @return a new {@link DeleteFiles}
+   * @return 新的删除 API
    */
   DeleteFiles newDelete();
 
   /**
-   * Create a new {@link UpdateStatistics update table statistics API} to add or remove statistics
-   * files in this table.
+   * 创建 {@link UpdateStatistics} 统计文件更新 API（事务内）。
    *
-   * @return a new {@link UpdateStatistics}
+   * <p>默认实现抛出 {@link UnsupportedOperationException}，由具体实现类提供支持。
+   *
+   * @return 新的统计更新 API
    */
   default UpdateStatistics updateStatistics() {
     throw new UnsupportedOperationException(
@@ -149,16 +152,18 @@ public interface Transaction {
   }
 
   /**
-   * Create a new {@link ExpireSnapshots expire API} to manage snapshots in this table.
+   * 创建 {@link ExpireSnapshots} 过期 API（事务内）。
    *
-   * @return a new {@link ExpireSnapshots}
+   * @return 新的快照过期 API
    */
   ExpireSnapshots expireSnapshots();
 
   /**
-   * Create a new {@link ManageSnapshots manage snapshot API} to manage snapshots in this table.
+   * 创建 {@link ManageSnapshots} 快照管理 API（事务内）。
    *
-   * @return a new {@link ManageSnapshots}
+   * <p>默认实现抛出 {@link UnsupportedOperationException}，由具体实现类提供支持。
+   *
+   * @return 新的快照管理 API
    */
   default ManageSnapshots manageSnapshots() {
     throw new UnsupportedOperationException(
@@ -166,10 +171,10 @@ public interface Transaction {
   }
 
   /**
-   * Apply the pending changes from all actions and commit.
+   * 应用所有操作的暂存变更并提交。
    *
-   * @throws ValidationException If any update cannot be applied to the current table metadata.
-   * @throws CommitFailedException If the updates cannot be committed due to conflicts.
+   * @throws ValidationException 某个更新无法应用到当前表元数据
+   * @throws CommitFailedException 因冲突导致无法提交
    */
   void commitTransaction();
 }

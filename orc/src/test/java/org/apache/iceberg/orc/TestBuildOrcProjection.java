@@ -30,6 +30,11 @@ import org.junit.jupiter.api.Test;
 /** Test projections on ORC types. */
 public class TestBuildOrcProjection {
 
+  /**
+   * 测试场景：Projection Primitive No Op。
+   *
+   * <p>验证该方法在 Projection Primitive No Op 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectionPrimitiveNoOp() {
     Schema originalSchema =
@@ -47,6 +52,11 @@ public class TestBuildOrcProjection {
         .isEqualTo(TypeDescription.Category.STRING);
   }
 
+  /**
+   * 测试场景：Projection Primitive。
+   *
+   * <p>验证该方法在 Projection Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectionPrimitive() {
     Schema originalSchema =
@@ -73,6 +83,11 @@ public class TestBuildOrcProjection {
         .isEqualTo(TypeDescription.Category.DATE);
   }
 
+  /**
+   * 测试场景：Projection Nested No Op。
+   *
+   * <p>验证该方法在 Projection Nested No Op 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectionNestedNoOp() {
     Types.StructType nestedStructType =
@@ -96,6 +111,11 @@ public class TestBuildOrcProjection {
         .isEqualTo(TypeDescription.Category.DATE);
   }
 
+  /**
+   * 测试场景：Projection Nested。
+   *
+   * <p>验证该方法在 Projection Nested 条件下的行为是否符合预期。
+   */
   @Test
   public void testProjectionNested() {
     Types.StructType nestedStructType =
@@ -125,6 +145,11 @@ public class TestBuildOrcProjection {
         .isEqualTo(TypeDescription.Category.STRING);
   }
 
+  /**
+   * 测试场景：Evolution Add Container Field。
+   *
+   * <p>验证该方法在 Evolution Add Container Field 条件下的行为是否符合预期。
+   */
   @Test
   public void testEvolutionAddContainerField() {
     Schema baseSchema = new Schema(required(1, "a", Types.IntegerType.get()));
@@ -148,6 +173,11 @@ public class TestBuildOrcProjection {
         .isEqualTo(TypeDescription.Category.LONG);
   }
 
+  /**
+   * 测试场景：Required Nested Field Missing In File。
+   *
+   * <p>验证该方法在 Required Nested Field Missing In File 条件下的行为是否符合预期。
+   */
   @Test
   public void testRequiredNestedFieldMissingInFile() {
     Schema baseSchema =

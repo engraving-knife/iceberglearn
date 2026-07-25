@@ -36,18 +36,33 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
 
+/**
+ * 测试类：ScanPlanningAndReportingTestBase，用于验证 Scan Planning And Reporting 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Scan Planning And Reporting
+ * 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class ScanPlanningAndReportingTestBase<
         ScanT extends Scan<ScanT, T, G>, T extends ScanTask, G extends ScanTaskGroup<T>>
     extends TableTestBase {
 
   private final TestMetricsReporter reporter = new TestMetricsReporter();
 
+  /** 辅助方法：scan planning and reporting test base。 */
   public ScanPlanningAndReportingTestBase() {
     super(2);
   }
 
+  /** 辅助方法：new scan。 */
   protected abstract ScanT newScan(Table table);
 
+  /**
+   * 测试场景：no duplicates in scan context。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void noDuplicatesInScanContext() {
     TableScanContext context = TableScanContext.empty();
@@ -76,6 +91,11 @@ public abstract class ScanPlanningAndReportingTestBase<
         .containsExactlyInAnyOrder(LoggingMetricsReporter.instance(), first, second);
   }
 
+  /**
+   * 测试场景：scanning with multiple reporters。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithMultipleReporters() throws IOException {
     String tableName = "scan-with-multiple-reporters";
@@ -106,6 +126,11 @@ public abstract class ScanPlanningAndReportingTestBase<
     assertThat(reportedCount.get()).isEqualTo(2);
   }
 
+  /**
+   * 测试场景：scanning with multiple data manifests。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithMultipleDataManifests() throws IOException {
     String tableName = "multiple-data-manifests";
@@ -169,6 +194,11 @@ public abstract class ScanPlanningAndReportingTestBase<
     assertThat(result.skippedDeleteFiles().value()).isEqualTo(0);
   }
 
+  /**
+   * 测试场景：scanning with deletes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithDeletes() throws IOException {
     Table table =
@@ -212,6 +242,11 @@ public abstract class ScanPlanningAndReportingTestBase<
     assertThat(result.positionalDeleteFiles().value()).isEqualTo(2);
   }
 
+  /**
+   * 测试场景：scanning with skipped data files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithSkippedDataFiles() throws IOException {
     String tableName = "scan-planning-with-skipped-data-files";
@@ -252,6 +287,11 @@ public abstract class ScanPlanningAndReportingTestBase<
     assertThat(result.totalDeleteFileSizeInBytes().value()).isEqualTo(0L);
   }
 
+  /**
+   * 测试场景：scanning with skipped delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithSkippedDeleteFiles() throws IOException {
     String tableName = "scan-planning-with-skipped-delete-files";
@@ -296,6 +336,11 @@ public abstract class ScanPlanningAndReportingTestBase<
     assertThat(result.positionalDeleteFiles().value()).isEqualTo(0);
   }
 
+  /**
+   * 测试场景：scanning with equality and positional delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void scanningWithEqualityAndPositionalDeleteFiles() throws IOException {
     String tableName = "scan-planning-with-eq-and-pos-delete-files";
@@ -325,12 +370,14 @@ public abstract class ScanPlanningAndReportingTestBase<
     // this is mainly so that we see scan reports being logged during tests
     private final LoggingMetricsReporter delegate = LoggingMetricsReporter.instance();
 
+    /** 辅助方法：report。 */
     @Override
     public void report(MetricsReport report) {
       reports.add(report);
       delegate.report(report);
     }
 
+    /** 辅助方法：last report。 */
     public ScanReport lastReport() {
       if (reports.isEmpty()) {
         return null;
@@ -339,6 +386,7 @@ public abstract class ScanPlanningAndReportingTestBase<
       return (ScanReport) reports.get(reports.size() - 1);
     }
 
+    /** 辅助方法：last commit report。 */
     public CommitReport lastCommitReport() {
       if (reports.isEmpty()) {
         return null;

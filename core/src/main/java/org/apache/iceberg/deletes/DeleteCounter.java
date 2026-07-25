@@ -18,17 +18,28 @@
  */
 package org.apache.iceberg.deletes;
 
-/** A counter to be used to count deletes as they are applied. */
+/**
+ * 删除计数器：在应用删除时统计被删除的行数。
+ *
+ * <p>所属模块：iceberg-core，deletes 包内的轻量计数工具。
+ *
+ * <p>职责：维护一个 long 计数器，供删除过滤流程在判定行被删除时累加，最终用于产出删除统计指标。
+ *
+ * <p>设计意图：将计数能力从过滤逻辑中解耦，使得过滤迭代器无需关心统计细节，只需在删除命中时 调用 {@link #increment()}。该类非线程安全，面向单次读取任务使用。
+ *
+ * <p>上下游关系：被 {@link Deletes#filterDeleted}、{@link Deletes.PositionStreamDeleteFilter} 等
+ * 删除过滤流程持有并在删除命中时调用。
+ */
 public class DeleteCounter {
 
   private long count = 0L;
 
-  /** Increment the counter by one. */
+  /** 将计数器加 1。 */
   public void increment() {
     count++;
   }
 
-  /** Return the current value of the counter. */
+  /** 返回当前累计的删除行数。 */
   public long get() {
     return count;
   }

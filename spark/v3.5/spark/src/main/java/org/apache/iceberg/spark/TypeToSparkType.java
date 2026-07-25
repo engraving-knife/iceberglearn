@@ -44,16 +44,35 @@ import org.apache.spark.sql.types.StructType$;
 import org.apache.spark.sql.types.TimestampNTZType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * Iceberg 类型 -> Spark {@link DataType} 的访问者转换器。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：遍历 Iceberg Schema，把每种类型（struct/list/map/primitive）转换为对应的 Spark 类型， 并为元数据列在 StructField
+ * metadata 中打上 {@link #METADATA_COL_ATTR_KEY} 标记。
+ *
+ * <p>设计意图：继承 {@link TypeUtil.SchemaVisitor} 复用遍历骨架，仅在各节点方法做类型映射； timestamp 按 shouldAdjustToUTC
+ * 区分带时区（TimestampType）与无时区（TimestampNTZType）； UUID 映射为 StringType、FIXED 映射为 BinaryType（与 BINARY
+ * 同），TIME 不支持。
+ *
+ * <p>上下游关系：被 {@link SparkSchemaUtil} 等用于 schema 转换；依赖 iceberg-core 的 TypeUtil。
+ */
 class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
   TypeToSparkType() {}
 
   public static final String METADATA_COL_ATTR_KEY = "__metadata_col";
-
+  /** 返回 Schema。 */
   @Override
   public DataType schema(Schema schema, DataType structType) {
     return structType;
   }
 
+  /**
+   * 转换 struct 为 Spark StructType。
+   *
+   * <p>逻辑：逐字段构造 StructField，附带 fieldId 元数据与可选 doc 注释， 元数据列额外打上 __metadata_col 标记。
+   */
   @Override
   public DataType struct(Types.StructType struct, List<DataType> fieldResults) {
     List<Types.NestedField> fields = struct.fields();
@@ -72,22 +91,30 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
 
     return StructType$.MODULE$.apply(sparkFields);
   }
-
+  /** 执行 field 相关操作。 */
   @Override
   public DataType field(Types.NestedField field, DataType fieldResult) {
     return fieldResult;
   }
 
+  /** 转换 list 为 Spark ArrayType，元素可空性与 Iceberg 一致。 */
   @Override
   public DataType list(Types.ListType list, DataType elementResult) {
     return ArrayType$.MODULE$.apply(elementResult, list.isElementOptional());
   }
 
+  /** 转换 map 为 Spark MapType，value 可空性与 Iceberg 一致。 */
   @Override
   public DataType map(Types.MapType map, DataType keyResult, DataType valueResult) {
     return MapType$.MODULE$.apply(keyResult, valueResult, map.isValueOptional());
   }
 
+  /**
+   * 转换 primitive 为 Spark 类型。
+   *
+   * <p>逻辑：按 typeId 分支映射；TIMESTAMP 按 shouldAdjustToUTC 区分带/无时区； UUID -> StringType，FIXED/BINARY ->
+   * BinaryType，TIME 抛出不支持，DECIMAL 保留精度与标度。
+   */
   @Override
   public DataType primitive(Type.PrimitiveType primitive) {
     switch (primitive.typeId()) {
@@ -130,6 +157,7 @@ class TypeToSparkType extends TypeUtil.SchemaVisitor<DataType> {
     }
   }
 
+  /** 为元数据列构造带 __metadata_col=true 标记的 Metadata，普通列返回空 Metadata。 */
   private Metadata fieldMetadata(int fieldId) {
     if (MetadataColumns.metadataFieldIds().contains(fieldId)) {
       return new MetadataBuilder().putBoolean(METADATA_COL_ATTR_KEY, true).build();

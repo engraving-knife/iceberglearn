@@ -34,6 +34,13 @@ import org.apache.flink.util.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
 @Internal
+/**
+ * MapDataStatistics 的序列化器，把 Map 统计转为字节流。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：序列化/反序列化 MapDataStatistics 用于传输与 checkpoint。
+ *
+ * <p>设计意图：实现 DataStatistics.Serializer；被 DataStatisticsEvent 使用。
+ */
 class MapDataStatisticsSerializer
     extends TypeSerializer<DataStatistics<MapDataStatistics, Map<RowData, Long>>> {
   private final MapSerializer<RowData, Long> mapSerializer;

@@ -31,8 +31,20 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+/**
+ * 文件级说明：TestDefaultAwsClientFactory 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 默认aws客户端工厂 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestDefaultAwsClientFactory {
 
+  /**
+   * 测试场景：Glueendpointoverride。
+   *
+   * <p>验证该方法在 Glueendpointoverride 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testGlueEndpointOverride() {
     Map<String, String> properties = Maps.newHashMap();
@@ -46,6 +58,11 @@ public class TestDefaultAwsClientFactory {
         () -> glueClient.getDatabase(GetDatabaseRequest.builder().name("TEST").build()));
   }
 
+  /**
+   * 测试场景：s3文件ioendpointoverride。
+   *
+   * <p>验证该方法在 s3文件ioendpointoverride 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testS3FileIoEndpointOverride() {
     Map<String, String> properties = Maps.newHashMap();
@@ -59,6 +76,11 @@ public class TestDefaultAwsClientFactory {
         () -> s3Client.getObject(GetObjectRequest.builder().bucket("bucket").key("key").build()));
   }
 
+  /**
+   * 测试场景：s3文件iocredentialsoverride。
+   *
+   * <p>验证该方法在 s3文件iocredentialsoverride 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testS3FileIoCredentialsOverride() {
     Map<String, String> properties = Maps.newHashMap();
@@ -78,6 +100,11 @@ public class TestDefaultAwsClientFactory {
                     .build()));
   }
 
+  /**
+   * 测试场景：测试dynamodbendpointoverride。
+   *
+   * <p>验证该方法在对应输入下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDynamoDbEndpointOverride() {
     Map<String, String> properties = Maps.newHashMap();

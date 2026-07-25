@@ -35,12 +35,21 @@ import org.apache.spark.sql.catalyst.plans.logical.UpdateStarAction
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
- * A resolution rule similar to ResolveReferences in Spark but handles Iceberg MERGE operations.
+ * Spark Catalyst 分析阶段的规则或检查，实现 MERGE INTO 行级操作。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 ResolveMergeIntoTableReferences。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[LogicalPlan] {
 
   private lazy val analyzer: Analyzer = spark.sessionState.analyzer
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperatorsUp {
     case m @ UnresolvedMergeIntoIcebergTable(targetTable, sourceTable, context)
         if targetTable.resolved && sourceTable.resolved && m.duplicateResolved =>
@@ -101,6 +110,10 @@ case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[Log
         notMatchedActions = resolvedNotMatchedActions)
   }
 
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   private def resolveCond(condName: String, cond: Expression, plan: LogicalPlan): Expression = {
     val resolvedCond = analyzer.resolveExpressionByPlanChildren(cond, plan)
 
@@ -115,6 +128,10 @@ case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[Log
   }
 
   // copied from ResolveReferences in Spark
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   private def resolveAssignments(
       assignments: Seq[Assignment],
       mergeInto: UnresolvedMergeIntoIcebergTable,
@@ -140,6 +157,10 @@ case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[Log
   }
 
   // copied from ResolveReferences in Spark
+  /**
+   * 解析引用或表达式。
+   * @return 结果对象
+   */
   private def resolveMergeExprOrFail(e: Expression, p: LogicalPlan): Expression = {
     val resolved = analyzer.resolveExpressionByPlanChildren(e, p)
     resolved.references.filter(!_.resolved).foreach { a =>

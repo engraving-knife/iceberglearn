@@ -32,15 +32,20 @@ import org.apache.spark.sql.sources
 import org.slf4j.LoggerFactory
 
 /**
- * Checks whether a metadata delete is possible and nullifies the rewrite plan if the source can
- * handle this delete without executing the rewrite plan.
+ * Spark 物理执行相关组件，实现 DELETE 行级操作。
  *
- * Note this rule must be run after expression optimization.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 OptimizeMetadataOnlyDeleteFromTable。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 object OptimizeMetadataOnlyDeleteFromTable extends Rule[LogicalPlan] with PredicateHelper {
 
   val logger = LoggerFactory.getLogger(OptimizeMetadataOnlyDeleteFromTable.getClass)
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
     case d @ DeleteFromIcebergTable(relation: DataSourceV2Relation, cond, Some(_)) =>
       val deleteCond = cond.getOrElse(Literal.TrueLiteral)
@@ -61,6 +66,10 @@ object OptimizeMetadataOnlyDeleteFromTable extends Rule[LogicalPlan] with Predic
       }
   }
 
+  /**
+   * 转换为datasourcefilters。
+   * @return 结果对象
+   */
   protected def toDataSourceFilters(predicates: Seq[Expression]): Array[sources.Filter] = {
     predicates.flatMap { p =>
       val filter = DataSourceStrategy.translateFilter(p, supportNestedPredicatePushdown = true)

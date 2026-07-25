@@ -45,11 +45,19 @@ import org.junit.Test;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
 
+/**
+ * 文件级说明：TestGlueCatalogLock 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 Glue目录锁 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestGlueCatalogLock extends GlueTestBase {
 
   private static String lockTableName;
   private static DynamoDbClient dynamo;
 
+  /** 初始化：beforeClass，在测试类加载时准备共享的测试环境与数据。 */
   @BeforeClass
   public static void beforeClass() {
     GlueTestBase.beforeClass();
@@ -69,12 +77,18 @@ public class TestGlueCatalogLock extends GlueTestBase {
         ImmutableMap.of());
   }
 
+  /** 清理：afterClass，在所有测试方法执行完毕后释放共享资源。 */
   @AfterClass
   public static void afterClass() {
     GlueTestBase.afterClass();
     dynamo.deleteTable(DeleteTableRequest.builder().tableName(lockTableName).build());
   }
 
+  /**
+   * 测试场景：并行提交多thread单个提交。
+   *
+   * <p>验证该方法在 并行提交多thread单个提交 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testParallelCommitMultiThreadSingleCommit() {
     int nThreads = 20;
@@ -113,6 +127,11 @@ public class TestGlueCatalogLock extends GlueTestBase {
         table.currentSnapshot().allManifests(table.io()).size());
   }
 
+  /**
+   * 测试场景：并行提交多thread多提交。
+   *
+   * <p>验证该方法在 并行提交多thread多提交 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testParallelCommitMultiThreadMultiCommit() {
     String namespace = createNamespace();

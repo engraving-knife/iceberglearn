@@ -38,6 +38,13 @@ import org.apache.iceberg.types.Types.TimeType;
 import org.apache.iceberg.types.Types.TimestampType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 ArrowSchemaUtilTest 的功能。
+ *
+ * <p>所属模块：iceberg-arrow。职责：验证 ArrowSchemaUtilTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class ArrowSchemaUtilTest {
 
   private static final String INTEGER_FIELD = "i";
@@ -57,6 +64,11 @@ public class ArrowSchemaUtilTest {
   private static final String MAP_FIELD = "mt";
   private static final String UUID_FIELD = "uu";
 
+  /**
+   * 测试场景：convert Primitive。
+   *
+   * <p>验证该方法在 convert Primitive 条件下的行为是否符合预期。
+   */
   @Test
   public void convertPrimitive() {
     Schema iceberg =
@@ -86,6 +98,11 @@ public class ArrowSchemaUtilTest {
     validate(iceberg, arrow);
   }
 
+  /**
+   * 测试场景：convert Complex。
+   *
+   * <p>验证该方法在 convert Complex 条件下的行为是否符合预期。
+   */
   @Test
   public void convertComplex() {
     Schema iceberg =
@@ -101,6 +118,7 @@ public class ArrowSchemaUtilTest {
     assertThat(arrow.getFields()).hasSameSizeAs(iceberg.columns());
   }
 
+  /** 辅助方法：validate。 */
   private void validate(Schema iceberg, org.apache.arrow.vector.types.pojo.Schema arrow) {
     assertThat(arrow.getFields()).hasSameSizeAs(iceberg.columns());
 
@@ -111,6 +129,7 @@ public class ArrowSchemaUtilTest {
     }
   }
 
+  /** 辅助方法：validate。 */
   private void validate(Type iceberg, Field field, boolean optional) {
     ArrowType arrowType = field.getType();
     assertThat(field.isNullable()).isEqualTo(optional);

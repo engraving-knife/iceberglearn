@@ -18,7 +18,20 @@
  */
 package org.apache.iceberg.spark;
 
-/** Spark DF write options */
+/**
+ * Spark DataFrame 写操作选项常量定义。
+ *
+ * <p>所属模块：iceberg-spark（Spark v3.5 集成模块），spark 顶级包。
+ *
+ * <p>职责：集中声明 Iceberg Spark 写路径支持的 option 名（write-format、target-file-size-bytes、
+ * distribution-mode、merge-schema、isolation-level、compression-* 等），供 {@code
+ * df.write().format("iceberg").option(...)} 使用。
+ *
+ * <p>设计意图：用常量字符串避免散落的魔法字符串，便于维护与文档化；与 {@link SparkConfParser} 配合实现 option -> session conf -> table
+ * property 的优先级解析。
+ *
+ * <p>上下游关系：被 Spark 写入器（{@code SparkWrite}）与用户代码引用。
+ */
 public class SparkWriteOptions {
 
   private SparkWriteOptions() {}

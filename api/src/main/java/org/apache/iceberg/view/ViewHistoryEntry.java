@@ -19,15 +19,28 @@
 package org.apache.iceberg.view;
 
 /**
- * View history entry.
+ * 视图历史条目。
  *
- * <p>An entry contains a change to the view state. At the given timestamp, the current version was
- * set to the given version ID.
+ * <p>所属模块：iceberg-api。是 view 模块记录视图状态变更历史的单元，由 {@link View#history()} 返回。
+ *
+ * <p>职责：记录在某时间戳处，视图的当前版本被设置为某个版本 ID 这一变更事实。
+ *
+ * <p>设计意图：与表的快照历史类似，视图也维护变更时间线，便于审计与时间旅行。每条记录只保存 时间戳与版本 ID，保持轻量。
+ *
+ * <p>上下游关系：由 {@link View#history()} 返回；反映 {@link ViewVersion} 的演进。
  */
 public interface ViewHistoryEntry {
-  /** Return the timestamp in milliseconds of the change */
+  /**
+   * 返回该变更发生的时间戳（毫秒）。
+   *
+   * @return 变更时间戳
+   */
   long timestampMillis();
 
-  /** Return ID of the new current version */
+  /**
+   * 返回变更后新的当前版本 ID。
+   *
+   * @return 新的当前版本 ID
+   */
   int versionId();
 }

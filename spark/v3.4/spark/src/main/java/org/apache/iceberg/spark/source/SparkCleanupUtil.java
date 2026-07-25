@@ -32,7 +32,15 @@ import org.apache.spark.TaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A utility for cleaning up written but not committed files. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark 清理工具，在写入失败时回收已写出的孤儿数据/删除文件。
+ *
+ * <p>设计意图：集中处理写入失败后的文件清理，避免残留垃圾文件。
+ *
+ * <p>上下游关系：由 SparkWrite / SparkPositionDeltaWrite 在失败回滚时调用。
+ */
 class SparkCleanupUtil {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkCleanupUtil.class);
@@ -84,7 +92,7 @@ class SparkCleanupUtil {
     List<String> paths = Lists.transform(files, file -> file.path().toString());
     deletePaths(context, io, paths);
   }
-
+  /** 执行 deletePaths 相关操作。 */
   private static void deletePaths(String context, FileIO io, List<String> paths) {
     if (io instanceof SupportsBulkOperations) {
       SupportsBulkOperations bulkIO = (SupportsBulkOperations) io;
@@ -93,7 +101,7 @@ class SparkCleanupUtil {
       delete(context, io, paths);
     }
   }
-
+  /** 执行 bulkDelete 相关操作。 */
   private static void bulkDelete(String context, SupportsBulkOperations io, List<String> paths) {
     try {
       io.deleteFiles(paths);
@@ -108,7 +116,7 @@ class SparkCleanupUtil {
           context);
     }
   }
-
+  /** 执行 delete 相关操作。 */
   private static void delete(String context, FileIO io, List<String> paths) {
     AtomicInteger deletedFilesCount = new AtomicInteger(0);
 

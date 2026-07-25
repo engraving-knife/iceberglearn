@@ -31,22 +31,13 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
 
 /**
- * A class for common Iceberg configs for Spark reads.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>If a config is set at multiple levels, the following order of precedence is used (top to
- * bottom):
+ * <p>职责：Spark 读取配置，聚合 SparkSession 配置、表属性、读选项，解析出扫描时使用的最终读参数。
  *
- * <ol>
- *   <li>Read options
- *   <li>Session configuration
- *   <li>Table metadata
- * </ol>
+ * <p>设计意图：采用建造者模式，统一管理读取相关的可调参数与默认值。
  *
- * The most specific value is set in read options and takes precedence over all other configs. If no
- * read option is provided, this class checks the session configuration for any overrides. If no
- * applicable value is found in the session configuration, this class uses the table metadata.
- *
- * <p>Note this class is NOT meant to be serialized and sent to executors.
+ * <p>上下游关系：由 SparkScanBuilder / BaseReader 等读取链路使用。
  */
 public class SparkReadConf {
 
@@ -74,32 +65,32 @@ public class SparkReadConf {
 
     SparkUtil.validateTimestampWithoutTimezoneConfig(spark.conf(), readOptions);
   }
-
+  /** 执行 caseSensitive 相关操作。 */
   public boolean caseSensitive() {
     return SparkUtil.caseSensitive(spark);
   }
-
+  /** 执行 localityEnabled 相关操作。 */
   public boolean localityEnabled() {
     boolean defaultValue = Util.mayHaveBlockLocations(table.io(), table.location());
     return PropertyUtil.propertyAsBoolean(readOptions, SparkReadOptions.LOCALITY, defaultValue);
   }
-
+  /** 执行 snapshotId 相关操作。 */
   public Long snapshotId() {
     return confParser.longConf().option(SparkReadOptions.SNAPSHOT_ID).parseOptional();
   }
-
+  /** 执行 asOfTimestamp 相关操作。 */
   public Long asOfTimestamp() {
     return confParser.longConf().option(SparkReadOptions.AS_OF_TIMESTAMP).parseOptional();
   }
-
+  /** 执行 startSnapshotId 相关操作。 */
   public Long startSnapshotId() {
     return confParser.longConf().option(SparkReadOptions.START_SNAPSHOT_ID).parseOptional();
   }
-
+  /** 执行 endSnapshotId 相关操作。 */
   public Long endSnapshotId() {
     return confParser.longConf().option(SparkReadOptions.END_SNAPSHOT_ID).parseOptional();
   }
-
+  /** 执行 branch 相关操作。 */
   public String branch() {
     String optionBranch = confParser.stringConf().option(SparkReadOptions.BRANCH).parseOptional();
     ValidationException.check(
@@ -125,15 +116,15 @@ public class SparkReadConf {
 
     return null;
   }
-
+  /** 执行 tag 相关操作。 */
   public String tag() {
     return confParser.stringConf().option(SparkReadOptions.TAG).parseOptional();
   }
-
+  /** 执行 scanTaskSetId 相关操作。 */
   public String scanTaskSetId() {
     return confParser.stringConf().option(SparkReadOptions.SCAN_TASK_SET_ID).parseOptional();
   }
-
+  /** 执行 streamingSkipDeleteSnapshots 相关操作。 */
   public boolean streamingSkipDeleteSnapshots() {
     return confParser
         .booleanConf()
@@ -141,7 +132,7 @@ public class SparkReadConf {
         .defaultValue(SparkReadOptions.STREAMING_SKIP_DELETE_SNAPSHOTS_DEFAULT)
         .parse();
   }
-
+  /** 执行 streamingSkipOverwriteSnapshots 相关操作。 */
   public boolean streamingSkipOverwriteSnapshots() {
     return confParser
         .booleanConf()
@@ -149,7 +140,7 @@ public class SparkReadConf {
         .defaultValue(SparkReadOptions.STREAMING_SKIP_OVERWRITE_SNAPSHOTS_DEFAULT)
         .parse();
   }
-
+  /** 执行 parquetVectorizationEnabled 相关操作。 */
   public boolean parquetVectorizationEnabled() {
     return confParser
         .booleanConf()
@@ -159,7 +150,7 @@ public class SparkReadConf {
         .defaultValue(TableProperties.PARQUET_VECTORIZATION_ENABLED_DEFAULT)
         .parse();
   }
-
+  /** 执行 parquetBatchSize 相关操作。 */
   public int parquetBatchSize() {
     return confParser
         .intConf()
@@ -168,7 +159,7 @@ public class SparkReadConf {
         .defaultValue(TableProperties.PARQUET_BATCH_SIZE_DEFAULT)
         .parse();
   }
-
+  /** 执行 orcVectorizationEnabled 相关操作。 */
   public boolean orcVectorizationEnabled() {
     return confParser
         .booleanConf()
@@ -178,7 +169,7 @@ public class SparkReadConf {
         .defaultValue(TableProperties.ORC_VECTORIZATION_ENABLED_DEFAULT)
         .parse();
   }
-
+  /** 执行 orcBatchSize 相关操作。 */
   public int orcBatchSize() {
     return confParser
         .intConf()
@@ -187,11 +178,11 @@ public class SparkReadConf {
         .defaultValue(TableProperties.ORC_BATCH_SIZE_DEFAULT)
         .parse();
   }
-
+  /** 执行 splitSizeOption 相关操作。 */
   public Long splitSizeOption() {
     return confParser.longConf().option(SparkReadOptions.SPLIT_SIZE).parseOptional();
   }
-
+  /** 执行 splitSize 相关操作。 */
   public long splitSize() {
     return confParser
         .longConf()
@@ -200,11 +191,11 @@ public class SparkReadConf {
         .defaultValue(TableProperties.SPLIT_SIZE_DEFAULT)
         .parse();
   }
-
+  /** 执行 splitLookbackOption 相关操作。 */
   public Integer splitLookbackOption() {
     return confParser.intConf().option(SparkReadOptions.LOOKBACK).parseOptional();
   }
-
+  /** 执行 splitLookback 相关操作。 */
   public int splitLookback() {
     return confParser
         .intConf()
@@ -213,11 +204,11 @@ public class SparkReadConf {
         .defaultValue(TableProperties.SPLIT_LOOKBACK_DEFAULT)
         .parse();
   }
-
+  /** 执行 splitOpenFileCostOption 相关操作。 */
   public Long splitOpenFileCostOption() {
     return confParser.longConf().option(SparkReadOptions.FILE_OPEN_COST).parseOptional();
   }
-
+  /** 执行 splitOpenFileCost 相关操作。 */
   public long splitOpenFileCost() {
     return confParser
         .longConf()
@@ -226,7 +217,7 @@ public class SparkReadConf {
         .defaultValue(TableProperties.SPLIT_OPEN_FILE_COST_DEFAULT)
         .parse();
   }
-
+  /** 执行 streamFromTimestamp 相关操作。 */
   public long streamFromTimestamp() {
     return confParser
         .longConf()
@@ -234,15 +225,15 @@ public class SparkReadConf {
         .defaultValue(Long.MIN_VALUE)
         .parse();
   }
-
+  /** 执行 startTimestamp 相关操作。 */
   public Long startTimestamp() {
     return confParser.longConf().option(SparkReadOptions.START_TIMESTAMP).parseOptional();
   }
-
+  /** 执行 endTimestamp 相关操作。 */
   public Long endTimestamp() {
     return confParser.longConf().option(SparkReadOptions.END_TIMESTAMP).parseOptional();
   }
-
+  /** 执行 maxFilesPerMicroBatch 相关操作。 */
   public int maxFilesPerMicroBatch() {
     return confParser
         .intConf()
@@ -250,7 +241,7 @@ public class SparkReadConf {
         .defaultValue(Integer.MAX_VALUE)
         .parse();
   }
-
+  /** 执行 maxRecordsPerMicroBatch 相关操作。 */
   public int maxRecordsPerMicroBatch() {
     return confParser
         .intConf()
@@ -258,7 +249,7 @@ public class SparkReadConf {
         .defaultValue(Integer.MAX_VALUE)
         .parse();
   }
-
+  /** 执行 preserveDataGrouping 相关操作。 */
   public boolean preserveDataGrouping() {
     return confParser
         .booleanConf()
@@ -266,7 +257,7 @@ public class SparkReadConf {
         .defaultValue(SparkSQLProperties.PRESERVE_DATA_GROUPING_DEFAULT)
         .parse();
   }
-
+  /** 执行 aggregatePushDownEnabled 相关操作。 */
   public boolean aggregatePushDownEnabled() {
     return confParser
         .booleanConf()
@@ -275,7 +266,7 @@ public class SparkReadConf {
         .defaultValue(SparkSQLProperties.AGGREGATE_PUSH_DOWN_ENABLED_DEFAULT)
         .parse();
   }
-
+  /** 执行 adaptiveSplitSizeEnabled 相关操作。 */
   public boolean adaptiveSplitSizeEnabled() {
     return confParser
         .booleanConf()
@@ -283,17 +274,17 @@ public class SparkReadConf {
         .defaultValue(TableProperties.ADAPTIVE_SPLIT_SIZE_ENABLED_DEFAULT)
         .parse();
   }
-
+  /** 执行 parallelism 相关操作。 */
   public int parallelism() {
     int defaultParallelism = spark.sparkContext().defaultParallelism();
     int numShufflePartitions = spark.sessionState().conf().numShufflePartitions();
     return Math.max(defaultParallelism, numShufflePartitions);
   }
-
+  /** 执行 distributedPlanningEnabled 相关操作。 */
   public boolean distributedPlanningEnabled() {
     return dataPlanningMode() != LOCAL || deletePlanningMode() != LOCAL;
   }
-
+  /** 执行 dataPlanningMode 相关操作。 */
   public PlanningMode dataPlanningMode() {
     if (driverMaxResultSize() < DISTRIBUTED_PLANNING_MIN_RESULT_SIZE) {
       return LOCAL;
@@ -308,7 +299,7 @@ public class SparkReadConf {
             .parse();
     return PlanningMode.fromName(modeName);
   }
-
+  /** 执行 deletePlanningMode 相关操作。 */
   public PlanningMode deletePlanningMode() {
     if (driverMaxResultSize() < DISTRIBUTED_PLANNING_MIN_RESULT_SIZE) {
       return LOCAL;
@@ -323,7 +314,7 @@ public class SparkReadConf {
             .parse();
     return PlanningMode.fromName(modeName);
   }
-
+  /** 执行 driverMaxResultSize 相关操作。 */
   private long driverMaxResultSize() {
     SparkConf sparkConf = spark.sparkContext().conf();
     return sparkConf.getSizeAsBytes(DRIVER_MAX_RESULT_SIZE, DRIVER_MAX_RESULT_SIZE_DEFAULT);

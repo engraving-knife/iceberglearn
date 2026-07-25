@@ -20,30 +20,43 @@ package org.apache.iceberg;
 
 import org.mockito.Mockito;
 
+/**
+ * 测试类：MockFileScanTask，用于验证 Mock File Scan Task 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Mock File Scan Task 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class MockFileScanTask extends BaseFileScanTask {
 
   private final long length;
 
+  /** 辅助方法：mock file scan task。 */
   public MockFileScanTask(long length) {
     super(null, null, null, null, null);
     this.length = length;
   }
 
+  /** 辅助方法：mock file scan task。 */
   public MockFileScanTask(DataFile file) {
     super(file, null, null, null, null);
     this.length = file.fileSizeInBytes();
   }
 
+  /** 辅助方法：mock file scan task。 */
   public MockFileScanTask(DataFile file, DeleteFile[] deleteFiles) {
     super(file, deleteFiles, null, null, null);
     this.length = file.fileSizeInBytes();
   }
 
+  /** 辅助方法：mock file scan task。 */
   public MockFileScanTask(DataFile file, String schemaString, String specString) {
     super(file, null, schemaString, specString, null);
     this.length = file.fileSizeInBytes();
   }
 
+  /** 辅助方法：mock task。 */
   public static MockFileScanTask mockTask(long length, int sortOrderId) {
     DataFile mockFile = Mockito.mock(DataFile.class);
     Mockito.when(mockFile.fileSizeInBytes()).thenReturn(length);
@@ -51,6 +64,7 @@ public class MockFileScanTask extends BaseFileScanTask {
     return new MockFileScanTask(mockFile);
   }
 
+  /** 辅助方法：mock task with deletes。 */
   public static MockFileScanTask mockTaskWithDeletes(long length, int nDeletes) {
     DeleteFile[] mockDeletes = new DeleteFile[nDeletes];
     for (int i = 0; i < nDeletes; i++) {
@@ -62,16 +76,19 @@ public class MockFileScanTask extends BaseFileScanTask {
     return new MockFileScanTask(mockFile, mockDeletes);
   }
 
+  /** 辅助方法：length。 */
   @Override
   public long length() {
     return length;
   }
 
+  /** 辅助方法：to string。 */
   @Override
   public String toString() {
     return "Mock Scan Task Size: " + length;
   }
 
+  /** 辅助方法：equals。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -85,6 +102,7 @@ public class MockFileScanTask extends BaseFileScanTask {
     return length == that.length;
   }
 
+  /** 辅助方法：hash code。 */
   @Override
   public int hashCode() {
     return (int) (length ^ (length >>> 32));

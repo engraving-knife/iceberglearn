@@ -37,13 +37,17 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Visitor for traversing a Parquet type with a companion Spark type.
+ * 所属模块：iceberg-spark v3.4
  *
- * @param <T> the Java class returned by the visitor
+ * <p>职责：基于 Spark Schema 遍历 Parquet 结构的访问器，用于按 Spark 列结构读写 Parquet。
+ *
+ * <p>设计意图：采用访问者模式，将 Parquet schema 树与 Spark StructType 树对齐遍历。
+ *
+ * <p>上下游关系：由 SparkParquetReaders / SparkParquetWriters 使用。
  */
 public class ParquetWithSparkSchemaVisitor<T> {
   private final Deque<String> fieldNames = Lists.newLinkedList();
-
+  /** 访问节点。 */
   public static <T> T visit(DataType sType, Type type, ParquetWithSparkSchemaVisitor<T> visitor) {
     Preconditions.checkArgument(sType != null, "Invalid DataType: null");
     if (type instanceof MessageType) {
@@ -168,7 +172,7 @@ public class ParquetWithSparkSchemaVisitor<T> {
       return visitor.struct(struct, group, visitFields(struct, group, visitor));
     }
   }
-
+  /** 执行 visitField 相关操作。 */
   private static <T> T visitField(
       StructField sField, Type field, ParquetWithSparkSchemaVisitor<T> visitor) {
     visitor.fieldNames.push(field.getName());
@@ -178,7 +182,7 @@ public class ParquetWithSparkSchemaVisitor<T> {
       visitor.fieldNames.pop();
     }
   }
-
+  /** 执行 visitFields 相关操作。 */
   private static <T> List<T> visitFields(
       StructType struct, GroupType group, ParquetWithSparkSchemaVisitor<T> visitor) {
     StructField[] sFields = struct.fields();
@@ -198,31 +202,31 @@ public class ParquetWithSparkSchemaVisitor<T> {
 
     return results;
   }
-
+  /** 执行 message 相关操作。 */
   public T message(StructType sStruct, MessageType message, List<T> fields) {
     return null;
   }
-
+  /** 执行 struct 相关操作。 */
   public T struct(StructType sStruct, GroupType struct, List<T> fields) {
     return null;
   }
-
+  /** 执行 list 相关操作。 */
   public T list(ArrayType sArray, GroupType array, T element) {
     return null;
   }
-
+  /** 执行 map 相关操作。 */
   public T map(MapType sMap, GroupType map, T key, T value) {
     return null;
   }
-
+  /** 执行 primitive 相关操作。 */
   public T primitive(DataType sPrimitive, PrimitiveType primitive) {
     return null;
   }
-
+  /** 执行 currentPath 相关操作。 */
   protected String[] currentPath() {
     return Lists.newArrayList(fieldNames.descendingIterator()).toArray(new String[0]);
   }
-
+  /** 执行 path 相关操作。 */
   protected String[] path(String name) {
     List<String> list = Lists.newArrayList(fieldNames.descendingIterator());
     list.add(name);

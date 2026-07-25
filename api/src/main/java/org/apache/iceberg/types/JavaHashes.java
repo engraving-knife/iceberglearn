@@ -22,7 +22,24 @@ import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.iceberg.StructLike;
 
+/**
+ * Java 哈希实现集合：为字符串、struct、list 提供专用的哈希函数实现。
+ *
+ * <p>所属模块：iceberg-api（被 {@link JavaHash#forType} 使用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>字符串哈希：使用自定义算法（初始值 177，乘数 31），保证跨 CharSequence 实现一致。
+ *   <li>struct 哈希：递归调用各字段类型的哈希函数组合。
+ *   <li>list 哈希：递归调用元素类型的哈希函数组合。
+ * </ul>
+ *
+ * <p>设计意图：字符串哈希不用 String.hashCode()（因不同 CharSequence 实现可能不一致）， 而用自定义算法保证一致性；struct/list
+ * 哈希递归构建子类型哈希函数。
+ */
 public class JavaHashes {
+
   private JavaHashes() {}
 
   public static int hashCode(CharSequence str) {

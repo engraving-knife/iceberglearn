@@ -21,6 +21,13 @@ package org.apache.iceberg.flink.source.assigner;
 import org.apache.flink.annotation.Internal;
 
 @Internal
+/**
+ * 分片分配器类型枚举，标识分配策略。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：定义 SIMPLE/ORDERED 等分配器类型。
+ *
+ * <p>设计意图：枚举；被工厂与配置使用。
+ */
 public enum SplitAssignerType {
   SIMPLE {
     @Override

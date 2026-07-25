@@ -35,6 +35,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestUpdatePartitionSpec，用于验证 Update Partition Spec 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Update Partition Spec 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestUpdatePartitionSpec extends TableTestBase {
   private static final Schema SCHEMA =
@@ -52,15 +60,22 @@ public class TestUpdatePartitionSpec extends TableTestBase {
           .bucket("id", 16, "shard")
           .build();
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：update partition spec。 */
   public TestUpdatePartitionSpec(int formatVersion) {
     super(formatVersion);
   }
 
+  /**
+   * 测试场景：add identity by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddIdentityByName() {
     PartitionSpec updated =
@@ -71,6 +86,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add identity by term。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddIdentityByTerm() {
     PartitionSpec updated =
@@ -81,6 +101,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add year。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddYear() {
     PartitionSpec updated =
@@ -91,6 +116,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add month。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddMonth() {
     PartitionSpec updated =
@@ -101,6 +131,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add day。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDay() {
     PartitionSpec updated =
@@ -111,6 +146,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add hour。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddHour() {
     PartitionSpec updated =
@@ -121,6 +161,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add bucket。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddBucket() {
     PartitionSpec updated =
@@ -135,6 +180,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add truncate。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddTruncate() {
     PartitionSpec updated =
@@ -149,6 +199,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add named partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNamedPartition() {
     PartitionSpec updated =
@@ -161,6 +216,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add to existing。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddToExisting() {
     PartitionSpec updated =
@@ -179,6 +239,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：multiple adds。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleAdds() {
     PartitionSpec updated =
@@ -200,6 +265,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：add hour to day。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddHourToDay() {
     // multiple partitions for the same source with different time granularity is not allowed by the
@@ -219,6 +289,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         byHour.fields());
   }
 
+  /**
+   * 测试场景：add multiple buckets。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddMultipleBuckets() {
     PartitionSpec bucket16 =
@@ -238,6 +313,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should have a day and an hour time field", expected, bucket8);
   }
 
+  /**
+   * 测试场景：remove identity by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveIdentityByName() {
     PartitionSpec updated =
@@ -261,6 +341,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove bucket by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveBucketByName() {
     PartitionSpec updated =
@@ -284,6 +369,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove identity by equivalent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveIdentityByEquivalent() {
     PartitionSpec updated =
@@ -309,6 +399,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove day by equivalent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveDayByEquivalent() {
     PartitionSpec updated =
@@ -332,6 +427,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove bucket by equivalent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveBucketByEquivalent() {
     PartitionSpec updated =
@@ -354,6 +454,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：rename。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRename() {
     PartitionSpec updated =
@@ -367,6 +472,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals("Should match expected spec", expected, updated);
   }
 
+  /**
+   * 测试场景：multiple changes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMultipleChanges() {
     PartitionSpec updated =
@@ -396,6 +506,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：add deleted name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDeletedName() {
     PartitionSpec updated =
@@ -418,6 +533,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove newly added field by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveNewlyAddedFieldByName() {
     Assertions.assertThatThrownBy(
@@ -429,6 +549,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot delete newly added field");
   }
 
+  /**
+   * 测试场景：remove newly added field by transform。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveNewlyAddedFieldByTransform() {
     Assertions.assertThatThrownBy(
@@ -440,6 +565,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot delete newly added field");
   }
 
+  /**
+   * 测试场景：add already added field by transform。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAlreadyAddedFieldByTransform() {
     Assertions.assertThatThrownBy(
@@ -451,6 +581,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：add already added field by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddAlreadyAddedFieldByName() {
     Assertions.assertThatThrownBy(
@@ -462,6 +597,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：add redundant time partition。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddRedundantTimePartition() {
     Assertions.assertThatThrownBy(
@@ -481,6 +621,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add redundant partition");
   }
 
+  /**
+   * 测试场景：no effect add deleted same field with same name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNoEffectAddDeletedSameFieldWithSameName() {
     PartitionSpec updated =
@@ -497,6 +642,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     Assert.assertEquals(PARTITIONED, updated);
   }
 
+  /**
+   * 测试场景：generate new spec add deleted same field with different name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGenerateNewSpecAddDeletedSameFieldWithDifferentName() {
     PartitionSpec updated =
@@ -525,6 +675,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         updated.fields().get(2).transform().toString());
   }
 
+  /**
+   * 测试场景：add duplicate by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDuplicateByName() {
     Assertions.assertThatThrownBy(
@@ -533,6 +688,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：add duplicate by ref。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDuplicateByRef() {
     Assertions.assertThatThrownBy(
@@ -541,6 +701,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：add duplicate transform。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddDuplicateTransform() {
     Assertions.assertThatThrownBy(
@@ -550,6 +715,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：add named duplicate。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAddNamedDuplicate() {
     Assertions.assertThatThrownBy(
@@ -560,6 +730,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot add duplicate partition field");
   }
 
+  /**
+   * 测试场景：remove unknown field by name。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveUnknownFieldByName() {
     Assertions.assertThatThrownBy(
@@ -568,6 +743,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot find partition field to remove");
   }
 
+  /**
+   * 测试场景：remove unknown field by equivalent。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveUnknownFieldByEquivalent() {
     Assertions.assertThatThrownBy(
@@ -579,6 +759,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessageStartingWith("Cannot find partition field to remove");
   }
 
+  /**
+   * 测试场景：rename unknown field。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameUnknownField() {
     Assertions.assertThatThrownBy(
@@ -589,6 +774,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessage("Cannot find partition field to rename: shake");
   }
 
+  /**
+   * 测试场景：rename after add。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameAfterAdd() {
     Assertions.assertThatThrownBy(
@@ -600,6 +790,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessage("Cannot rename newly added partition field: data_trunc");
   }
 
+  /**
+   * 测试场景：delete and rename。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteAndRename() {
     Assertions.assertThatThrownBy(
@@ -611,6 +806,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessage("Cannot rename and delete partition field: shard");
   }
 
+  /**
+   * 测试场景：rename and delete。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameAndDelete() {
     Assertions.assertThatThrownBy(
@@ -622,6 +822,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
         .hasMessage("Cannot delete and rename partition field: shard");
   }
 
+  /**
+   * 测试场景：remove and add multi times。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveAndAddMultiTimes() {
     PartitionSpec addFirstTime =
@@ -674,6 +879,11 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     V2Assert.assertEquals("Should match expected spec", v2Expected, updated);
   }
 
+  /**
+   * 测试场景：remove and update with different transformation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveAndUpdateWithDifferentTransformation() {
     PartitionSpec expected = PartitionSpec.builderFor(SCHEMA).month("ts", "ts_transformed").build();
@@ -711,6 +921,7 @@ public class TestUpdatePartitionSpec extends TableTestBase {
     }
   }
 
+  /** 辅助方法：id。 */
   private static int id(String name) {
     return SCHEMA.findField(name).fieldId();
   }

@@ -26,6 +26,18 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.RESTRequest;
 import org.immutables.value.Value;
 
+/**
+ * 文件级说明：上报指标报告的 REST 请求模型（Immutable 接口）。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 请求模型层）。
+ *
+ * <p>职责：封装扫描或提交的指标报告（{@link org.apache.iceberg.metrics.MetricsReport}）， 包含报告类型与报告内容，用于向服务端上报操作统计信息。
+ *
+ * <p>设计意图：使用 Immutables 框架自动生成不可变实现；ReportType 枚举区分扫描报告与提交报告； 提供 {@link #of(MetricsReport)}
+ * 工厂方法自动推断报告类型。
+ *
+ * <p>上下游关系：由 {@link org.apache.iceberg.rest.RESTMetricsReporter} 构造并发送。
+ */
 @Value.Immutable
 public interface ReportMetricsRequest extends RESTRequest {
 

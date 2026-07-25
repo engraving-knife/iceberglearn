@@ -28,7 +28,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterators;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
-/** An iterator that transforms rows from changelog tables within a single Spark task. */
+/**
+ * Iceberg Spark 集成相关组件的迭代器，按行或按批产出数据。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 ChangelogIterator。
+ *
+ * <p>设计意图：迭代器模式，统一遍历接口。
+ */
 public abstract class ChangelogIterator implements Iterator<Row> {
   protected static final String DELETE = ChangelogOperation.DELETE.name();
   protected static final String INSERT = ChangelogOperation.INSERT.name();
@@ -39,40 +45,36 @@ public abstract class ChangelogIterator implements Iterator<Row> {
   private final int changeTypeIndex;
   private final StructType rowType;
 
+  /** 构造 ChangelogIterator 实例。 */
   protected ChangelogIterator(Iterator<Row> rowIterator, StructType rowType) {
     this.rowIterator = rowIterator;
     this.rowType = rowType;
     this.changeTypeIndex = rowType.fieldIndex(MetadataColumns.CHANGE_TYPE.name());
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected int changeTypeIndex() {
     return changeTypeIndex;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected StructType rowType() {
     return rowType;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected String changeType(Row row) {
     String changeType = row.getString(changeTypeIndex());
     Preconditions.checkNotNull(changeType, "Change type should not be null");
     return changeType;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected Iterator<Row> rowIterator() {
     return rowIterator;
   }
 
-  /**
-   * Creates an iterator composing {@link RemoveCarryoverIterator} and {@link ComputeUpdateIterator}
-   * to remove carry-over rows and compute update rows
-   *
-   * @param rowIterator the iterator of rows from a changelog table
-   * @param rowType the schema of the rows
-   * @param identifierFields the names of the identifier columns, which determine if rows are the
-   *     same
-   * @return a new iterator instance
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Iterator<Row> computeUpdates(
       Iterator<Row> rowIterator, StructType rowType, String[] identifierFields) {
     Iterator<Row> carryoverRemoveIterator = removeCarryovers(rowIterator, rowType);
@@ -81,23 +83,19 @@ public abstract class ChangelogIterator implements Iterator<Row> {
     return Iterators.filter(changelogIterator, Objects::nonNull);
   }
 
-  /**
-   * Creates an iterator that removes carry-over rows from a changelog table.
-   *
-   * @param rowIterator the iterator of rows from a changelog table
-   * @param rowType the schema of the rows
-   * @return a new iterator instance
-   */
+  /** 移除元素或项。 */
   public static Iterator<Row> removeCarryovers(Iterator<Row> rowIterator, StructType rowType) {
     RemoveCarryoverIterator changelogIterator = new RemoveCarryoverIterator(rowIterator, rowType);
     return Iterators.filter(changelogIterator, Objects::nonNull);
   }
 
+  /** 移除元素或项。 */
   public static Iterator<Row> removeNetCarryovers(Iterator<Row> rowIterator, StructType rowType) {
     ChangelogIterator changelogIterator = new RemoveNetCarryoverIterator(rowIterator, rowType);
     return Iterators.filter(changelogIterator, Objects::nonNull);
   }
 
+  /** 判断是否samerecord。 */
   protected boolean isSameRecord(Row currentRow, Row nextRow, int[] indicesToIdentifySameRow) {
     for (int idx : indicesToIdentifySameRow) {
       if (isDifferentValue(currentRow, nextRow, idx)) {
@@ -108,10 +106,12 @@ public abstract class ChangelogIterator implements Iterator<Row> {
     return true;
   }
 
+  /** 判断是否differentvalue。 */
   protected boolean isDifferentValue(Row currentRow, Row nextRow, int idx) {
     return !Objects.equals(nextRow.get(idx), currentRow.get(idx));
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected static int[] generateIndicesToIdentifySameRow(
       int totalColumnCount, Set<Integer> metadataColumnIndices) {
     int[] indices = new int[totalColumnCount - metadataColumnIndices.size()];

@@ -36,15 +36,33 @@ import org.apache.iceberg.types.Conversions;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件指标（metrics）工具类：提供指标裁剪、NaN 计数构造、可读指标 schema 生成等能力。
+ *
+ * <p>所属模块：iceberg-core（指标处理工具层）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>按字段 id 裁剪 {@link Metrics} 中的计数与上下界，用于投影下推等场景。
+ *   <li>从写入期 {@link FieldMetrics} 流构造 NaN 计数 map。
+ *   <li>定义"可读指标"（readable_metrics）列结构，把内部 ByteBuffer 形式的上下界转换为 人类可读的强类型值，便于在元数据表中查询。
+ * </ul>
+ *
+ * <p>设计意图：把指标相关的通用操作集中到工具类，避免散落在各写入器与元数据表中。
+ *
+ * <p>上下游关系：被各元数据表（FILES、PARTITIONS 等）与写入器调用。
+ */
 public class MetricsUtil {
 
   private MetricsUtil() {}
 
   /**
-   * Copies a metrics object without value, NULL and NaN counts for given fields.
+   * 拷贝指标对象，但移除指定字段的 value/null/NaN 计数。
    *
-   * @param excludedFieldIds field IDs for which the counts must be dropped
-   * @return a new metrics object without counts for given fields
+   * @param metrics 原指标
+   * @param excludedFieldIds 需移除计数的字段 id 集合
+   * @return 新的指标对象
    */
   public static Metrics copyWithoutFieldCounts(Metrics metrics, Set<Integer> excludedFieldIds) {
     return new Metrics(
@@ -58,10 +76,11 @@ public class MetricsUtil {
   }
 
   /**
-   * Copies a metrics object without counts and bounds for given fields.
+   * 拷贝指标对象，但移除指定字段的计数与上下界。
    *
-   * @param excludedFieldIds field IDs for which the counts and bounds must be dropped
-   * @return a new metrics object without lower and upper bounds for given fields
+   * @param metrics 原指标
+   * @param excludedFieldIds 需移除计数与上下界的字段 id 集合
+   * @return 新的指标对象
    */
   public static Metrics copyWithoutFieldCountsAndBounds(
       Metrics metrics, Set<Integer> excludedFieldIds) {
@@ -90,8 +109,14 @@ public class MetricsUtil {
   }
 
   /**
-   * Construct mapping relationship between column id to NaN value counts from input metrics and
-   * metrics config.
+   * 根据字段指标流与指标配置构造"字段 id -> NaN 计数"映射。
+   *
+   * <p>逻辑：过滤掉指标模式为 None 的字段，剩余字段按 id 收集 NaN 计数。
+   *
+   * @param fieldMetrics 写入期字段指标流
+   * @param metricsConfig 指标配置
+   * @param inputSchema 输入 schema
+   * @return 字段 id 到 NaN 计数的映射
    */
   public static Map<Integer, Long> createNanValueCounts(
       Stream<FieldMetrics<?>> fieldMetrics, MetricsConfig metricsConfig, Schema inputSchema) {
@@ -108,7 +133,14 @@ public class MetricsUtil {
         .collect(Collectors.toMap(FieldMetrics::id, FieldMetrics::nanValueCount));
   }
 
-  /** Extract MetricsMode for the given field id from metrics config. */
+  /**
+   * 从指标配置中提取指定字段 id 的指标模式。
+   *
+   * @param inputSchema 输入 schema
+   * @param metricsConfig 指标配置
+   * @param fieldId 字段 id
+   * @return 该字段的指标模式
+   */
   public static MetricsModes.MetricsMode metricsMode(
       Schema inputSchema, MetricsConfig metricsConfig, int fieldId) {
     Preconditions.checkNotNull(inputSchema, "inputSchema is required");
@@ -176,7 +208,9 @@ public class MetricsUtil {
   public static final String READABLE_METRICS = "readable_metrics";
 
   /**
-   * Fixed definition of a readable metric column, ie a mapping of a raw metric to a readable metric
+   * 可读指标列定义：把内部原始指标（如 columnSizes、lowerBounds 等）映射为可读列。
+   *
+   * <p>每个定义包含列名、文档、原始字段、类型函数与取值函数。
    */
   public static class ReadableMetricColDefinition {
     private final String name;
@@ -235,13 +269,22 @@ public class MetricsUtil {
     }
   }
 
-  /** A struct of readable metric values for a primitive column */
+  /**
+   * 单个原始列的可读指标结构：按 READABLE_METRIC_COLS 顺序存储指标值， 支持按投影位置访问。只读，set 抛出 UnsupportedOperationException。
+   */
   public static class ReadableColMetricsStruct implements StructLike {
 
     private final String columnName;
     private final Map<Integer, Integer> projectionMap;
     private final Object[] metrics;
 
+    /**
+     * 构造单列可读指标结构。
+     *
+     * @param columnName 列名
+     * @param projection 投影字段（决定哪些指标列可见）
+     * @param metrics 按 READABLE_METRIC_COLS 顺序的指标值数组
+     */
     public ReadableColMetricsStruct(
         String columnName, Types.NestedField projection, Object... metrics) {
       this.columnName = columnName;
@@ -298,8 +341,8 @@ public class MetricsUtil {
   }
 
   /**
-   * A struct, consisting of all {@link ReadableColMetricsStruct} for all primitive columns of the
-   * table
+   * 全表所有原始列的可读指标结构：包含每个原始列对应的 {@link ReadableColMetricsStruct}。 只读，set 抛出
+   * UnsupportedOperationException。
    */
   public static class ReadableMetricsStruct implements StructLike {
 
@@ -326,13 +369,14 @@ public class MetricsUtil {
   }
 
   /**
-   * Calculates a dynamic schema for readable_metrics to add to metadata tables. The type will be
-   * the struct {@link ReadableColMetricsStruct}, composed of {@link ReadableMetricsStruct} for all
-   * primitive columns in the data table
+   * 为元数据表动态计算 readable_metrics 列的 schema。
    *
-   * @param dataTableSchema schema of data table
-   * @param metadataTableSchema schema of existing metadata table (to ensure id uniqueness)
-   * @return schema of readable_metrics struct
+   * <p>逻辑：遍历数据表所有原始列，为每列生成一个嵌套 struct（含全部可读指标子列）， 字段 id 从 metadataTableSchema.highestFieldId()
+   * 之后递增；最后按列名排序并包装为 顶层 readable_metrics 字段。
+   *
+   * @param dataTableSchema 数据表 schema
+   * @param metadataTableSchema 已有元数据表 schema（用于保证字段 id 唯一）
+   * @return readable_metrics 列的 schema
    */
   public static Schema readableMetricsSchema(Schema dataTableSchema, Schema metadataTableSchema) {
     List<Types.NestedField> fields = Lists.newArrayList();
@@ -371,12 +415,14 @@ public class MetricsUtil {
   }
 
   /**
-   * Return a readable metrics struct row from file metadata
+   * 从文件元数据构造可读指标结构行。
    *
-   * @param schema schema of original data table
-   * @param file content file with metrics
-   * @param projectedSchema user requested projection
-   * @return {@link ReadableMetricsStruct}
+   * <p>逻辑：遍历数据表字段，对每个原始列按 READABLE_METRIC_COLS 取值； 仅保留投影 schema 中包含的列；最后按列名排序。
+   *
+   * @param schema 原数据表 schema
+   * @param file 含指标的文件
+   * @param projectedSchema 用户投影 schema
+   * @return 可读指标结构
    */
   public static ReadableMetricsStruct readableMetricsStruct(
       Schema schema, ContentFile<?> file, Types.StructType projectedSchema) {
@@ -406,7 +452,11 @@ public class MetricsUtil {
         colMetrics.stream().map(m -> (StructLike) m).collect(Collectors.toList()));
   }
 
-  /** Custom struct that returns a 'readable_metric' column at a specific position */
+  /**
+   * 在原 struct 基础上附加 readable_metrics 列的自定义 struct 实现。
+   *
+   * <p>设计意图：元数据表行原本不含 readable_metrics，本类在指定位置插入该列， 同时保持其他列的原有位置，避免重写整个行结构。
+   */
   static class StructWithReadableMetrics implements StructLike {
     private final StructLike struct;
     private final MetricsUtil.ReadableMetricsStruct readableMetrics;
@@ -414,12 +464,12 @@ public class MetricsUtil {
     private final int metricsPosition;
 
     /**
-     * Constructs a struct with readable metrics column
+     * 构造附加 readable_metrics 列的 struct。
      *
-     * @param struct struct on which to append 'readable_metrics' struct
-     * @param structSize total number of struct columns, including 'readable_metrics' column
-     * @param readableMetrics struct of 'readable_metrics'
-     * @param metricsPosition position of 'readable_metrics' column
+     * @param struct 原 struct
+     * @param structSize 总列数（含 readable_metrics）
+     * @param readableMetrics readable_metrics 结构
+     * @param metricsPosition readable_metrics 列位置
      */
     StructWithReadableMetrics(
         StructLike struct,

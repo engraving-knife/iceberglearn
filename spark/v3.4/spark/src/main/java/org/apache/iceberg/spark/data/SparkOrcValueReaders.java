@@ -44,21 +44,30 @@ import org.apache.spark.sql.catalyst.util.MapData;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：ORC 值读取器工厂集合，提供各 Spark 类型的 ORC 列读取器实例。
+ *
+ * <p>设计意图：以工厂方法集中创建读取器，复用公共逻辑。
+ *
+ * <p>上下游关系：由 SparkOrcReader 使用。
+ */
 public class SparkOrcValueReaders {
   private SparkOrcValueReaders() {}
-
+  /** 执行 utf8String 相关操作。 */
   public static OrcValueReader<UTF8String> utf8String() {
     return StringReader.INSTANCE;
   }
-
+  /** 执行 uuids 相关操作。 */
   public static OrcValueReader<UTF8String> uuids() {
     return UUIDReader.INSTANCE;
   }
-
+  /** 执行 timestampTzs 相关操作。 */
   public static OrcValueReader<Long> timestampTzs() {
     return TimestampTzReader.INSTANCE;
   }
-
+  /** 执行 decimals 相关操作。 */
   public static OrcValueReader<Decimal> decimals(int precision, int scale) {
     if (precision <= Decimal.MAX_LONG_DIGITS()) {
       return new SparkOrcValueReaders.Decimal18Reader(precision, scale);
@@ -68,16 +77,16 @@ public class SparkOrcValueReaders {
       throw new IllegalArgumentException("Invalid precision: " + precision);
     }
   }
-
+  /** 执行 struct 相关操作。 */
   static OrcValueReader<?> struct(
       List<OrcValueReader<?>> readers, Types.StructType struct, Map<Integer, ?> idToConstant) {
     return new StructReader(readers, struct, idToConstant);
   }
-
+  /** 执行 array 相关操作。 */
   static OrcValueReader<?> array(OrcValueReader<?> elementReader) {
     return new ArrayReader(elementReader);
   }
-
+  /** 执行 map 相关操作。 */
   static OrcValueReader<?> map(OrcValueReader<?> keyReader, OrcValueReader<?> valueReader) {
     return new MapReader(keyReader, valueReader);
   }
@@ -88,7 +97,7 @@ public class SparkOrcValueReaders {
     private ArrayReader(OrcValueReader<?> elementReader) {
       this.elementReader = elementReader;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public ArrayData nonNullRead(ColumnVector vector, int row) {
       ListColumnVector listVector = (ListColumnVector) vector;
@@ -100,7 +109,7 @@ public class SparkOrcValueReaders {
       }
       return new GenericArrayData(elements.toArray());
     }
-
+    /** 设置 BatchContext 属性。 */
     @Override
     public void setBatchContext(long batchOffsetInFile) {
       elementReader.setBatchContext(batchOffsetInFile);
@@ -115,7 +124,7 @@ public class SparkOrcValueReaders {
       this.keyReader = keyReader;
       this.valueReader = valueReader;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public MapData nonNullRead(ColumnVector vector, int row) {
       MapColumnVector mapVector = (MapColumnVector) vector;
@@ -131,7 +140,7 @@ public class SparkOrcValueReaders {
       return new ArrayBasedMapData(
           new GenericArrayData(keys.toArray()), new GenericArrayData(values.toArray()));
     }
-
+    /** 设置 BatchContext 属性。 */
     @Override
     public void setBatchContext(long batchOffsetInFile) {
       keyReader.setBatchContext(batchOffsetInFile);
@@ -147,12 +156,12 @@ public class SparkOrcValueReaders {
       super(readers, struct, idToConstant);
       this.numFields = struct.fields().size();
     }
-
+    /** 创建实例。 */
     @Override
     protected InternalRow create() {
       return new GenericInternalRow(numFields);
     }
-
+    /** 执行 set 相关操作。 */
     @Override
     protected void set(InternalRow struct, int pos, Object value) {
       if (value != null) {
@@ -167,7 +176,7 @@ public class SparkOrcValueReaders {
     private static final StringReader INSTANCE = new StringReader();
 
     private StringReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public UTF8String nonNullRead(ColumnVector vector, int row) {
       BytesColumnVector bytesVector = (BytesColumnVector) vector;
@@ -180,7 +189,7 @@ public class SparkOrcValueReaders {
     private static final UUIDReader INSTANCE = new UUIDReader();
 
     private UUIDReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public UTF8String nonNullRead(ColumnVector vector, int row) {
       BytesColumnVector bytesVector = (BytesColumnVector) vector;
@@ -194,7 +203,7 @@ public class SparkOrcValueReaders {
     private static final TimestampTzReader INSTANCE = new TimestampTzReader();
 
     private TimestampTzReader() {}
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Long nonNullRead(ColumnVector vector, int row) {
       TimestampColumnVector tcv = (TimestampColumnVector) vector;
@@ -210,7 +219,7 @@ public class SparkOrcValueReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Decimal nonNullRead(ColumnVector vector, int row) {
       HiveDecimalWritable value = ((DecimalColumnVector) vector).vector[row];
@@ -242,7 +251,7 @@ public class SparkOrcValueReaders {
       this.precision = precision;
       this.scale = scale;
     }
-
+    /** 执行 nonNullRead 相关操作。 */
     @Override
     public Decimal nonNullRead(ColumnVector vector, int row) {
       BigDecimal value =

@@ -31,6 +31,13 @@ import org.apache.iceberg.util.StructLikeWrapper;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestRowDataWrapper 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestRowDataWrapper 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestRowDataWrapper extends RecordWrapperTest {
 
   /**
@@ -59,6 +66,7 @@ public class TestRowDataWrapper extends RecordWrapperTest {
         });
   }
 
+  /** 辅助方法：generateAndValidate，generate And Validate。 */
   @Override
   protected void generateAndValidate(Schema schema, RecordWrapperTest.AssertMethod assertMethod) {
     int numRecords = 100;

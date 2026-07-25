@@ -20,18 +20,27 @@ package org.apache.iceberg.spark.source.metrics;
 
 import org.apache.spark.sql.connector.metric.CustomTaskMetric;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：任务级分片数指标，在 Executor 端累计扫描分片数并上报。
+ *
+ * <p>设计意图：实现 Spark CustomTaskMetric，与 NumSplits 配对聚合。
+ *
+ * <p>上下游关系：由 BaseReader 在任务端上报。
+ */
 public class TaskNumSplits implements CustomTaskMetric {
   private final long value;
 
   public TaskNumSplits(long value) {
     this.value = value;
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "numSplits";
   }
-
+  /** 执行 value 相关操作。 */
   @Override
   public long value() {
     return value;

@@ -69,6 +69,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkMetaDataTable 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestFlinkMetaDataTable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
   private static final String TABLE_NAME = "test_table";
@@ -76,11 +83,13 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
   private static final TemporaryFolder TEMP = new TemporaryFolder();
   private final boolean isPartition;
 
+  /** 辅助方法：TestFlinkMetaDataTable，Flink Meta Data Table。 */
   public TestFlinkMetaDataTable(String catalogName, Namespace baseNamespace, Boolean isPartition) {
     super(catalogName, baseNamespace);
     this.isPartition = isPartition;
   }
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "catalogName={0}, baseNamespace={1}, isPartition={2}")
   public static Iterable<Object[]> parameters() {
     List<Object[]> parameters = Lists.newArrayList();
@@ -93,6 +102,7 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     return parameters;
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   @Override
   protected TableEnvironment getTableEnv() {
     Configuration configuration = super.getTableEnv().getConfig().getConfiguration();
@@ -100,6 +110,7 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     return super.getTableEnv();
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() {
     super.before();
@@ -123,6 +134,7 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /** 辅助方法：clean，clean。 */
   @Override
   @After
   public void clean() {
@@ -131,6 +143,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     super.clean();
   }
 
+  /**
+   * 测试场景：Snapshots。
+   *
+   * <p>验证该方法在 Snapshots 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshots() {
     String sql = String.format("SELECT * FROM %s$snapshots ", TABLE_NAME);
@@ -155,6 +172,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：History。
+   *
+   * <p>验证该方法在 History 条件下的行为是否符合预期。
+   */
   @Test
   public void testHistory() {
     String sql = String.format("SELECT * FROM %s$history ", TABLE_NAME);
@@ -178,6 +200,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Manifests。
+   *
+   * <p>验证该方法在 Manifests 条件下的行为是否符合预期。
+   */
   @Test
   public void testManifests() {
     String sql = String.format("SELECT * FROM %s$manifests ", TABLE_NAME);
@@ -214,6 +241,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：All Manifests。
+   *
+   * <p>验证该方法在 All Manifests 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllManifests() {
     Table table = validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, TABLE_NAME));
@@ -252,6 +284,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Un Partitioned Table。
+   *
+   * <p>验证该方法在 Un Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testUnPartitionedTable() throws IOException {
     Assume.assumeFalse(isPartition);
@@ -337,6 +374,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     TestHelpers.assertEquals(filesTableSchema, expectedFiles.get(1), actualFiles.get(1));
   }
 
+  /**
+   * 测试场景：Partitioned Table。
+   *
+   * <p>验证该方法在 Partitioned Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionedTable() throws Exception {
     Assume.assumeFalse(!isPartition);
@@ -442,6 +484,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     TestHelpers.assertEquals(filesTableSchema, expectedFiles.get(1), actualFiles.get(1));
   }
 
+  /**
+   * 测试场景：All Files Unpartitioned。
+   *
+   * <p>验证该方法在 All Files Unpartitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllFilesUnpartitioned() throws Exception {
     Assume.assumeFalse(isPartition);
@@ -517,6 +564,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     TestHelpers.assertEquals(filesTableSchema, expectedFiles, actualFiles);
   }
 
+  /**
+   * 测试场景：All Files Partitioned。
+   *
+   * <p>验证该方法在 All Files Partitioned 条件下的行为是否符合预期。
+   */
   @Test
   public void testAllFilesPartitioned() throws Exception {
     Assume.assumeFalse(!isPartition);
@@ -603,6 +655,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     TestHelpers.assertEquals(filesTableSchema, expectedFiles, actualFiles);
   }
 
+  /**
+   * 测试场景：Metadata Log Entries。
+   *
+   * <p>验证该方法在 Metadata Log Entries 条件下的行为是否符合预期。
+   */
   @Test
   public void testMetadataLogEntries() {
     Table table = validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, TABLE_NAME));
@@ -682,6 +739,11 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     }
   }
 
+  /**
+   * 测试场景：Snapshot References Metatable。
+   *
+   * <p>验证该方法在 Snapshot References Metatable 条件下的行为是否符合预期。
+   */
   @Test
   public void testSnapshotReferencesMetatable() {
     Table table = validationCatalog.loadTable(TableIdentifier.of(icebergNamespace, TABLE_NAME));
@@ -798,11 +860,13 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
   }
 
   // Populate certain fields derived in the metadata tables
+  /** 辅助方法：asMetadataRecord，as Metadata Record。 */
   private void asMetadataRecord(GenericData.Record file, FileContent content) {
     file.put(0, content.id());
     file.put(3, 0); // specId
   }
 
+  /** 辅助方法：partitionMatch，partition Match。 */
   private boolean partitionMatch(GenericData.Record file, String partValue) {
     if (partValue == null) {
       return true;
@@ -811,10 +875,12 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     return partValue.equals(partition.get(0).toString());
   }
 
+  /** 辅助方法：dataManifests，data Manifests。 */
   private List<ManifestFile> dataManifests(Table table) {
     return table.currentSnapshot().dataManifests(table.io());
   }
 
+  /** 辅助方法：allDataManifests，all Data Manifests。 */
   private List<ManifestFile> allDataManifests(Table table) {
     List<ManifestFile> manifests = Lists.newArrayList();
     for (Snapshot snapshot : table.snapshots()) {
@@ -823,6 +889,7 @@ public class TestFlinkMetaDataTable extends FlinkCatalogTestBase {
     return manifests;
   }
 
+  /** 辅助方法：deleteManifests，delete Manifests。 */
   private List<ManifestFile> deleteManifests(Table table) {
     return table.currentSnapshot().deleteManifests(table.io());
   }

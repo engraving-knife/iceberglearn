@@ -59,6 +59,15 @@ import org.apache.spark.sql.types.StructType
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
+/**
+ * 文件级说明：IcebergSparkSqlExtensionsParser —— Iceberg Spark SQL 扩展的类。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：类 IcebergSparkSqlExtensionsParser。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
+ */
 class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserInterface with ExtendedParser {
 
   import IcebergSparkSqlExtensionsParser._
@@ -67,53 +76,55 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
   private lazy val astBuilder = new IcebergSqlExtensionsAstBuilder(delegate)
 
   /**
-   * Parse a string to a DataType.
+   * parseDataType：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseDataType(sqlText: String): DataType = {
     delegate.parseDataType(sqlText)
   }
 
   /**
-   * Parse a string to a raw DataType without CHAR/VARCHAR replacement.
+   * parseRawDataType：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   def parseRawDataType(sqlText: String): DataType = throw new UnsupportedOperationException()
 
   /**
-   * Parse a string to an Expression.
+   * parseExpression：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseExpression(sqlText: String): Expression = {
     delegate.parseExpression(sqlText)
   }
 
   /**
-   * Parse a string to a TableIdentifier.
+   * parseTableIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseTableIdentifier(sqlText: String): TableIdentifier = {
     delegate.parseTableIdentifier(sqlText)
   }
 
   /**
-   * Parse a string to a FunctionIdentifier.
+   * parseFunctionIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseFunctionIdentifier(sqlText: String): FunctionIdentifier = {
     delegate.parseFunctionIdentifier(sqlText)
   }
 
   /**
-   * Parse a string to a multi-part identifier.
+   * parseMultipartIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseMultipartIdentifier(sqlText: String): Seq[String] = {
     delegate.parseMultipartIdentifier(sqlText)
   }
 
   /**
-   * Creates StructType for a given SQL string, which is a comma separated list of field
-   * definitions which will preserve the correct Hive metadata.
+   * parseTableSchema：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parseTableSchema(sqlText: String): StructType = {
     delegate.parseTableSchema(sqlText)
   }
 
+  /**
+   * parseSortOrder：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def parseSortOrder(sqlText: String): java.util.List[RawOrderField] = {
     val fields = parse(sqlText) { parser => astBuilder.visitSingleOrder(parser.singleOrder()) }
     fields.map { field =>
@@ -123,7 +134,7 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
   }
 
   /**
-   * Parse a string to a LogicalPlan.
+   * parsePlan：执行 Iceberg SQL 扩展的解析/构建逻辑。
    */
   override def parsePlan(sqlText: String): LogicalPlan = {
     val sqlTextAfterSubstitution = substitutor.substitute(sqlText)
@@ -140,6 +151,9 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
     }
   }
 
+  /**
+   * replaceRowLevelCommands：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def replaceRowLevelCommands(plan: LogicalPlan): LogicalPlan = plan resolveOperatorsDown {
     case DeleteFromTable(UnresolvedIcebergTable(aliasedTable), condition) =>
       DeleteFromIcebergTable(aliasedTable, Some(condition))
@@ -155,8 +169,20 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       UnresolvedMergeIntoIcebergTable(aliasedTable, source, context)
   }
 
+  /**
+ * 文件级说明：UnresolvedIcebergTable —— Iceberg Spark SQL 扩展的对象。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 UnresolvedIcebergTable。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
+ */
   object UnresolvedIcebergTable {
 
+    /**
+     * unapply：执行 Iceberg SQL 扩展的解析/构建逻辑。
+     */
     def unapply(plan: LogicalPlan): Option[LogicalPlan] = {
       EliminateSubqueryAliases(plan) match {
         case UnresolvedRelation(multipartIdentifier, _, _) if isIcebergTable(multipartIdentifier) =>
@@ -166,6 +192,9 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       }
     }
 
+    /**
+     * isIcebergTable：执行 Iceberg SQL 扩展的解析/构建逻辑。
+     */
     private def isIcebergTable(multipartIdent: Seq[String]): Boolean = {
       val catalogAndIdentifier = Spark3Util.catalogAndIdentifier(SparkSession.active, multipartIdent.asJava)
       catalogAndIdentifier.catalog match {
@@ -179,12 +208,18 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       }
     }
 
+    /**
+     * isIcebergTable：执行 Iceberg SQL 扩展的解析/构建逻辑。
+     */
     private def isIcebergTable(table: Table): Boolean = table match {
       case _: SparkTable => true
       case _ => false
     }
   }
 
+  /**
+   * isIcebergCommand：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def isIcebergCommand(sqlText: String): Boolean = {
     val normalized = sqlText.toLowerCase(Locale.ROOT).trim()
       // Strip simple SQL comments that terminate a line, e.g. comments starting with `--` .
@@ -209,6 +244,9 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
             isSnapshotRefDdl(normalized)))
   }
 
+  /**
+   * isSnapshotRefDdl：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def isSnapshotRefDdl(normalized: String): Boolean = {
     normalized.contains("create branch") ||
       normalized.contains("replace branch") ||
@@ -218,6 +256,9 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
       normalized.contains("drop tag")
   }
 
+  /**
+   * parse：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   protected def parse[T](command: String)(toResult: IcebergSqlExtensionsParser => T): T = {
     val lexer = new IcebergSqlExtensionsLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
     lexer.removeErrorListeners()
@@ -257,11 +298,23 @@ class IcebergSparkSqlExtensionsParser(delegate: ParserInterface) extends ParserI
     }
   }
 
+  /**
+   * parseQuery：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def parseQuery(sqlText: String): LogicalPlan = {
     parsePlan(sqlText)
   }
 }
 
+/**
+ * 文件级说明：IcebergSparkSqlExtensionsParser —— Iceberg Spark SQL 扩展的对象。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 IcebergSparkSqlExtensionsParser。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
+ */
 object IcebergSparkSqlExtensionsParser {
   private val substitutorCtor: DynConstructors.Ctor[VariableSubstitution] =
     DynConstructors.builder()
@@ -272,17 +325,44 @@ object IcebergSparkSqlExtensionsParser {
 
 /* Copied from Apache Spark's to avoid dependency on Spark Internals */
 class UpperCaseCharStream(wrapped: CodePointCharStream) extends CharStream {
+  /**
+   * consume：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def consume(): Unit = wrapped.consume
+  /**
+   * getSourceName：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def getSourceName(): String = wrapped.getSourceName
+  /**
+   * index：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def index(): Int = wrapped.index
+  /**
+   * mark：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def mark(): Int = wrapped.mark
+  /**
+   * release：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def release(marker: Int): Unit = wrapped.release(marker)
+  /**
+   * seek：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def seek(where: Int): Unit = wrapped.seek(where)
+  /**
+   * size：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def size(): Int = wrapped.size
 
+  /**
+   * getText：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def getText(interval: Interval): String = wrapped.getText(interval)
 
   // scalastyle:off
+  /**
+   * LA：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def LA(i: Int): Int = {
     val la = wrapped.LA(i)
     if (la == 0 || la == IntStream.EOF) la
@@ -292,11 +372,19 @@ class UpperCaseCharStream(wrapped: CodePointCharStream) extends CharStream {
 }
 
 /**
- * The post-processor validates & cleans-up the parse tree during the parse process.
+ * 文件级说明：IcebergSqlExtensionsPostProcessor —— Iceberg Spark SQL 扩展的对象。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：对象 IcebergSqlExtensionsPostProcessor。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
  */
 case object IcebergSqlExtensionsPostProcessor extends IcebergSqlExtensionsBaseListener {
 
-  /** Remove the back ticks from an Identifier. */
+  /**
+   * exitQuotedIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def exitQuotedIdentifier(ctx: QuotedIdentifierContext): Unit = {
     replaceTokenByIdentifier(ctx, 1) { token =>
       // Remove the double back ticks in the string.
@@ -305,11 +393,16 @@ case object IcebergSqlExtensionsPostProcessor extends IcebergSqlExtensionsBaseLi
     }
   }
 
-  /** Treat non-reserved keywords as Identifiers. */
+  /**
+   * exitNonReserved：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def exitNonReserved(ctx: NonReservedContext): Unit = {
     replaceTokenByIdentifier(ctx, 0)(identity)
   }
 
+  /**
+   * replaceTokenByIdentifier：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   private def replaceTokenByIdentifier(
       ctx: ParserRuleContext,
       stripMargins: Int)(
@@ -329,6 +422,9 @@ case object IcebergSqlExtensionsPostProcessor extends IcebergSqlExtensionsBaseLi
 
 /* Partially copied from Apache Spark's Parser to avoid dependency on Spark Internals */
 case object IcebergParseErrorListener extends BaseErrorListener {
+  /**
+   * syntaxError：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def syntaxError(
       recognizer: Recognizer[_, _],
       offendingSymbol: scala.Any,
@@ -351,9 +447,13 @@ case object IcebergParseErrorListener extends BaseErrorListener {
 }
 
 /**
- * Copied from Apache Spark
- * A [[ParseException]] is an [[AnalysisException]] that is thrown during the parse process. It
- * contains fields and an extended error message that make reporting and diagnosing errors easier.
+ * 文件级说明：IcebergParseException —— Iceberg Spark SQL 扩展的类。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：类 IcebergParseException。
+ * <p>设计意图：为 Spark SQL 提供 Iceberg 特有的语法扩展支持，
+ * 包括分支/标签管理、存储过程调用、分区字段变更等 DDL 操作。
+ * <p>上下游：由 IcebergSparkSessionExtensions 注册，作用于 Spark Catalyst 解析与分析阶段。
  */
 class IcebergParseException(
     val command: Option[String],
@@ -361,6 +461,9 @@ class IcebergParseException(
     val start: Origin,
     val stop: Origin) extends AnalysisException(message, start.line, start.startPosition) {
 
+  /**
+   * this：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   def this(message: String, ctx: ParserRuleContext) = {
     this(Option(IcebergParserUtils.command(ctx)),
       message,
@@ -368,6 +471,9 @@ class IcebergParseException(
       IcebergParserUtils.position(ctx.getStop))
   }
 
+  /**
+   * getMessage：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   override def getMessage: String = {
     val builder = new StringBuilder
     builder ++= "\n" ++= message
@@ -390,6 +496,9 @@ class IcebergParseException(
     builder.toString
   }
 
+  /**
+   * withCommand：执行 Iceberg SQL 扩展的解析/构建逻辑。
+   */
   def withCommand(cmd: String): IcebergParseException = {
     new IcebergParseException(Option(cmd), message, start, stop)
   }

@@ -47,6 +47,34 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Iceberg 表在 Hive Metastore（HMS）侧的元数据钩子。
+ *
+ * <p>所属模块：iceberg-mr（Hive/MapReduce 集成模块；本类位于 hive 子包，作为 HMS 表生命周期 与 Iceberg 表生命周期之间的桥梁）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 {@link HiveMetaHook}，在 HMS 表创建/删除前后插入 Iceberg 侧动作。
+ *   <li>建表前：解析 schema 与分区规格、设置 Iceberg 表类型标记、保留 purge 标志。
+ *   <li>建表后：调用 {@link Catalogs#createTable} 真正创建 Iceberg 表（如尚未存在）。
+ *   <li>删表前：记录待清理的元数据与 FileIO；删表后：按 purge 标志清理 Iceberg 表数据。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>同时支持 HiveCatalog 与非 HiveCatalog（HadoopTables 等）两种部署：HiveCatalog 模式下 Iceberg 表元数据存于 HMS；非
+ *       HiveCatalog 模式下 HMS 仅作“影子目录”，需要单独建表。
+ *   <li>schema 优先级：用户显式提供的 schema/spec 优先；否则由 HMS 列定义转换生成。
+ *   <li>清理路径分两支：HiveCatalog 由 HMS 管理 metadata 目录，仅删数据；非 HiveCatalog 直接 调 {@link Catalogs#dropTable}
+ *       删表。
+ *   <li>异常容忍：drop 阶段的异常不应阻断 HMS 删表命令，因此 catch 后只告警。
+ * </ul>
+ *
+ * <p>上下游关系：上游由 Hive Metastore 在 DDL 事件中调用；下游依赖 {@link Catalogs}、 {@link HiveSchemaUtil}、{@link
+ * CatalogUtil}。
+ */
 public class HiveIcebergMetaHook implements HiveMetaHook {
   private static final Logger LOG = LoggerFactory.getLogger(HiveIcebergMetaHook.class);
   private static final Set<String> PARAMETERS_TO_REMOVE =
@@ -71,10 +99,32 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
   private FileIO deleteIo;
   private TableMetadata deleteMetadata;
 
+  /**
+   * 构造钩子。
+   *
+   * @param conf Hadoop 配置，决定 catalog 类型与加载方式
+   */
   public HiveIcebergMetaHook(Configuration conf) {
     this.conf = conf;
   }
 
+  /**
+   * HMS 建表前钩子。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>从 HMS 表参数计算 catalog 属性。
+   *   <li>无论是否 HiveCatalog，都把表类型参数置为 ICEBERG。
+   *   <li>非 HiveCatalog 时：设置 InputFormat/OutputFormat 以便其他引擎（如 Impala）识别； 尝试加载已有 Iceberg
+   *       表，若存在则校验未重复提供 schema/spec 并直接返回。
+   *   <li>表不存在时：计算 schema 与分区 spec（用户显式提供优先，否则由 HMS 列转换）， 把分区键合并进列列表，序列化 schema/spec 写入 catalog
+   *       属性，设置 purge 默认 TRUE， 非 HiveCatalog 时校验 location 已设置。
+   *   <li>从 HMS 参数中移除建表专用的控制参数。
+   * </ol>
+   *
+   * @param hmsTable HMS 表对象
+   */
   @Override
   public void preCreateTable(org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     this.catalogProperties = getCatalogProperties(hmsTable);
@@ -143,11 +193,20 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
     PARAMETERS_TO_REMOVE.forEach(hmsTable.getParameters()::remove);
   }
 
+  /** HMS 建表回滚钩子，当前无操作。 */
   @Override
   public void rollbackCreateTable(org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     // do nothing
   }
 
+  /**
+   * HMS 建表提交钩子。
+   *
+   * <p>逻辑：若 preCreateTable 阶段未发现已有 Iceberg 表（icebergTable == null），则调用 {@link Catalogs#createTable}
+   * 真正建表；HiveCatalog 模式下还会设置 {@link TableProperties#ENGINE_HIVE_ENABLED}。
+   *
+   * @param hmsTable HMS 表对象
+   */
   @Override
   public void commitCreateTable(org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     if (icebergTable == null) {
@@ -159,6 +218,14 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
     }
   }
 
+  /**
+   * HMS 删表前钩子。
+   *
+   * <p>逻辑：解析 purge 标志；若需要 purge 且为 HiveCatalog，则提前加载 Iceberg 表的 FileIO 与
+   * TableMetadata，便于删表后清理数据文件。加载失败仅记错误日志，不阻断删表。
+   *
+   * @param hmsTable HMS 表对象
+   */
   @Override
   public void preDropTable(org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     this.catalogProperties = getCatalogProperties(hmsTable);
@@ -189,11 +256,27 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
     }
   }
 
+  /** HMS 删表回滚钩子，当前无操作。 */
   @Override
   public void rollbackDropTable(org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     // do nothing
   }
 
+  /**
+   * HMS 删表提交钩子。
+   *
+   * <p>逻辑：若 deleteData 且 deleteIcebergTable 为真：
+   *
+   * <ul>
+   *   <li>非 HiveCatalog：调 {@link Catalogs#dropTable} 删表及其数据。
+   *   <li>HiveCatalog：若 metadata 目录仍存在，调 {@link CatalogUtil#dropTableData} 清理数据。
+   * </ul>
+   *
+   * <p>异常被 catch 后仅告警，确保 HMS DROP TABLE 命令成功完成。
+   *
+   * @param hmsTable HMS 表对象
+   * @param deleteData HMS 侧是否要求删数据
+   */
   @Override
   public void commitDropTable(
       org.apache.hadoop.hive.metastore.api.Table hmsTable, boolean deleteData) {
@@ -227,19 +310,20 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
   }
 
   /**
-   * Calculates the properties we would like to send to the catalog.
+   * 计算交给 catalog 使用的属性集合。
+   *
+   * <p>逻辑：
    *
    * <ul>
-   *   <li>The base of the properties is the properties stored at the Hive Metastore for the given
-   *       table
-   *   <li>We add the {@link Catalogs#LOCATION} as the table location
-   *   <li>We add the {@link Catalogs#NAME} as TableIdentifier defined by the database name and
-   *       table name
-   *   <li>We remove some parameters that we don't want to push down to the Iceberg table props
+   *   <li>以 HMS 表参数为基础，按 {@link HiveTableOperations#translateToIcebergProp} 把部分 HMS 键名翻译为 Iceberg
+   *       键名。
+   *   <li>补充 {@link Catalogs#LOCATION}（取自 StorageDescriptor）与 {@link Catalogs#NAME} （由 db.table 组成
+   *       TableIdentifier）。
+   *   <li>移除不应下推到 Iceberg 的 HMS 参数（metadata_location、previous_metadata_location、 partition_spec 等）。
    * </ul>
    *
-   * @param hmsTable Table for which we are calculating the properties
-   * @return The properties we can provide for Iceberg functions, like {@link Catalogs}
+   * @param hmsTable HMS 表对象
+   * @return 整理后的 catalog 属性
    */
   private static Properties getCatalogProperties(
       org.apache.hadoop.hive.metastore.api.Table hmsTable) {
@@ -272,6 +356,16 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
     return properties;
   }
 
+  /**
+   * 计算建表用的 Iceberg schema。
+   *
+   * <p>逻辑：用户显式提供的 {@link InputFormatConfig#TABLE_SCHEMA} 优先；否则用 {@link HiveSchemaUtil#convert} 从
+   * HMS 列转换（含分区键时合并分区键到列列表）。 autoConversion 控制是否做类型自动转换。
+   *
+   * @param properties catalog 属性
+   * @param hmsTable HMS 表对象
+   * @return Iceberg schema
+   */
   private Schema schema(
       Properties properties, org.apache.hadoop.hive.metastore.api.Table hmsTable) {
     boolean autoConversion = conf.getBoolean(InputFormatConfig.SCHEMA_AUTO_CONVERSION, false);
@@ -288,6 +382,22 @@ public class HiveIcebergMetaHook implements HiveMetaHook {
     }
   }
 
+  /**
+   * 计算建表用的分区规格。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>用户显式提供 {@link InputFormatConfig#PARTITION_SPEC} 时优先使用，且不允许同时设置 Hive 分区键。
+   *   <li>否则若 HMS 设置了分区键，则生成 identity 分区规格。
+   *   <li>否则返回非分区表。
+   * </ul>
+   *
+   * @param schema Iceberg schema
+   * @param properties catalog 属性
+   * @param hmsTable HMS 表对象
+   * @return 分区规格
+   */
   private static PartitionSpec spec(
       Schema schema, Properties properties, org.apache.hadoop.hive.metastore.api.Table hmsTable) {
 

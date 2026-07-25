@@ -45,6 +45,7 @@ public class GenericAppenderHelper {
   private final TemporaryFolder tmp;
   private final Configuration conf;
 
+  /** 辅助方法：GenericAppenderHelper。 */
   public GenericAppenderHelper(
       Table table, FileFormat fileFormat, TemporaryFolder tmp, Configuration conf) {
     this.table = table;
@@ -53,10 +54,12 @@ public class GenericAppenderHelper {
     this.conf = conf;
   }
 
+  /** 辅助方法：GenericAppenderHelper。 */
   public GenericAppenderHelper(Table table, FileFormat fileFormat, TemporaryFolder tmp) {
     this(table, fileFormat, tmp, null);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(String branch, DataFile... dataFiles) {
     Preconditions.checkNotNull(table, "table not set");
 
@@ -70,27 +73,33 @@ public class GenericAppenderHelper {
     append.commit();
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(DataFile... dataFiles) {
     appendToTable(null, dataFiles);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(List<Record> records) throws IOException {
     appendToTable(null, null, records);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(String branch, List<Record> records) throws IOException {
     appendToTable(null, branch, records);
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(StructLike partition, String branch, List<Record> records)
       throws IOException {
     appendToTable(branch, writeFile(partition, records));
   }
 
+  /** 辅助方法：appendToTable。 */
   public void appendToTable(StructLike partition, List<Record> records) throws IOException {
     appendToTable(writeFile(partition, records));
   }
 
+  /** 辅助方法：writeFile。 */
   public DataFile writeFile(List<Record> records) throws IOException {
     Preconditions.checkNotNull(table, "table not set");
     File file = tmp.newFile();
@@ -98,6 +107,7 @@ public class GenericAppenderHelper {
     return appendToLocalFile(table, file, fileFormat, null, records, conf);
   }
 
+  /** 辅助方法：writeFile。 */
   public DataFile writeFile(StructLike partition, List<Record> records) throws IOException {
     Preconditions.checkNotNull(table, "table not set");
     File file = tmp.newFile();
@@ -105,6 +115,7 @@ public class GenericAppenderHelper {
     return appendToLocalFile(table, file, fileFormat, partition, records, conf);
   }
 
+  /** 辅助方法：appendToLocalFile。 */
   private static DataFile appendToLocalFile(
       Table table,
       File file,

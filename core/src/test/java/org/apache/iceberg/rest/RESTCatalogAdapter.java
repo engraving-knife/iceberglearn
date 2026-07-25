@@ -66,7 +66,14 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.PropertyUtil;
 
-/** Adaptor class to translate REST requests into {@link Catalog} API calls. */
+/**
+ * 测试类：RESTCatalogAdapter，用于验证 REST Catalog Adapter 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 REST Catalog Adapter 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class RESTCatalogAdapter implements RESTClient {
   private static final Splitter SLASH = Splitter.on('/');
 
@@ -90,6 +97,7 @@ public class RESTCatalogAdapter implements RESTClient {
   private final Catalog catalog;
   private final SupportsNamespaces asNamespaceCatalog;
 
+  /** 辅助方法：rest catalog adapter。 */
   public RESTCatalogAdapter(Catalog catalog) {
     this.catalog = catalog;
     this.asNamespaceCatalog =
@@ -186,6 +194,7 @@ public class RESTCatalogAdapter implements RESTClient {
       this.variables = variablesBuilder.build();
     }
 
+    /** 辅助方法：matches。 */
     private boolean matches(HTTPMethod requestMethod, List<String> requestPath) {
       return method == requestMethod
           && requiredLength == requestPath.size()
@@ -197,12 +206,14 @@ public class RESTCatalogAdapter implements RESTClient {
                           .equalsIgnoreCase(requestPath.get(requirement.getKey())));
     }
 
+    /** 辅助方法：variables。 */
     private Map<String, String> variables(List<String> requestPath) {
       ImmutableMap.Builder<String, String> vars = ImmutableMap.builder();
       variables.forEach((key, value) -> vars.put(value, requestPath.get(key)));
       return vars.build();
     }
 
+    /** 辅助方法：from。 */
     public static Pair<Route, Map<String, String>> from(HTTPMethod method, String path) {
       List<String> parts = SLASH.splitToList(path);
       for (Route candidate : Route.values()) {
@@ -214,15 +225,18 @@ public class RESTCatalogAdapter implements RESTClient {
       return null;
     }
 
+    /** 辅助方法：request class。 */
     public Class<? extends RESTRequest> requestClass() {
       return requestClass;
     }
 
+    /** 辅助方法：response class。 */
     public Class<? extends RESTResponse> responseClass() {
       return responseClass;
     }
   }
 
+  /** 辅助方法：handle request。 */
   @SuppressWarnings("MethodLength")
   public <T extends RESTResponse> T handleRequest(
       Route route, Map<String, String> vars, Object body, Class<T> responseType) {
@@ -393,11 +407,7 @@ public class RESTCatalogAdapter implements RESTClient {
     return null;
   }
 
-  /**
-   * This is a very simplistic approach that only validates the requirements for each table and does
-   * not do any other conflict detection. Therefore, it does not guarantee true transactional
-   * atomicity, which is left to the implementation details of a REST server.
-   */
+  /** 辅助方法：commit transaction。 */
   private static void commitTransaction(Catalog catalog, CommitTransactionRequest request) {
     List<Transaction> transactions = Lists.newArrayList();
 
@@ -423,6 +433,7 @@ public class RESTCatalogAdapter implements RESTClient {
     transactions.forEach(Transaction::commitTransaction);
   }
 
+  /** 辅助方法：execute。 */
   public <T extends RESTResponse> T execute(
       HTTPMethod method,
       String path,
@@ -461,6 +472,7 @@ public class RESTCatalogAdapter implements RESTClient {
     throw new RESTException("Unhandled error: %s", error);
   }
 
+  /** 辅助方法：delete。 */
   @Override
   public <T extends RESTResponse> T delete(
       String path,
@@ -470,6 +482,7 @@ public class RESTCatalogAdapter implements RESTClient {
     return execute(HTTPMethod.DELETE, path, null, null, responseType, headers, errorHandler);
   }
 
+  /** 辅助方法：delete。 */
   @Override
   public <T extends RESTResponse> T delete(
       String path,
@@ -480,6 +493,7 @@ public class RESTCatalogAdapter implements RESTClient {
     return execute(HTTPMethod.DELETE, path, queryParams, null, responseType, headers, errorHandler);
   }
 
+  /** 辅助方法：post。 */
   @Override
   public <T extends RESTResponse> T post(
       String path,
@@ -490,6 +504,7 @@ public class RESTCatalogAdapter implements RESTClient {
     return execute(HTTPMethod.POST, path, null, body, responseType, headers, errorHandler);
   }
 
+  /** 辅助方法：get。 */
   @Override
   public <T extends RESTResponse> T get(
       String path,
@@ -500,11 +515,13 @@ public class RESTCatalogAdapter implements RESTClient {
     return execute(HTTPMethod.GET, path, queryParams, null, responseType, headers, errorHandler);
   }
 
+  /** 辅助方法：head。 */
   @Override
   public void head(String path, Map<String, String> headers, Consumer<ErrorResponse> errorHandler) {
     execute(HTTPMethod.HEAD, path, null, null, null, headers, errorHandler);
   }
 
+  /** 辅助方法：post form。 */
   @Override
   public <T extends RESTResponse> T postForm(
       String path,
@@ -515,6 +532,7 @@ public class RESTCatalogAdapter implements RESTClient {
     return execute(HTTPMethod.POST, path, null, formData, responseType, headers, errorHandler);
   }
 
+  /** 辅助方法：close。 */
   @Override
   public void close() throws IOException {
     // The calling test is responsible for closing the underlying catalog backing this REST catalog
@@ -523,6 +541,7 @@ public class RESTCatalogAdapter implements RESTClient {
   }
 
   private static class BadResponseType extends RuntimeException {
+    /** 辅助方法：bad response type。 */
     private BadResponseType(Class<?> responseType, Object response) {
       super(
           String.format("Invalid response object, not a %s: %s", responseType.getName(), response));
@@ -530,11 +549,13 @@ public class RESTCatalogAdapter implements RESTClient {
   }
 
   private static class BadRequestType extends RuntimeException {
+    /** 辅助方法：bad request type。 */
     private BadRequestType(Class<?> requestType, Object request) {
       super(String.format("Invalid request object, not a %s: %s", requestType.getName(), request));
     }
   }
 
+  /** 辅助方法：cast request。 */
   public static <T> T castRequest(Class<T> requestType, Object request) {
     if (requestType.isInstance(request)) {
       return requestType.cast(request);
@@ -543,6 +564,7 @@ public class RESTCatalogAdapter implements RESTClient {
     throw new BadRequestType(requestType, request);
   }
 
+  /** 辅助方法：cast response。 */
   public static <T extends RESTResponse> T castResponse(Class<T> responseType, Object response) {
     if (responseType.isInstance(response)) {
       return responseType.cast(response);
@@ -551,6 +573,7 @@ public class RESTCatalogAdapter implements RESTClient {
     throw new BadResponseType(responseType, response);
   }
 
+  /** 辅助方法：configure response from exception。 */
   public static void configureResponseFromException(
       Exception exc, ErrorResponse.Builder errorBuilder) {
     errorBuilder
@@ -560,10 +583,12 @@ public class RESTCatalogAdapter implements RESTClient {
         .withStackTrace(exc);
   }
 
+  /** 辅助方法：namespace from path vars。 */
   private static Namespace namespaceFromPathVars(Map<String, String> pathVars) {
     return RESTUtil.decodeNamespace(pathVars.get("namespace"));
   }
 
+  /** 辅助方法：ident from path vars。 */
   private static TableIdentifier identFromPathVars(Map<String, String> pathVars) {
     return TableIdentifier.of(
         namespaceFromPathVars(pathVars), RESTUtil.decodeString(pathVars.get("table")));

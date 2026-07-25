@@ -154,11 +154,15 @@ public class AwsClientFactories {
   }
 
   /**
-   * Build a httpClientBuilder object
+   * 根据 HTTP 客户端类型创建对应的 httpClientBuilder。
    *
-   * @deprecated Not for public use. To configure the httpClient for a client, please use {@link
-   *     HttpClientProperties#applyHttpClientConfigurations(AwsSyncClientBuilder)}. It will be
-   *     removed in 2.0.0
+   * <p>逻辑：若 httpClientType 为空则使用默认类型，随后按类型返回 UrlConnectionHttpClient 或 ApacheHttpClient 的 Builder。
+   *
+   * @param httpClientType HTTP 客户端类型，可选 urlconnection / apache
+   * @return 对应的 {@link software.amazon.awssdk.http.SdkHttpClient.Builder}
+   * @throws IllegalArgumentException 未知的 HTTP 客户端类型
+   * @deprecated 不再供外部使用，请改用 {@link
+   *     HttpClientProperties#applyHttpClientConfigurations(AwsSyncClientBuilder)}， 将在 2.0.0 移除
    */
   @Deprecated
   public static SdkHttpClient.Builder configureHttpClientBuilder(String httpClientType) {
@@ -177,13 +181,15 @@ public class AwsClientFactories {
   }
 
   /**
-   * Configure the endpoint setting for a client
+   * 为客户端配置自定义端点覆盖地址。
    *
-   * @deprecated Not for public use. To configure the endpoint for a client, please use {@link
-   *     S3FileIOProperties#applyEndpointConfigurations(S3ClientBuilder)}, {@link
-   *     AwsProperties#applyGlueEndpointConfigurations(GlueClientBuilder)}, or {@link
-   *     AwsProperties#applyDynamoDbEndpointConfigurations(DynamoDbClientBuilder)} accordingly. It
-   *     will be removed in 2.0.0
+   * @param builder 客户端构建器
+   * @param endpoint 端点 URL，为 null 时不设置
+   * @param <T> 客户端构建器类型
+   * @deprecated 不再供外部使用，请改用 {@link
+   *     S3FileIOProperties#applyEndpointConfigurations(S3ClientBuilder)}、{@link
+   *     AwsProperties#applyGlueEndpointConfigurations(GlueClientBuilder)} 或 {@link
+   *     AwsProperties#applyDynamoDbEndpointConfigurations(DynamoDbClientBuilder)}， 将在 2.0.0 移除
    */
   @Deprecated
   public static <T extends SdkClientBuilder> void configureEndpoint(T builder, String endpoint) {
@@ -193,10 +199,12 @@ public class AwsClientFactories {
   }
 
   /**
-   * Build an S3Configuration object
+   * 构建 S3Configuration 对象，设置 path style 访问与 ARN 区域解析开关。
    *
-   * @deprecated Not for public use. To build an S3Configuration object, use
-   *     S3Configuration.builder() directly. It will be removed in 2.0.0
+   * @param pathStyleAccess 是否启用 path style 访问
+   * @param s3UseArnRegionEnabled 是否允许使用 ARN 中的区域
+   * @return 配置好的 {@link software.amazon.awssdk.services.s3.S3Configuration}
+   * @deprecated 不再供外部使用，请直接使用 S3Configuration.builder()，将在 2.0.0 移除
    */
   @Deprecated
   public static S3Configuration s3Configuration(
@@ -208,11 +216,18 @@ public class AwsClientFactories {
   }
 
   /**
-   * Build an AwsBasicCredential object
+   * 根据访问密钥构建静态凭证提供者；密钥为空时返回默认凭证提供者。
    *
-   * @deprecated Not for public use. To configure the credentials for a s3 client, please use {@link
-   *     S3FileIOProperties#applyCredentialConfigurations(AwsClientProperties, S3ClientBuilder)} in
-   *     AwsProperties. It will be removed in 2.0.0.
+   * <p>逻辑：若 accessKeyId 非空，有 sessionToken 则构建会话凭证，否则构建基本凭证； accessKeyId 为空时返回
+   * DefaultCredentialsProvider，走 AWS 默认凭证链。
+   *
+   * @param accessKeyId AWS 访问密钥 ID
+   * @param secretAccessKey AWS 秘密访问密钥
+   * @param sessionToken AWS 会话令牌（临时凭证时使用）
+   * @return 凭证提供者实例
+   * @deprecated 不再供外部使用，请改用 {@link
+   *     S3FileIOProperties#applyCredentialConfigurations(AwsClientProperties, S3ClientBuilder)}， 将在
+   *     2.0.0 移除
    */
   @Deprecated
   static AwsCredentialsProvider credentialsProvider(

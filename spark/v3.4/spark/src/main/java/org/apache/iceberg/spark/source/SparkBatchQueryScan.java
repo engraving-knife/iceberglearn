@@ -57,6 +57,15 @@ import org.apache.spark.sql.connector.read.SupportsRuntimeV2Filtering;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：批式查询扫描，构建基于快照的批式数据扫描。
+ *
+ * <p>设计意图：在 SparkScan 之上增加批式查询的分区与读取工厂构建。
+ *
+ * <p>上下游关系：由 SparkScanBuilder 在批式读取时创建。
+ */
 class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
     implements SupportsRuntimeV2Filtering {
 
@@ -90,12 +99,12 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
   Long snapshotId() {
     return snapshotId;
   }
-
+  /** 执行 taskJavaClass 相关操作。 */
   @Override
   protected Class<PartitionScanTask> taskJavaClass() {
     return PartitionScanTask.class;
   }
-
+  /** 执行 filterAttributes 相关操作。 */
   @Override
   public NamedReference[] filterAttributes() {
     Set<Integer> partitionFieldSourceIds = Sets.newHashSet();
@@ -117,7 +126,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         .map(fieldId -> Spark3Util.toNamedReference(quotedNameById.get(fieldId)))
         .toArray(NamedReference[]::new);
   }
-
+  /** 过滤。 */
   @Override
   public void filter(Predicate[] predicates) {
     Expression runtimeFilterExpr = convertRuntimeFilters(predicates);
@@ -179,7 +188,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
 
     return runtimeFilterExpr;
   }
-
+  /** 执行 estimateStatistics 相关操作。 */
   @Override
   public Statistics estimateStatistics() {
     if (scan() == null) {
@@ -207,7 +216,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
       return estimateStatistics(snapshot);
     }
   }
-
+  /** 判断是否相等。 */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public boolean equals(Object o) {
@@ -231,7 +240,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         && Objects.equals(asOfTimestamp, that.asOfTimestamp)
         && Objects.equals(tag, that.tag);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -246,7 +255,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         asOfTimestamp,
         tag);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(

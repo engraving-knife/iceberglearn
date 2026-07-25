@@ -31,6 +31,12 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.connector.catalog.CatalogV2Implicits
 import org.apache.spark.sql.connector.catalog.Identifier
 import org.apache.spark.sql.connector.catalog.TableCatalog
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：设置写入分布与排序的物理执行节点，为写入施加要求的分布与排序。
+ * <p>设计意图：实现 SetWriteDistributionAndOrdering 的物理执行，注入 shuffle/sort。
+ * <p>上下游关系：由 ExtendedDataSourceV2Strategy 从 SetWriteDistributionAndOrdering 创建。
+ */
 
 case class SetWriteDistributionAndOrderingExec(
     catalog: TableCatalog,
@@ -41,6 +47,7 @@ case class SetWriteDistributionAndOrderingExec(
   import CatalogV2Implicits._
 
   override lazy val output: Seq[Attribute] = Nil
+  /** 执行任务。 */
 
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
@@ -68,6 +75,7 @@ case class SetWriteDistributionAndOrderingExec(
 
     Nil
   }
+  /** 执行 simpleString 相关操作。 */
 
   override def simpleString(maxFields: Int): String = {
     val tableIdent = s"${catalog.name}.${ident.quoted}"

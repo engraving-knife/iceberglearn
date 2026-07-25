@@ -37,6 +37,13 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @ExtendWith(S3MockExtension.class)
+/**
+ * 文件级说明：测试 TestS3InputStream 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3InputStream 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3InputStream {
   @RegisterExtension
   public static final S3MockExtension S3_MOCK = S3MockExtension.builder().silent().build();
@@ -44,11 +51,17 @@ public class TestS3InputStream {
   private final S3Client s3 = S3_MOCK.createS3ClientV2();
   private final Random random = new Random(1);
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     createBucket("bucket");
   }
 
+  /**
+   * 测试场景：Read。
+   *
+   * <p>验证该方法在 Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRead() throws Exception {
     S3URI uri = new S3URI("s3://bucket/path/to/read.dat");
@@ -84,6 +97,7 @@ public class TestS3InputStream {
     }
   }
 
+  /** 辅助方法：readAndCheck。 */
   private void readAndCheck(
       SeekableInputStream in, long rangeStart, int size, byte[] original, boolean buffered)
       throws IOException {
@@ -107,6 +121,11 @@ public class TestS3InputStream {
         .isEqualTo(Arrays.copyOfRange(original, (int) rangeStart, (int) rangeEnd));
   }
 
+  /**
+   * 测试场景：Range Read。
+   *
+   * <p>验证该方法在 Range Read 条件下的行为是否符合预期。
+   */
   @Test
   public void testRangeRead() throws Exception {
     S3URI uri = new S3URI("s3://bucket/path/to/range-read.dat");
@@ -140,6 +159,7 @@ public class TestS3InputStream {
     }
   }
 
+  /** 辅助方法：readAndCheckRanges。 */
   private void readAndCheckRanges(
       RangeReadable in, byte[] original, long position, byte[] buffer, int offset, int length)
       throws IOException {
@@ -149,6 +169,11 @@ public class TestS3InputStream {
         .isEqualTo(Arrays.copyOfRange(original, offset, offset + length));
   }
 
+  /**
+   * 测试场景：Close。
+   *
+   * <p>验证该方法在 Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testClose() throws Exception {
     S3URI uri = new S3URI("s3://bucket/path/to/closed.dat");
@@ -159,6 +184,11 @@ public class TestS3InputStream {
         .hasMessage("already closed");
   }
 
+  /**
+   * 测试场景：Seek。
+   *
+   * <p>验证该方法在 Seek 条件下的行为是否符合预期。
+   */
   @Test
   public void testSeek() throws Exception {
     S3URI uri = new S3URI("s3://bucket/path/to/seek.dat");
@@ -175,12 +205,14 @@ public class TestS3InputStream {
     }
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] data = new byte[size];
     random.nextBytes(data);
     return data;
   }
 
+  /** 辅助方法：writeS3Data。 */
   private void writeS3Data(S3URI uri, byte[] data) throws IOException {
     s3.putObject(
         PutObjectRequest.builder()
@@ -191,6 +223,7 @@ public class TestS3InputStream {
         RequestBody.fromBytes(data));
   }
 
+  /** 辅助方法：createBucket。 */
   private void createBucket(String bucketName) {
     try {
       s3.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());

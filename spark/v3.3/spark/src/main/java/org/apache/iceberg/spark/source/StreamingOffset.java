@@ -29,6 +29,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 import org.apache.spark.sql.connector.read.streaming.Offset;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 StreamingOffset。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class StreamingOffset extends Offset {
   static final StreamingOffset START_OFFSET = new StreamingOffset(-1L, -1, false);
 
@@ -57,6 +64,7 @@ class StreamingOffset extends Offset {
     this.scanAllFiles = scanAllFiles;
   }
 
+  /** 执行该方法的具体逻辑。 */
   static StreamingOffset fromJson(String json) {
     Preconditions.checkNotNull(json, "Cannot parse StreamingOffset JSON: null");
 
@@ -69,6 +77,7 @@ class StreamingOffset extends Offset {
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   static StreamingOffset fromJson(InputStream inputStream) {
     Preconditions.checkNotNull(inputStream, "Cannot parse StreamingOffset from inputStream: null");
 
@@ -82,6 +91,11 @@ class StreamingOffset extends Offset {
     return fromJsonNode(node);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String json() {
     StringWriter writer = new StringWriter();
@@ -102,18 +116,22 @@ class StreamingOffset extends Offset {
     return writer.toString();
   }
 
+  /** 执行该方法的具体逻辑。 */
   long snapshotId() {
     return snapshotId;
   }
 
+  /** 执行该方法的具体逻辑。 */
   long position() {
     return position;
   }
 
+  /** 执行该方法的具体逻辑。 */
   boolean shouldScanAllFiles() {
     return scanAllFiles;
   }
 
+  /** 判断是否与给定对象相等。 */
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StreamingOffset) {
@@ -126,11 +144,13 @@ class StreamingOffset extends Offset {
     }
   }
 
+  /** 返回该对象的哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hashCode(snapshotId, position, scanAllFiles);
   }
 
+  /** 返回该对象的字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -138,6 +158,7 @@ class StreamingOffset extends Offset {
         snapshotId, position, scanAllFiles);
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static StreamingOffset fromJsonNode(JsonNode node) {
     // The version of StreamingOffset. The offset was created with a version number
     // used to validate when deserializing from json string.
@@ -152,6 +173,7 @@ class StreamingOffset extends Offset {
     int position = JsonUtil.getInt(POSITION, node);
     boolean shouldScanAllFiles = JsonUtil.getBool(SCAN_ALL_FILES, node);
 
+    /** 执行该方法的具体逻辑。 */
     return new StreamingOffset(snapshotId, position, shouldScanAllFiles);
   }
 }

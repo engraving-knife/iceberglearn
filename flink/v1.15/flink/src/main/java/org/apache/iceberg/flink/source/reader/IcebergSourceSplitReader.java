@@ -38,6 +38,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg Source 分片读取器，按 split 读取记录并构造批次。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：调用 ReaderFunction 读取 split 数据，产出记录批次。
+ *
+ * <p>设计意图：实现 Flink SplitReader；被 SourceReader 框架调用。
+ */
 class IcebergSourceSplitReader<T> implements SplitReader<RecordAndPosition<T>, IcebergSourceSplit> {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergSourceSplitReader.class);
 

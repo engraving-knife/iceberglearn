@@ -31,11 +31,22 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 
 /**
- * Generates mapping from field IDs to ORC qualified names.
+ * 生成 Iceberg 字段 id → ORC 限定列名映射的 Schema 访问器。
  *
- * <p>This visitor also enclose column names in backticks i.e. ` so that ORC can correctly parse
- * column names with special characters. A comparison of ORC convention with Iceberg convention is
- * provided below
+ * <p>所属模块：iceberg-orc。用于把 Iceberg 的字段 id 映射为 ORC 读取/谓词下推所需的列路径名。
+ *
+ * <p>职责：遍历 Iceberg Schema 树，维护当前字段路径栈，为每个有 id 的节点生成 ORC 限定名 （用 "." 连接，各段用反引号包裹以支持特殊字符），存入 idToName
+ * 映射。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>列名用反引号包裹（{@code `field`}），ORC 可正确解析含特殊字符的列名； 列名内含反引号则用双反引号转义。
+ *   <li>list 元素名统一为 {@code _elem}，map 的 key/value 名为 {@code _key}/{@code _value}， 与 ORC 内部命名约定一致。
+ *   <li>继承 {@link TypeUtil.SchemaVisitor}，利用 before/after 钩子维护路径栈， 无需手动传递上下文。
+ * </ul>
+ *
+ * <p>命名对照（Iceberg vs ORC）：
  *
  * <pre>{@code
  *                                      Iceberg           ORC
@@ -43,11 +54,14 @@ import org.apache.iceberg.types.Types;
  * struct -> field                      struct.field      struct.field
  * list -> element                      list.element      list._elem
  * list -> struct element -> field      list.field        list._elem.field
- * map -> key                           map.key           map._key
+ * map -> key                           map.key            map._key
  * map -> value                         map.value         map._value
  * map -> struct key -> field           map.key.field     map._key.field
  * map -> struct value -> field         map.field         map._value.field
  * }</pre>
+ *
+ * <p>上下游关系：被 {@link ORCSchemaUtil#idToOrcName} 调用；结果用于 {@link ExpressionToSearchArgument} 的字段
+ * id→列名映射。
  */
 class IdToOrcName extends TypeUtil.SchemaVisitor<Map<Integer, String>> {
   private static final Joiner DOT = Joiner.on(".");
@@ -131,12 +145,23 @@ class IdToOrcName extends TypeUtil.SchemaVisitor<Map<Integer, String>> {
     return idToName;
   }
 
+  /**
+   * 把当前路径 + name 拼接为 ORC 限定名，加入 idToName 映射。
+   *
+   * <p>逻辑：从 fieldNames 栈的 descendingIterator 取出从根到当前的路径段， 追加本节点 name，各段用 {@link #quoteName} 包裹反引号后用
+   * "." 连接。
+   */
   private void addField(String name, int fieldId) {
     List<String> fullName = Lists.newArrayList(fieldNames.descendingIterator());
     fullName.add(name);
     idToName.put(fieldId, DOT.join(Iterables.transform(fullName, this::quoteName)));
   }
 
+  /**
+   * 用反引号包裹列名，内部反引号用双反引号转义。
+   *
+   * <p>设计要点：ORC 使用反引号界定含特殊字符的列名，与 SQL 的标识符引用规则一致。
+   */
   private String quoteName(String name) {
     String escapedName =
         name.replace("`", "``"); // if the column name contains ` then escape it with another `

@@ -26,6 +26,13 @@ import org.apache.iceberg.util.StructLikeWrapper;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 RecordWrapperTest 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 RecordWrapperTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class RecordWrapperTest {
 
   private static final Types.StructType PRIMITIVE_WITHOUT_TIME =
@@ -57,21 +64,41 @@ public abstract class RecordWrapperTest {
           required(100, "time0", Types.TimeType.get()),
           optional(101, "time1", Types.TimeType.get()));
 
+  /**
+   * 测试场景：Simple Struct Without Time。
+   *
+   * <p>验证该方法在 Simple Struct Without Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testSimpleStructWithoutTime() {
     generateAndValidate(new Schema(PRIMITIVE_WITHOUT_TIME.fields()));
   }
 
+  /**
+   * 测试场景：Timestamp Without Zone。
+   *
+   * <p>验证该方法在 Timestamp Without Zone 条件下的行为是否符合预期。
+   */
   @Test
   public void testTimestampWithoutZone() {
     generateAndValidate(new Schema(TIMESTAMP_WITHOUT_ZONE.fields()));
   }
 
+  /**
+   * 测试场景：Time。
+   *
+   * <p>验证该方法在 Time 条件下的行为是否符合预期。
+   */
   @Test
   public void testTime() {
     generateAndValidate(new Schema(TIME.fields()));
   }
 
+  /**
+   * 测试场景：Nested Schema。
+   *
+   * <p>验证该方法在 Nested Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedSchema() {
     Types.StructType structType =
@@ -102,6 +129,7 @@ public abstract class RecordWrapperTest {
     generateAndValidate(new Schema(structType.fields()));
   }
 
+  /** 辅助方法：generateAndValidate。 */
   private void generateAndValidate(Schema schema) {
     generateAndValidate(schema, Assert::assertEquals);
   }
@@ -110,5 +138,6 @@ public abstract class RecordWrapperTest {
     void assertEquals(String message, StructLikeWrapper expected, StructLikeWrapper actual);
   }
 
+  /** 辅助方法：generateAndValidate。 */
   protected abstract void generateAndValidate(Schema schema, AssertMethod assertMethod);
 }

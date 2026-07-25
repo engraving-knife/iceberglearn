@@ -21,10 +21,25 @@ package org.apache.iceberg.flink.source.enumerator;
 import java.io.Closeable;
 import org.apache.flink.annotation.Internal;
 
-/** This interface is introduced so that we can plug in different split planner for unit test */
+/**
+ * 文件级说明：流式 split 规划器接口，用于持续模式下发现新增文件并规划 split。
+ *
+ * <p>所属模块：iceberg-flink（source/enumerator 子包），供流式 source 使用。
+ *
+ * <p>职责：从上次枚举位置（lastPosition）到当前表快照之间，发现新增的追加文件并规划为 split。
+ *
+ * <p>设计意图：提取为接口以便单元测试中替换不同的 split 规划实现。
+ *
+ * <p>上下游关系：被流式 enumerator 调用；实现类（如 ContinuousSplitPlannerImpl）负责具体的 文件扫描和 split 生成。
+ */
 @Internal
 public interface ContinuousSplitPlanner extends Closeable {
 
-  /** Discover the files appended between {@code lastPosition} and current table snapshot */
+  /**
+   * 发现 lastPosition 到当前表快照之间追加的文件并规划 split。
+   *
+   * @param lastPosition 上次枚举的位置（snapshotId）
+   * @return 连续枚举结果
+   */
   ContinuousEnumerationResult planSplits(IcebergEnumeratorPosition lastPosition);
 }

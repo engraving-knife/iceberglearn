@@ -31,28 +31,40 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.hadoop.HadoopConfigurable;
 import org.apache.iceberg.hadoop.SerializableConfiguration;
 
+/**
+ * 序列化工具类，提供 Java 对象与字节数组/Base64 字符串之间的互转，支持 Hadoop Configuration 的 可序列化处理。
+ *
+ * <p>所属模块：iceberg-core。
+ *
+ * <p>职责：把对象序列化为 byte[] 或 Base64 字符串，以及反向反序列化；对实现了 {@link HadoopConfigurable} 的对象，在序列化时把 Hadoop
+ * Configuration 转为 {@link SerializableConfiguration} 以保证可序列化。
+ *
+ * <p>设计意图：Iceberg 的任务对象常携带 Hadoop Configuration，而 Configuration 本身不可直接 Java 序列化。 通过
+ * HadoopConfigurable 接口 + confSerializer 回调，在序列化前注入可序列化的 Configuration 代理。
+ *
+ * <p>上下游关系：被 core 的任务序列化、引擎集成层使用；依赖 Hadoop 与 {@link SerializableConfiguration}。
+ */
 public class SerializationUtil {
 
   private SerializationUtil() {}
 
   /**
-   * Serialize an object to bytes. If the object implements {@link HadoopConfigurable}, its Hadoop
-   * configuration will be serialized into a {@link SerializableConfiguration}.
+   * 把对象序列化为字节数组。若对象实现了 {@link HadoopConfigurable}，其 Hadoop Configuration 会被序列化为 {@link
+   * SerializableConfiguration}。
    *
-   * @param obj object to serialize
-   * @return serialized bytes
+   * @param obj 待序列化对象
+   * @return 序列化后的字节数组
    */
   public static byte[] serializeToBytes(Object obj) {
     return serializeToBytes(obj, conf -> new SerializableConfiguration(conf)::get);
   }
 
   /**
-   * Serialize an object to bytes. If the object implements {@link HadoopConfigurable}, the
-   * confSerializer will be used to serialize Hadoop configuration used by the object.
+   * 把对象序列化为字节数组，使用指定的 confSerializer 序列化 Hadoop Configuration。
    *
-   * @param obj object to serialize
-   * @param confSerializer serializer for the Hadoop configuration
-   * @return serialized bytes
+   * @param obj 待序列化对象
+   * @param confSerializer Hadoop Configuration 的序列化器
+   * @return 序列化后的字节数组
    */
   public static byte[] serializeToBytes(
       Object obj, Function<Configuration, SerializableSupplier<Configuration>> confSerializer) {
@@ -69,6 +81,15 @@ public class SerializationUtil {
     }
   }
 
+  /**
+   * 从字节数组反序列化对象。
+   *
+   * @param bytes 字节数组，为 null 时返回 null
+   * @param <T> 目标类型
+   * @return 反序列化得到的对象
+   * @throws UncheckedIOException 反序列化 IO 异常
+   * @throws RuntimeException 类找不到时
+   */
   @SuppressWarnings("unchecked")
   public static <T> T deserializeFromBytes(byte[] bytes) {
     if (bytes == null) {
@@ -85,11 +106,24 @@ public class SerializationUtil {
     }
   }
 
+  /**
+   * 把对象序列化为 Base64 字符串（MIME 编码）。
+   *
+   * @param obj 待序列化对象
+   * @return Base64 编码字符串
+   */
   public static String serializeToBase64(Object obj) {
     byte[] bytes = serializeToBytes(obj);
     return new String(Base64.getMimeEncoder().encode(bytes), StandardCharsets.UTF_8);
   }
 
+  /**
+   * 从 Base64 字符串反序列化对象。
+   *
+   * @param base64 Base64 编码字符串，为 null 时返回 null
+   * @param <T> 目标类型
+   * @return 反序列化得到的对象
+   */
   public static <T> T deserializeFromBase64(String base64) {
     if (base64 == null) {
       return null;

@@ -20,6 +20,18 @@ package org.apache.iceberg.types;
 
 import java.util.Objects;
 
+/**
+ * Java 哈希函数接口：为 Iceberg 类型提供 Java 语义的哈希值计算。
+ *
+ * <p>所属模块：iceberg-api（被 core 的数据哈希、去重等场景使用）。
+ *
+ * <p>职责：定义统一的 hash(T value) 方法；提供 {@link #forType(Type)} 工厂按类型返回 合适的哈希实现。
+ *
+ * <p>设计意图：字符串、struct、list 有专用哈希实现（见 {@link JavaHashes}）， 其余类型用 {@link
+ * Objects#hashCode}。函数式接口便于用方法引用实现。
+ *
+ * @param <T> 待哈希值的类型
+ */
 @FunctionalInterface
 public interface JavaHash<T> {
   int hash(T value);

@@ -22,6 +22,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 文件级说明：OAuth2 错误响应的 JSON 解析工具类。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 序列化层）。
+ *
+ * <p>职责：将 OAuth2 令牌端点的错误响应 JSON 解析为 {@link ErrorResponse}。 OAuth2 错误响应使用 error/error_description
+ * 字段（RFC 6749 第5.2节）， 与 Iceberg 标准 ErrorResponse 格式不同，需要专门解析。
+ *
+ * <p>设计意图：将 OAuth2 特有的 error 字段映射为 ErrorResponse 的 type 字段， error_description 映射为 message
+ * 字段，使后续错误处理流程统一。
+ */
 public class OAuthErrorResponseParser {
 
   private OAuthErrorResponseParser() {}

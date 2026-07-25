@@ -44,6 +44,23 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.ParallelIterable;
 
+/**
+ * 文件级说明：Manifest 文件分组器，负责按调度策略把多个 manifest 文件拆分为扫描任务。
+ *
+ * <p>所属模块：iceberg-core。职责：接收一组 manifest 文件，按分区内/分区间拆分策略 把它们组织为 ScanTask 列表，供并行扫描执行。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>manifest 分组：把多个小 manifest 合并为更大的扫描单元，平衡并行度与开销。
+ *   <li>分区内文件合并：同一分区内的数据文件可合并为一个 CombinedScanTask。
+ *   <li>支持 split-size：按目标任务大小拆分大文件，控制单个任务的数据量。
+ *   <li>支持 delete file 关联：把 position/equality delete 文件关联到对应数据文件。
+ * </ul>
+ *
+ * <p>上下游关系：由 TableScan 调用；输出 ScanTask 列表供引擎层执行；依赖 {@link ManifestFiles}（读取 manifest）、{@link
+ * ManifestMergeManager}（合并管理）。
+ */
 class ManifestGroup {
   private static final Types.StructType EMPTY_STRUCT = Types.StructType.of();
 
@@ -170,6 +187,12 @@ class ManifestGroup {
     return plan(ManifestGroup::createFileScanTasks);
   }
 
+  /**
+   * 按自定义任务创建函数规划扫描任务。
+   *
+   * @param createTasksFunc 任务创建函数
+   * @return 扫描任务的可迭代集合
+   */
   public <T extends ScanTask> CloseableIterable<T> plan(CreateTasksFunction<T> createTasksFunc) {
     LoadingCache<Integer, ResidualEvaluator> residualCache =
         Caffeine.newBuilder()
@@ -212,6 +235,11 @@ class ManifestGroup {
   }
 
   /**
+   * 返回所有数据文件的 manifest 条目。
+   *
+   * @return manifest 条目的可迭代集合
+   */
+  /**
    * Returns an iterable for manifest entries in the set of manifests.
    *
    * <p>Entries are not copied and it is the caller's responsibility to make defensive copies if
@@ -223,6 +251,11 @@ class ManifestGroup {
     return CloseableIterable.concat(entries((manifest, entries) -> entries));
   }
 
+  /**
+   * 按分区分组返回数据文件集合。
+   *
+   * @return 分区分组的数据文件可迭代集合
+   */
   /**
    * Returns an iterable for groups of data files in the set of manifests.
    *

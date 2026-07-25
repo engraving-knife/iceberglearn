@@ -40,7 +40,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-/** Test for {@link TableLoader}. */
+/**
+ * 文件级说明：测试 TestCatalogTableLoader 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestCatalogTableLoader 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestCatalogTableLoader extends FlinkTestBase {
 
   private static File warehouse = null;
@@ -48,6 +54,7 @@ public class TestCatalogTableLoader extends FlinkTestBase {
   private static final Schema SCHEMA =
       new Schema(Types.NestedField.required(1, "f1", Types.StringType.get()));
 
+  /** 辅助方法：createWarehouse，create Warehouse。 */
   @BeforeClass
   public static void createWarehouse() throws IOException {
     warehouse = File.createTempFile("warehouse", null);
@@ -55,6 +62,7 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     hiveConf.set("my_key", "my_value");
   }
 
+  /** 辅助方法：dropWarehouse，drop Warehouse。 */
   @AfterClass
   public static void dropWarehouse() throws IOException {
     if (warehouse != null && warehouse.exists()) {
@@ -64,6 +72,11 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     }
   }
 
+  /**
+   * 测试场景：Hadoop Table Loader。
+   *
+   * <p>验证该方法在 Hadoop Table Loader 条件下的行为是否符合预期。
+   */
   @Test
   public void testHadoopTableLoader() throws IOException, ClassNotFoundException {
     String location = "file:" + warehouse + "/my_table";
@@ -71,6 +84,11 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     validateTableLoader(TableLoader.fromHadoopTable(location, hiveConf));
   }
 
+  /**
+   * 测试场景：Hive Catalog Table Loader。
+   *
+   * <p>验证该方法在 Hive Catalog Table Loader 条件下的行为是否符合预期。
+   */
   @Test
   public void testHiveCatalogTableLoader() throws IOException, ClassNotFoundException {
     CatalogLoader loader = CatalogLoader.hive("my_catalog", hiveConf, Maps.newHashMap());
@@ -80,6 +98,7 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     validateTableLoader(TableLoader.fromCatalog(catalogLoader, IDENTIFIER));
   }
 
+  /** 辅助方法：validateTableLoader，validate Table Loader。 */
   private static void validateTableLoader(TableLoader loader)
       throws IOException, ClassNotFoundException {
     TableLoader copied = javaSerdes(loader);
@@ -91,6 +110,7 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     }
   }
 
+  /** 辅助方法：validateHadoopConf，validate Hadoop Conf。 */
   private static void validateHadoopConf(Table table) {
     FileIO io = table.io();
     Assertions.assertThat(io)
@@ -100,6 +120,7 @@ public class TestCatalogTableLoader extends FlinkTestBase {
     Assert.assertEquals("my_value", hadoopIO.conf().get("my_key"));
   }
 
+  /** 辅助方法：javaSerdes，java Serdes。 */
   @SuppressWarnings("unchecked")
   private static <T> T javaSerdes(T object) throws IOException, ClassNotFoundException {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();

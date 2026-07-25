@@ -35,6 +35,13 @@ import org.apache.spark.sql.connector.write.RowLevelOperationInfo;
 import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkCopyOnWriteOperation。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkCopyOnWriteOperation implements RowLevelOperation {
 
   private final SparkSession spark;
@@ -61,16 +68,32 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
     this.isolationLevel = isolationLevel;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Command command() {
     return command;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param options 参数
+   * @return 结果对象
+   */
   @Override
   public ScanBuilder newScanBuilder(CaseInsensitiveStringMap options) {
     if (lazyScanBuilder == null) {
       lazyScanBuilder =
           new SparkScanBuilder(spark, table, branch, options) {
+            /**
+             * 构造并返回目标对象。
+             *
+             * @return 结果对象
+             */
             @Override
             public Scan build() {
               Scan scan = super.buildCopyOnWriteScan();
@@ -83,6 +106,12 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
     return lazyScanBuilder;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param info 参数
+   * @return 结果对象
+   */
   @Override
   public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
     if (lazyWriteBuilder == null) {
@@ -93,6 +122,11 @@ class SparkCopyOnWriteOperation implements RowLevelOperation {
     return lazyWriteBuilder;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public NamedReference[] requiredMetadataAttributes() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());

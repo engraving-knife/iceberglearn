@@ -36,6 +36,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 SnowflakeCatalogTest 的功能。
+ *
+ * <p>所属模块：iceberg-snowflake。职责：验证 SnowflakeCatalogTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class SnowflakeCatalogTest {
 
   private static final String TEST_CATALOG_NAME = "slushLog";
@@ -45,6 +52,7 @@ public class SnowflakeCatalogTest {
   private SnowflakeCatalog.FileIOFactory fakeFileIOFactory;
   private Map<String, String> properties;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     catalog = new SnowflakeCatalog();
@@ -107,6 +115,7 @@ public class SnowflakeCatalogTest {
 
     fakeFileIOFactory =
         new SnowflakeCatalog.FileIOFactory() {
+          /** 辅助方法：newFileIO。 */
           @Override
           public FileIO newFileIO(String impl, Map<String, String> prop, Object hadoopConf) {
             return fakeFileIO;
@@ -117,6 +126,11 @@ public class SnowflakeCatalogTest {
     catalog.initialize(TEST_CATALOG_NAME, fakeClient, fakeFileIOFactory, properties);
   }
 
+  /**
+   * 测试场景：Initialize Null Client。
+   *
+   * <p>验证该方法在 Initialize Null Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testInitializeNullClient() {
     Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
@@ -125,6 +139,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("snowflakeClient must be non-null");
   }
 
+  /**
+   * 测试场景：Initialize Null File IO。
+   *
+   * <p>验证该方法在 Initialize Null File IO 条件下的行为是否符合预期。
+   */
   @Test
   public void testInitializeNullFileIO() {
     Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
@@ -132,12 +151,22 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("fileIOFactory must be non-null");
   }
 
+  /**
+   * 测试场景：List Namespace In Root。
+   *
+   * <p>验证该方法在 List Namespace In Root 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaceInRoot() {
     Assertions.assertThat(catalog.listNamespaces())
         .containsExactly(Namespace.of("DB_1"), Namespace.of("DB_2"), Namespace.of("DB_3"));
   }
 
+  /**
+   * 测试场景：List Namespace Within DB。
+   *
+   * <p>验证该方法在 List Namespace Within DB 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaceWithinDB() {
     String dbName = "DB_1";
@@ -145,6 +174,11 @@ public class SnowflakeCatalogTest {
         .containsExactly(Namespace.of(dbName, "SCHEMA_1"));
   }
 
+  /**
+   * 测试场景：List Namespace Within Non Existent DB。
+   *
+   * <p>验证该方法在 List Namespace Within Non Existent DB 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaceWithinNonExistentDB() {
     // Existence check for nonexistent parent namespaces is optional in the SupportsNamespaces
@@ -156,6 +190,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining(dbName);
   }
 
+  /**
+   * 测试场景：List Namespace Within Schema。
+   *
+   * <p>验证该方法在 List Namespace Within Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testListNamespaceWithinSchema() {
     // No "sub-namespaces" beyond database.schema; invalid to try to list namespaces given
@@ -168,6 +207,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("DB_3.SCHEMA_4");
   }
 
+  /**
+   * 测试场景：List Tables。
+   *
+   * <p>验证该方法在 List Tables 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTables() {
     Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
@@ -175,6 +219,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("listTables must be at SCHEMA level");
   }
 
+  /**
+   * 测试场景：List Tables Within DB。
+   *
+   * <p>验证该方法在 List Tables Within DB 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesWithinDB() {
     String dbName = "DB_1";
@@ -183,6 +232,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("listTables must be at SCHEMA level");
   }
 
+  /**
+   * 测试场景：List Tables Within Nonexistent DB。
+   *
+   * <p>验证该方法在 List Tables Within Nonexistent DB 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesWithinNonexistentDB() {
     String dbName = "NONEXISTENT_DB";
@@ -193,6 +247,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining(dbName);
   }
 
+  /**
+   * 测试场景：List Tables Within Schema。
+   *
+   * <p>验证该方法在 List Tables Within Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesWithinSchema() {
     String dbName = "DB_2";
@@ -203,6 +262,11 @@ public class SnowflakeCatalogTest {
             TableIdentifier.of("DB_2", "SCHEMA_2", "TAB_4"));
   }
 
+  /**
+   * 测试场景：List Tables Within Nonexistent Schema。
+   *
+   * <p>验证该方法在 List Tables Within Nonexistent Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testListTablesWithinNonexistentSchema() {
     String dbName = "DB_2";
@@ -213,12 +277,22 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("DB_2.NONEXISTENT_SCHEMA");
   }
 
+  /**
+   * 测试场景：Load 3 Table。
+   *
+   * <p>验证该方法在 Load 3 Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadS3Table() {
     Table table = catalog.loadTable(TableIdentifier.of(Namespace.of("DB_1", "SCHEMA_1"), "TAB_1"));
     Assertions.assertThat(table.location()).isEqualTo("s3://tab1");
   }
 
+  /**
+   * 测试场景：Load Azure Table。
+   *
+   * <p>验证该方法在 Load Azure Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadAzureTable() {
     Table table = catalog.loadTable(TableIdentifier.of(Namespace.of("DB_2", "SCHEMA_2"), "TAB_3"));
@@ -226,12 +300,22 @@ public class SnowflakeCatalogTest {
         .isEqualTo("wasbs://mycontainer@myaccount.blob.core.windows.net/tab1");
   }
 
+  /**
+   * 测试场景：Load Gcs Table。
+   *
+   * <p>验证该方法在 Load Gcs Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadGcsTable() {
     Table table = catalog.loadTable(TableIdentifier.of(Namespace.of("DB_3", "SCHEMA_3"), "TAB_5"));
     Assertions.assertThat(table.location()).isEqualTo("gs://tab5");
   }
 
+  /**
+   * 测试场景：Load Table With Malformed Table Identifier。
+   *
+   * <p>验证该方法在 Load Table With Malformed Table Identifier 条件下的行为是否符合预期。
+   */
   @Test
   public void testLoadTableWithMalformedTableIdentifier() {
     Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
@@ -248,6 +332,11 @@ public class SnowflakeCatalogTest {
         .withMessageContaining("DB_WITHOUT_SCHEMA.TAB_1");
   }
 
+  /**
+   * 测试场景：Close Before Initialize Doesnt Throw。
+   *
+   * <p>验证该方法在 Close Before Initialize Doesnt Throw 条件下的行为是否符合预期。
+   */
   @Test
   public void testCloseBeforeInitializeDoesntThrow() throws IOException {
     catalog = new SnowflakeCatalog();
@@ -261,6 +350,11 @@ public class SnowflakeCatalogTest {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Close。
+   *
+   * <p>验证该方法在 Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testClose() throws IOException {
     catalog.newTableOps(TableIdentifier.of("DB_1", "SCHEMA_1", "TAB_1"));
@@ -273,6 +367,11 @@ public class SnowflakeCatalogTest {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Table Name From Table Operations。
+   *
+   * <p>验证该方法在 Table Name From Table Operations 条件下的行为是否符合预期。
+   */
   @Test
   public void testTableNameFromTableOperations() {
     SnowflakeTableOperations castedTableOps =
@@ -281,12 +380,22 @@ public class SnowflakeCatalogTest {
     Assertions.assertThat(castedTableOps.fullTableName()).isEqualTo("slushLog.DB_1.SCHEMA_1.TAB_1");
   }
 
+  /**
+   * 测试场景：Database Exists。
+   *
+   * <p>验证该方法在 Database Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testDatabaseExists() {
     Assertions.assertThat(catalog.namespaceExists(Namespace.of("DB_1"))).isTrue();
     Assertions.assertThat(catalog.namespaceExists(Namespace.of("NONEXISTENT_DB"))).isFalse();
   }
 
+  /**
+   * 测试场景：Schema Exists。
+   *
+   * <p>验证该方法在 Schema Exists 条件下的行为是否符合预期。
+   */
   @Test
   public void testSchemaExists() {
     Assertions.assertThat(catalog.namespaceExists(Namespace.of("DB_1", "SCHEMA_1"))).isTrue();

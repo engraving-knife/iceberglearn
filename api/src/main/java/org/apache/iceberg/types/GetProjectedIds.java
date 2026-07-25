@@ -23,6 +23,16 @@ import java.util.Set;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
+/**
+ * 收集字段 ID 访问者：遍历 schema 收集所有字段的 ID。
+ *
+ * <p>所属模块：iceberg-api（被 {@link TypeUtil#getProjectedIds} 使用）。
+ *
+ * <p>职责：后序遍历类型树，收集 struct 字段、list 元素、map key/value 的字段 ID。
+ *
+ * <p>设计意图：includeStructIds 控制是否收集 struct 类型字段的 ID（struct 字段本身也是字段）； 原始类型字段始终收集；list 元素和 map
+ * key/value 在子节点无结果时收集（避免重复）。
+ */
 class GetProjectedIds extends TypeUtil.SchemaVisitor<Set<Integer>> {
   private final boolean includeStructIds;
   private final Set<Integer> fieldIds = Sets.newHashSet();

@@ -45,13 +45,13 @@ import org.apache.spark.sql.types.TimestampType;
 import org.apache.spark.unsafe.types.UTF8String;
 
 /**
- * A Spark function implementation for the Iceberg bucket transform.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p>Example usage: {@code SELECT system.bucket(128, 'abc')}, which returns the bucket 122.
+ * <p>职责：Iceberg bucket 转换的 Spark 标量函数，按桶数对输入值取哈希分桶。
  *
- * <p>Note that for performance reasons, the given input number of buckets is not validated in the
- * implementations used in code-gen. The number of buckets must be positive to give meaningful
- * results.
+ * <p>设计意图：实现 Iceberg bucket transform 的 Spark 函数封装，支持运行时绑定。
+ *
+ * <p>上下游关系：由 SparkFunctions / SparkFunctionCatalog 注册。
  */
 public class BucketFunction implements UnboundFunction {
 
@@ -60,7 +60,7 @@ public class BucketFunction implements UnboundFunction {
 
   private static final Set<DataType> SUPPORTED_NUM_BUCKETS_TYPES =
       ImmutableSet.of(DataTypes.ByteType, DataTypes.ShortType, DataTypes.IntegerType);
-
+  /** 绑定输入类型。 */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public BoundFunction bind(StructType inputType) {
@@ -101,7 +101,7 @@ public class BucketFunction implements UnboundFunction {
           "Expected column to be date, tinyint, smallint, int, bigint, decimal, timestamp, string, or binary");
     }
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return name()
@@ -109,22 +109,23 @@ public class BucketFunction implements UnboundFunction {
         + "  numBuckets :: number of buckets to divide the rows into, e.g. bucket(100, 34) -> 79 (must be a tinyint, smallint, or int)\n"
         + "  col :: column to bucket (must be a date, integer, long, timestamp, decimal, string, or binary)";
   }
-
+  /** 返回名称。 */
   @Override
   public String name() {
     return "bucket";
   }
 
   public abstract static class BucketBase implements ScalarFunction<Integer> {
+    /** 应用转换。 */
     public static int apply(int numBuckets, int hashedValue) {
       return (hashedValue & Integer.MAX_VALUE) % numBuckets;
     }
-
+    /** 返回名称。 */
     @Override
     public String name() {
       return "bucket";
     }
-
+    /** 返回结果类型。 */
     @Override
     public DataType resultType() {
       return DataTypes.IntegerType;
@@ -148,17 +149,17 @@ public class BucketFunction implements UnboundFunction {
     public BucketInt(DataType sqlType) {
       this.sqlType = sqlType;
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return String.format("iceberg.bucket(%s)", sqlType.catalogString());
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       // return null for null input to match what Spark does in the code-generated versions.
@@ -187,17 +188,17 @@ public class BucketFunction implements UnboundFunction {
     public BucketLong(DataType sqlType) {
       this.sqlType = sqlType;
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return String.format("iceberg.bucket(%s)", sqlType.catalogString());
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -223,17 +224,17 @@ public class BucketFunction implements UnboundFunction {
     public static int hash(String value) {
       return BucketUtil.hash(value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.StringType};
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(string)";
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -245,6 +246,7 @@ public class BucketFunction implements UnboundFunction {
   }
 
   public static class BucketBinary extends BucketBase {
+    /** 执行 invoke 相关操作。 */
     public static Integer invoke(int numBuckets, byte[] value) {
       if (value == null) {
         return null;
@@ -257,12 +259,12 @@ public class BucketFunction implements UnboundFunction {
     public static int hash(ByteBuffer value) {
       return BucketUtil.hash(value);
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, DataTypes.BinaryType};
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -271,7 +273,7 @@ public class BucketFunction implements UnboundFunction {
         return invoke(input.getInt(NUM_BUCKETS_ORDINAL), input.getBinary(VALUE_ORDINAL));
       }
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(binary)";
@@ -302,12 +304,12 @@ public class BucketFunction implements UnboundFunction {
       this.precision = ((DecimalType) sqlType).precision();
       this.scale = ((DecimalType) sqlType).scale();
     }
-
+    /** 返回输入类型列表。 */
     @Override
     public DataType[] inputTypes() {
       return new DataType[] {DataTypes.IntegerType, sqlType};
     }
-
+    /** 执行 produceResult 相关操作。 */
     @Override
     public Integer produceResult(InternalRow input) {
       if (input.isNullAt(NUM_BUCKETS_ORDINAL) || input.isNullAt(VALUE_ORDINAL)) {
@@ -318,7 +320,7 @@ public class BucketFunction implements UnboundFunction {
         return invoke(numBuckets, value);
       }
     }
-
+    /** 执行 canonicalName 相关操作。 */
     @Override
     public String canonicalName() {
       return "iceberg.bucket(decimal)";

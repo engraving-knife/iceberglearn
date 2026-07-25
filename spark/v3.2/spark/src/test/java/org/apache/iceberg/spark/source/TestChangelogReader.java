@@ -51,6 +51,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestChangelogReader 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 变更日志读取器 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestChangelogReader extends SparkTestBase {
   private static final Schema SCHEMA =
       new Schema(
@@ -66,6 +73,7 @@ public class TestChangelogReader extends SparkTestBase {
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /** 前。 */
   @Before
   public void before() throws IOException {
     table = catalog.createTable(TableIdentifier.of("default", "test"), SCHEMA, SPEC);
@@ -85,11 +93,13 @@ public class TestChangelogReader extends SparkTestBase {
     dataFile2 = writeDataFile(records2);
   }
 
+  /** 后。 */
   @After
   public void after() {
     catalog.dropTable(TableIdentifier.of("default", "test"));
   }
 
+  /** 测试插入场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInsert() throws IOException {
     table.newAppend().appendFile(dataFile1).commit();
@@ -119,6 +129,7 @@ public class TestChangelogReader extends SparkTestBase {
     assertEquals("Should have expected rows", expectedRows, internalRowsToJava(rows));
   }
 
+  /** 测试删除场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDelete() throws IOException {
     table.newAppend().appendFile(dataFile1).commit();
@@ -148,6 +159,7 @@ public class TestChangelogReader extends SparkTestBase {
     assertEquals("Should have expected rows", expectedRows, internalRowsToJava(rows));
   }
 
+  /** 测试数据文件重写场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDataFileRewrite() throws IOException {
     table.newAppend().appendFile(dataFile1).commit();
@@ -176,6 +188,7 @@ public class TestChangelogReader extends SparkTestBase {
     Assert.assertEquals("Should have no rows", 0, rows.size());
   }
 
+  /** 测试mix删除与插入场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMixDeleteAndInsert() throws IOException {
     table.newAppend().appendFile(dataFile1).commit();
@@ -217,10 +230,12 @@ public class TestChangelogReader extends SparkTestBase {
     assertEquals("Should have expected rows", expectedRows, internalRowsToJava(rows));
   }
 
+  /** 新建扫描。 */
   private IncrementalChangelogScan newScan() {
     return table.newIncrementalChangelogScan();
   }
 
+  /** 添加期望行。 */
   private List<Object[]> addExpectedRows(
       List<Object[]> expectedRows,
       ChangelogOperation operation,
@@ -233,10 +248,12 @@ public class TestChangelogReader extends SparkTestBase {
     return expectedRows;
   }
 
+  /** internal行到Java。 */
   protected List<Object[]> internalRowsToJava(List<InternalRow> rows) {
     return rows.stream().map(this::toJava).collect(Collectors.toList());
   }
 
+  /** 到Java。 */
   private Object[] toJava(InternalRow row) {
     Object[] values = new Object[row.numFields()];
     values[0] = row.getInt(0);
@@ -247,6 +264,7 @@ public class TestChangelogReader extends SparkTestBase {
     return values;
   }
 
+  /** 写数据文件。 */
   private DataFile writeDataFile(List<Record> records) throws IOException {
     // records all use IDs that are in bucket id_bucket=0
     return FileHelpers.writeDataFile(

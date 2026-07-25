@@ -21,29 +21,24 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 
-/** An interface representing a stored procedure available for execution. */
+/**
+ * Spark DataSource V2 连接器扩展，封装为可通过 SQL CALL 调用的存储过程。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：接口 Procedure。
+ *
+ * <p>上下游：由 DataSource V2 框架调用，桥接 Spark 与 Iceberg。
+ */
 public interface Procedure {
-  /** Returns the input parameters of this procedure. */
+  /** 执行该方法的具体逻辑。 */
   ProcedureParameter[] parameters();
 
-  /** Returns the type of rows produced by this procedure. */
+  /** 执行该方法的具体逻辑。 */
   StructType outputType();
 
-  /**
-   * Executes this procedure.
-   *
-   * <p>Spark will align the provided arguments according to the input parameters defined in {@link
-   * #parameters()} either by position or by name before execution.
-   *
-   * <p>Implementations may provide a summary of execution by returning one or many rows as a
-   * result. The schema of output rows must match the defined output type in {@link #outputType()}.
-   *
-   * @param args input arguments
-   * @return the result of executing this procedure with the given arguments
-   */
+  /** 执行该方法的具体逻辑。 */
   InternalRow[] call(InternalRow args);
 
-  /** Returns the description of this procedure. */
+  /** 执行该方法的具体逻辑。 */
   default String description() {
     return this.getClass().toString();
   }

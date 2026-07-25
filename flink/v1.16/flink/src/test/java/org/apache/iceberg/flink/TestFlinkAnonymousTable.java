@@ -29,8 +29,20 @@ import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestFlinkAnonymousTable 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkAnonymousTable 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkAnonymousTable extends FlinkTestBase {
 
+  /**
+   * 测试场景：Write Anonymous Table。
+   *
+   * <p>验证该方法在 Write Anonymous Table 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteAnonymousTable() throws Exception {
     File warehouseDir = TEMPORARY_FOLDER.newFolder();

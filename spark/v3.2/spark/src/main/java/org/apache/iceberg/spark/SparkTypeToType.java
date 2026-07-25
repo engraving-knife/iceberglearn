@@ -42,6 +42,11 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampType;
 import org.apache.spark.sql.types.VarcharType;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkTypeToType。
+ */
 class SparkTypeToType extends SparkTypeVisitor<Type> {
   private final StructType root;
   private int nextId = 0;
@@ -56,12 +61,20 @@ class SparkTypeToType extends SparkTypeVisitor<Type> {
     this.nextId = root.fields().length;
   }
 
+  /** 返回nextid。 */
   private int getNextId() {
     int next = nextId;
     nextId += 1;
     return next;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param struct 参数
+   * @param types 参数
+   * @return 结果对象
+   */
   @Override
   @SuppressWarnings("ReferenceEquality")
   public Type struct(StructType struct, List<Type> types) {
@@ -92,11 +105,25 @@ class SparkTypeToType extends SparkTypeVisitor<Type> {
     return Types.StructType.of(newFields);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param field 参数
+   * @param typeResult 参数
+   * @return 结果对象
+   */
   @Override
   public Type field(StructField field, Type typeResult) {
     return typeResult;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param array 参数
+   * @param elementType 参数
+   * @return 结果对象
+   */
   @Override
   public Type array(ArrayType array, Type elementType) {
     if (array.containsNull()) {
@@ -106,6 +133,14 @@ class SparkTypeToType extends SparkTypeVisitor<Type> {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param map 参数
+   * @param keyType 参数
+   * @param valueType 参数
+   * @return 结果对象
+   */
   @Override
   public Type map(MapType map, Type keyType, Type valueType) {
     if (map.valueContainsNull()) {
@@ -115,6 +150,12 @@ class SparkTypeToType extends SparkTypeVisitor<Type> {
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @param atomic 参数
+   * @return 结果对象
+   */
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   @Override
   public Type atomic(DataType atomic) {

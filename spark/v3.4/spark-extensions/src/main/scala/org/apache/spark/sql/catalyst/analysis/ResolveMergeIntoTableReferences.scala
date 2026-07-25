@@ -35,11 +35,15 @@ import org.apache.spark.sql.catalyst.plans.logical.UpdateStarAction
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
- * A resolution rule similar to ResolveReferences in Spark but handles Iceberg MERGE operations.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：MERGE INTO 引用解析规则，解析 MERGE 语句中的表与列引用。
+ * <p>设计意图：在分析阶段完成 MERGE 源/目标/条件引用的解析与绑定。
+ * <p>上下游关系：由 IcebergSparkSessionExtensions 注册。
  */
 case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[LogicalPlan] {
 
   private lazy val analyzer: Analyzer = spark.sessionState.analyzer
+  /** 应用转换。 */
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperatorsUp {
     case m @ UnresolvedMergeIntoIcebergTable(targetTable, sourceTable, context)
@@ -100,6 +104,7 @@ case class ResolveMergeIntoTableReferences(spark: SparkSession) extends Rule[Log
         matchedActions = resolvedMatchedActions,
         notMatchedActions = resolvedNotMatchedActions)
   }
+  /** 执行 resolveCond 相关操作。 */
 
   private def resolveCond(condName: String, cond: Expression, plan: LogicalPlan): Expression = {
     val resolvedCond = analyzer.resolveExpressionByPlanChildren(cond, plan)

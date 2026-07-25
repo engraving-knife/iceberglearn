@@ -32,6 +32,13 @@ import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.HasPartitionKey;
 import org.apache.spark.sql.connector.read.InputPartition;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkInputPartition。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class SparkInputPartition implements InputPartition, HasPartitionKey, Serializable {
   private final Types.StructType groupingKeyType;
   private final ScanTaskGroup<?> taskGroup;
@@ -65,37 +72,66 @@ class SparkInputPartition implements InputPartition, HasPartitionKey, Serializab
     }
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public String[] preferredLocations() {
     return preferredLocations;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public InternalRow partitionKey() {
+    /** 执行该方法的具体逻辑。 */
     return new StructInternalRow(groupingKeyType).setStruct(taskGroup.groupingKey());
   }
 
+  /** 执行该方法的具体逻辑。 */
   @SuppressWarnings("unchecked")
   public <T extends ScanTask> ScanTaskGroup<T> taskGroup() {
     return (ScanTaskGroup<T>) taskGroup;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public <T extends ScanTask> boolean allTasksOfType(Class<T> javaClass) {
     return taskGroup.tasks().stream().allMatch(javaClass::isInstance);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Table table() {
     return tableBroadcast.value();
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public String branch() {
     return branch;
   }
 
+  /** 判断是否casesensitive。 */
   public boolean isCaseSensitive() {
     return caseSensitive;
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   public Schema expectedSchema() {
     if (expectedSchema == null) {
       this.expectedSchema = SchemaParser.fromJson(expectedSchemaString);

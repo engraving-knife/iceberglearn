@@ -29,19 +29,31 @@ import org.apache.spark.sql.types.StringType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 AvroWithSparkSchemaVisitor。
+ *
+ * <p>设计意图：访问者模式，按类型分派处理逻辑。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public abstract class AvroWithSparkSchemaVisitor<T>
     extends AvroWithPartnerByStructureVisitor<DataType, T> {
 
+  /** 判断是否stringtype。 */
   @Override
   protected boolean isStringType(DataType dataType) {
     return dataType instanceof StringType;
   }
 
+  /** 判断是否maptype。 */
   @Override
   protected boolean isMapType(DataType dataType) {
     return dataType instanceof MapType;
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected DataType arrayElementType(DataType arrayType) {
     Preconditions.checkArgument(
@@ -49,18 +61,21 @@ public abstract class AvroWithSparkSchemaVisitor<T>
     return ((ArrayType) arrayType).elementType();
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected DataType mapKeyType(DataType mapType) {
     Preconditions.checkArgument(isMapType(mapType), "Invalid map: %s is not a map", mapType);
     return ((MapType) mapType).keyType();
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected DataType mapValueType(DataType mapType) {
     Preconditions.checkArgument(isMapType(mapType), "Invalid map: %s is not a map", mapType);
     return ((MapType) mapType).valueType();
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Pair<String, DataType> fieldNameAndType(DataType structType, int pos) {
     Preconditions.checkArgument(
@@ -69,6 +84,7 @@ public abstract class AvroWithSparkSchemaVisitor<T>
     return Pair.of(field.name(), field.dataType());
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected DataType nullType() {
     return DataTypes.NullType;

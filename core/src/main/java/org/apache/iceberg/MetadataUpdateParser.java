@@ -31,8 +31,27 @@ import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.util.JsonUtil;
 import org.apache.iceberg.view.ViewVersionParser;
 
+/**
+ * {@link MetadataUpdate} 的 JSON 序列化/反序列化工具类。
+ *
+ * <p>所属模块：iceberg-core（核心实现层），用于把表元数据变更（MetadataUpdate）与 JSON 互转。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link #toJson(MetadataUpdate)}：把 MetadataUpdate 写成 JSON（含 action 字段标识变更类型）。
+ *   <li>{@link #fromJson(JsonNode)}：从 JSON 读取 MetadataUpdate 并按 action 分发到对应 read 方法。
+ *   <li>提供所有变更子类型的 write*&#47;read* 私有方法，覆盖 schema/spec/sortOrder/snapshot/ref/
+ *       properties/location/statistics/viewVersion 等变更类型。
+ * </ul>
+ *
+ * <p>设计意图：工具类不可实例化；按 action 字符串区分变更类型，便于 JSON 流式读写与跨版本兼容。
+ *
+ * <p>上下游关系：被 {@code MetadataLogEntry}、视图/表元数据日志等流程调用， 用于持久化与回放元数据变更历史。
+ */
 public class MetadataUpdateParser {
 
+  /** 工具类禁止实例化。 */
   private MetadataUpdateParser() {}
 
   private static final String ACTION = "action";
@@ -144,14 +163,27 @@ public class MetadataUpdateParser {
           .put(MetadataUpdate.SetCurrentViewVersion.class, SET_CURRENT_VIEW_VERSION)
           .buildOrThrow();
 
+  /** 把 MetadataUpdate 转为 JSON 字符串（紧凑格式）。 */
   public static String toJson(MetadataUpdate metadataUpdate) {
     return toJson(metadataUpdate, false);
   }
 
+  /** 把 MetadataUpdate 转为 JSON 字符串，可选 pretty 格式。 */
   public static String toJson(MetadataUpdate metadataUpdate, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(metadataUpdate, gen), pretty);
   }
 
+  /**
+   * 把 MetadataUpdate 写入 JsonGenerator。
+   *
+   * <p>逻辑：按 update 类型查 ACTIONS 表得到 action 字符串，写入 action 字段后 switch 分发到对应 write* 私有方法写入各字段；未知类型抛
+   * IllegalArgumentException。
+   *
+   * @param metadataUpdate 元数据变更
+   * @param generator JsonGenerator
+   * @throws IOException 写入失败
+   * @throws IllegalArgumentException 未知变更类型
+   */
   public static void toJson(MetadataUpdate metadataUpdate, JsonGenerator generator)
       throws IOException {
     String updateAction = ACTIONS.get(metadataUpdate.getClass());
@@ -236,15 +268,24 @@ public class MetadataUpdateParser {
   }
 
   /**
-   * Read MetadataUpdate from a JSON string.
+   * 从 JSON 字符串读取 MetadataUpdate。
    *
-   * @param json a JSON string of a MetadataUpdate
-   * @return a MetadataUpdate object
+   * @param json JSON 字符串
+   * @return MetadataUpdate 对象
    */
   public static MetadataUpdate fromJson(String json) {
     return JsonUtil.parse(json, MetadataUpdateParser::fromJson);
   }
 
+  /**
+   * 从 JsonNode 读取 MetadataUpdate。
+   *
+   * <p>逻辑：校验为对象且含 action 字段；按 action（大小写不敏感）分发到对应 read* 私有方法。
+   *
+   * @param jsonNode JSON 节点
+   * @return MetadataUpdate 对象
+   * @throws IllegalArgumentException JSON 格式错误或 action 未知
+   */
   public static MetadataUpdate fromJson(JsonNode jsonNode) {
     Preconditions.checkArgument(
         jsonNode != null && jsonNode.isObject(),

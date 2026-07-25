@@ -34,13 +34,16 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that applies changes in a snapshot created within a Write-Audit-Publish workflow with
- * a wap_id and creates a new snapshot which will be set as the current snapshot in a table.
+ * Spark 存储过程：发布 Write-Audit-Publish（WAP）工作流中暂存的变更。
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>所属模块：iceberg-spark（procedures 子包，通过 Spark CALL 语句暴露 WAP 发布能力）。
  *
- * @see org.apache.iceberg.ManageSnapshots#cherrypick(long)
+ * <p>职责：根据 wap_id 查找在 WAP 流程中暂存的快照，调用 {@link org.apache.iceberg.ManageSnapshots#cherrypick(long)}
+ * 将其变更应用为新快照并设为当前快照， 返回源快照 ID 与新的当前快照 ID。
+ *
+ * <p>设计意图：WAP 模式下写入会暂存为带 wap_id 的快照而非直接成为当前快照， 经审计确认后通过本过程「挑选（cherrypick）」发布，实现写入与发布的解耦。
+ *
+ * <p>上下游关系：由 {@link SparkProcedures} 注册，调用 Iceberg 表快照管理 API。
  */
 class PublishChangesProcedure extends BaseProcedure {
 
@@ -56,9 +59,10 @@ class PublishChangesProcedure extends BaseProcedure {
             new StructField("source_snapshot_id", DataTypes.LongType, false, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new Builder<PublishChangesProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected PublishChangesProcedure doBuild() {
         return new PublishChangesProcedure(tableCatalog());
@@ -69,17 +73,26 @@ class PublishChangesProcedure extends BaseProcedure {
   private PublishChangesProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
 
+  /**
+   * 执行 WAP 变更发布。
+   *
+   * <p>逻辑：解析表名与 wap_id，在表快照中查找 stagedWapId 匹配的快照， 未找到则抛出校验异常；对其执行 cherrypick 提交，返回源快照与当前快照 ID。
+   *
+   * @param args 调用参数行
+   * @return 含 source_snapshot_id 与 current_snapshot_id 的单行结果
+   * @throws ValidationException 当 wap_id 无法匹配任何暂存快照时抛出
+   */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -107,7 +120,7 @@ class PublishChangesProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "ApplyWapChangesProcedure";

@@ -35,10 +35,47 @@ import org.apache.iceberg.expressions.UnboundPredicate;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
+/**
+ * 谓词投影工具类：把源字段上的 {@link BoundPredicate} 投影为分区值上的 {@link UnboundPredicate}。
+ *
+ * <p>所属模块：iceberg-api（被各 Transform 实现的 project/projectStrict 调用）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>针对 truncate 变换，按整数/长整型/Decimal/数组（字符串、二进制）分别做边界调整投影。
+ *   <li>处理集合谓词的批量变换（transformSet）。
+ *   <li>处理 BoundTransform 谓词的去变换投影（projectTransformPredicate）。
+ *   <li>修正 0.10.0 及更早版本对负时间值的错误变换（fixInclusiveTimeProjection/fixStrictTimeProjection）。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>truncate 是单调但多对一的变换（如多个相邻整数截断到同一值），inclusive 投影需把开区间调整为闭区间 并对边界做 ±1 调整以保证不漏数据；strict
+ *       投影则相反——EQ 无法严格投影返回 null，因为相邻值会落到同一分区。
+ *   <li>fixInclusiveTimeProjection/fixStrictTimeProjection 是历史兼容补丁：旧版本对 epoch 之前的负时间值 变换结果比正确值大
+ *       1，需在投影时同时考虑正确值与错误值，否则会漏读旧数据。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link Bucket}、{@link Truncate}、{@link Dates}、{@link Timestamps}、{@link TimeTransform}
+ * 的 project/projectStrict 调用；产出 {@link UnboundPredicate} 供扫描规划使用。
+ */
 class ProjectionUtil {
 
   private ProjectionUtil() {}
 
+  /**
+   * 把整数字面量谓词按截断变换做 inclusive 投影。
+   *
+   * <p>逻辑：LT 调整为 LT_EQ 并对边界 -1（开转闭）；LT_EQ 直接变换；GT 调整为 GT_EQ 并对边界 +1； GT_EQ 直接变换；EQ 直接变换；其余返回 null。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateInteger(
       String name, BoundLiteralPredicate<Integer> pred, Function<Integer, T> transform) {
     int boundary = pred.literal().value();
@@ -60,6 +97,17 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把整数字面量谓词按截断变换做 strict 投影。
+   *
+   * <p>逻辑：LT/LT_EQ/GT/GT_EQ 保留算子并对边界做相应调整；NOT_EQ 直接变换；EQ 返回 null （相邻整数会截断到同一值，无法保证相等）；其余返回 null。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateIntegerStrict(
       String name, BoundLiteralPredicate<Integer> pred, Function<Integer, T> transform) {
     int boundary = pred.literal().value();
@@ -83,6 +131,17 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把长整型字面量谓词按截断变换做 strict 投影。
+   *
+   * <p>逻辑：与 {@link #truncateIntegerStrict} 同，但边界为 long。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateLongStrict(
       String name, BoundLiteralPredicate<Long> pred, Function<Long, T> transform) {
     long boundary = pred.literal().value();
@@ -106,6 +165,17 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把长整型字面量谓词按截断变换做 inclusive 投影。
+   *
+   * <p>逻辑：与 {@link #truncateInteger} 同，但边界为 long。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateLong(
       String name, BoundLiteralPredicate<Long> pred, Function<Long, T> transform) {
     long boundary = pred.literal().value();
@@ -127,6 +197,17 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把 Decimal 字面量谓词按截断变换做 inclusive 投影。
+   *
+   * <p>逻辑：与整数版同，但 ±1 在 unscaledValue 层面操作（保持 scale 不变）。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateDecimal(
       String name, BoundLiteralPredicate<BigDecimal> pred, Function<BigDecimal, T> transform) {
     BigDecimal boundary = pred.literal().value();
@@ -152,6 +233,17 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把 Decimal 字面量谓词按截断变换做 strict 投影。
+   *
+   * <p>逻辑：与 {@link #truncateIntegerStrict} 同，但 ±1 在 unscaledValue 层面操作。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <T> UnboundPredicate<T> truncateDecimalStrict(
       String name, BoundLiteralPredicate<BigDecimal> pred, Function<BigDecimal, T> transform) {
     BigDecimal boundary = pred.literal().value();
@@ -182,6 +274,18 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把数组型（字符串/二进制）字面量谓词按截断变换做 inclusive 投影。
+   *
+   * <p>逻辑：LT/LT_EQ 合并为 LT_EQ；GT/GT_EQ 合并为 GT_EQ；EQ/STARTS_WITH 直接变换；其余返回 null。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <S> 源类型
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <S, T> UnboundPredicate<T> truncateArray(
       String name, BoundLiteralPredicate<S> pred, Function<S, T> transform) {
     S boundary = pred.literal().value();
@@ -203,6 +307,18 @@ class ProjectionUtil {
     }
   }
 
+  /**
+   * 把数组型字面量谓词按截断变换做 strict 投影。
+   *
+   * <p>逻辑：LT/LT_EQ→LT；GT/GT_EQ→GT；NOT_EQ 直接变换；EQ 返回 null（相邻值会截断到同一分区）；其余返回 null。
+   *
+   * @param name 分区列名
+   * @param pred 源字面量谓词
+   * @param transform 截断函数
+   * @param <S> 源类型
+   * @param <T> 变换后类型
+   * @return 投影后的谓词；不可投影返回 null
+   */
   static <S, T> UnboundPredicate<T> truncateArrayStrict(
       String name, BoundLiteralPredicate<S> pred, Function<S, T> transform) {
     S boundary = pred.literal().value();
@@ -225,7 +341,16 @@ class ProjectionUtil {
   }
 
   /**
-   * If the predicate has a transformed child that matches the given transform, return a predicate.
+   * 若谓词作用于与本变换匹配的 BoundTransform，则去掉变换层返回分区值上的谓词。
+   *
+   * <p>逻辑：检查 pred.term() 是否为 BoundTransform 且其 transform 的 toString 与本变换一致； 若一致则调用 removeTransform
+   * 把谓词项替换为分区列名，保留算子与字面量/集合。
+   *
+   * @param transform 本变换
+   * @param partitionName 分区列名
+   * @param pred 待投影谓词
+   * @param <T> 变换后类型
+   * @return 去变换后的谓词；不匹配返回 null
    */
   @SuppressWarnings("unchecked")
   static <T> UnboundPredicate<T> projectTransformPredicate(
@@ -240,6 +365,14 @@ class ProjectionUtil {
     return null;
   }
 
+  /**
+   * 把谓词项中的 BoundTransform 替换为分区列名，保留算子与字面量/集合。
+   *
+   * @param partitionName 分区列名
+   * @param pred 原谓词
+   * @param <T> 谓词值类型
+   * @return 替换项后的谓词
+   */
   private static <T> UnboundPredicate<T> removeTransform(
       String partitionName, BoundPredicate<T> pred) {
     if (pred.isUnaryPredicate()) {
@@ -253,6 +386,16 @@ class ProjectionUtil {
         "Cannot replace transform in unknown predicate: " + pred);
   }
 
+  /**
+   * 把集合谓词中的每个字面量按变换函数转换，返回新的集合谓词。
+   *
+   * @param fieldName 分区列名
+   * @param predicate 源集合谓词
+   * @param transform 变换函数
+   * @param <S> 源类型
+   * @param <T> 变换后类型
+   * @return 变换后的集合谓词
+   */
   static <S, T> UnboundPredicate<T> transformSet(
       String fieldName, BoundSetPredicate<S> predicate, Function<S, T> transform) {
     return predicate(
@@ -262,15 +405,14 @@ class ProjectionUtil {
   }
 
   /**
-   * Fixes an inclusive projection to account for incorrectly transformed values.
+   * 修正 inclusive 时间投影，兼容 0.10.0 及更早版本对负时间值的错误变换。
    *
-   * <p>A bug in 0.10.0 and earlier caused negative values to be incorrectly transformed by date and
-   * timestamp transforms to 1 larger than the correct value. For example, day(1969-12-31 10:00:00)
-   * produced 0 instead of -1. To read data written by versions with this bug, this method adjusts
-   * the inclusive projection. The current inclusive projection is correct, so this modifies the
-   * "correct" projection when needed. For example, < day(1969-12-31 10:00:00) will produce <= -1 (=
-   * 1969-12-31) and is adjusted to <= 0 (= 1970-01-01) because the incorrect transformed value was
-   * 0.
+   * <p>逻辑：旧版本对 epoch 之前的负时间值变换结果比正确值大 1（如 day(1969-12-31 10:00:00) 得 0 而非 -1）。 本方法对负值边界做 +1
+   * 调整：LT/LT_EQ 放宽边界；EQ 改为 IN（同时匹配正确值与错误值）； IN 把负值同时加入其 +1；GT/GT_EQ 不变（错误值已大于边界）；NOT_EQ/NOT_IN 无
+   * inclusive 投影返回 null。
+   *
+   * @param projected 已投影的谓词
+   * @return 修正后的谓词
    */
   static UnboundPredicate<Integer> fixInclusiveTimeProjection(UnboundPredicate<Integer> projected) {
     if (projected == null) {
@@ -337,12 +479,13 @@ class ProjectionUtil {
   }
 
   /**
-   * Fixes a strict projection to account for incorrectly transformed values.
+   * 修正 strict 时间投影，兼容 0.10.0 及更早版本对负时间值的错误变换。
    *
-   * <p>A bug in 0.10.0 and earlier caused negative values to be incorrectly transformed by date and
-   * timestamp transforms to 1 larger than the correct value. For example, day(1969-12-31 10:00:00)
-   * produced 0 instead of -1. To read data written by versions with this bug, this method adjusts
-   * the strict projection.
+   * <p>逻辑：LT/LT_EQ 不变（正确边界对错误值也成立）；GT/GT_EQ 对 ≤0 的边界做 +1 收紧 （错误值可能落入满足投影的分区，需用更严格的值）；EQ/IN 无 strict
+   * 投影返回 null； NOT_EQ 改为 NOT_IN（同时排除正确值与错误值）；NOT_IN 把负值同时加入其 +1。
+   *
+   * @param projected 已投影的谓词
+   * @return 修正后的谓词
    */
   static UnboundPredicate<Integer> fixStrictTimeProjection(UnboundPredicate<Integer> projected) {
     if (projected == null) {

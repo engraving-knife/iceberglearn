@@ -52,6 +52,26 @@ import org.apache.iceberg.util.Tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 重写数据文件动作的抽象基类（旧版 Action API）。
+ *
+ * <p>所属模块：iceberg-core 的 actions 包。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>扫描表中数据文件，按分区分组并合并为 {@link CombinedScanTask}。
+ *   <li>委托子类 {@link #rewriteDataForTasks(List)} 执行实际重写，再用 {@link RewriteFiles} 以删除旧文件、添加新文件的方式提交。
+ *   <li>提供大小写敏感、分区规格、过滤表达式、目标文件大小、切分参数等配置入口。
+ * </ul>
+ *
+ * <p>设计意图：作为旧版 {@code Action} API 的基类，把扫描、分组、提交的通用流程固定在基类， 子类只需实现引擎相关的文件写入（{@link
+ * #rewriteDataForTasks(List)}）与 FileIO 提供。 提交失败时清理已写入的新文件，保证不留垃圾；{@link
+ * CommitStateUnknownException} 因可能已成功而不清理。
+ *
+ * <p>上下游关系：继承 {@link BaseSnapshotUpdateAction}，被各引擎（Spark 等）的具体重写动作继承； 依赖 {@link Table}
+ * 扫描与提交，{@link TableScanUtil} 做切分与任务规划。
+ */
 public abstract class BaseRewriteDataFilesAction<ThisT>
     extends BaseSnapshotUpdateAction<ThisT, RewriteDataFilesActionResult> {
 
@@ -68,6 +88,11 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   private long splitOpenFileCost;
   private boolean useStartingSequenceNumber;
 
+  /**
+   * 构造重写数据文件动作，从表属性初始化切分大小、目标文件大小、lookback 与打开文件成本等参数。
+   *
+   * @param table 待重写的目标表
+   */
   protected BaseRewriteDataFilesAction(Table table) {
     this.table = table;
     this.spec = table.spec();
@@ -100,28 +125,32 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     this.encryptionManager = table.encryption();
   }
 
+  /** 返回目标表。 */
   @Override
   protected Table table() {
     return table;
   }
 
+  /** 返回重写输出使用的分区规格。 */
   protected PartitionSpec spec() {
     return spec;
   }
 
+  /** 返回表的加密管理器。 */
   protected EncryptionManager encryptionManager() {
     return encryptionManager;
   }
 
+  /** 返回是否大小写敏感。 */
   protected boolean caseSensitive() {
     return caseSensitive;
   }
 
   /**
-   * Is it case sensitive
+   * 设置是否大小写敏感。
    *
-   * @param newCaseSensitive caseSensitive
-   * @return this for method chaining
+   * @param newCaseSensitive 是否大小写敏感
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> caseSensitive(boolean newCaseSensitive) {
     this.caseSensitive = newCaseSensitive;
@@ -129,10 +158,10 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * Pass a PartitionSpec id to specify which PartitionSpec should be used in DataFile rewrite
+   * 指定重写输出使用的分区规格 ID。
    *
-   * @param specId PartitionSpec id to rewrite
-   * @return this for method chaining
+   * @param specId 分区规格 ID
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> outputSpecId(int specId) {
     Preconditions.checkArgument(table.specs().containsKey(specId), "Invalid spec id %s", specId);
@@ -141,10 +170,10 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * Specify the target rewrite data file size in bytes
+   * 指定重写后数据文件的目标大小（字节）。
    *
-   * @param targetSize size in bytes of rewrite data file
-   * @return this for method chaining
+   * @param targetSize 目标文件大小（字节）
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> targetSizeInBytes(long targetSize) {
     Preconditions.checkArgument(
@@ -154,16 +183,12 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * Specify the number of "bins" considered when trying to pack the next file split into a task.
-   * Increasing this usually makes tasks a bit more even by considering more ways to pack file
-   * regions into a single task with extra planning cost.
+   * 指定把下一个文件分片打包进任务时考虑的箱（bin）数量。
    *
-   * <p>This configuration can reorder the incoming file regions, to preserve order for lower/upper
-   * bounds in file metadata, user can use a lookback of 1.
+   * <p>增大该值通常使任务更均匀，但会带来额外规划开销。该配置可能重排文件区域顺序， 若需保留文件元数据的上下界顺序，可将 lookback 设为 1。
    *
-   * @param lookback number of "bins" considered when trying to pack the next file split into a
-   *     task.
-   * @return this for method chaining
+   * @param lookback 打包时考虑的箱数量
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> splitLookback(int lookback) {
     Preconditions.checkArgument(lookback > 0L, "Invalid split lookback %s", lookback);
@@ -172,14 +197,12 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * Specify the minimum file size to count to pack into one "bin". If the read file size is smaller
-   * than this specified threshold, Iceberg will use this value to do count.
+   * 指定打包进单个箱时按多少字节计数的下限；当实际读取文件小于该阈值时按此值计数。
    *
-   * <p>this configuration controls the number of files to compact for each task, small value would
-   * lead to a high compaction, the default value is 4MB.
+   * <p>该配置控制每个任务合并的文件数，值越小合并越激进，默认 4MB。
    *
-   * @param openFileCost minimum file size to count to pack into one "bin".
-   * @return this for method chaining
+   * @param openFileCost 单个箱的最小计数字节
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> splitOpenFileCost(long openFileCost) {
     Preconditions.checkArgument(openFileCost > 0L, "Invalid split openFileCost %s", openFileCost);
@@ -188,11 +211,10 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * Pass a row Expression to filter DataFiles to be rewritten. Note that all files that may contain
-   * data matching the filter may be rewritten.
+   * 传入行级表达式过滤待重写的数据文件。注意：可能包含匹配数据的所有文件都会被重写。
    *
-   * @param expr Expression to filter out DataFiles
-   * @return this for method chaining
+   * @param expr 过滤表达式
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> filter(Expression expr) {
     this.filter = Expressions.and(filter, expr);
@@ -200,20 +222,34 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
   }
 
   /**
-   * If the compaction should use the sequence number of the snapshot at compaction start time for
-   * new data files, instead of using the sequence number of the newly produced snapshot.
+   * 是否使用压缩开始时快照的序列号写入新数据文件，而非使用新产生快照的序列号。
    *
-   * <p>This avoids commit conflicts with updates that add newer equality deletes at a higher
-   * sequence number.
+   * <p>这样可以避免与更高序列号的等值删除更新产生提交冲突。
    *
-   * @param useStarting use starting sequence number if set to true
-   * @return this for method chaining
+   * @param useStarting 为 true 时使用起始序列号
+   * @return 当前动作实例（链式调用）
    */
   public BaseRewriteDataFilesAction<ThisT> useStartingSequenceNumber(boolean useStarting) {
     this.useStartingSequenceNumber = useStarting;
     return this;
   }
 
+  /**
+   * 执行数据文件重写。
+   *
+   * <p>逻辑：
+   *
+   * <ul>
+   *   <li>表无快照时直接返回空结果；
+   *   <li>以当前快照扫描文件（应用过滤、大小写敏感设置），扫描完成后关闭迭代器；
+   *   <li>按分区分组并仅保留文件数大于 1 的分区；
+   *   <li>对每个分区用 {@link TableScanUtil} 切分文件并规划为 {@link CombinedScanTask}， 过滤出含多文件或部分文件扫描的任务；
+   *   <li>委托 {@link #rewriteDataForTasks(List)} 写出新文件，收集新旧文件后通过 {@link #replaceDataFiles(Iterable,
+   *       Iterable, long)} 提交。
+   * </ul>
+   *
+   * @return 包含被删除与新增文件列表的结果
+   */
   @Override
   public RewriteDataFilesActionResult execute() {
     CloseableIterable<FileScanTask> fileScanTasks = null;
@@ -281,6 +317,14 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     return new RewriteDataFilesActionResult(currentDataFiles, addedDataFiles);
   }
 
+  /**
+   * 按分区对文件扫描任务分组。
+   *
+   * <p>逻辑：用 {@link StructLikeWrapper} 作为分区键，遍历任务迭代器将每个任务归入其分区对应的 多值映射；遍历完成后关闭迭代器。
+   *
+   * @param tasksIter 文件扫描任务迭代器
+   * @return 分区键到任务集合的映射
+   */
   private Map<StructLikeWrapper, Collection<FileScanTask>> groupTasksByPartition(
       CloseableIterator<FileScanTask> tasksIter) {
     ListMultimap<StructLikeWrapper, FileScanTask> tasksGroupedByPartition =
@@ -298,6 +342,16 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     return tasksGroupedByPartition.asMap();
   }
 
+  /**
+   * 用新文件替换旧文件并提交，失败时清理已写入的新文件。
+   *
+   * <p>逻辑：调用 {@link #doReplace(Iterable, Iterable, long)} 提交；遇到 {@link
+   * CommitStateUnknownException}（可能已成功）时不清理直接抛出；遇到其他异常则删除所有 新增文件后重新抛出。
+   *
+   * @param deletedDataFiles 被删除的旧数据文件
+   * @param addedDataFiles 新添加的数据文件
+   * @param startingSnapshotId 起始快照 ID，用于乐观锁校验
+   */
   private void replaceDataFiles(
       Iterable<DataFile> deletedDataFiles,
       Iterable<DataFile> addedDataFiles,
@@ -318,6 +372,16 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     }
   }
 
+  /**
+   * 实际执行文件替换提交。
+   *
+   * <p>逻辑：创建 {@link RewriteFiles} 并以起始快照校验；逐个添加待删除与待新增文件；若启用起始 序列号则设置数据序列号；最后通过 {@link
+   * #commit(SnapshotUpdate)} 提交。
+   *
+   * @param deletedDataFiles 被删除的旧数据文件
+   * @param addedDataFiles 新添加的数据文件
+   * @param startingSnapshotId 起始快照 ID
+   */
   @VisibleForTesting
   void doReplace(
       Iterable<DataFile> deletedDataFiles,
@@ -341,6 +405,14 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     commit(rewriteFiles);
   }
 
+  /**
+   * 判断任务是否为单文件的部分扫描（即只扫描了文件的一部分）。
+   *
+   * <p>逻辑：仅含一个文件扫描任务且其扫描长度不等于文件总大小时视为部分扫描。
+   *
+   * @param task 组合扫描任务
+   * @return 是否为部分文件扫描
+   */
   private boolean isPartialFileScan(CombinedScanTask task) {
     if (task.files().size() == 1) {
       FileScanTask fileScanTask = task.files().iterator().next();
@@ -350,7 +422,18 @@ public abstract class BaseRewriteDataFilesAction<ThisT>
     }
   }
 
+  /**
+   * 返回用于读写文件的 {@link FileIO}，由子类提供。
+   *
+   * @return 文件 IO 实例
+   */
   protected abstract FileIO fileIO();
 
+  /**
+   * 对一组组合扫描任务执行实际重写并返回新写入的数据文件列表，由子类（引擎相关实现）提供。
+   *
+   * @param combinedScanTask 待重写的组合扫描任务列表
+   * @return 新写入的数据文件列表
+   */
   protected abstract List<DataFile> rewriteDataForTasks(List<CombinedScanTask> combinedScanTask);
 }

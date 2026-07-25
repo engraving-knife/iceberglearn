@@ -40,6 +40,14 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDataStatisticsCoordinator 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestDataStatisticsCoordinator 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestDataStatisticsCoordinator {
   private static final String OPERATOR_NAME = "TestCoordinator";
   private static final OperatorID TEST_OPERATOR_ID = new OperatorID(1234L, 5678L);
@@ -51,6 +59,7 @@ public class TestDataStatisticsCoordinator {
   private DataStatisticsCoordinator<MapDataStatistics, Map<RowData, Long>>
       dataStatisticsCoordinator;
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws Exception {
     receivingTasks = EventReceivingTasks.createForRunningTasks();
@@ -65,11 +74,17 @@ public class TestDataStatisticsCoordinator {
             statisticsSerializer);
   }
 
+  /** 辅助方法：tasksReady，tasks Ready。 */
   private void tasksReady() throws Exception {
     dataStatisticsCoordinator.start();
     setAllTasksReady(NUM_SUBTASKS, dataStatisticsCoordinator, receivingTasks);
   }
 
+  /**
+   * 测试场景：Throw Exception When Not Started。
+   *
+   * <p>验证该方法在 Throw Exception When Not Started 条件下的行为是否符合预期。
+   */
   @Test
   public void testThrowExceptionWhenNotStarted() {
     String failureMessage = "The coordinator of TestCoordinator has not started yet.";
@@ -90,6 +105,11 @@ public class TestDataStatisticsCoordinator {
         .hasMessage(failureMessage);
   }
 
+  /**
+   * 测试场景：Data Statistics Event Handling。
+   *
+   * <p>验证该方法在 Data Statistics Event Handling 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataStatisticsEventHandling() throws Exception {
     tasksReady();
@@ -143,6 +163,7 @@ public class TestDataStatisticsCoordinator {
                     + (long) checkpoint1Subtask1DataStatistic.statistics().get(binaryRowDataC)));
   }
 
+  /** 辅助方法：setAllTasksReady，set All Tasks Ready。 */
   static void setAllTasksReady(
       int subtasks,
       DataStatisticsCoordinator<MapDataStatistics, Map<RowData, Long>> dataStatisticsCoordinator,
@@ -153,6 +174,7 @@ public class TestDataStatisticsCoordinator {
     }
   }
 
+  /** 辅助方法：waitForCoordinatorToProcessActions，wait For Coordinator To Process Actions。 */
   static void waitForCoordinatorToProcessActions(
       DataStatisticsCoordinator<MapDataStatistics, Map<RowData, Long>> coordinator) {
     CompletableFuture<Void> future = new CompletableFuture<>();

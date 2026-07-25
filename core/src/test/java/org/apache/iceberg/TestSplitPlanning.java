@@ -42,6 +42,14 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 测试类：TestSplitPlanning，用于验证 Split Planning 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Split Planning 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestSplitPlanning extends TableTestBase {
 
@@ -54,15 +62,18 @@ public class TestSplitPlanning extends TableTestBase {
   @Rule public TemporaryFolder temp = new TemporaryFolder();
   private Table table = null;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：split planning。 */
   public TestSplitPlanning(int formatVersion) {
     super(formatVersion);
   }
 
+  /** 辅助方法：setup table。 */
   @Override
   @Before
   public void setupTable() throws IOException {
@@ -77,6 +88,11 @@ public class TestSplitPlanning extends TableTestBase {
         .commit();
   }
 
+  /**
+   * 测试场景：basic split planning。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicSplitPlanning() {
     List<DataFile> files128Mb = newFiles(4, 128 * 1024 * 1024);
@@ -89,6 +105,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(8, Iterables.size(table.newScan().planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with small files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithSmallFiles() {
     List<DataFile> files60Mb = newFiles(50, 60 * 1024 * 1024);
@@ -104,6 +125,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(35, Iterables.size(table.newScan().planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with no min weight。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithNoMinWeight() {
     table.updateProperties().set(TableProperties.SPLIT_OPEN_FILE_COST, "0").commit();
@@ -115,6 +141,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(1, Iterables.size(table.newScan().planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with overriden size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOverridenSize() {
     List<DataFile> files128Mb = newFiles(4, 128 * 1024 * 1024);
@@ -125,6 +156,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(2, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with overridden size for metadata json file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOverriddenSizeForMetadataJsonFile() {
     List<DataFile> files8Mb = newFiles(32, 8 * 1024 * 1024, FileFormat.METADATA);
@@ -135,6 +171,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(16, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with overridden size for large metadata json file。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOverriddenSizeForLargeMetadataJsonFile() {
     List<DataFile> files128Mb = newFiles(4, 128 * 1024 * 1024, FileFormat.METADATA);
@@ -146,6 +187,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(4, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with overriden lookback。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOverridenLookback() {
     List<DataFile> files120Mb = newFiles(1, 120 * 1024 * 1024);
@@ -163,6 +209,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(128 * 1024 * 1024, task.length());
   }
 
+  /**
+   * 测试场景：split planning with overriden open cost size。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOverridenOpenCostSize() {
     List<DataFile> files16Mb = newFiles(16, 16 * 1024 * 1024);
@@ -176,6 +227,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(4, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with negative values。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithNegativeValues() {
     Assertions.assertThatThrownBy(
@@ -203,6 +259,11 @@ public class TestSplitPlanning extends TableTestBase {
         .hasMessage("File open cost must be >= 0: -10");
   }
 
+  /**
+   * 测试场景：split planning with offsets。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOffsets() {
     List<DataFile> files16Mb = newFiles(16, 16 * 1024 * 1024, 2);
@@ -216,6 +277,11 @@ public class TestSplitPlanning extends TableTestBase {
         "We should get one task per row group", 32, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：split planning with offsets unable to split。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSplitPlanningWithOffsetsUnableToSplit() {
     List<DataFile> files16Mb = newFiles(16, 16 * 1024 * 1024, 2);
@@ -232,6 +298,11 @@ public class TestSplitPlanning extends TableTestBase {
         "We should still only get 2 tasks per file", 32, Iterables.size(scan.planTasks()));
   }
 
+  /**
+   * 测试场景：basic split planning delete files。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicSplitPlanningDeleteFiles() {
     table.updateProperties().set(TableProperties.FORMAT_VERSION, "2").commit();
@@ -247,6 +318,11 @@ public class TestSplitPlanning extends TableTestBase {
     Assert.assertEquals(8, Iterables.size(posDeletesTable.newBatchScan().planTasks()));
   }
 
+  /**
+   * 测试场景：basic split planning delete files with split offsets。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicSplitPlanningDeleteFilesWithSplitOffsets() {
     table.updateProperties().set(TableProperties.FORMAT_VERSION, "2").commit();
@@ -284,24 +360,29 @@ public class TestSplitPlanning extends TableTestBase {
     }
   }
 
+  /** 辅助方法：append files。 */
   private void appendFiles(Iterable<DataFile> files) {
     AppendFiles appendFiles = table.newAppend();
     files.forEach(appendFiles::appendFile);
     appendFiles.commit();
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(int numFiles, long sizeInBytes) {
     return newFiles(numFiles, sizeInBytes, FileFormat.PARQUET, 1);
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(int numFiles, long sizeInBytes, int numOffset) {
     return newFiles(numFiles, sizeInBytes, FileFormat.PARQUET, numOffset);
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(int numFiles, long sizeInBytes, FileFormat fileFormat) {
     return newFiles(numFiles, sizeInBytes, fileFormat, 1);
   }
 
+  /** 辅助方法：new files。 */
   private List<DataFile> newFiles(
       int numFiles, long sizeInBytes, FileFormat fileFormat, int numOffset) {
     List<DataFile> files = Lists.newArrayList();
@@ -311,6 +392,7 @@ public class TestSplitPlanning extends TableTestBase {
     return files;
   }
 
+  /** 辅助方法：new file。 */
   private DataFile newFile(long sizeInBytes, FileFormat fileFormat, int numOffsets) {
     String fileName = UUID.randomUUID().toString();
     Builder builder =
@@ -332,20 +414,24 @@ public class TestSplitPlanning extends TableTestBase {
     return builder.build();
   }
 
+  /** 辅助方法：append delete files。 */
   private void appendDeleteFiles(List<DeleteFile> files) {
     RowDelta rowDelta = table.newRowDelta();
     files.forEach(rowDelta::addDeletes);
     rowDelta.commit();
   }
 
+  /** 辅助方法：new delete files。 */
   private List<DeleteFile> newDeleteFiles(int numFiles, long sizeInBytes) {
     return newDeleteFiles(numFiles, sizeInBytes, FileFormat.PARQUET, 1);
   }
 
+  /** 辅助方法：new delete files。 */
   private List<DeleteFile> newDeleteFiles(int numFiles, long sizeInBytes, long numOffsets) {
     return newDeleteFiles(numFiles, sizeInBytes, FileFormat.PARQUET, numOffsets);
   }
 
+  /** 辅助方法：new delete files。 */
   private List<DeleteFile> newDeleteFiles(
       int numFiles, long sizeInBytes, FileFormat fileFormat, long numOffsets) {
     List<DeleteFile> files = Lists.newArrayList();
@@ -355,6 +441,7 @@ public class TestSplitPlanning extends TableTestBase {
     return files;
   }
 
+  /** 辅助方法：new delete file。 */
   private DeleteFile newDeleteFile(long sizeInBytes, FileFormat fileFormat, long numOffsets) {
     String fileName = UUID.randomUUID().toString();
     FileMetadata.Builder builder =

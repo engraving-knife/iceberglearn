@@ -21,9 +21,11 @@ package org.apache.iceberg.flink.source.reader;
 import java.io.Serializable;
 
 /**
- * In FLIP-27 source, SplitReader#fetch() returns a batch of records. Since DataIterator for RowData
- * returns an iterator of reused RowData objects, RecordFactory is needed to (1) create object array
- * that is recyclable via pool. (2) clone RowData element from DataIterator to the batch array.
+ * 记录工厂接口，定义创建记录实例的契约。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：抽象记录创建逻辑，支持 RowData 等类型。
+ *
+ * <p>设计意图：工厂接口；被 emitter 调用以复用记录。
  */
 interface RecordFactory<T> extends Serializable {
   /** Create a batch of records */

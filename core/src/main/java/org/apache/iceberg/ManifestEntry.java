@@ -24,7 +24,29 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.StructType;
 
+/**
+ * Manifest 条目接口：表示 manifest 文件中的一条记录，描述一个文件的状态变更。
+ *
+ * <p>所属模块：iceberg-core，是 manifest 文件的最小逻辑单元，连接快照与文件。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>记录文件状态（EXISTING/ADDED/DELETED）、所属快照 ID、数据序列号、文件序列号。
+ *   <li>持有 {@link ContentFile}（数据文件或删除文件）的引用。
+ *   <li>定义 manifest 条目的 schema（status、snapshot_id、sequence_number 等）。
+ * </ul>
+ *
+ * <p>设计意图：通过 {@link Status} 枚举区分文件在快照中的角色——新增、删除或既有， 配合序列号实现"哪个文件在哪个快照被添加/删除"的精确追踪。{@code
+ * dataSequenceNumber} 与 {@code fileSequenceNumber} 分离，因为 compaction 等操作可能产生序列号与快照不一致的文件。
+ *
+ * <p>上下游关系：由 {@code ManifestReader} 从 manifest 文件读取，被 {@code ManifestWriter} 写入；被扫描计划、过期快照、manifest
+ * 合并等流程消费。
+ *
+ * @param <F> 内容文件类型
+ */
 interface ManifestEntry<F extends ContentFile<F>> {
+  /** 文件状态枚举：EXISTING 既有、ADDED 新增、DELETED 删除。 */
   enum Status {
     EXISTING(0),
     ADDED(1),
@@ -63,71 +85,66 @@ interface ManifestEntry<F extends ContentFile<F>> {
         required(DATA_FILE_ID, "data_file", fileType));
   }
 
-  /** Returns the status of the file, whether EXISTING, ADDED, or DELETED. */
+  /** 返回文件状态（EXISTING/ADDED/DELETED）。 */
   Status status();
 
-  /** Returns whether this entry is live */
+  /** 返回本条目是否为活跃状态（ADDED 或 EXISTING，即非删除）。 */
   default boolean isLive() {
     return status() == Status.ADDED || status() == Status.EXISTING;
   }
 
-  /** Returns id of the snapshot in which the file was added to the table. */
+  /** 返回文件被添加到表时的快照 ID。 */
   Long snapshotId();
 
   /**
-   * Set the snapshot id for this manifest entry.
+   * 设置本条目的快照 ID。
    *
-   * @param snapshotId a long snapshot id
+   * @param snapshotId 快照 ID
    */
   void setSnapshotId(long snapshotId);
 
   /**
-   * Returns the data sequence number of the file.
+   * 返回文件的数据序列号。
    *
-   * <p>Independently of the entry status, this method represents the sequence number to which the
-   * file should apply. Note the data sequence number may differ from the sequence number of the
-   * snapshot in which the underlying file was added. New snapshots can add files that belong to
-   * older sequence numbers (e.g. compaction). The data sequence number also does not change when
-   * the file is marked as deleted.
+   * <p>数据序列号表示文件"应该生效"的序列号，与文件被添加时的快照序列号可能不同 （如 compaction 产生的新文件属于较旧的序列号）。文件被标记删除时数据序列号不变。
    *
-   * <p>This method can return null if the data sequence number is unknown. This may happen while
-   * reading a v2 manifest that did not persist the data sequence number for manifest entries with
-   * status DELETED (older Iceberg versions).
+   * <p>可能返回 null：读取旧版本 Iceberg 写的 v2 manifest 时，DELETED 条目可能未持久化此值。
+   *
+   * @return 数据序列号，可能为 null
    */
   Long dataSequenceNumber();
 
   /**
-   * Sets the data sequence number for this manifest entry.
+   * 设置本条目的数据序列号。
    *
-   * @param dataSequenceNumber a data sequence number
+   * @param dataSequenceNumber 数据序列号
    */
   void setDataSequenceNumber(long dataSequenceNumber);
 
   /**
-   * Returns the file sequence number.
+   * 返回文件的文件序列号。
    *
-   * <p>The file sequence number represents the sequence number of the snapshot in which the
-   * underlying file was added. The file sequence number is always assigned at commit and cannot be
-   * provided explicitly, unlike the data sequence number. The file sequence number does not change
-   * upon assigning and must be preserved in existing and deleted entries.
+   * <p>文件序列号是文件被添加时所属快照的序列号，在提交时分配，不可显式设置。 文件序列号一旦分配不再改变，在 existing/deleted 条目中必须保留。
    *
-   * <p>This method can return null if the file sequence number is unknown. This may happen while
-   * reading a v2 manifest that did not persist the file sequence number for manifest entries with
-   * status EXISTING or DELETED (older Iceberg versions).
+   * <p>可能返回 null：读取旧版本 Iceberg 写的 v2 manifest 时，EXISTING/DELETED 条目可能未持久化此值。
+   *
+   * @return 文件序列号，可能为 null
    */
   Long fileSequenceNumber();
 
   /**
-   * Sets the file sequence number for this manifest entry.
+   * 设置本条目的文件序列号。
    *
-   * @param fileSequenceNumber a file sequence number
+   * @param fileSequenceNumber 文件序列号
    */
   void setFileSequenceNumber(long fileSequenceNumber);
 
-  /** Returns a file. */
+  /** 返回本条目对应的文件。 */
   F file();
 
+  /** 返回本条目的深拷贝。 */
   ManifestEntry<F> copy();
 
+  /** 返回本条目的深拷贝，但去除文件统计信息以节省内存。 */
   ManifestEntry<F> copyWithoutStats();
 }

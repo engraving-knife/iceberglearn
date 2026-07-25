@@ -24,13 +24,22 @@ import java.util.stream.IntStream;
 import org.apache.spark.sql.Row;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 SparkTestHelperBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark测试辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class SparkTestHelperBase {
   protected static final Object ANY = new Object();
 
+  /** 行到Java。 */
   protected List<Object[]> rowsToJava(List<Row> rows) {
     return rows.stream().map(this::toJava).collect(Collectors.toList());
   }
 
+  /** 到Java。 */
   private Object[] toJava(Row row) {
     return IntStream.range(0, row.size())
         .mapToObj(
@@ -53,6 +62,7 @@ public class SparkTestHelperBase {
         .toArray(Object[]::new);
   }
 
+  /** 断言equals。 */
   protected void assertEquals(
       String context, List<Object[]> expectedRows, List<Object[]> actualRows) {
     Assert.assertEquals(
@@ -68,6 +78,7 @@ public class SparkTestHelperBase {
     }
   }
 
+  /** 断言equals。 */
   protected void assertEquals(String context, Object[] expectedRow, Object[] actualRow) {
     Assert.assertEquals("Number of columns should match", expectedRow.length, actualRow.length);
     for (int col = 0; col < actualRow.length; col += 1) {

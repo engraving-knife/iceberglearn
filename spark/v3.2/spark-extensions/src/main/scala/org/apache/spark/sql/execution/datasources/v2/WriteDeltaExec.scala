@@ -45,7 +45,11 @@ import scala.collection.compat.immutable.ArraySeq
 import scala.util.control.NonFatal
 
 /**
- * Physical plan node to write a delta of rows to an existing table.
+ * Spark 物理执行相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 WriteDeltaExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
  */
 case class WriteDeltaExec(
     query: SparkPlan,
@@ -60,15 +64,30 @@ case class WriteDeltaExec(
     DeltaWithMetadataWritingSparkTask(projections)
   }
 
+  /**
+   * 返回带新设置的副本。
+   * @return 结果对象
+   */
   override protected def withNewChildInternal(newChild: SparkPlan): WriteDeltaExec = {
     copy(query = newChild)
   }
 }
 
 // a trait similar to V2ExistingTableWriteExec but supports custom write tasks
+/**
+ * Spark 物理执行相关组件的写入组件，负责数据写入与提交。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 ExtendedV2ExistingTableWriteExec。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 trait ExtendedV2ExistingTableWriteExec[W <: DataWriter[InternalRow]] extends V2ExistingTableWriteExec {
   def writingTask: WritingSparkTask[W]
 
+  /**
+   * 写入数据。
+   * @return 结果对象
+   */
   protected override def writeWithV2(batchWrite: BatchWrite): Seq[InternalRow] = {
     val rdd: RDD[InternalRow] = {
       val tempRdd = query.execute()
@@ -135,10 +154,21 @@ trait ExtendedV2ExistingTableWriteExec[W <: DataWriter[InternalRow]] extends V2E
   }
 }
 
+/**
+ * Spark 物理执行相关组件。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：特质 WritingSparkTask。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 trait WritingSparkTask[W <: DataWriter[InternalRow]] extends Logging with Serializable {
 
   protected def writeFunc(writer: W, row: InternalRow): Unit
 
+  /**
+   * 执行该方法的具体逻辑。
+   * @return 结果对象
+   */
   def run(
       writerFactory: DataWriterFactory,
       context: TaskContext,
@@ -205,6 +235,13 @@ trait WritingSparkTask[W <: DataWriter[InternalRow]] extends Logging with Serial
   }
 }
 
+/**
+ * Spark 物理执行相关组件，封装提交或表元数据。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：样例类 DeltaWithMetadataWritingSparkTask。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class DeltaWithMetadataWritingSparkTask(
     projs: WriteDeltaProjections) extends WritingSparkTask[DeltaWriter[InternalRow]] {
 
@@ -212,6 +249,7 @@ case class DeltaWithMetadataWritingSparkTask(
   private lazy val rowIdProjection = projs.rowIdProjection
   private lazy val metadataProjection = projs.metadataProjection.orNull
 
+  /** 写入数据。 */
   override protected def writeFunc(writer: DeltaWriter[InternalRow], row: InternalRow): Unit = {
     val operation = row.getInt(0)
 

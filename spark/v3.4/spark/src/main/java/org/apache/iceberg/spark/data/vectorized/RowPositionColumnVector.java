@@ -26,6 +26,15 @@ import org.apache.spark.sql.vectorized.ColumnarArray;
 import org.apache.spark.sql.vectorized.ColumnarMap;
 import org.apache.spark.unsafe.types.UTF8String;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：行位置列向量，输出每行在文件内的相对行号。
+ *
+ * <p>设计意图：用于向量化读取时提供 _pos / _row_position 元数据列。
+ *
+ * <p>上下游关系：由 ColumnarBatchReader 使用。
+ */
 public class RowPositionColumnVector extends ColumnVector {
 
   private final long batchOffsetInFile;
@@ -34,85 +43,85 @@ public class RowPositionColumnVector extends ColumnVector {
     super(SparkSchemaUtil.convert(Types.LongType.get()));
     this.batchOffsetInFile = batchOffsetInFile;
   }
-
+  /** 关闭资源。 */
   @Override
   public void close() {}
-
+  /** 判断是否存在 Null。 */
   @Override
   public boolean hasNull() {
     return false;
   }
-
+  /** 执行 numNulls 相关操作。 */
   @Override
   public int numNulls() {
     return 0;
   }
-
+  /** 判断是否 NullAt。 */
   @Override
   public boolean isNullAt(int rowId) {
     return false;
   }
-
+  /** 返回 Boolean 属性。 */
   @Override
   public boolean getBoolean(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Byte 属性。 */
   @Override
   public byte getByte(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Short 属性。 */
   @Override
   public short getShort(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Int 属性。 */
   @Override
   public int getInt(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Long 属性。 */
   @Override
   public long getLong(int rowId) {
     return batchOffsetInFile + rowId;
   }
-
+  /** 返回 Float 属性。 */
   @Override
   public float getFloat(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Double 属性。 */
   @Override
   public double getDouble(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Array 属性。 */
   @Override
   public ColumnarArray getArray(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Map 属性。 */
   @Override
   public ColumnarMap getMap(int ordinal) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Decimal 属性。 */
   @Override
   public Decimal getDecimal(int rowId, int precision, int scale) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 UTF8String 属性。 */
   @Override
   public UTF8String getUTF8String(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Binary 属性。 */
   @Override
   public byte[] getBinary(int rowId) {
     throw new UnsupportedOperationException();
   }
-
+  /** 返回 Child 属性。 */
   @Override
   public ColumnVector getChild(int ordinal) {
     throw new UnsupportedOperationException();

@@ -23,7 +23,20 @@ import org.apache.iceberg.flink.AvroGenericRecordConverterBase;
 import org.apache.iceberg.flink.DataGenerator;
 import org.junit.Assert;
 
+/**
+ * 文件级说明：测试 TestAvroGenericRecordToRowDataMapper 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestAvroGenericRecordToRowDataMapper 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestAvroGenericRecordToRowDataMapper extends AvroGenericRecordConverterBase {
+  /**
+   * 测试场景：Converter。
+   *
+   * <p>验证该方法在 Converter 条件下的行为是否符合预期。
+   */
   @Override
   protected void testConverter(DataGenerator dataGenerator) throws Exception {
     // Need to use avroSchema from DataGenerator because some primitive types have special Avro

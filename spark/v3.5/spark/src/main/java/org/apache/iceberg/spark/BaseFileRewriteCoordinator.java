@@ -31,6 +31,25 @@ import org.apache.iceberg.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件重写结果协调器基类：在 Spark 数据源写完成后收集并暂存重写产物。
+ *
+ * <p>所属模块：iceberg-spark（核心包，作为数据文件重写动作与 Spark 数据源写之间的桥梁）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>暂存每个文件组重写后生成的新文件集合（stageRewrite）。
+ *   <li>按表与文件组 ID 查询、清理已暂存的重写结果。
+ * </ul>
+ *
+ * <p>设计意图：Spark 数据源写无法直接把产物回传给发起重写的动作，因此通过此类作为 侧道（side-effect）收集器：写完成后调用 stageRewrite 暂存结果，动作方再通过
+ * fetchNewFiles 取回。使用并发 Map 保证多任务并发写入安全，按 (表UUID, 文件组ID) 做键。
+ *
+ * <p>上下游关系：被具体重写协调器（如 FileRewriteCoordinator）继承； 由 Spark 数据源写端在写出后调用暂存，由重写动作在提交前读取结果。
+ *
+ * @param <F> 内容文件类型
+ */
 abstract class BaseFileRewriteCoordinator<F extends ContentFile<F>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BaseFileRewriteCoordinator.class);
@@ -38,12 +57,13 @@ abstract class BaseFileRewriteCoordinator<F extends ContentFile<F>> {
   private final Map<Pair<String, String>, Set<F>> resultMap = Maps.newConcurrentMap();
 
   /**
-   * Called to persist the output of a rewrite action for a specific group. Since the write is done
-   * via a Spark Datasource, we have to propagate the result through this side-effect call.
+   * 暂存某个文件组重写后的新文件集合。
    *
-   * @param table table where the rewrite is occurring
-   * @param fileSetId the id used to identify the source set of files being rewritten
-   * @param newFiles the new files which have been written
+   * <p>设计要点：由于写入由 Spark 数据源完成，需通过此侧道调用把结果回传给重写动作。
+   *
+   * @param table 正在执行重写的表
+   * @param fileSetId 标识被重写源文件集的 ID
+   * @param newFiles 已写出的新文件集合
    */
   public void stageRewrite(Table table, String fileSetId, Set<F> newFiles) {
     LOG.debug(
@@ -55,6 +75,14 @@ abstract class BaseFileRewriteCoordinator<F extends ContentFile<F>> {
     resultMap.put(id, newFiles);
   }
 
+  /**
+   * 获取指定文件组重写后的新文件集合。
+   *
+   * @param table 正在执行重写的表
+   * @param fileSetId 文件组 ID
+   * @return 暂存的新文件集合
+   * @throws ValidationException 当该文件组没有暂存结果时抛出
+   */
   public Set<F> fetchNewFiles(Table table, String fileSetId) {
     Pair<String, String> id = toId(table, fileSetId);
     Set<F> result = resultMap.get(id);
@@ -64,12 +92,24 @@ abstract class BaseFileRewriteCoordinator<F extends ContentFile<F>> {
     return result;
   }
 
+  /**
+   * 清除指定文件组的暂存结果。
+   *
+   * @param table 正在执行重写的表
+   * @param fileSetId 文件组 ID
+   */
   public void clearRewrite(Table table, String fileSetId) {
     LOG.debug("Removing entry for {} - id {}", table.name(), fileSetId);
     Pair<String, String> id = toId(table, fileSetId);
     resultMap.remove(id);
   }
 
+  /**
+   * 返回指定表当前所有已暂存的文件组 ID。
+   *
+   * @param table 目标表
+   * @return 文件组 ID 集合
+   */
   public Set<String> fetchSetIds(Table table) {
     return resultMap.keySet().stream()
         .filter(e -> e.first().equals(tableUUID(table)))
@@ -77,11 +117,13 @@ abstract class BaseFileRewriteCoordinator<F extends ContentFile<F>> {
         .collect(Collectors.toSet());
   }
 
+  /** 以 (表UUID, 文件组ID) 构造结果映射的键。 */
   private Pair<String, String> toId(Table table, String setId) {
     String tableUUID = tableUUID(table);
     return Pair.of(tableUUID, setId);
   }
 
+  /** 通过 {@link TableOperations} 获取表 UUID 作为唯一标识。 */
   private String tableUUID(Table table) {
     TableOperations ops = ((HasTableOperations) table).operations();
     return ops.current().uuid();

@@ -25,8 +25,16 @@ import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.generic.GenericRecord;
 import org.assertj.core.api.AbstractThrowableAssert;
 
+/**
+ * 文件级说明：测试 TestHelpers 的功能。
+ *
+ * <p>所属模块：iceberg-parquet。职责：验证 TestHelpers 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestHelpers {
 
+  /** 辅助方法：TestHelpers。 */
   private TestHelpers() {}
 
   /**

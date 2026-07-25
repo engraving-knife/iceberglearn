@@ -25,7 +25,15 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.util.ExceptionUtil;
 
-/** utility class to accept thread local commit properties */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：提交元数据工具，在 Iceberg commit 时向快照 summary 注入 Spark 应用信息（如应用 ID、Executor 数等）。
+ *
+ * <p>设计意图：通过 ThreadLocal 暂存运行时上下文，在提交回调中统一写入，避免侵入业务逻辑。
+ *
+ * <p>上下游关系：被 SparkWrite / SparkPositionDeltaWrite 在提交时调用。
+ */
 public class CommitMetadata {
 
   private CommitMetadata() {}
@@ -59,7 +67,7 @@ public class CommitMetadata {
       COMMIT_PROPERTIES.set(ImmutableMap.of());
     }
   }
-
+  /** 执行 commitProperties 相关操作。 */
   public static Map<String, String> commitProperties() {
     return COMMIT_PROPERTIES.get();
   }

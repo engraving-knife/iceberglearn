@@ -25,8 +25,20 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestAwsProperties 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestAwsProperties 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestAwsProperties {
 
+  /**
+   * 测试场景：Kryo Serialization。
+   *
+   * <p>验证该方法在 Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testKryoSerialization() throws IOException {
     AwsProperties awsProperties = new AwsProperties();

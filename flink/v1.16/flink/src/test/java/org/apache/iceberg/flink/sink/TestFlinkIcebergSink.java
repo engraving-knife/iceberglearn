@@ -55,6 +55,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFlinkIcebergSink 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestFlinkIcebergSink 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
 
@@ -74,6 +81,7 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
   private final int parallelism;
   private final boolean partitioned;
 
+  /** 辅助方法：parameters，parameters。 */
   @Parameterized.Parameters(name = "format={0}, parallelism = {1}, partitioned = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -92,12 +100,14 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     };
   }
 
+  /** 辅助方法：TestFlinkIcebergSink，Flink Iceberg Sink。 */
   public TestFlinkIcebergSink(String format, int parallelism, boolean partitioned) {
     this.format = FileFormat.fromString(format);
     this.parallelism = parallelism;
     this.partitioned = partitioned;
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     table =
@@ -121,6 +131,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     tableLoader = catalogResource.tableLoader();
   }
 
+  /**
+   * 测试场景：Write Row Data。
+   *
+   * <p>验证该方法在 Write Row Data 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteRowData() throws Exception {
     List<Row> rows = Lists.newArrayList(Row.of(1, "hello"), Row.of(2, "world"), Row.of(3, "foo"));
@@ -141,6 +156,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     SimpleDataUtil.assertTableRows(table, convertToRowData(rows));
   }
 
+  /**
+   * 测试场景：Write Row。
+   *
+   * <p>验证该方法在 Write Row 条件下的行为是否符合预期。
+   */
   private void testWriteRow(TableSchema tableSchema, DistributionMode distributionMode)
       throws Exception {
     List<Row> rows = createRows("");
@@ -160,20 +180,36 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     SimpleDataUtil.assertTableRows(table, convertToRowData(rows));
   }
 
+  /** 辅助方法：partitionFiles，partition Files。 */
   private int partitionFiles(String partition) throws IOException {
     return SimpleDataUtil.partitionDataFiles(table, ImmutableMap.of("data", partition)).size();
   }
 
+  /**
+   * 测试场景：Write Row。
+   *
+   * <p>验证该方法在 Write Row 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteRow() throws Exception {
     testWriteRow(null, DistributionMode.NONE);
   }
 
+  /**
+   * 测试场景：Write Row With Table Schema。
+   *
+   * <p>验证该方法在 Write Row With Table Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteRowWithTableSchema() throws Exception {
     testWriteRow(SimpleDataUtil.FLINK_SCHEMA, DistributionMode.NONE);
   }
 
+  /**
+   * 测试场景：Job None Distribute Mode。
+   *
+   * <p>验证该方法在 Job None Distribute Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testJobNoneDistributeMode() throws Exception {
     table
@@ -191,6 +227,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     }
   }
 
+  /**
+   * 测试场景：Job Hash Distribution Mode。
+   *
+   * <p>验证该方法在 Job Hash Distribution Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testJobHashDistributionMode() {
     table
@@ -208,6 +249,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
         });
   }
 
+  /**
+   * 测试场景：Job Null Distribution Mode。
+   *
+   * <p>验证该方法在 Job Null Distribution Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testJobNullDistributionMode() throws Exception {
     table
@@ -227,6 +273,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     }
   }
 
+  /**
+   * 测试场景：Partition Write Mode。
+   *
+   * <p>验证该方法在 Partition Write Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testPartitionWriteMode() throws Exception {
     testWriteRow(null, DistributionMode.HASH);
@@ -240,6 +291,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     }
   }
 
+  /**
+   * 测试场景：Shuffle By Partition With Schema。
+   *
+   * <p>验证该方法在 Shuffle By Partition With Schema 条件下的行为是否符合预期。
+   */
   @Test
   public void testShuffleByPartitionWithSchema() throws Exception {
     testWriteRow(SimpleDataUtil.FLINK_SCHEMA, DistributionMode.HASH);
@@ -253,6 +309,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     }
   }
 
+  /**
+   * 测试场景：Two Sinks In Disjointed DAG。
+   *
+   * <p>验证该方法在 Two Sinks In Disjointed DAG 条件下的行为是否符合预期。
+   */
   @Test
   public void testTwoSinksInDisjointedDAG() throws Exception {
     Map<String, String> props = ImmutableMap.of(TableProperties.DEFAULT_FILE_FORMAT, format.name());
@@ -336,6 +397,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
     Assert.assertEquals("rightTable", rightTable.currentSnapshot().summary().get("direction"));
   }
 
+  /**
+   * 测试场景：Override Write Config With Unknown Distribution Mode。
+   *
+   * <p>验证该方法在 Override Write Config With Unknown Distribution Mode 条件下的行为是否符合预期。
+   */
   @Test
   public void testOverrideWriteConfigWithUnknownDistributionMode() {
     Map<String, String> newProps = Maps.newHashMap();
@@ -364,6 +430,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
         });
   }
 
+  /**
+   * 测试场景：Override Write Config With Unknown File Format。
+   *
+   * <p>验证该方法在 Override Write Config With Unknown File Format 条件下的行为是否符合预期。
+   */
   @Test
   public void testOverrideWriteConfigWithUnknownFileFormat() {
     Map<String, String> newProps = Maps.newHashMap();
@@ -392,6 +463,11 @@ public class TestFlinkIcebergSink extends TestFlinkIcebergSinkBase {
         });
   }
 
+  /**
+   * 测试场景：Write Row With Table Refresh Interval。
+   *
+   * <p>验证该方法在 Write Row With Table Refresh Interval 条件下的行为是否符合预期。
+   */
   @Test
   public void testWriteRowWithTableRefreshInterval() throws Exception {
     List<Row> rows = Lists.newArrayList(Row.of(1, "hello"), Row.of(2, "world"), Row.of(3, "foo"));

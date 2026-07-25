@@ -38,13 +38,23 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 
+/**
+ * 测试类：TestSnapshotLoading，用于验证 Snapshot Loading 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Snapshot Loading 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @RunWith(Parameterized.class)
 public class TestSnapshotLoading extends TableTestBase {
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "formatVersion = {0}")
   public static Object[] parameters() {
     return new Object[] {1, 2};
   }
 
+  /** 辅助方法：snapshot loading。 */
   public TestSnapshotLoading(int formatVersion) {
     super(formatVersion);
   }
@@ -56,6 +66,7 @@ public class TestSnapshotLoading extends TableTestBase {
 
   private SerializableSupplier<List<Snapshot>> snapshotsSupplierMock;
 
+  /** 辅助方法：before。 */
   @Before
   public void before() {
     table.newFastAppend().appendFile(FILE_A).commit();
@@ -67,6 +78,7 @@ public class TestSnapshotLoading extends TableTestBase {
     // Anonymous class is required for proper mocking as opposed to lambda
     SerializableSupplier<List<Snapshot>> snapshotSupplier =
         new SerializableSupplier<List<Snapshot>>() {
+          /** 辅助方法：get。 */
           @Override
           public List<Snapshot> get() {
             return allSnapshots;
@@ -87,6 +99,11 @@ public class TestSnapshotLoading extends TableTestBase {
             .build();
   }
 
+  /**
+   * 测试场景：snapshots are loaded once。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSnapshotsAreLoadedOnce() {
     latestTableMetadata.snapshots();
@@ -99,6 +116,11 @@ public class TestSnapshotLoading extends TableTestBase {
         .containsExactlyElementsOf(originalTableMetadata.snapshots());
   }
 
+  /**
+   * 测试场景：current and main snapshot does not load。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCurrentAndMainSnapshotDoesNotLoad() {
     latestTableMetadata.currentSnapshot();
@@ -107,6 +129,11 @@ public class TestSnapshotLoading extends TableTestBase {
     verify(snapshotsSupplierMock, times(0)).get();
   }
 
+  /**
+   * 测试场景：unloaded snapshot loads once。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUnloadedSnapshotLoadsOnce() {
     Snapshot unloadedSnapshot =
@@ -118,6 +145,11 @@ public class TestSnapshotLoading extends TableTestBase {
     verify(snapshotsSupplierMock, times(1)).get();
   }
 
+  /**
+   * 测试场景：current table scan does not load。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCurrentTableScanDoesNotLoad() {
     latestTableMetadata.currentSnapshot();
@@ -130,6 +162,11 @@ public class TestSnapshotLoading extends TableTestBase {
     verify(snapshotsSupplierMock, times(0)).get();
   }
 
+  /**
+   * 测试场景：future snapshots are removed。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testFutureSnapshotsAreRemoved() {
     Assumptions.assumeThat(formatVersion)
@@ -152,6 +189,11 @@ public class TestSnapshotLoading extends TableTestBase {
         .containsExactlyInAnyOrderElementsOf(originalTableMetadata.snapshots());
   }
 
+  /**
+   * 测试场景：removed current snapshot fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovedCurrentSnapshotFails() {
     List<Snapshot> snapshotsMissingCurrent =
@@ -174,6 +216,11 @@ public class TestSnapshotLoading extends TableTestBase {
         .hasMessage("Invalid table metadata: Cannot find current version");
   }
 
+  /**
+   * 测试场景：removed ref snapshot fails。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemovedRefSnapshotFails() {
     Snapshot referencedSnapshot =
@@ -194,6 +241,11 @@ public class TestSnapshotLoading extends TableTestBase {
         .hasMessageEndingWith("does not exist in the existing snapshots list");
   }
 
+  /**
+   * 测试场景：building new metadata triggers snapshot load。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBuildingNewMetadataTriggersSnapshotLoad() {
     TableMetadata newTableMetadata =
@@ -211,32 +263,38 @@ public class TestSnapshotLoading extends TableTestBase {
       this.currentMetadata = currentMetadata;
     }
 
+    /** 辅助方法：current。 */
     @Override
     public TableMetadata current() {
       return currentMetadata;
     }
 
+    /** 辅助方法：refresh。 */
     @Override
     public TableMetadata refresh() {
       throw new UnsupportedOperationException("refresh not supported for test ops implementation.");
     }
 
+    /** 辅助方法：commit。 */
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
       throw new UnsupportedOperationException("commit not supported for test ops implementation.");
     }
 
+    /** 辅助方法：io。 */
     @Override
     public FileIO io() {
       return io;
     }
 
+    /** 辅助方法：metadata file location。 */
     @Override
     public String metadataFileLocation(String fileName) {
       throw new UnsupportedOperationException(
           "metadataFileLocation not supported for test ops implementation.");
     }
 
+    /** 辅助方法：location provider。 */
     @Override
     public LocationProvider locationProvider() {
       throw new UnsupportedOperationException(

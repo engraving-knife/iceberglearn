@@ -81,15 +81,25 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import scala.collection.Seq;
 
+/**
+ * 文件级说明：测试 TestHelpers 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 辅助 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestHelpers {
 
+  /** 测试辅助。 */
   private TestHelpers() {}
 
+  /** 断言equalssafe。 */
   public static void assertEqualsSafe(Types.StructType struct, List<Record> recs, List<Row> rows) {
     Streams.forEachPair(
         recs.stream(), rows.stream(), (rec, row) -> assertEqualsSafe(struct, rec, row));
   }
 
+  /** 断言equalssafe。 */
   public static void assertEqualsSafe(Types.StructType struct, Record rec, Row row) {
     List<Types.NestedField> fields = struct.fields();
     for (int i = 0; i < fields.size(); i += 1) {
@@ -102,6 +112,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals批。 */
   public static void assertEqualsBatch(
       Types.StructType struct, Iterator<Record> expected, ColumnarBatch batch) {
     for (int rowId = 0; rowId < batch.numRows(); rowId++) {
@@ -117,6 +128,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalssafe。 */
   private static void assertEqualsSafe(Types.ListType list, Collection<?> expected, List actual) {
     Type elementType = list.elementType();
     List<?> expectedElements = Lists.newArrayList(expected);
@@ -128,6 +140,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalssafe。 */
   private static void assertEqualsSafe(Types.MapType map, Map<?, ?> expected, Map<?, ?> actual) {
     Type keyType = map.keyType();
     Type valueType = map.valueType();
@@ -151,6 +164,7 @@ public class TestHelpers {
   private static final OffsetDateTime EPOCH = Instant.ofEpochMilli(0L).atOffset(ZoneOffset.UTC);
   private static final LocalDate EPOCH_DAY = EPOCH.toLocalDate();
 
+  /** 断言equalssafe。 */
   @SuppressWarnings("unchecked")
   private static void assertEqualsSafe(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
@@ -255,6 +269,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   public static void assertEqualsUnsafe(Types.StructType struct, Record rec, InternalRow row) {
     List<Types.NestedField> fields = struct.fields();
     for (int i = 0; i < fields.size(); i += 1) {
@@ -267,6 +282,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(
       Types.ListType list, Collection<?> expected, ArrayData actual) {
     Type elementType = list.elementType();
@@ -279,6 +295,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(Types.MapType map, Map<?, ?> expected, MapData actual) {
     Type keyType = map.keyType();
     Type valueType = map.valueType();
@@ -297,6 +314,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equalsunsafe。 */
   private static void assertEqualsUnsafe(Type type, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
@@ -392,6 +410,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals。 */
   /**
    * Check that the given InternalRow is equivalent to the Row.
    *
@@ -463,6 +482,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals列表。 */
   private static void assertEqualsLists(
       String prefix, Types.ListType type, ArrayData expected, List actual) {
     if (expected == null || actual == null) {
@@ -525,6 +545,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals映射。 */
   private static void assertEqualsMaps(
       String prefix, Types.MapType type, MapData expected, Map<?, ?> actual) {
     if (expected == null || actual == null) {
@@ -599,6 +620,7 @@ public class TestHelpers {
     }
   }
 
+  /** 获取值。 */
   private static Object getValue(SpecializedGetters container, int ord, Type type) {
     if (container.isNullAt(ord)) {
       return null;
@@ -646,6 +668,7 @@ public class TestHelpers {
     }
   }
 
+  /** 获取基础值。 */
   private static Object getPrimitiveValue(Row row, int ord, Type type) {
     if (row.isNullAt(ord)) {
       return null;
@@ -678,14 +701,17 @@ public class TestHelpers {
     }
   }
 
+  /** 到Java映射。 */
   private static <K, V> Map<K, V> toJavaMap(scala.collection.Map<K, V> map) {
     return map == null ? null : mapAsJavaMapConverter(map).asJava();
   }
 
+  /** 到列表。 */
   private static List toList(Seq<?> val) {
     return val == null ? null : seqAsJavaListConverter(val).asJava();
   }
 
+  /** 断言equalbytes。 */
   private static void assertEqualBytes(String context, byte[] expected, byte[] actual) {
     if (expected == null || actual == null) {
       Assert.assertEquals(context, expected, actual);
@@ -694,10 +720,12 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals。 */
   static void assertEquals(Schema schema, Object expected, Object actual) {
     assertEquals("schema", convert(schema), expected, actual);
   }
 
+  /** 断言equals。 */
   private static void assertEquals(String context, DataType type, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
@@ -737,6 +765,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals。 */
   private static void assertEquals(
       String context, StructType struct, InternalRow expected, InternalRow actual) {
     Assert.assertEquals("Should have correct number of fields", struct.size(), actual.numFields());
@@ -751,6 +780,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals。 */
   private static void assertEquals(
       String context, ArrayType array, ArrayData expected, ArrayData actual) {
     Assert.assertEquals(
@@ -765,6 +795,7 @@ public class TestHelpers {
     }
   }
 
+  /** 断言equals。 */
   private static void assertEquals(String context, MapType map, MapData expected, MapData actual) {
     Assert.assertEquals(
         "Should have the same number of elements", expected.numElements(), actual.numElements());
@@ -791,18 +822,22 @@ public class TestHelpers {
     }
   }
 
+  /** 数据清单。 */
   public static List<ManifestFile> dataManifests(Table table) {
     return table.currentSnapshot().dataManifests(table.io());
   }
 
+  /** 删除清单。 */
   public static List<ManifestFile> deleteManifests(Table table) {
     return table.currentSnapshot().deleteManifests(table.io());
   }
 
+  /** 数据文件。 */
   public static List<DataFile> dataFiles(Table table) {
     return dataFiles(table, null);
   }
 
+  /** 数据文件。 */
   public static List<DataFile> dataFiles(Table table, String branch) {
     TableScan scan = table.newScan();
     if (branch != null) {
@@ -813,6 +848,7 @@ public class TestHelpers {
     return Lists.newArrayList(CloseableIterable.transform(tasks, FileScanTask::file));
   }
 
+  /** 删除文件。 */
   public static Set<DeleteFile> deleteFiles(Table table) {
     Set<DeleteFile> deleteFiles = Sets.newHashSet();
 
@@ -823,6 +859,7 @@ public class TestHelpers {
     return deleteFiles;
   }
 
+  /** reachable清单路径。 */
   public static Set<String> reachableManifestPaths(Table table) {
     return StreamSupport.stream(table.snapshots().spliterator(), false)
         .flatMap(s -> s.allManifests(table.io()).stream())
@@ -830,16 +867,19 @@ public class TestHelpers {
         .collect(Collectors.toSet());
   }
 
+  /** 作为元数据记录。 */
   public static void asMetadataRecord(GenericData.Record file, FileContent content) {
     file.put(0, content.id());
     file.put(3, 0); // specId
   }
 
+  /** 作为元数据记录。 */
   public static void asMetadataRecord(GenericData.Record file) {
     file.put(0, FileContent.DATA.id());
     file.put(3, 0); // specId
   }
 
+  /** select不存在的derived。 */
   public static Dataset<Row> selectNonDerived(Dataset<Row> metadataTable) {
     StructField[] fields = metadataTable.schema().fields();
     return metadataTable.select(
@@ -849,6 +889,7 @@ public class TestHelpers {
             .toArray(Column[]::new));
   }
 
+  /** 不存在的derived模式。 */
   public static Types.StructType nonDerivedSchema(Dataset<Row> metadataTable) {
     return SparkSchemaUtil.convert(TestHelpers.selectNonDerived(metadataTable).schema()).asStruct();
   }

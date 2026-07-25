@@ -22,17 +22,24 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.expressions.Expression
 
 /**
- * A node that hides the MERGE condition and actions from regular Spark resolution.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：未解析的 MERGE INTO Iceberg 表逻辑计划节点，仅包含原始语法信息。
+ * <p>设计意图：在解析前承载 MERGE 语法，待 ResolveMergeIntoTableReferences 解析为 MergeIntoIcebergTable。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 创建；由 ResolveMergeIntoTableReferences 消费。
  */
 case class UnresolvedMergeIntoIcebergTable(
     targetTable: LogicalPlan,
     sourceTable: LogicalPlan,
     context: MergeIntoContext) extends BinaryCommand {
+  /** 执行 duplicateResolved 相关操作。 */
 
   def duplicateResolved: Boolean = targetTable.outputSet.intersect(sourceTable.outputSet).isEmpty
+  /** 执行 left 相关操作。 */
 
   override def left: LogicalPlan = targetTable
+  /** 执行 right 相关操作。 */
   override def right: LogicalPlan = sourceTable
+  /** 返回带 NewChildrenInternal 设置的副本。 */
 
   override protected def withNewChildrenInternal(newLeft: LogicalPlan, newRight: LogicalPlan): LogicalPlan = {
     copy(targetTable = newLeft, sourceTable = newRight)

@@ -24,20 +24,38 @@ import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 /**
- * AggregatedStatistics is used by {@link DataStatisticsCoordinator} to collect {@link
- * DataStatistics} from {@link DataStatisticsOperator} subtasks for specific checkpoint. It stores
- * the merged {@link DataStatistics} result from all reported subtasks.
+ * 文件级说明：聚合统计数据，用于在特定 checkpoint 周期内合并各子任务上报的 {@link DataStatistics}。
+ *
+ * <p>所属模块：iceberg-flink（sink/shuffle 子包），服务于 RANGE 分发模式的数据聚类优化。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>持有 checkpointId 和对应的合并后 {@link DataStatistics}。
+ *   <li>提供 mergeDataStatistic 方法将各子任务上报的统计数据合并到当前聚合结果。
+ * </ul>
+ *
+ * <p>设计意图：{@link DataStatisticsCoordinator} 为每个 checkpoint 创建一个 AggregatedStatistics，
+ * 收集所有子任务的统计数据后合并，再将结果下发给各子任务用于自定义分区器优化数据分布。
+ *
+ * <p>上下游关系：由 {@link DataStatisticsCoordinator} 创建和管理；合并来自 {@link DataStatisticsOperator}
+ * 各子任务上报的数据统计。
+ *
+ * @param <D> 数据统计类型
+ * @param <S> 统计结果类型
  */
 class AggregatedStatistics<D extends DataStatistics<D, S>, S> implements Serializable {
 
   private final long checkpointId;
   private final DataStatistics<D, S> dataStatistics;
 
+  /** 构造方法：创建空的统计数据实例（用于开始新的 checkpoint 聚合）。 */
   AggregatedStatistics(long checkpoint, TypeSerializer<DataStatistics<D, S>> statisticsSerializer) {
     this.checkpointId = checkpoint;
     this.dataStatistics = statisticsSerializer.createInstance();
   }
 
+  /** 构造方法：使用已有的统计数据构造。 */
   AggregatedStatistics(long checkpoint, DataStatistics<D, S> dataStatistics) {
     this.checkpointId = checkpoint;
     this.dataStatistics = dataStatistics;
@@ -51,6 +69,15 @@ class AggregatedStatistics<D extends DataStatistics<D, S>, S> implements Seriali
     return dataStatistics;
   }
 
+  /**
+   * 合并子任务上报的统计数据。
+   *
+   * <p>逻辑：校验 checkpointId 一致后，将子任务的统计数据合并到当前聚合结果。
+   *
+   * @param operatorName 算子名称
+   * @param eventCheckpointId 事件携带的 checkpoint id
+   * @param eventDataStatistics 子任务的统计数据
+   */
   void mergeDataStatistic(String operatorName, long eventCheckpointId, D eventDataStatistics) {
     Preconditions.checkArgument(
         checkpointId == eventCheckpointId,

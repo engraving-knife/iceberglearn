@@ -37,7 +37,10 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.StructField
 
 /**
- * Writes a delta of rows to an existing table.
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：写入 Iceberg 增量的逻辑计划节点，表示用 delete+insert 增量写回目标表。
+ * <p>设计意图：作为 PositionDelta 行级命令重写的目标节点，封装增量写语义。
+ * <p>上下游关系：由行级命令重写创建；由对应 Exec 执行。
  */
 case class WriteIcebergDelta(
     table: NamedRelation,
@@ -47,11 +50,13 @@ case class WriteIcebergDelta(
     write: Option[DeltaWrite] = None) extends V2WriteCommandLike {
 
   override protected lazy val stringArgs: Iterator[Any] = Iterator(table, query, write)
+  /** 执行 operationResolved 相关操作。 */
 
   private def operationResolved: Boolean = {
     val attr = query.output.head
     attr.name == OPERATION_COLUMN && attr.dataType == IntegerType && !attr.nullable
   }
+  /** 执行 operation 相关操作。 */
 
   private def operation: SupportsDelta = {
     EliminateSubqueryAliases(table) match {
@@ -66,6 +71,7 @@ case class WriteIcebergDelta(
         throw new AnalysisException(s"Cannot retrieve row-level operation from $table")
     }
   }
+  /** 执行 rowAttrsResolved 相关操作。 */
 
   private def rowAttrsResolved: Boolean = {
     table.skipSchemaResolution || (projections.rowProjection match {
@@ -78,6 +84,7 @@ case class WriteIcebergDelta(
         true
     })
   }
+  /** 执行 rowIdAttrsResolved 相关操作。 */
 
   private def rowIdAttrsResolved: Boolean = {
     val rowIdAttrs = V2ExpressionUtils.resolveRefs[AttributeReference](
@@ -88,6 +95,7 @@ case class WriteIcebergDelta(
       rowIdAttrs.exists(rowIdAttr => isCompatible(field, rowIdAttr))
     }
   }
+  /** 执行 metadataAttrsResolved 相关操作。 */
 
   private def metadataAttrsResolved: Boolean = {
     projections.metadataProjection match {
@@ -103,6 +111,7 @@ case class WriteIcebergDelta(
         true
     }
   }
+  /** 判断是否 Compatible。 */
 
   private def isCompatible(projectionField: StructField, outAttr: NamedExpression): Boolean = {
     val inType = CharVarcharUtils.getRawType(projectionField.metadata).getOrElse(outAttr.dataType)
@@ -112,6 +121,7 @@ case class WriteIcebergDelta(
       DataType.equalsIgnoreCompatibleNullability(inType, outType) &&
       (outAttr.nullable || !projectionField.nullable)
   }
+  /** 执行 outputResolved 相关操作。 */
 
   override def outputResolved: Boolean = {
     assert(table.resolved && query.resolved,
@@ -119,6 +129,7 @@ case class WriteIcebergDelta(
 
     operationResolved && rowAttrsResolved && rowIdAttrsResolved && metadataAttrsResolved
   }
+  /** 返回带 NewChildInternal 设置的副本。 */
 
   override protected def withNewChildInternal(newChild: LogicalPlan): WriteIcebergDelta = {
     copy(query = newChild)

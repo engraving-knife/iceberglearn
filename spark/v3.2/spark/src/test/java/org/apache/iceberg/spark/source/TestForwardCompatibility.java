@@ -65,6 +65,13 @@ import org.junit.rules.TemporaryFolder;
 import scala.Option;
 import scala.collection.JavaConverters;
 
+/**
+ * 文件级说明：测试 TestForwardCompatibility 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 前进compatibility 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestForwardCompatibility {
   private static final Configuration CONF = new Configuration();
 
@@ -88,11 +95,13 @@ public class TestForwardCompatibility {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestForwardCompatibility.spark = SparkSession.builder().master("local[2]").getOrCreate();
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestForwardCompatibility.spark;
@@ -100,6 +109,7 @@ public class TestForwardCompatibility {
     currentSpark.stop();
   }
 
+  /** 测试Spark写failsunknown转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkWriteFailsUnknownTransform() throws IOException {
     File parent = temp.newFolder("avro");
@@ -128,6 +138,7 @@ public class TestForwardCompatibility {
                 .save(location.toString()));
   }
 
+  /** 测试Spark流式写failsunknown转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkStreamingWriteFailsUnknownTransform() throws IOException, TimeoutException {
     File parent = temp.newFolder("avro");
@@ -162,6 +173,7 @@ public class TestForwardCompatibility {
         query::processAllAvailable);
   }
 
+  /** 测试Spark能否读unknown转换场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkCanReadUnknownTransform() throws IOException {
     File parent = temp.newFolder("avro");
@@ -214,10 +226,12 @@ public class TestForwardCompatibility {
     }
   }
 
+  /** 新建memory流。 */
   private <T> MemoryStream<T> newMemoryStream(int id, SQLContext sqlContext, Encoder<T> encoder) {
     return new MemoryStream<>(id, sqlContext, Option.empty(), encoder);
   }
 
+  /** 辅助方法：send。 */
   private <T> void send(List<T> records, MemoryStream<T> stream) {
     stream.addData(JavaConverters.asScalaBuffer(records));
   }

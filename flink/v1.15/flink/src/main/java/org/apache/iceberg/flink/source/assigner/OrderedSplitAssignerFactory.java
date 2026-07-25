@@ -24,8 +24,11 @@ import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 import org.apache.iceberg.flink.source.split.SerializableComparator;
 
 /**
- * Create default assigner with a comparator that hands out splits where the order of the splits
- * will be defined by the {@link SerializableComparator}.
+ * 有序分片分配器工厂，创建按顺序分配的 SplitAssigner。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：构造 DefaultSplitAssigner 并设置排序比较器。
+ *
+ * <p>设计意图：实现 SplitAssignerFactory；被 IcebergSource 调用。
  */
 public class OrderedSplitAssignerFactory implements SplitAssignerFactory {
   private final SerializableComparator<IcebergSourceSplit> comparator;

@@ -63,6 +63,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+/**
+ * 文件级说明：测试 SparkRowLevelOperationsTestBase 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 Spark行级别操作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTestBase {
 
@@ -73,6 +80,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
   protected final String distributionMode;
   protected final String branch;
 
+  /** Spark行级别操作测试基类。 */
   public SparkRowLevelOperationsTestBase(
       String catalogName,
       String implementation,
@@ -92,6 +100,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
       name =
           "catalogName = {0}, implementation = {1}, config = {2},"
               + " format = {3}, vectorized = {4}, distributionMode = {5}, branch = {6}")
+  /** 参数。 */
   public static Object[][] parameters() {
     return new Object[][] {
       {
@@ -146,6 +155,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
 
   protected abstract Map<String, String> extraTableProperties();
 
+  /** init表。 */
   protected void initTable() {
     sql("ALTER TABLE %s SET TBLPROPERTIES('%s' '%s')", tableName, DEFAULT_FILE_FORMAT, fileFormat);
     sql(
@@ -173,14 +183,17 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
         });
   }
 
+  /** 创建与init表。 */
   protected void createAndInitTable(String schema) {
     createAndInitTable(schema, null);
   }
 
+  /** 创建与init表。 */
   protected void createAndInitTable(String schema, String jsonData) {
     createAndInitTable(schema, "", jsonData);
   }
 
+  /** 创建与init表。 */
   protected void createAndInitTable(String schema, String partitioning, String jsonData) {
     sql("CREATE TABLE %s (%s) USING iceberg %s", tableName, schema, partitioning);
     initTable();
@@ -196,10 +209,12 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     }
   }
 
+  /** 追加。 */
   protected void append(String table, String jsonData) {
     append(table, null, jsonData);
   }
 
+  /** 追加。 */
   protected void append(String table, String schema, String jsonData) {
     try {
       Dataset<Row> ds = toDS(schema, jsonData);
@@ -209,19 +224,23 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     }
   }
 
+  /** 创建或替换视图。 */
   protected void createOrReplaceView(String name, String jsonData) {
     createOrReplaceView(name, null, jsonData);
   }
 
+  /** 创建或替换视图。 */
   protected void createOrReplaceView(String name, String schema, String jsonData) {
     Dataset<Row> ds = toDS(schema, jsonData);
     ds.createOrReplaceTempView(name);
   }
 
+  /** 创建或替换视图。 */
   protected <T> void createOrReplaceView(String name, List<T> data, Encoder<T> encoder) {
     spark.createDataset(data, encoder).createOrReplaceTempView(name);
   }
 
+  /** 到ds。 */
   private Dataset<Row> toDS(String schema, String jsonData) {
     List<String> jsonRows =
         Arrays.stream(jsonData.split("\n"))
@@ -236,11 +255,13 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     }
   }
 
+  /** 校验删除。 */
   protected void validateDelete(
       Snapshot snapshot, String changedPartitionCount, String deletedDataFiles) {
     validateSnapshot(snapshot, DELETE, changedPartitionCount, deletedDataFiles, null, null);
   }
 
+  /** 校验复制上写。 */
   protected void validateCopyOnWrite(
       Snapshot snapshot,
       String changedPartitionCount,
@@ -250,6 +271,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
         snapshot, OVERWRITE, changedPartitionCount, deletedDataFiles, null, addedDataFiles);
   }
 
+  /** 校验合并上读。 */
   protected void validateMergeOnRead(
       Snapshot snapshot,
       String changedPartitionCount,
@@ -259,6 +281,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
         snapshot, OVERWRITE, changedPartitionCount, null, addedDeleteFiles, addedDataFiles);
   }
 
+  /** 校验快照。 */
   protected void validateSnapshot(
       Snapshot snapshot,
       String operation,
@@ -273,6 +296,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     validateProperty(snapshot, ADDED_FILES_PROP, addedDataFiles);
   }
 
+  /** 校验属性。 */
   protected void validateProperty(Snapshot snapshot, String property, Set<String> expectedValues) {
     String actual = snapshot.summary().get(property);
     Assert.assertTrue(
@@ -285,12 +309,14 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
         expectedValues.contains(actual));
   }
 
+  /** 校验属性。 */
   protected void validateProperty(Snapshot snapshot, String property, String expectedValue) {
     String actual = snapshot.summary().get(property);
     Assert.assertEquals(
         "Snapshot property " + property + " has unexpected value.", expectedValue, actual);
   }
 
+  /** 辅助方法：sleep。 */
   protected void sleep(long millis) {
     try {
       Thread.sleep(millis);
@@ -299,6 +325,7 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     }
   }
 
+  /** 写数据文件。 */
   protected DataFile writeDataFile(Table table, List<GenericRecord> records) {
     try {
       OutputFile file = Files.localOutput(temp.newFile());
@@ -325,16 +352,19 @@ public abstract class SparkRowLevelOperationsTestBase extends SparkExtensionsTes
     }
   }
 
+  /** 提交target。 */
   @Override
   protected String commitTarget() {
     return branch == null ? tableName : String.format("%s.branch_%s", tableName, branch);
   }
 
+  /** 辅助方法：selectTarget。 */
   @Override
   protected String selectTarget() {
     return branch == null ? tableName : String.format("%s VERSION AS OF '%s'", tableName, branch);
   }
 
+  /** 创建分支ifneeded。 */
   protected void createBranchIfNeeded() {
     if (branch != null && !branch.equals(SnapshotRef.MAIN_BRANCH)) {
       sql("ALTER TABLE %s CREATE BRANCH %s", tableName, branch);

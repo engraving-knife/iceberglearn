@@ -88,6 +88,13 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestFilteredScan 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 filtered扫描 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestFilteredScan {
   private static final Configuration CONF = new Configuration();
@@ -116,6 +123,7 @@ public class TestFilteredScan {
 
   private static SparkSession spark = null;
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestFilteredScan.spark = SparkSession.builder().master("local[2]").getOrCreate();
@@ -144,6 +152,7 @@ public class TestFilteredScan {
     spark.udf().register("id_ident", (UDF1<Long, Long>) id -> id, LongType$.MODULE$);
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestFilteredScan.spark;
@@ -157,6 +166,7 @@ public class TestFilteredScan {
   private final boolean vectorized;
   private final PlanningMode planningMode;
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}, planningMode = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -168,6 +178,7 @@ public class TestFilteredScan {
     };
   }
 
+  /** 测试filtered扫描。 */
   public TestFilteredScan(String format, boolean vectorized, PlanningMode planningMode) {
     this.format = format;
     this.vectorized = vectorized;
@@ -178,6 +189,7 @@ public class TestFilteredScan {
   private File unpartitioned = null;
   private List<Record> records = null;
 
+  /** 写非分区表。 */
   @Before
   public void writeUnpartitionedTable() throws IOException {
     this.parent = temp.newFolder("TestFilteredScan");
@@ -218,6 +230,7 @@ public class TestFilteredScan {
     table.newAppend().appendFile(file).commit();
   }
 
+  /** 测试非分区id过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedIDFilters() {
     CaseInsensitiveStringMap options =
@@ -238,6 +251,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试非分区场景insensitiveid过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedCaseInsensitiveIDFilters() {
     CaseInsensitiveStringMap options =
@@ -274,6 +288,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试非分区时间戳过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedTimestampFilter() {
     CaseInsensitiveStringMap options =
@@ -297,6 +312,7 @@ public class TestFilteredScan {
             "ts < cast('2017-12-22 00:00:00+00:00' as timestamp)"));
   }
 
+  /** 测试桶分区id过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketPartitionedIDFilters() {
     Table table = buildPartitionedTable("bucketed_by_id", BUCKET_BY_ID, "bucket4", "id");
@@ -326,6 +342,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试day分区时间戳过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:AvoidNestedBlocks")
   @Test
   public void testDayPartitionedTimestampFilters() {
@@ -380,6 +397,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试hour分区时间戳过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:AvoidNestedBlocks")
   @Test
   public void testHourPartitionedTimestampFilters() {
@@ -435,6 +453,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试过滤器通过不存在的projected列场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:AvoidNestedBlocks")
   @Test
   public void testFilterByNonProjectedColumn() {
@@ -477,6 +496,7 @@ public class TestFilteredScan {
     }
   }
 
+  /** 测试分区通过数据启动带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedByDataStartsWithFilter() {
     Table table =
@@ -493,6 +513,7 @@ public class TestFilteredScan {
     Assert.assertEquals(1, scan.planInputPartitions().length);
   }
 
+  /** 测试分区通过数据非启动带过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedByDataNotStartsWithFilter() {
     Table table =
@@ -509,6 +530,7 @@ public class TestFilteredScan {
     Assert.assertEquals(9, scan.planInputPartitions().length);
   }
 
+  /** 测试分区通过id启动带场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedByIdStartsWith() {
     Table table = buildPartitionedTable("partitioned_by_id", PARTITION_BY_ID, "id_ident", "id");
@@ -525,6 +547,7 @@ public class TestFilteredScan {
     Assert.assertEquals(1, scan.planInputPartitions().length);
   }
 
+  /** 测试分区通过id非启动带场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testPartitionedByIdNotStartsWith() {
     Table table = buildPartitionedTable("partitioned_by_id", PARTITION_BY_ID, "id_ident", "id");
@@ -541,6 +564,7 @@ public class TestFilteredScan {
     Assert.assertEquals(9, scan.planInputPartitions().length);
   }
 
+  /** 测试非分区启动带场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedStartsWith() {
     Dataset<Row> df =
@@ -557,6 +581,7 @@ public class TestFilteredScan {
     Assert.assertEquals("junction", matchedData.get(0));
   }
 
+  /** 测试非分区非启动带场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testUnpartitionedNotStartsWith() {
     Dataset<Row> df =
@@ -579,6 +604,7 @@ public class TestFilteredScan {
     Assert.assertEquals(Sets.newHashSet(expected), Sets.newHashSet(matchedData));
   }
 
+  /** 辅助方法：projectFlat。 */
   private static Record projectFlat(Schema projection, Record record) {
     Record result = GenericRecord.create(projection);
     List<Types.NestedField> fields = projection.asStruct().fields();
@@ -589,6 +615,7 @@ public class TestFilteredScan {
     return result;
   }
 
+  /** 断言equalsunsafe。 */
   public static void assertEqualsUnsafe(
       Types.StructType struct, List<Record> expected, List<UnsafeRow> actual) {
     // TODO: match records by ID
@@ -599,6 +626,7 @@ public class TestFilteredScan {
     Assert.assertEquals("Number of results should match expected", expected.size(), actual.size());
   }
 
+  /** 断言equalssafe。 */
   public static void assertEqualsSafe(
       Types.StructType struct, List<Record> expected, List<Row> actual) {
     // TODO: match records by ID
@@ -609,6 +637,7 @@ public class TestFilteredScan {
     Assert.assertEquals("Number of results should match expected", expected.size(), actual.size());
   }
 
+  /** 期望。 */
   private List<Record> expected(int... ordinals) {
     List<Record> expected = Lists.newArrayListWithExpectedSize(ordinals.length);
     for (int ord : ordinals) {
@@ -617,12 +646,14 @@ public class TestFilteredScan {
     return expected;
   }
 
+  /** 下推过滤器。 */
   private void pushFilters(ScanBuilder scan, Filter... filters) {
     Assertions.assertThat(scan).isInstanceOf(SupportsPushDownV2Filters.class);
     SupportsPushDownV2Filters filterable = (SupportsPushDownV2Filters) scan;
     filterable.pushPredicates(Arrays.stream(filters).map(Filter::toV2).toArray(Predicate[]::new));
   }
 
+  /** 构建分区表。 */
   private Table buildPartitionedTable(
       String desc, PartitionSpec spec, String udf, String partitionColumn) {
     File location = new File(parent, desc);
@@ -655,6 +686,7 @@ public class TestFilteredScan {
     return table;
   }
 
+  /** 测试记录场景：验证该方法在对应输入下的行为与断言结果。 */
   private List<Record> testRecords(Schema schema) {
     return Lists.newArrayList(
         record(schema, 0L, parse("2017-12-22T09:20:44.294658+00:00"), "junction"),
@@ -669,10 +701,12 @@ public class TestFilteredScan {
         record(schema, 9L, parse("2017-12-21T15:02:15.230570+00:00"), "goldfish"));
   }
 
+  /** 读。 */
   private static List<Row> read(String table, boolean vectorized, String expr) {
     return read(table, vectorized, expr, "*");
   }
 
+  /** 读。 */
   private static List<Row> read(
       String table, boolean vectorized, String expr, String select0, String... selectN) {
     Dataset<Row> dataset =
@@ -686,10 +720,12 @@ public class TestFilteredScan {
     return dataset.collectAsList();
   }
 
+  /** 辅助方法：parse。 */
   private static OffsetDateTime parse(String timestamp) {
     return OffsetDateTime.parse(timestamp);
   }
 
+  /** 记录。 */
   private static Record record(Schema schema, Object... values) {
     Record rec = GenericRecord.create(schema);
     for (int i = 0; i < values.length; i += 1) {

@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.ContentFile;
-import org.apache.iceberg.DataFile;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.expressions.ExpressionVisitors.BoundExpressionVisitor;
 import org.apache.iceberg.types.Comparators;
@@ -37,39 +36,59 @@ import org.apache.iceberg.util.BinaryUtil;
 import org.apache.iceberg.util.NaNUtil;
 
 /**
- * Evaluates an {@link Expression} on a {@link DataFile} to test whether rows in the file may match.
+ * 文件级包容性指标求值器：基于数据文件的列统计（min/max/null 计数等）判定文件是否“可能”包含匹配行。
  *
- * <p>This evaluation is inclusive: it returns true if a file may match and false if it cannot
- * match.
+ * <p>所属模块：iceberg-api（表达式体系的文件级裁剪入口，与行级 {@link Evaluator} 互补， 是 Iceberg 数据跳过（data skipping）的核心）。
  *
- * <p>Files are passed to {@link #eval(ContentFile)}, which returns true if the file may contain
- * matching rows and false if the file cannot contain matching rows. Files may be skipped if and
- * only if the return value of {@code eval} is false.
+ * <p>职责：
  *
- * <p>Due to the comparison implementation of ORC stats, for float/double columns in ORC files, if
- * the first value in a file is NaN, metrics of this file will report NaN for both upper and lower
- * bound despite that the column could contain non-NaN data. Thus in some scenarios explicitly
- * checks for NaN is necessary in order to not skip files that may contain matching data.
+ * <ul>
+ *   <li>构造时把未绑定表达式经 {@link Binder} 绑定，并先用 {@link Expressions#rewriteNot} 把 NOT 下沉到叶子（因投影/指标求值假设无
+ *       NOT）。
+ *   <li>提供 {@link #eval(ContentFile)}：对单个数据文件返回“是否可能匹配”。
+ * </ul>
+ *
+ * <p>设计意图：“包容（inclusive）”语义——返回 true 表示文件可能匹配（不能跳过）， 返回 false 表示文件必定不匹配（可安全跳过）。基于每个文件按列记录的
+ * valueCounts、 nullValueCounts、nanValueCounts、lowerBounds、upperBounds 做区间判定，无需读数据。 因 ORC 的
+ * float/double 列在首值为 NaN 时会把上下界都报为 NaN（不可靠）， 故遇到 NaN 界时保守返回 ROWS_MIGHT_MATCH，避免误跳过。
+ *
+ * <p>上下游关系：被 core 模块的扫描任务裁剪流程调用，对每个候选 DataFile 判定是否跳过； 输入 schema 与表达式由扫描配置提供。
  */
 public class InclusiveMetricsEvaluator {
+  /** IN 谓词值数量上限：超过此值则不做集合裁剪，直接判可能匹配，避免开销过大。 */
   private static final int IN_PREDICATE_LIMIT = 200;
 
   private final Expression expr;
 
+  /**
+   * 构造包容性指标求值器（大小写敏感，默认）。
+   *
+   * @param schema 表 schema
+   * @param unbound 未绑定表达式
+   */
   public InclusiveMetricsEvaluator(Schema schema, Expression unbound) {
     this(schema, unbound, true);
   }
 
+  /**
+   * 构造包容性指标求值器（可指定大小写敏感）。
+   *
+   * <p>逻辑：取 schema 的 struct，先用 rewriteNot 把 NOT 下沉，再经 Binder 绑定得到已绑定表达式。
+   *
+   * @param schema 表 schema
+   * @param unbound 未绑定表达式
+   * @param caseSensitive 是否大小写敏感
+   */
   public InclusiveMetricsEvaluator(Schema schema, Expression unbound, boolean caseSensitive) {
     StructType struct = schema.asStruct();
     this.expr = Binder.bind(struct, rewriteNot(unbound), caseSensitive);
   }
 
   /**
-   * Test whether the file may contain records that match the expression.
+   * 判定文件是否可能包含匹配表达式的行。
    *
-   * @param file a data file
-   * @return false if the file cannot contain rows that match the expression, true otherwise.
+   * @param file 数据文件
+   * @return false 表示文件不可能匹配（可跳过），true 表示可能匹配
    */
   public boolean eval(ContentFile<?> file) {
     // TODO: detect the case where a column is missing from the file using file's max field id.
@@ -79,6 +98,12 @@ public class InclusiveMetricsEvaluator {
   private static final boolean ROWS_MIGHT_MATCH = true;
   private static final boolean ROWS_CANNOT_MATCH = false;
 
+  /**
+   * 指标求值访问者：把已绑定表达式树映射为“文件是否可能匹配”的布尔结果。
+   *
+   * <p>设计意图：继承 {@link BoundExpressionVisitor}，按谓词类型分发到 isNull/lt/eq/in 等方法；
+   * 每个方法利用文件级列统计（上下界、null/nan 计数）做区间判定。非引用 term（如变换） 经 {@link #handleNonReference} 保守返回可能匹配。
+   */
   private class MetricsEvalVisitor extends BoundExpressionVisitor<Boolean> {
     private Map<Integer, Long> valueCounts = null;
     private Map<Integer, Long> nullCounts = null;
@@ -86,6 +111,14 @@ public class InclusiveMetricsEvaluator {
     private Map<Integer, ByteBuffer> lowerBounds = null;
     private Map<Integer, ByteBuffer> upperBounds = null;
 
+    /**
+     * 在单个文件上求“是否可能匹配”。
+     *
+     * <p>逻辑：记录数为 0 直接判不匹配；记录数小于 0（avro 导入未解析）保守判可能匹配； 否则加载文件各项列统计，再用带短路的 visitEvaluator 遍历表达式。
+     *
+     * @param file 数据文件
+     * @return 是否可能匹配
+     */
     private boolean eval(ContentFile<?> file) {
       if (file.recordCount() == 0) {
         return ROWS_CANNOT_MATCH;
@@ -199,6 +232,11 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /**
+     * 判定 col &lt; value 是否可能在文件中匹配。
+     *
+     * <p>逻辑：列全为 null/NaN 则不匹配；否则取列下界，若下界 &gt;= value（即所有值都 &gt;= value） 则不匹配；下界为 NaN（不可靠）时保守判可能匹配。
+     */
     @Override
     public <T> Boolean lt(BoundReference<T> ref, Literal<T> lit) {
       Integer id = ref.fieldId();
@@ -289,6 +327,11 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /**
+     * 判定 col == value 是否可能在文件中匹配。
+     *
+     * <p>逻辑：列全为 null/NaN 则不匹配；否则取下界，若下界 &gt; value 则不匹配； 再取上界，若上界 &lt; value 则不匹配；下界为 NaN 时保守判可能匹配。
+     */
     @Override
     public <T> Boolean eq(BoundReference<T> ref, Literal<T> lit) {
       Integer id = ref.fieldId();
@@ -330,6 +373,12 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /**
+     * 判定 col IN {values} 是否可能在文件中匹配。
+     *
+     * <p>逻辑：列全为 null/NaN 则不匹配；值数量超过 {@link #IN_PREDICATE_LIMIT} 直接判可能匹配；
+     * 否则用下界过滤掉所有小于下界的值、用上界过滤掉所有大于上界的值，若过滤后集合为空则不匹配。
+     */
     @Override
     public <T> Boolean in(BoundReference<T> ref, Set<T> literalSet) {
       Integer id = ref.fieldId();
@@ -385,6 +434,12 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /**
+     * 判定 col STARTS_WITH prefix 是否可能在文件中匹配。
+     *
+     * <p>逻辑：列全为 null 则不匹配；否则把 prefix 与下界/上界按 prefix 字节长度截断后做 无符号字节比较——下界截断后大于 prefix 则不匹配，上界截断后小于
+     * prefix 则不匹配。
+     */
     @Override
     public <T> Boolean startsWith(BoundReference<T> ref, Literal<T> lit) {
       Integer id = ref.fieldId();
@@ -420,6 +475,11 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /**
+     * 判定 col NOT_STARTS_WITH prefix 是否可能在文件中匹配。
+     *
+     * <p>逻辑：列可能含 null 则保守判可能匹配；否则仅当上下界截断后都等于 prefix （即所有值必然以 prefix 开头）时才判不匹配。
+     */
     @Override
     public <T> Boolean notStartsWith(BoundReference<T> ref, Literal<T> lit) {
       Integer id = ref.fieldId();
@@ -470,10 +530,12 @@ public class InclusiveMetricsEvaluator {
       return ROWS_MIGHT_MATCH;
     }
 
+    /** 判断列是否可能含 null（null 计数缺失或非 0）。 */
     private boolean mayContainNull(Integer id) {
       return nullCounts == null || (nullCounts.containsKey(id) && nullCounts.get(id) != 0);
     }
 
+    /** 判断列是否全为 null（值计数等于 null 计数）。 */
     private boolean containsNullsOnly(Integer id) {
       return valueCounts != null
           && valueCounts.containsKey(id)
@@ -482,6 +544,7 @@ public class InclusiveMetricsEvaluator {
           && valueCounts.get(id) - nullCounts.get(id) == 0;
     }
 
+    /** 判断列是否全为 NaN（NaN 计数等于值计数）。 */
     private boolean containsNaNsOnly(Integer id) {
       return nanCounts != null
           && nanCounts.containsKey(id)

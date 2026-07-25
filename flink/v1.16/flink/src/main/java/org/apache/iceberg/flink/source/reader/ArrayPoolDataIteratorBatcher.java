@@ -29,7 +29,13 @@ import org.apache.iceberg.flink.source.DataIterator;
 import org.apache.iceberg.io.CloseableIterator;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
-/** This implementation stores record batch in array from recyclable pool */
+/**
+ * 数组池数据迭代器分批器，从 DataIterator 切分数组批次。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按配置批大小从迭代器读取记录并构造 ArrayBatchRecords。
+ *
+ * <p>设计意图：实现 DataIteratorBatcher；被 IcebergSourceSplitReader 调用。
+ */
 class ArrayPoolDataIteratorBatcher<T> implements DataIteratorBatcher<T> {
   private final int batchSize;
   private final int handoverQueueSize;

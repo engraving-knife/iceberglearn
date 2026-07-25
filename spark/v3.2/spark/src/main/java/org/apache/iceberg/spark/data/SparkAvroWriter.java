@@ -38,14 +38,23 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.ShortType;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * Iceberg 与 Spark 数据格式之间的读写转换组件的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkAvroWriter。
+ *
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
   private final StructType dsSchema;
   private ValueWriter<InternalRow> writer = null;
 
+  /** 构造 SparkAvroWriter 实例。 */
   public SparkAvroWriter(StructType dsSchema) {
     this.dsSchema = dsSchema;
   }
 
+  /** 设置schema。 */
   @Override
   @SuppressWarnings("unchecked")
   public void setSchema(Schema schema) {
@@ -54,17 +63,46 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
             AvroWithSparkSchemaVisitor.visit(dsSchema, schema, new WriteBuilder());
   }
 
+  /**
+   * 写入数据。
+   *
+   * @param datum 参数
+   * @param out 参数
+   */
   @Override
   public void write(InternalRow datum, Encoder out) throws IOException {
     writer.write(datum, out);
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public Stream<FieldMetrics> metrics() {
     return writer.metrics();
   }
 
+  /**
+   * Iceberg 与 Spark 数据格式之间的读写转换组件的构建器，负责分步骤构造目标对象。
+   *
+   * <p>所属模块：iceberg-spark v3.2。 类型：类 WriteBuilder。
+   *
+   * <p>设计意图：建造者模式，分离复杂对象的构造与表示。
+   *
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private static class WriteBuilder extends AvroWithSparkSchemaVisitor<ValueWriter<?>> {
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param struct 参数
+     * @param record 参数
+     * @param names 参数
+     * @param fields 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> record(
         DataType struct, Schema record, List<String> names, List<ValueWriter<?>> fields) {
@@ -75,6 +113,14 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
               .collect(Collectors.toList()));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param type 参数
+     * @param union 参数
+     * @param options 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> union(DataType type, Schema union, List<ValueWriter<?>> options) {
       Preconditions.checkArgument(
@@ -90,24 +136,57 @@ public class SparkAvroWriter implements MetricsAwareDatumWriter<InternalRow> {
       }
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sArray 参数
+     * @param array 参数
+     * @param elementWriter 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> array(DataType sArray, Schema array, ValueWriter<?> elementWriter) {
       return SparkValueWriters.array(elementWriter, arrayElementType(sArray));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sMap 参数
+     * @param map 参数
+     * @param valueReader 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> map(DataType sMap, Schema map, ValueWriter<?> valueReader) {
       return SparkValueWriters.map(
           SparkValueWriters.strings(), mapKeyType(sMap), valueReader, mapValueType(sMap));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param sMap 参数
+     * @param map 参数
+     * @param keyWriter 参数
+     * @param valueWriter 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> map(
         DataType sMap, Schema map, ValueWriter<?> keyWriter, ValueWriter<?> valueWriter) {
       return SparkValueWriters.arrayMap(
+          /** 执行该方法的具体逻辑。 */
           keyWriter, mapKeyType(sMap), valueWriter, mapValueType(sMap));
     }
 
+    /**
+     * 执行该方法的具体逻辑。
+     *
+     * @param type 参数
+     * @param primitive 参数
+     * @return 结果对象
+     */
     @Override
     public ValueWriter<?> primitive(DataType type, Schema primitive) {
       LogicalType logicalType = primitive.getLogicalType();

@@ -46,6 +46,15 @@ import org.apache.spark.sql.sources.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：COPY-ON-WRITE 扫描，构建受行级操作影响的数据扫描并附加更新计算。
+ *
+ * <p>设计意图：在普通扫描之上叠加 ComputeUpdateIterator，输出更新后的行。
+ *
+ * <p>上下游关系：由 SparkCopyOnWriteOperation 使用。
+ */
 class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
     implements SupportsRuntimeFiltering {
 
@@ -85,22 +94,22 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
   Long snapshotId() {
     return snapshot != null ? snapshot.snapshotId() : null;
   }
-
+  /** 执行 taskJavaClass 相关操作。 */
   @Override
   protected Class<FileScanTask> taskJavaClass() {
     return FileScanTask.class;
   }
-
+  /** 执行 estimateStatistics 相关操作。 */
   @Override
   public Statistics estimateStatistics() {
     return estimateStatistics(snapshot);
   }
-
+  /** 执行 filterAttributes 相关操作。 */
   public NamedReference[] filterAttributes() {
     NamedReference file = Expressions.column(MetadataColumns.FILE_PATH.name());
     return new NamedReference[] {file};
   }
-
+  /** 过滤。 */
   @Override
   public void filter(Filter[] filters) {
     Preconditions.checkState(
@@ -147,7 +156,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
       }
     }
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -165,7 +174,7 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
         && Objects.equals(snapshotId(), that.snapshotId())
         && Objects.equals(filteredLocations, that.filteredLocations);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -175,14 +184,14 @@ class SparkCopyOnWriteScan extends SparkPartitioningAwareScan<FileScanTask>
         snapshotId(),
         filteredLocations);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(
         "IcebergCopyOnWriteScan(table=%s, type=%s, filters=%s, caseSensitive=%s)",
         table(), expectedSchema().asStruct(), filterExpressions(), caseSensitive());
   }
-
+  /** 执行 currentSnapshotId 相关操作。 */
   private Long currentSnapshotId() {
     Snapshot currentSnapshot = SnapshotUtil.latestSnapshot(table(), branch());
     return currentSnapshot != null ? currentSnapshot.snapshotId() : null;

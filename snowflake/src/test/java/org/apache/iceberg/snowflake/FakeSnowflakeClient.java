@@ -25,12 +25,20 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 
+/**
+ * 文件级说明：测试 FakeSnowflakeClient 的功能。
+ *
+ * <p>所属模块：iceberg-snowflake。职责：验证 FakeSnowflakeClient 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class FakeSnowflakeClient implements SnowflakeClient {
   // In-memory lookup by database/schema/tableName to table metadata.
   private final Map<String, Map<String, Map<String, SnowflakeTableMetadata>>> databases =
       Maps.newTreeMap();
   private boolean closed = false;
 
+  /** 辅助方法：FakeSnowflakeClient。 */
   public FakeSnowflakeClient() {}
 
   /**
@@ -51,17 +59,20 @@ public class FakeSnowflakeClient implements SnowflakeClient {
     tables.put(tableIdentifier.tableName(), metadata);
   }
 
+  /** 辅助方法：databaseExists。 */
   @Override
   public boolean databaseExists(SnowflakeIdentifier database) {
     return databases.containsKey(database.databaseName());
   }
 
+  /** 辅助方法：schemaExists。 */
   @Override
   public boolean schemaExists(SnowflakeIdentifier schema) {
     return databases.containsKey(schema.databaseName())
         && databases.get(schema.databaseName()).containsKey(schema.schemaName());
   }
 
+  /** 辅助方法：listDatabases。 */
   @Override
   public List<SnowflakeIdentifier> listDatabases() {
     Preconditions.checkState(!closed, "Cannot call listDatabases after calling close()");
@@ -72,6 +83,7 @@ public class FakeSnowflakeClient implements SnowflakeClient {
     return databaseIdentifiers;
   }
 
+  /** 辅助方法：listSchemas。 */
   @Override
   public List<SnowflakeIdentifier> listSchemas(SnowflakeIdentifier scope) {
     Preconditions.checkState(!closed, "Cannot call listSchemas after calling close()");
@@ -103,6 +115,7 @@ public class FakeSnowflakeClient implements SnowflakeClient {
     return schemas;
   }
 
+  /** 辅助方法：listIcebergTables。 */
   @Override
   public List<SnowflakeIdentifier> listIcebergTables(SnowflakeIdentifier scope) {
     Preconditions.checkState(!closed, "Cannot call listIcebergTables after calling close()");
@@ -162,6 +175,7 @@ public class FakeSnowflakeClient implements SnowflakeClient {
     return tables;
   }
 
+  /** 辅助方法：loadTableMetadata。 */
   @Override
   public SnowflakeTableMetadata loadTableMetadata(SnowflakeIdentifier tableIdentifier) {
     Preconditions.checkState(!closed, "Cannot call getTableMetadata after calling close()");
@@ -180,10 +194,12 @@ public class FakeSnowflakeClient implements SnowflakeClient {
     return databases.get(dbName).get(schemaName).get(tableIdentifier.tableName());
   }
 
+  /** 辅助方法：isClosed。 */
   public boolean isClosed() {
     return closed;
   }
 
+  /** 辅助方法：close。 */
   @Override
   public void close() {
     closed = true;

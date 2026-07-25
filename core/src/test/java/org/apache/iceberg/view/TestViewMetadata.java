@@ -35,8 +35,17 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestViewMetadata，用于验证 View Metadata 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 View Metadata 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestViewMetadata {
 
+  /** 辅助方法：new view version。 */
   private ViewVersion newViewVersion(int id, String sql) {
     return ImmutableViewVersion.builder()
         .versionId(id)
@@ -50,6 +59,11 @@ public class TestViewMetadata {
         .build();
   }
 
+  /**
+   * 测试场景：expiration。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testExpiration() {
     // purposely use versions and timestamps that do not match to check that version ID is used
@@ -62,6 +76,11 @@ public class TestViewMetadata {
     assertThat(retainedVersions).hasSameElementsAs(ImmutableList.of(v2, v3));
   }
 
+  /**
+   * 测试场景：update history。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateHistory() {
     ViewVersion v1 = newViewVersion(1, "select 1 as count");
@@ -90,6 +109,11 @@ public class TestViewMetadata {
     assertThat(retainedHistory).hasSameElementsAs(history.subList(1, 3));
   }
 
+  /**
+   * 测试场景：null and missing fields。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void nullAndMissingFields() {
     assertThatThrownBy(() -> ViewMetadata.builder().build())
@@ -110,6 +134,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot set uuid to null");
   }
 
+  /**
+   * 测试场景：unsupported format version。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void unsupportedFormatVersion() {
     assertThatThrownBy(
@@ -143,6 +172,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot downgrade v1 view to v0");
   }
 
+  /**
+   * 测试场景：empty view version。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void emptyViewVersion() {
     assertThatThrownBy(
@@ -151,6 +185,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot set current version to unknown version: 1");
   }
 
+  /**
+   * 测试场景：empty schemas。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void emptySchemas() {
     assertThatThrownBy(
@@ -171,6 +210,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot add version with unknown schema: 1");
   }
 
+  /**
+   * 测试场景：invalid current version id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidCurrentVersionId() {
     assertThatThrownBy(
@@ -193,6 +237,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot set current version to unknown version: 23");
   }
 
+  /**
+   * 测试场景：invalid current schema id。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidCurrentSchemaId() {
     assertThatThrownBy(
@@ -215,6 +264,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot add version with unknown schema: 23");
   }
 
+  /**
+   * 测试场景：invalid version history size to keep。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void invalidVersionHistorySizeToKeep() {
     assertThatThrownBy(
@@ -254,6 +308,11 @@ public class TestViewMetadata {
         .hasMessage("version.history.num-entries must be positive but was 0");
   }
 
+  /**
+   * 测试场景：view history normalization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void viewHistoryNormalization() {
     Map<String, String> properties = ImmutableMap.of(ViewProperties.VERSION_HISTORY_SIZE, "2");
@@ -357,6 +416,11 @@ public class TestViewMetadata {
         .isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：view metadata and metadata changes。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void viewMetadataAndMetadataChanges() {
     Map<String, String> properties = ImmutableMap.of("key1", "prop1", "key2", "prop2");
@@ -482,6 +546,11 @@ public class TestViewMetadata {
         .isEqualTo(-1);
   }
 
+  /**
+   * 测试场景：uuid assignment。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void uuidAssignment() {
     String uuid = "fa6506c3-7681-40c8-86dc-e36561f83385";
@@ -523,6 +592,11 @@ public class TestViewMetadata {
         .hasMessage("Cannot reassign uuid");
   }
 
+  /**
+   * 测试场景：view metadata with metadata location。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void viewMetadataWithMetadataLocation() {
     Schema schema = new Schema(1, Types.NestedField.required(1, "x", Types.LongType.get()));

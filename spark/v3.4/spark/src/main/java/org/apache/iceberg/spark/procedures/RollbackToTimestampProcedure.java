@@ -31,12 +31,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that rollbacks a table to a given point in time.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>职责：回滚到指定时间戳的存储过程，将表回滚到不晚于给定时间的最近快照。
  *
- * @see org.apache.iceberg.ManageSnapshots#rollbackToTime(long)
+ * <p>设计意图：通过 Iceberg rollback-to-timestamp 操作重置当前快照指针。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class RollbackToTimestampProcedure extends BaseProcedure {
 
@@ -52,9 +53,10 @@ class RollbackToTimestampProcedure extends BaseProcedure {
             new StructField("previous_snapshot_id", DataTypes.LongType, false, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<RollbackToTimestampProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected RollbackToTimestampProcedure doBuild() {
         return new RollbackToTimestampProcedure(tableCatalog());
@@ -65,17 +67,17 @@ class RollbackToTimestampProcedure extends BaseProcedure {
   private RollbackToTimestampProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -96,7 +98,7 @@ class RollbackToTimestampProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "RollbackToTimestampProcedure";

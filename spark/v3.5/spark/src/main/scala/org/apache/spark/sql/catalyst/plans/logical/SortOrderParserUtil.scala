@@ -24,8 +24,15 @@ import org.apache.iceberg.Schema
 import org.apache.iceberg.SortDirection
 import org.apache.iceberg.SortOrder
 import org.apache.iceberg.expressions.Term
+/**
+ * 所属模块：iceberg-spark v3.5
+ * <p>职责：排序顺序解析工具，将扩展语法中的排序说明解析为 Spark SortOrder 表达式。
+ * <p>设计意图：抽取排序解析公共逻辑，供 AstBuilder 复用。
+ * <p>上下游关系：由 IcebergSqlExtensionsAstBuilder 使用。
+ */
 
 class SortOrderParserUtil {
+  /** 执行 collectSortOrder 相关操作。 */
 
   def collectSortOrder(tableSchema:Schema, sortOrder: Seq[(Term, SortDirection, NullOrder)]): SortOrder = {
     val orderBuilder = SortOrder.builderFor(tableSchema)

@@ -45,13 +45,22 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceBounded 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestIcebergSourceBounded 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestIcebergSourceBounded extends TestFlinkScan {
 
+  /** 辅助方法：TestIcebergSourceBounded，Iceberg Source Bounded。 */
   public TestIcebergSourceBounded(String fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：runWithProjection，run With Projection。 */
   @Override
   protected List<Row> runWithProjection(String... projected) throws Exception {
     Schema icebergTableSchema =
@@ -67,6 +76,7 @@ public class TestIcebergSourceBounded extends TestFlinkScan {
     return run(projectedSchema, Lists.newArrayList(), Maps.newHashMap(), "", projected);
   }
 
+  /** 辅助方法：runWithFilter，run With Filter。 */
   @Override
   protected List<Row> runWithFilter(Expression filter, String sqlFilter, boolean caseSensitive)
       throws Exception {
@@ -75,16 +85,19 @@ public class TestIcebergSourceBounded extends TestFlinkScan {
     return run(null, Collections.singletonList(filter), options, sqlFilter, "*");
   }
 
+  /** 辅助方法：runWithOptions，run With Options。 */
   @Override
   protected List<Row> runWithOptions(Map<String, String> options) throws Exception {
     return run(null, Lists.newArrayList(), options, "", "*");
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   protected List<Row> run() throws Exception {
     return run(null, Lists.newArrayList(), Maps.newHashMap(), "", "*");
   }
 
+  /** 辅助方法：run，run。 */
   protected List<Row> run(
       Schema projectedSchema,
       List<Expression> filters,

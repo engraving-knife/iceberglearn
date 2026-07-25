@@ -77,6 +77,13 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.S3Error;
 
 @ExtendWith(S3MockExtension.class)
+/**
+ * 文件级说明：测试 TestS3FileIO 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestS3FileIO 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestS3FileIO {
   @RegisterExtension
   public static final S3MockExtension S3_MOCK = S3MockExtension.builder().silent().build();
@@ -96,6 +103,7 @@ public class TestS3FileIO {
           "s3.delete.batch-size",
           Integer.toString(batchDeletionSize));
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     s3FileIO = new S3FileIO(() -> s3mock);
@@ -107,6 +115,7 @@ public class TestS3FileIO {
     StaticClientFactory.client = s3mock;
   }
 
+  /** 辅助方法：after。 */
   @AfterEach
   public void after() {
     if (null != s3FileIO) {
@@ -114,6 +123,11 @@ public class TestS3FileIO {
     }
   }
 
+  /**
+   * 测试场景：New Input File。
+   *
+   * <p>验证该方法在 New Input File 条件下的行为是否符合预期。
+   */
   @Test
   public void testNewInputFile() throws IOException {
     String location = "s3://bucket/path/to/file.txt";
@@ -142,21 +156,41 @@ public class TestS3FileIO {
     Assertions.assertThat(s3FileIO.newInputFile(location).exists()).isFalse();
   }
 
+  /**
+   * 测试场景：Delete Files Multiple Batches。
+   *
+   * <p>验证该方法在 Delete Files Multiple Batches 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFilesMultipleBatches() {
     testBatchDelete(batchDeletionSize * 2);
   }
 
+  /**
+   * 测试场景：Delete Files Less Than Batch Size。
+   *
+   * <p>验证该方法在 Delete Files Less Than Batch Size 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFilesLessThanBatchSize() {
     testBatchDelete(batchDeletionSize - 1);
   }
 
+  /**
+   * 测试场景：Delete Files Single Batch With Remainder。
+   *
+   * <p>验证该方法在 Delete Files Single Batch With Remainder 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFilesSingleBatchWithRemainder() {
     testBatchDelete(batchDeletionSize + 1);
   }
 
+  /**
+   * 测试场景：Delete Empty List。
+   *
+   * <p>验证该方法在 Delete Empty List 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteEmptyList() throws IOException {
     String location = "s3://bucket/path/to/file.txt";
@@ -174,6 +208,11 @@ public class TestS3FileIO {
     Assertions.assertThat(s3FileIO.newInputFile(location).exists()).isFalse();
   }
 
+  /**
+   * 测试场景：Delete Files 3 Returns Error。
+   *
+   * <p>验证该方法在 Delete Files 3 Returns Error 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFilesS3ReturnsError() {
     String location = "s3://bucket/path/to/file-to-delete.txt";
@@ -188,6 +227,11 @@ public class TestS3FileIO {
         .hasMessage("Failed to delete 1 files");
   }
 
+  /**
+   * 测试场景：Batch Delete。
+   *
+   * <p>验证该方法在 Batch Delete 条件下的行为是否符合预期。
+   */
   private void testBatchDelete(int numObjects) {
     List<String> paths = Lists.newArrayList();
     for (int i = 1; i <= numBucketsForBatchDeletion; i++) {
@@ -210,6 +254,11 @@ public class TestS3FileIO {
     }
   }
 
+  /**
+   * 测试场景：Serialize Client。
+   *
+   * <p>验证该方法在 Serialize Client 条件下的行为是否符合预期。
+   */
   @Test
   public void testSerializeClient() throws IOException, ClassNotFoundException {
     SerializableSupplier<S3Client> pre =
@@ -225,6 +274,11 @@ public class TestS3FileIO {
     Assertions.assertThat(post.get().serviceName()).isEqualTo("s3");
   }
 
+  /**
+   * 测试场景：Prefix List。
+   *
+   * <p>验证该方法在 Prefix List 条件下的行为是否符合预期。
+   */
   @Test
   public void testPrefixList() {
     String prefix = "s3://bucket/path/to/list";
@@ -268,6 +322,11 @@ public class TestS3FileIO {
         });
   }
 
+  /**
+   * 测试场景：Read Missing Location。
+   *
+   * <p>验证该方法在 Read Missing Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadMissingLocation() {
     String location = "s3://bucket/path/to/data.parquet";
@@ -278,6 +337,11 @@ public class TestS3FileIO {
         .hasMessage("Location does not exist: " + location);
   }
 
+  /**
+   * 测试场景：Missing Table Metadata。
+   *
+   * <p>验证该方法在 Missing Table Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingTableMetadata() {
     Map<String, String> conf = Maps.newHashMap();
@@ -312,6 +376,11 @@ public class TestS3FileIO {
     }
   }
 
+  /**
+   * 测试场景：File IO Json Serialization。
+   *
+   * <p>验证该方法在 File IO Json Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testFileIOJsonSerialization() {
     Object conf;
@@ -328,6 +397,11 @@ public class TestS3FileIO {
     }
   }
 
+  /**
+   * 测试场景：3 File IO Kryo Serialization。
+   *
+   * <p>验证该方法在 3 File IO Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIOKryoSerialization() throws IOException {
     FileIO testS3FileIO = new S3FileIO();
@@ -340,6 +414,11 @@ public class TestS3FileIO {
         .isEqualTo(testS3FileIO.properties());
   }
 
+  /**
+   * 测试场景：3 File IO With Empty Props Kryo Serialization。
+   *
+   * <p>验证该方法在 3 File IO With Empty Props Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIOWithEmptyPropsKryoSerialization() throws IOException {
     FileIO testS3FileIO = new S3FileIO();
@@ -352,6 +431,11 @@ public class TestS3FileIO {
         .isEqualTo(testS3FileIO.properties());
   }
 
+  /**
+   * 测试场景：3 File IO Java Serialization。
+   *
+   * <p>验证该方法在 3 File IO Java Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testS3FileIOJavaSerialization() throws IOException, ClassNotFoundException {
     FileIO testS3FileIO = new S3FileIO();
@@ -364,6 +448,11 @@ public class TestS3FileIO {
         .isEqualTo(testS3FileIO.properties());
   }
 
+  /**
+   * 测试场景：Resolving File IO Load。
+   *
+   * <p>验证该方法在 Resolving File IO Load 条件下的行为是否符合预期。
+   */
   @Test
   public void testResolvingFileIOLoad() {
     ResolvingFileIO resolvingFileIO = new ResolvingFileIO();
@@ -377,6 +466,7 @@ public class TestS3FileIO {
     Assertions.assertThat(result).isInstanceOf(S3FileIO.class);
   }
 
+  /** 辅助方法：createRandomObjects。 */
   private void createRandomObjects(String prefix, int count) {
     S3URI s3URI = new S3URI(prefix);
 
@@ -390,6 +480,7 @@ public class TestS3FileIO {
                     RequestBody.empty()));
   }
 
+  /** 辅助方法：createBucket。 */
   private void createBucket(String bucketName) {
     try {
       s3.get().createBucket(CreateBucketRequest.builder().bucket(bucketName).build());

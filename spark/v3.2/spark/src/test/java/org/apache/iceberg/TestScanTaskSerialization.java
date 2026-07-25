@@ -53,6 +53,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestScanTaskSerialization 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 扫描任务序列化 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestScanTaskSerialization extends SparkTestBase {
 
   private static final HadoopTables TABLES = new HadoopTables(new Configuration());
@@ -66,12 +73,14 @@ public class TestScanTaskSerialization extends SparkTestBase {
 
   private String tableLocation = null;
 
+  /** 初始化表路径。 */
   @Before
   public void setupTableLocation() throws Exception {
     File tableDir = temp.newFolder();
     this.tableLocation = tableDir.toURI().toString();
   }
 
+  /** 测试基类combined扫描任务Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBaseCombinedScanTaskKryoSerialization() throws Exception {
     BaseCombinedScanTask scanTask = prepareBaseCombinedScanTaskForSerDeTest();
@@ -93,6 +102,7 @@ public class TestScanTaskSerialization extends SparkTestBase {
     }
   }
 
+  /** 测试基类combined扫描任务Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBaseCombinedScanTaskJavaSerialization() throws Exception {
     BaseCombinedScanTask scanTask = prepareBaseCombinedScanTaskForSerDeTest();
@@ -112,6 +122,7 @@ public class TestScanTaskSerialization extends SparkTestBase {
     }
   }
 
+  /** 测试基类扫描任务分组Kryo序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   @SuppressWarnings("unchecked")
   public void testBaseScanTaskGroupKryoSerialization() throws Exception {
@@ -136,6 +147,7 @@ public class TestScanTaskSerialization extends SparkTestBase {
     }
   }
 
+  /** 测试基类扫描任务分组Java序列化场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   @SuppressWarnings("unchecked")
   public void testBaseScanTaskGroupJavaSerialization() throws Exception {
@@ -158,18 +170,21 @@ public class TestScanTaskSerialization extends SparkTestBase {
     }
   }
 
+  /** prepare基类combined扫描任务用于serde测试。 */
   private BaseCombinedScanTask prepareBaseCombinedScanTaskForSerDeTest() {
     Table table = initTable();
     CloseableIterable<FileScanTask> tasks = table.newScan().planFiles();
     return new BaseCombinedScanTask(Lists.newArrayList(tasks));
   }
 
+  /** prepare基类扫描任务分组用于serde测试。 */
   private BaseScanTaskGroup<FileScanTask> prepareBaseScanTaskGroupForSerDeTest() {
     Table table = initTable();
     CloseableIterable<FileScanTask> tasks = table.newScan().planFiles();
     return new BaseScanTaskGroup<>(ImmutableList.copyOf(tasks));
   }
 
+  /** init表。 */
   private Table initTable() {
     PartitionSpec spec = PartitionSpec.unpartitioned();
     Map<String, String> options = Maps.newHashMap();
@@ -191,11 +206,13 @@ public class TestScanTaskSerialization extends SparkTestBase {
     return table;
   }
 
+  /** 写记录。 */
   private void writeRecords(List<ThreeColumnRecord> records) {
     Dataset<Row> df = spark.createDataFrame(records, ThreeColumnRecord.class);
     writeDF(df);
   }
 
+  /** 写df。 */
   private void writeDF(Dataset<Row> df) {
     df.select("c1", "c2", "c3").write().format("iceberg").mode("append").save(tableLocation);
   }

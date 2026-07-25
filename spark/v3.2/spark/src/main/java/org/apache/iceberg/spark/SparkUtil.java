@@ -47,6 +47,11 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 import org.joda.time.DateTime;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkUtil。
+ */
 public class SparkUtil {
 
   public static final String TIMESTAMP_WITHOUT_TIMEZONE_ERROR =
@@ -69,14 +74,10 @@ public class SparkUtil {
   private static final String SPARK_CATALOG_HADOOP_CONF_OVERRIDE_FMT_STR =
       SPARK_CATALOG_CONF_PREFIX + ".%s.hadoop.";
 
+  /** 构造 SparkUtil 实例。 */
   private SparkUtil() {}
 
-  /**
-   * Check whether the partition transforms in a spec can be used to write data.
-   *
-   * @param spec a PartitionSpec
-   * @throws UnsupportedOperationException if the spec contains unknown partition transforms
-   */
+  /** 校验前置条件或参数。 */
   public static void validatePartitionTransforms(PartitionSpec spec) {
     if (spec.fields().stream().anyMatch(field -> field.transform() instanceof UnknownTransform)) {
       String unsupported =
@@ -92,11 +93,14 @@ public class SparkUtil {
   }
 
   /**
-   * A modified version of Spark's LookupCatalog.CatalogAndIdentifier.unapply Attempts to find the
-   * catalog and identifier a multipart identifier represents
+   * 执行该方法的具体逻辑。
    *
-   * @param nameParts Multipart identifier representing a table
-   * @return The CatalogPlugin and Identifier for the table
+   * @param nameParts 参数
+   * @param catalogProvider 参数
+   * @param identiferProvider 参数
+   * @param currentCatalog 参数
+   * @param currentNamespace 参数
+   * @return 结果对象
    */
   public static <C, T> Pair<C, T> catalogAndIdentifier(
       List<String> nameParts,
@@ -127,26 +131,12 @@ public class SparkUtil {
     }
   }
 
-  /**
-   * Responsible for checking if the table schema has a timestamp without timezone column
-   *
-   * @param schema table schema to check if it contains a timestamp without timezone column
-   * @return boolean indicating if the schema passed in has a timestamp field without a timezone
-   */
+  /** 判断是否包含timestampwithoutzone。 */
   public static boolean hasTimestampWithoutZone(Schema schema) {
     return TypeUtil.find(schema, t -> Types.TimestampType.withoutZone().equals(t)) != null;
   }
 
-  /**
-   * Checks whether timestamp types for new tables should be stored with timezone info.
-   *
-   * <p>The default value is false and all timestamp fields are stored as {@link
-   * Types.TimestampType#withZone()}. If enabled, all timestamp fields in new tables will be stored
-   * as {@link Types.TimestampType#withoutZone()}.
-   *
-   * @param sessionConf a Spark runtime config
-   * @return true if timestamp types for new tables should be stored with timezone info
-   */
+  /** 执行该方法的具体逻辑。 */
   public static boolean useTimestampWithoutZoneInNewTables(RuntimeConfig sessionConf) {
     String sessionConfValue =
         sessionConf.get(SparkSQLProperties.USE_TIMESTAMP_WITHOUT_TIME_ZONE_IN_NEW_TABLES, null);
@@ -156,24 +146,7 @@ public class SparkUtil {
     return SparkSQLProperties.USE_TIMESTAMP_WITHOUT_TIME_ZONE_IN_NEW_TABLES_DEFAULT;
   }
 
-  /**
-   * Pulls any Catalog specific overrides for the Hadoop conf from the current SparkSession, which
-   * can be set via `spark.sql.catalog.$catalogName.hadoop.*`
-   *
-   * <p>Mirrors the override of hadoop configurations for a given spark session using
-   * `spark.hadoop.*`.
-   *
-   * <p>The SparkCatalog allows for hadoop configurations to be overridden per catalog, by setting
-   * them on the SQLConf, where the following will add the property "fs.default.name" with value
-   * "hdfs://hanksnamenode:8020" to the catalog's hadoop configuration. SparkSession.builder()
-   * .config(s"spark.sql.catalog.$catalogName.hadoop.fs.default.name", "hdfs://hanksnamenode:8020")
-   * .getOrCreate()
-   *
-   * @param spark The current Spark session
-   * @param catalogName Name of the catalog to find overrides for.
-   * @return the Hadoop Configuration that should be used for this catalog, with catalog specific
-   *     overrides applied.
-   */
+  /** 执行该方法的具体逻辑。 */
   public static Configuration hadoopConfCatalogOverrides(SparkSession spark, String catalogName) {
     // Find keys for the catalog intended to be hadoop configurations
     final String hadoopConfCatalogPrefix = hadoopConfPrefixForCatalog(catalogName);
@@ -194,18 +167,12 @@ public class SparkUtil {
     return conf;
   }
 
+  /** 执行该方法的具体逻辑。 */
   private static String hadoopConfPrefixForCatalog(String catalogName) {
     return String.format(SPARK_CATALOG_HADOOP_CONF_OVERRIDE_FMT_STR, catalogName);
   }
 
-  /**
-   * Get a List of Spark filter Expression.
-   *
-   * @param schema table schema
-   * @param filters filters in the format of a Map, where key is one of the table column name, and
-   *     value is the specific value to be filtered on the column.
-   * @return a List of filters in the format of Spark Expression.
-   */
+  /** 执行该方法的具体逻辑。 */
   public static List<Expression> partitionMapToExpression(
       StructType schema, Map<String, String> filters) {
     List<Expression> filterExpressions = Lists.newArrayList();
@@ -274,6 +241,7 @@ public class SparkUtil {
     return filterExpressions;
   }
 
+  /** 执行该方法的具体逻辑。 */
   public static boolean caseSensitive(SparkSession spark) {
     return Boolean.parseBoolean(spark.conf().get("spark.sql.caseSensitive"));
   }

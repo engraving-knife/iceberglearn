@@ -41,10 +41,23 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * 测试类：TestResolvingIO，用于验证 Resolving IO 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Resolving IO 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public class TestResolvingIO {
 
   @TempDir private java.nio.file.Path temp;
 
+  /**
+   * 测试场景：resolving file io kryo serialization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testResolvingFileIOKryoSerialization() throws IOException {
     FileIO testResolvingFileIO = new ResolvingFileIO();
@@ -56,6 +69,11 @@ public class TestResolvingIO {
     assertThat(roundTripSerializedFileIO.properties()).isEqualTo(testResolvingFileIO.properties());
   }
 
+  /**
+   * 测试场景：resolving file io with hadoop file io kryo serialization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testResolvingFileIOWithHadoopFileIOKryoSerialization() throws IOException {
     ResolvingFileIO resolvingFileIO = new ResolvingFileIO();
@@ -75,6 +93,11 @@ public class TestResolvingIO {
     assertThat(roundTripSerializedFileIO.newInputFile(temp.toString())).isNotNull();
   }
 
+  /**
+   * 测试场景：resolving file io java serialization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testResolvingFileIOJavaSerialization() throws IOException, ClassNotFoundException {
     FileIO testResolvingFileIO = new ResolvingFileIO();
@@ -85,6 +108,11 @@ public class TestResolvingIO {
     assertThat(roundTripSerializedFileIO.properties()).isEqualTo(testResolvingFileIO.properties());
   }
 
+  /**
+   * 测试场景：resolving file io with hadoop file io java serialization。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testResolvingFileIOWithHadoopFileIOJavaSerialization()
       throws IOException, ClassNotFoundException {
@@ -104,6 +132,11 @@ public class TestResolvingIO {
     assertThat(roundTripSerializedFileIO.newInputFile(temp.toString())).isNotNull();
   }
 
+  /**
+   * 测试场景：resolve file io bulk deletion。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void resolveFileIOBulkDeletion() throws IOException {
     ResolvingFileIO resolvingFileIO = spy(new ResolvingFileIO());
@@ -132,6 +165,11 @@ public class TestResolvingIO {
     }
   }
 
+  /**
+   * 测试场景：delegate file io with prefix based support。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void delegateFileIOWithPrefixBasedSupport() throws IOException {
     ResolvingFileIO resolvingFileIO = spy(new ResolvingFileIO());
@@ -161,6 +199,11 @@ public class TestResolvingIO {
             });
   }
 
+  /**
+   * 测试场景：delegate file io with and without mixins。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void delegateFileIOWithAndWithoutMixins() {
     ResolvingFileIO resolvingFileIO = spy(new ResolvingFileIO());

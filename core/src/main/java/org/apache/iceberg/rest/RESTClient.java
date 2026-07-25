@@ -25,7 +25,25 @@ import java.util.function.Supplier;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 
-/** Interface for a basic HTTP Client for interfacing with the REST catalog. */
+/**
+ * 文件级说明：REST Catalog HTTP 客户端接口。
+ *
+ * <p>所属模块：iceberg-core（REST Catalog 传输层抽象）。
+ *
+ * <p>职责：定义与 REST Catalog 服务端交互的 HTTP 方法——HEAD/GET/POST/DELETE/postForm， 支持泛型响应类型与错误处理回调。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>接口抽象使上层（{@link RESTSessionCatalog}）与具体 HTTP 实现（如 {@link HTTPClient}）解耦。
+ *   <li>提供 {@code Supplier<Map>} 和 Map 两种 header 传参重载——Supplier 版本支持动态获取认证头 （如令牌刷新后自动更新），default
+ *       方法委托给 Map 版本。
+ *   <li>继承 {@link Closeable} 以支持 try-with-resources。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link HTTPClient} 实现；被 {@link RESTSessionCatalog}、 {@link RESTMetricsReporter}、{@link
+ * org.apache.iceberg.rest.auth.OAuth2Util} 调用。
+ */
 public interface RESTClient extends Closeable {
 
   default void head(

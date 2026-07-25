@@ -37,10 +37,35 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Iterables;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
+/**
+ * 快照相关静态工具方法集合。
+ *
+ * <p>所属模块：iceberg-core（util 子包）。职责：提供快照祖先遍历、按时间戳/id 查找快照、 判断祖先关系、枚举快照数据文件等通用能力。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>函数式祖先遍历：{@code ancestorsOf} 接收加载器函数，避免依赖具体表对象。
+ *   <li>时间戳查找：在祖先链上定位最早满足时间条件的快照。
+ *   <li>无状态工具类：构造函数私有，全部方法静态。
+ * </ul>
+ *
+ * <p>上下游关系：被 core 扫描/提交路径与各引擎模块大量调用，是快照查询的公共入口。
+ */
 public class SnapshotUtil {
+
+  /** 私有构造：工具类禁止实例化。 */
   private SnapshotUtil() {}
 
-  /** Returns whether ancestorSnapshotId is an ancestor of snapshotId. */
+  /**
+   * 判断一个快照是否是另一个快照的祖先。
+   *
+   * @param table 参数
+   * @param snapshotId 参数
+   * @param ancestorSnapshotId 参数
+   * @return 返回值
+   *     <p>Returns whether ancestorSnapshotId is an ancestor of snapshotId.
+   */
   public static boolean isAncestorOf(Table table, long snapshotId, long ancestorSnapshotId) {
     for (Snapshot snapshot : ancestorsOf(snapshotId, table::snapshot)) {
       if (snapshot.snapshotId() == ancestorSnapshotId) {
@@ -52,8 +77,11 @@ public class SnapshotUtil {
   }
 
   /**
-   * Returns whether ancestorSnapshotId is an ancestor of snapshotId using the given lookup
-   * function.
+   * 判断一个快照是否是另一个快照的祖先。
+   *
+   * @return 返回值
+   *     <p>Returns whether ancestorSnapshotId is an ancestor of snapshotId using the given lookup
+   *     function.
    */
   public static boolean isAncestorOf(
       long snapshotId, long ancestorSnapshotId, Function<Long, Snapshot> lookup) {
@@ -65,12 +93,25 @@ public class SnapshotUtil {
     return false;
   }
 
-  /** Returns whether ancestorSnapshotId is an ancestor of the table's current state. */
+  /**
+   * 判断一个快照是否是另一个快照的祖先。
+   *
+   * @param table 参数
+   * @param ancestorSnapshotId 参数
+   * @return 返回值
+   *     <p>Returns whether ancestorSnapshotId is an ancestor of the table's current state.
+   */
   public static boolean isAncestorOf(Table table, long ancestorSnapshotId) {
     return isAncestorOf(table, table.currentSnapshot().snapshotId(), ancestorSnapshotId);
   }
 
-  /** Returns whether some ancestor of snapshotId has parentId matches ancestorParentSnapshotId */
+  /**
+   * 判断一个快照是否是另一个快照的父快照或祖先。
+   *
+   * @return 返回值
+   *     <p>Returns whether some ancestor of snapshotId has parentId matches
+   *     ancestorParentSnapshotId
+   */
   public static boolean isParentAncestorOf(
       Table table, long snapshotId, long ancestorParentSnapshotId) {
     for (Snapshot snapshot : ancestorsOf(snapshotId, table::snapshot)) {
@@ -83,7 +124,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Returns an iterable that traverses the table's snapshots from the current to the last known
+   * 返回当前快照的所有祖先快照迭代器。
+   *
+   * <p>Returns an iterable that traverses the table's snapshots from the current to the last known
    * ancestor.
    *
    * @param table a Table
@@ -94,7 +137,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Return the snapshot IDs for the ancestors of the current table state.
+   * 返回当前快照的所有祖先快照 id。
+   *
+   * <p>Return the snapshot IDs for the ancestors of the current table state.
    *
    * <p>Ancestor IDs are ordered by commit time, descending. The first ID is the current snapshot,
    * followed by its parent, and so on.
@@ -107,8 +152,10 @@ public class SnapshotUtil {
   }
 
   /**
-   * Traverses the history of the table's current snapshot and finds the oldest Snapshot.
+   * 返回最旧的祖先快照。
    *
+   * @param table 参数
+   *     <p>Traverses the history of the table's current snapshot and finds the oldest Snapshot.
    * @return null if there is no current snapshot in the table, else the oldest Snapshot.
    */
   public static Snapshot oldestAncestor(Table table) {
@@ -120,12 +167,21 @@ public class SnapshotUtil {
     return lastSnapshot;
   }
 
+  /**
+   * 返回指定快照的最旧祖先快照。
+   *
+   * @param table 参数
+   * @param snapshotId 参数
+   * @return 返回值
+   */
   public static Snapshot oldestAncestorOf(Table table, long snapshotId) {
     return oldestAncestorOf(snapshotId, table::snapshot);
   }
 
   /**
-   * Traverses the history and finds the oldest ancestor of the specified snapshot.
+   * 返回指定快照的最旧祖先快照。
+   *
+   * <p>Traverses the history and finds the oldest ancestor of the specified snapshot.
    *
    * <p>Oldest ancestor is defined as the ancestor snapshot whose parent is null or has been
    * expired. If the specified snapshot has no parent or parent has been expired, the specified
@@ -144,6 +200,13 @@ public class SnapshotUtil {
     return lastSnapshot;
   }
 
+  /**
+   * 返回指定快照的祖先快照迭代器。
+   *
+   * @param snapshotId 参数
+   * @param lookup 参数
+   * @return {@code Iterable<Snapshot>} 返回值
+   */
   public static Iterable<Snapshot> ancestorsOf(long snapshotId, Function<Long, Snapshot> lookup) {
     Snapshot start = lookup.apply(snapshotId);
     Preconditions.checkArgument(start != null, "Cannot find snapshot: %s", snapshotId);
@@ -151,7 +214,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Traverses the history of the table's current snapshot, finds the oldest snapshot that was
+   * 返回指定快照之后的最旧祖先快照。
+   *
+   * <p>Traverses the history of the table's current snapshot, finds the oldest snapshot that was
    * committed either at or after a given time.
    *
    * @param table a table
@@ -187,9 +252,14 @@ public class SnapshotUtil {
   }
 
   /**
-   * Returns list of snapshot ids in the range - (fromSnapshotId, toSnapshotId]
+   * 返回两个快照之间的快照 id 列表。
    *
-   * <p>This method assumes that fromSnapshotId is an ancestor of toSnapshotId.
+   * @param table 参数
+   * @param fromSnapshotId 参数
+   * @param toSnapshotId 参数
+   * @return {@code List<Long>} 返回值
+   *     <p>Returns list of snapshot ids in the range - (fromSnapshotId, toSnapshotId]
+   *     <p>This method assumes that fromSnapshotId is an ancestor of toSnapshotId.
    */
   public static List<Long> snapshotIdsBetween(Table table, long fromSnapshotId, long toSnapshotId) {
     List<Long> snapshotIds =
@@ -200,16 +270,31 @@ public class SnapshotUtil {
     return snapshotIds;
   }
 
+  /**
+   * 返回两个快照之间的祖先快照 id。
+   *
+   * @return {@code Iterable<Long>} 返回值
+   */
   public static Iterable<Long> ancestorIdsBetween(
       long latestSnapshotId, Long oldestSnapshotId, Function<Long, Snapshot> lookup) {
     return toIds(ancestorsBetween(latestSnapshotId, oldestSnapshotId, lookup));
   }
 
+  /**
+   * 返回两个快照之间的祖先快照迭代器。
+   *
+   * @return {@code Iterable<Snapshot>} 返回值
+   */
   public static Iterable<Snapshot> ancestorsBetween(
       Table table, long latestSnapshotId, Long oldestSnapshotId) {
     return ancestorsBetween(latestSnapshotId, oldestSnapshotId, table::snapshot);
   }
 
+  /**
+   * 返回两个快照之间的祖先快照迭代器。
+   *
+   * @return {@code Iterable<Snapshot>} 返回值
+   */
   public static Iterable<Snapshot> ancestorsBetween(
       long latestSnapshotId, Long oldestSnapshotId, Function<Long, Snapshot> lookup) {
     if (oldestSnapshotId != null) {
@@ -225,6 +310,11 @@ public class SnapshotUtil {
     }
   }
 
+  /**
+   * 返回指定快照的祖先快照迭代器。
+   *
+   * @return {@code Iterable<Snapshot>} 返回值
+   */
   private static Iterable<Snapshot> ancestorsOf(
       Snapshot snapshot, Function<Long, Snapshot> lookup) {
     if (snapshot != null) {
@@ -273,14 +363,32 @@ public class SnapshotUtil {
     }
   }
 
+  /**
+   * 返回指定快照的所有祖先快照 id。
+   *
+   * @param snapshot 参数
+   * @param lookup 参数
+   * @return {@code List<Long>} 返回值
+   */
   public static List<Long> ancestorIds(Snapshot snapshot, Function<Long, Snapshot> lookup) {
     return Lists.newArrayList(toIds(ancestorsOf(snapshot, lookup)));
   }
 
+  /**
+   * 将当前对象转换为Ids。
+   *
+   * @param snapshots 参数
+   * @return {@code Iterable<Long>} 返回值
+   */
   private static Iterable<Long> toIds(Iterable<Snapshot> snapshots) {
     return Iterables.transform(snapshots, Snapshot::snapshotId);
   }
 
+  /**
+   * 返回指定快照之后新增的数据文件。
+   *
+   * @return {@code List<DataFile>} 返回值
+   */
   public static List<DataFile> newFiles(
       Long baseSnapshotId, long latestSnapshotId, Function<Long, Snapshot> lookup, FileIO io) {
     List<DataFile> newFiles = Lists.newArrayList();
@@ -304,9 +412,12 @@ public class SnapshotUtil {
   }
 
   /**
-   * Traverses the history of the table's current snapshot and finds the snapshot with the given
-   * snapshot id as its parent.
+   * 返回指定快照之后的快照。
    *
+   * @param table 参数
+   * @param snapshotId 参数
+   *     <p>Traverses the history of the table's current snapshot and finds the snapshot with the
+   *     given snapshot id as its parent.
    * @return the snapshot for which the given snapshot is the parent
    * @throws IllegalArgumentException when the given snapshotId is not found in the table
    * @throws IllegalStateException when the given snapshotId is not an ancestor of the current table
@@ -328,7 +439,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Returns the ID of the most recent snapshot for the table as of the timestamp.
+   * 根据时间戳查找对应的快照 id。
+   *
+   * <p>Returns the ID of the most recent snapshot for the table as of the timestamp.
    *
    * @param table a {@link Table}
    * @param timestampMillis the timestamp in millis since the Unix epoch
@@ -347,6 +460,13 @@ public class SnapshotUtil {
     return snapshotId;
   }
 
+  /**
+   * 根据时间戳查找快照 id，未找到返回 null。
+   *
+   * @param table 参数
+   * @param timestampMillis 参数
+   * @return 返回值
+   */
   public static Long nullableSnapshotIdAsOfTime(Table table, long timestampMillis) {
     Long snapshotId = null;
     for (HistoryEntry logEntry : table.history()) {
@@ -359,7 +479,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Returns the schema of the table for the specified snapshot.
+   * 返回指定快照对应的 schema。
+   *
+   * <p>Returns the schema of the table for the specified snapshot.
    *
    * @param table a {@link Table}
    * @param snapshotId the ID of the snapshot
@@ -382,7 +504,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Convenience method for returning the schema of the table for a snapshot, when we have a
+   * 返回指定快照对应的 schema。
+   *
+   * <p>Convenience method for returning the schema of the table for a snapshot, when we have a
    * snapshot id or a timestamp. Only one of them should be specified (non-null), or an
    * IllegalArgumentException is thrown.
    *
@@ -409,7 +533,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Return the schema of the snapshot at a given branch.
+   * 返回指定快照对应的 schema。
+   *
+   * <p>Return the schema of the snapshot at a given branch.
    *
    * <p>If branch does not exist, the table schema is returned because it will be the schema when
    * the new branch is created.
@@ -432,7 +558,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Return the schema of the snapshot at a given branch.
+   * 返回指定快照对应的 schema。
+   *
+   * <p>Return the schema of the snapshot at a given branch.
    *
    * <p>If branch does not exist, the table schema is returned because it will be the schema when
    * the new branch is created.
@@ -456,7 +584,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Fetch the snapshot at the head of the given branch in the given table.
+   * 返回表的最新快照。
+   *
+   * <p>Fetch the snapshot at the head of the given branch in the given table.
    *
    * <p>This method calls {@link Table#currentSnapshot()} instead of using branch API {@link
    * Table#snapshot(String)} for the main branch so that existing code still goes through the old
@@ -475,7 +605,9 @@ public class SnapshotUtil {
   }
 
   /**
-   * Fetch the snapshot at the head of the given branch in the given table.
+   * 返回表的最新快照。
+   *
+   * <p>Fetch the snapshot at the head of the given branch in the given table.
    *
    * <p>This method calls {@link TableMetadata#currentSnapshot()} instead of using branch API {@link
    * TableMetadata#ref(String)}} for the main branch so that existing code still goes through the

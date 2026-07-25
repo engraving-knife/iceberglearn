@@ -30,6 +30,18 @@ import org.apache.iceberg.spark.SparkReadConf;
 import org.apache.iceberg.util.TableScanUtil;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 暂存扫描（staged scan）：从 {@link ScanTaskSetManager} 读取预先规划好的扫描任务集。
+ *
+ * <p>所属模块：iceberg-spark（source 子包，服务于文件重写等需要外部驱动任务集的场景）。
+ *
+ * <p>职责：按 taskSetId 从 {@link ScanTaskSetManager} 取出暂存的扫描任务， 再按 split 大小等参数规划为任务组，供 Spark 读取执行。
+ *
+ * <p>设计意图：常规扫描由 Iceberg 自行规划任务，而重写场景需要先在驱动端规划特定任务集， 再以 staged scan 形式让数据源读取这些任务。任务组采用懒加载与缓存，避免重复规划。
+ *
+ * <p>上下游关系：继承 {@link SparkScan}，由 {@link SparkWriteBuilder} 等在重写读取时构造， 任务来源于 {@link
+ * ScanTaskSetManager}。
+ */
 class SparkStagedScan extends SparkScan {
 
   private final String taskSetId;
@@ -39,6 +51,13 @@ class SparkStagedScan extends SparkScan {
 
   private List<ScanTaskGroup<ScanTask>> taskGroups = null; // lazy cache of tasks
 
+  /**
+   * 构造暂存扫描。
+   *
+   * @param spark Spark 会话
+   * @param table 目标表
+   * @param readConf Spark 读取配置，提供 taskSetId 与 split 参数
+   */
   SparkStagedScan(SparkSession spark, Table table, SparkReadConf readConf) {
     super(spark, table, readConf, table.schema(), ImmutableList.of(), null);
 
@@ -48,6 +67,14 @@ class SparkStagedScan extends SparkScan {
     this.openFileCost = readConf.splitOpenFileCost();
   }
 
+  /**
+   * 返回扫描任务组，懒加载并缓存。
+   *
+   * <p>逻辑：首次调用时从 {@link ScanTaskSetManager} 按 taskSetId 取出任务， 校验非空后用 {@link
+   * TableScanUtil#planTaskGroups} 规划任务组并缓存。
+   *
+   * @throws ValidationException 当任务集管理器中没有对应任务时抛出
+   */
   @Override
   protected List<ScanTaskGroup<ScanTask>> taskGroups() {
     if (taskGroups == null) {
@@ -63,7 +90,7 @@ class SparkStagedScan extends SparkScan {
     }
     return taskGroups;
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object other) {
     if (this == other) {
@@ -81,12 +108,12 @@ class SparkStagedScan extends SparkScan {
         && Objects.equals(splitLookback, that.splitLookback)
         && Objects.equals(openFileCost, that.openFileCost);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(table().name(), taskSetId, splitSize, splitSize, openFileCost);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(

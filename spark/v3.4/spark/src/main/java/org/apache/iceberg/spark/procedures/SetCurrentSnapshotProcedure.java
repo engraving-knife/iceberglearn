@@ -34,12 +34,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * A procedure that sets the current snapshot in a table.
+ * 所属模块：iceberg-spark v3.4
  *
- * <p><em>Note:</em> this procedure invalidates all cached Spark plans that reference the affected
- * table.
+ * <p>职责：设置当前快照的存储过程，将表的当前快照设为指定快照 ID。
  *
- * @see org.apache.iceberg.ManageSnapshots#setCurrentSnapshot(long)
+ * <p>设计意图：通过 Iceberg set-current-snapshot 操作直接切换当前快照指针。
+ *
+ * <p>上下游关系：由 SparkProcedures 注册；由 CALL 语句经 CallExec 调用。
  */
 class SetCurrentSnapshotProcedure extends BaseProcedure {
 
@@ -56,9 +57,10 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
             new StructField("previous_snapshot_id", DataTypes.LongType, true, Metadata.empty()),
             new StructField("current_snapshot_id", DataTypes.LongType, false, Metadata.empty())
           });
-
+  /** 执行 builder 相关操作。 */
   public static ProcedureBuilder builder() {
     return new BaseProcedure.Builder<SetCurrentSnapshotProcedure>() {
+      /** 执行 doBuild 相关操作。 */
       @Override
       protected SetCurrentSnapshotProcedure doBuild() {
         return new SetCurrentSnapshotProcedure(tableCatalog());
@@ -69,17 +71,17 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
   private SetCurrentSnapshotProcedure(TableCatalog catalog) {
     super(catalog);
   }
-
+  /** 返回参数。 */
   @Override
   public ProcedureParameter[] parameters() {
     return PARAMETERS;
   }
-
+  /** 执行 outputType 相关操作。 */
   @Override
   public StructType outputType() {
     return OUTPUT_TYPE;
   }
-
+  /** 执行过程并返回结果行。 */
   @Override
   public InternalRow[] call(InternalRow args) {
     Identifier tableIdent = toIdentifier(args.getString(0), PARAMETERS[0].name());
@@ -102,12 +104,12 @@ class SetCurrentSnapshotProcedure extends BaseProcedure {
           return new InternalRow[] {outputRow};
         });
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return "SetCurrentSnapshotProcedure";
   }
-
+  /** 转换为 SnapshotId。 */
   private long toSnapshotId(Table table, String refName) {
     SnapshotRef ref = table.refs().get(refName);
     ValidationException.check(ref != null, "Cannot find matching snapshot ID for ref " + refName);

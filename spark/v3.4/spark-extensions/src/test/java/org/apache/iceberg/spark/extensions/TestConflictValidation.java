@@ -34,13 +34,22 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestConflictValidation 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 冲突校验 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestConflictValidation extends SparkExtensionsTestBase {
 
+  /** 测试冲突校验。 */
   public TestConflictValidation(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   @Before
   public void createTables() {
     sql(
@@ -53,11 +62,13 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
     sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b'), (3, 'c')", tableName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试覆盖写过滤器serializable隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterSerializableIsolation() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -90,6 +101,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写过滤器serializable隔离2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterSerializableIsolation2() throws Exception {
     List<SimpleRecord> records =
@@ -127,6 +139,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写过滤器serializable隔离3场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterSerializableIsolation3() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -161,6 +174,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写过滤器no快照id校验场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterNoSnapshotIdValidation() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -192,6 +206,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写过滤器快照隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterSnapshotIsolation() throws Exception {
     List<SimpleRecord> records =
@@ -229,6 +244,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写过滤器快照隔离2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwriteFilterSnapshotIsolation2() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -246,6 +262,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwrite(functions.col("id").equalTo(1));
   }
 
+  /** 测试覆盖写分区serializable隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwritePartitionSerializableIsolation() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -278,6 +295,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwritePartitions();
   }
 
+  /** 测试覆盖写分区快照隔离场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwritePartitionSnapshotIsolation() throws Exception {
     List<SimpleRecord> records =
@@ -313,6 +331,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwritePartitions();
   }
 
+  /** 测试覆盖写分区快照隔离2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwritePartitionSnapshotIsolation2() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -347,6 +366,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwritePartitions();
   }
 
+  /** 测试覆盖写分区快照隔离3场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwritePartitionSnapshotIsolation3() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);
@@ -364,6 +384,7 @@ public class TestConflictValidation extends SparkExtensionsTestBase {
         .overwritePartitions();
   }
 
+  /** 测试覆盖写分区no快照id校验场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testOverwritePartitionNoSnapshotIdValidation() throws Exception {
     Table table = validationCatalog.loadTable(tableIdent);

@@ -37,7 +37,15 @@ import org.apache.spark.sql.connector.iceberg.catalog.ProcedureParameter;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
-/** A class that abstracts common logic for working with input to a procedure. */
+/**
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：存储过程输入参数容器，解析并校验 CALL 语句传入的参数。
+ *
+ * <p>设计意图：封装参数类型转换、默认值与必填校验，简化过程实现。
+ *
+ * <p>上下游关系：由各 Procedure 子类使用。
+ */
 class ProcedureInput {
 
   private static final DataType STRING_ARRAY = DataTypes.createArrayType(DataTypes.StringType);
@@ -56,48 +64,48 @@ class ProcedureInput {
     this.paramOrdinals = computeParamOrdinals(params);
     this.args = args;
   }
-
+  /** 判断是否 Provided。 */
   public boolean isProvided(ProcedureParameter param) {
     int ordinal = ordinal(param);
     return !args.isNullAt(ordinal);
   }
-
+  /** 执行 asBoolean 相关操作。 */
   public Boolean asBoolean(ProcedureParameter param, Boolean defaultValue) {
     validateParamType(param, DataTypes.BooleanType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Boolean) args.getBoolean(ordinal);
   }
-
+  /** 执行 asLong 相关操作。 */
   public long asLong(ProcedureParameter param) {
     Long value = asLong(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
-
+  /** 执行 asLong 相关操作。 */
   public Long asLong(ProcedureParameter param, Long defaultValue) {
     validateParamType(param, DataTypes.LongType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : (Long) args.getLong(ordinal);
   }
-
+  /** 执行 asString 相关操作。 */
   public String asString(ProcedureParameter param) {
     String value = asString(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
-
+  /** 执行 asString 相关操作。 */
   public String asString(ProcedureParameter param, String defaultValue) {
     validateParamType(param, DataTypes.StringType);
     int ordinal = ordinal(param);
     return args.isNullAt(ordinal) ? defaultValue : args.getString(ordinal);
   }
-
+  /** 执行 asStringArray 相关操作。 */
   public String[] asStringArray(ProcedureParameter param) {
     String[] value = asStringArray(param, null);
     Preconditions.checkArgument(value != null, "Parameter '%s' is not set", param.name());
     return value;
   }
-
+  /** 执行 asStringArray 相关操作。 */
   public String[] asStringArray(ProcedureParameter param, String[] defaultValue) {
     validateParamType(param, STRING_ARRAY);
     return array(
@@ -130,7 +138,7 @@ class ProcedureInput {
 
     return convertedArray;
   }
-
+  /** 执行 asStringMap 相关操作。 */
   public Map<String, String> asStringMap(
       ProcedureParameter param, Map<String, String> defaultValue) {
     validateParamType(param, STRING_MAP);
@@ -165,7 +173,7 @@ class ProcedureInput {
 
     return convertedMap;
   }
-
+  /** 执行 ident 相关操作。 */
   public Identifier ident(ProcedureParameter param) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, catalog);
 
@@ -178,12 +186,12 @@ class ProcedureInput {
 
     return catalogAndIdent.identifier();
   }
-
+  /** 执行 ident 相关操作。 */
   public Identifier ident(ProcedureParameter param, CatalogPlugin defaultCatalog) {
     CatalogAndIdentifier catalogAndIdent = catalogAndIdent(param, defaultCatalog);
     return catalogAndIdent.identifier();
   }
-
+  /** 执行 catalogAndIdent 相关操作。 */
   private CatalogAndIdentifier catalogAndIdent(
       ProcedureParameter param, CatalogPlugin defaultCatalog) {
 
@@ -197,11 +205,11 @@ class ProcedureInput {
     String desc = String.format("identifier for parameter '%s'", param.name());
     return Spark3Util.catalogAndIdentifier(desc, spark, identAsString, defaultCatalog);
   }
-
+  /** 执行 ordinal 相关操作。 */
   private int ordinal(ProcedureParameter param) {
     return paramOrdinals.get(param.name());
   }
-
+  /** 执行 computeParamOrdinals 相关操作。 */
   private Map<String, Integer> computeParamOrdinals(ProcedureParameter[] params) {
     Map<String, Integer> ordinals = Maps.newHashMap();
 
@@ -218,7 +226,7 @@ class ProcedureInput {
 
     return ordinals;
   }
-
+  /** 执行 validateParamType 相关操作。 */
   private void validateParamType(ProcedureParameter param, DataType expectedDataType) {
     Preconditions.checkArgument(
         expectedDataType.sameType(param.dataType()),

@@ -29,6 +29,20 @@ import org.apache.spark.sql.connector.expressions.FieldReference
 import org.apache.spark.sql.connector.expressions.IdentityTransform
 import org.apache.spark.sql.connector.expressions.Transform
 
+/**
+ * 删除分区字段的物理执行节点。
+ *
+ * <p>所属模块：iceberg-spark 的 spark-extensions。本类为 Spark V2 命令执行节点，
+ * 负责从 Iceberg 表分区规范中移除指定分区字段。
+ *
+ * <p>职责：加载目标 Iceberg 表，根据传入 Transform 调用 updateSpec().removeField(...) 提交移除。
+ *
+ * <p>设计意图：当传入的是恒等变换且对应名称在 schema 中不存在时，认为该名称是分区字段名
+ * （而非列名），直接按名移除；否则按 Transform 转换后的 Iceberg 项移除，兼容两种指定方式。
+ *
+ * <p>上下游关系：由 {@link org.apache.spark.sql.catalyst.plans.logical.DropPartitionField}
+ * 转换而来，操作 {@link org.apache.iceberg.spark.source.SparkTable} 暴露的表 API。
+ */
 case class DropPartitionFieldExec(
     catalog: TableCatalog,
     ident: Identifier,
@@ -37,6 +51,14 @@ case class DropPartitionFieldExec(
 
   override lazy val output: Seq[Attribute] = Nil
 
+  /**
+   * 执行分区字段移除。
+   *
+   * <p>逻辑：加载表并匹配为 {@link SparkTable}；若 Transform 为单段恒等且该段名不在 schema 中，
+   * 则按分区字段名移除；否则将 Transform 转为 Iceberg 项后移除。最后 commit。对非 Iceberg 表抛出异常。
+   *
+   * @return 空行列表（该命令无结果集）
+   */
   override protected def run(): Seq[InternalRow] = {
     catalog.loadTable(ident) match {
       case iceberg: SparkTable =>
@@ -61,6 +83,7 @@ case class DropPartitionFieldExec(
     Nil
   }
 
+  /** 返回该命令的简要字符串描述，用于 explain 输出。 */
   override def simpleString(maxFields: Int): String = {
     s"DropPartitionField ${catalog.name}.${ident.quoted} ${transform.describe}"
   }

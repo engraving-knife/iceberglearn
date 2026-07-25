@@ -44,21 +44,47 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * 文件级说明：将 Flink 逻辑类型转换为 Iceberg 类型的访问器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块根包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>遍历 Flink 的 {@link org.apache.flink.table.types.logical.LogicalType} 树， 返回对应的 Iceberg {@link
+ *       Type}。
+ *   <li>为嵌套类型（list/map/struct）自动分配递增的字段 ID。
+ *   <li>根 struct 的字段使用 0..N-1 作为 ID，与 Iceberg 表 schema 字段 ID 约定一致。
+ * </ul>
+ *
+ * <p>设计意图：Flink 与 Iceberg 的类型系统存在差异（如 Flink 的 CharType 对应 Iceberg
+ * StringType，TinyIntType/SmallIntType 都对应 Iceberg IntegerType）， 本访问器集中处理这些差异，避免散落在各处的转换逻辑。
+ *
+ * <p>上下游关系：上游为 {@link FlinkSchemaUtil}，下游为 Iceberg 的 {@link Types} 类型工厂。
+ */
 class FlinkTypeToType extends FlinkTypeVisitor<Type> {
 
   private final RowType root;
   private int nextId;
 
+  /** 不带根 RowType 的构造，常用于不需要根 ID 特殊分配的场景。 */
   FlinkTypeToType() {
     this.root = null;
   }
 
+  /**
+   * 带根 RowType 的构造。
+   *
+   * <p>逻辑：根 struct 字段使用 0..fieldCount-1 作为 ID， 嵌套字段从 fieldCount 起递增分配。
+   */
   FlinkTypeToType(RowType root) {
     this.root = root;
     // the root struct's fields use the first ids
     this.nextId = root.getFieldCount();
   }
 
+  /** 分配并返回下一个递增的字段 ID。 */
   private int getNextId() {
     int next = nextId;
     nextId += 1;

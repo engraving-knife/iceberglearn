@@ -45,6 +45,13 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.StringType;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestNotStartsWith 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestNotStartsWith 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNotStartsWith {
 
   private static final String COLUMN = "someStringCol";
@@ -67,6 +74,11 @@ public class TestNotStartsWith {
           // upper bounds
           ImmutableMap.of(1, toByteBuffer(StringType.get(), "bbb")));
 
+  /**
+   * 测试场景：Truncate Projections。
+   *
+   * <p>验证该方法在 Truncate Projections 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateProjections() {
     PartitionSpec spec = PartitionSpec.builderFor(SCHEMA).truncate(COLUMN, 4).build();
@@ -91,6 +103,11 @@ public class TestNotStartsWith {
         spec, notStartsWith(COLUMN, "abcde"), "abcd", Expression.Operation.NOT_STARTS_WITH);
   }
 
+  /**
+   * 测试场景：Truncate String When Projected Predicate Term Is Longer Than Width。
+   *
+   * <p>验证该方法在 Truncate String When Projected Predicate Term Is Longer Than Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateStringWhenProjectedPredicateTermIsLongerThanWidth() {
     Truncate<String> trunc = Truncate.get(2);
@@ -126,6 +143,11 @@ public class TestNotStartsWith {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Truncate String When Projected Predicate Term Is Shorter Than Width。
+   *
+   * <p>验证该方法在 Truncate String When Projected Predicate Term Is Shorter Than Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateStringWhenProjectedPredicateTermIsShorterThanWidth() {
     Truncate<String> trunc = Truncate.get(16);
@@ -154,6 +176,11 @@ public class TestNotStartsWith {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Truncate String When Projected Predicate Term Is Equal To Width。
+   *
+   * <p>验证该方法在 Truncate String When Projected Predicate Term Is Equal To Width 条件下的行为是否符合预期。
+   */
   @Test
   public void testTruncateStringWhenProjectedPredicateTermIsEqualToWidth() {
     Truncate<String> trunc = Truncate.get(7);
@@ -182,6 +209,11 @@ public class TestNotStartsWith {
         .isTrue();
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator For Not Starts With。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator For Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorForNotStartsWith() {
     boolean shouldRead =
@@ -191,6 +223,11 @@ public class TestNotStartsWith {
         .isFalse();
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator For Not Starts With。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator For Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorForNotStartsWith() {
     boolean shouldRead =
@@ -210,6 +247,7 @@ public class TestNotStartsWith {
     assertThat(shouldRead).as("Should match: some columns match the filter criteria").isTrue();
   }
 
+  /** 辅助方法：assertProjectionInclusive。 */
   private void assertProjectionInclusive(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -219,6 +257,7 @@ public class TestNotStartsWith {
     assertProjection(spec, expectedLiteral, projection, expectedOp);
   }
 
+  /** 辅助方法：assertProjectionStrict。 */
   private void assertProjectionStrict(
       PartitionSpec spec,
       UnboundPredicate<?> filter,
@@ -228,6 +267,7 @@ public class TestNotStartsWith {
     assertProjection(spec, expectedLiteral, projection, expectedOp);
   }
 
+  /** 辅助方法：assertProjection。 */
   @SuppressWarnings("unchecked")
   private void assertProjection(
       PartitionSpec spec,

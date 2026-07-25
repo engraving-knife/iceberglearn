@@ -47,17 +47,35 @@ import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.Pair;
 
+/**
+ * 表扫描结果按分区汇总的工具。
+ *
+ * <p>所属模块：iceberg-core。职责：在一次 {@link TableScan} 的基础上，按分区聚合计数每个分区的 文件数、记录数、字节数，并支持按分区值范围/limit
+ * 限制输出，用于快速了解数据分布。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>谓词下推识别：从扫描过滤表达式中提取分区列的等值/范围谓词，缩小汇总范围。
+ *   <li>Builder 模式：通过 {@link Builder} 灵活配置 useLocalFilter、limit 等。
+ *   <li>导航 Map：结果按分区值排序存于 {@link NavigableMap}，便于范围查询。
+ * </ul>
+ *
+ * <p>上下游关系：上游为引擎展示分区分布的接口；下游依赖 {@link TableScan} 与 {@link CloseableIterable}。
+ */
 public class ScanSummary {
+
+  /** 私有构造：工具类禁止实例化。 */
   private ScanSummary() {}
 
   private static final ImmutableList<String> SCAN_SUMMARY_COLUMNS =
       ImmutableList.of("partition", "record_count", "file_size_in_bytes");
 
   /**
-   * Create a scan summary builder for a table scan.
+   * 工厂入口：基于一次 {@link TableScan} 创建 {@link Builder}。
    *
-   * @param scan a TableScan
-   * @return a scan summary builder
+   * @param scan 待汇总的表扫描
+   * @return 新的 builder 实例
    */
   public static ScanSummary.Builder of(TableScan scan) {
     return new Builder(scan);
@@ -358,6 +376,12 @@ public class ScanSummary {
     }
   }
 
+  /**
+   * 把多个表达式用 AND 串联成一个组合过滤条件。
+   *
+   * @param expressions 待组合的表达式列表
+   * @return 组合后的表达式，空列表时返回 alwaysTrue
+   */
   static Expression joinFilters(List<Expression> expressions) {
     Expression result = Expressions.alwaysTrue();
     for (Expression expression : expressions) {
@@ -366,6 +390,14 @@ public class ScanSummary {
     return result;
   }
 
+  /**
+   * 把时间戳统一转换为毫秒。
+   *
+   * <p>启发式判断：&lt; 1e10 视为秒、&lt; 1e13 视为毫秒、否则视为微秒。
+   *
+   * @param timestamp 原始时间戳（秒/毫秒/微秒）
+   * @return 毫秒时间戳
+   */
   static long toMillis(long timestamp) {
     if (timestamp < 10000000000L) {
       // in seconds

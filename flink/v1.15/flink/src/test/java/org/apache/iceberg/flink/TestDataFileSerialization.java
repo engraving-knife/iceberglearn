@@ -47,6 +47,13 @@ import org.apache.iceberg.types.Types;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestDataFileSerialization 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestDataFileSerialization 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestDataFileSerialization {
 
   private static final Schema DATE_SCHEMA =
@@ -117,6 +124,11 @@ public class TestDataFileSerialization {
           .withSortOrder(SortOrder.unsorted())
           .build();
 
+  /**
+   * 测试场景：Java Serialization。
+   *
+   * <p>验证该方法在 Java Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testJavaSerialization() throws Exception {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -157,6 +169,11 @@ public class TestDataFileSerialization {
     }
   }
 
+  /**
+   * 测试场景：Data File Kryo Serialization。
+   *
+   * <p>验证该方法在 Data File Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testDataFileKryoSerialization() throws IOException {
     KryoSerializer<DataFile> kryo = new KryoSerializer<>(DataFile.class, new ExecutionConfig());
@@ -174,6 +191,11 @@ public class TestDataFileSerialization {
     TestHelpers.assertEquals(DATA_FILE, dataFile2);
   }
 
+  /**
+   * 测试场景：Delete File Kryo Serialization。
+   *
+   * <p>验证该方法在 Delete File Kryo Serialization 条件下的行为是否符合预期。
+   */
   @Test
   public void testDeleteFileKryoSerialization() throws IOException {
     KryoSerializer<DeleteFile> kryo = new KryoSerializer<>(DeleteFile.class, new ExecutionConfig());
@@ -201,6 +223,7 @@ public class TestDataFileSerialization {
     TestHelpers.assertEquals(EQ_DELETE_FILE, eqDeleteFile2);
   }
 
+  /** 辅助方法：longToBuffer，long To Buffer。 */
   private static ByteBuffer longToBuffer(long value) {
     return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(0, value);
   }

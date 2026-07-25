@@ -39,6 +39,13 @@ import org.apache.iceberg.types.Types.StructType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestExpressionBinding 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestExpressionBinding 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestExpressionBinding {
   private static final StructType STRUCT =
       StructType.of(
@@ -47,6 +54,11 @@ public class TestExpressionBinding {
           required(2, "z", Types.IntegerType.get()),
           required(3, "data", Types.StringType.get()));
 
+  /**
+   * 测试场景：Missing Reference。
+   *
+   * <p>验证该方法在 Missing Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testMissingReference() {
     Expression expr = and(equal("t", 5), equal("x", 7));
@@ -55,6 +67,11 @@ public class TestExpressionBinding {
         .hasMessageContaining("Cannot find field 't' in struct");
   }
 
+  /**
+   * 测试场景：Bound Expression Fails。
+   *
+   * <p>验证该方法在 Bound Expression Fails 条件下的行为是否符合预期。
+   */
   @Test
   public void testBoundExpressionFails() {
     Expression expr = not(equal("x", 7));
@@ -63,18 +80,33 @@ public class TestExpressionBinding {
         .hasMessageContaining("Found already bound predicate");
   }
 
+  /**
+   * 测试场景：Single Reference。
+   *
+   * <p>验证该方法在 Single Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testSingleReference() {
     Expression expr = not(equal("x", 7));
     TestHelpers.assertAllReferencesBound("Single reference", Binder.bind(STRUCT, expr, true));
   }
 
+  /**
+   * 测试场景：Case Insensitive Reference。
+   *
+   * <p>验证该方法在 Case Insensitive Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseInsensitiveReference() {
     Expression expr = not(equal("X", 7));
     TestHelpers.assertAllReferencesBound("Single reference", Binder.bind(STRUCT, expr, false));
   }
 
+  /**
+   * 测试场景：Case Sensitive Reference。
+   *
+   * <p>验证该方法在 Case Sensitive Reference 条件下的行为是否符合预期。
+   */
   @Test
   public void testCaseSensitiveReference() {
     Expression expr = not(equal("X", 7));
@@ -83,12 +115,22 @@ public class TestExpressionBinding {
         .hasMessageContaining("Cannot find field 'X' in struct");
   }
 
+  /**
+   * 测试场景：Multiple References。
+   *
+   * <p>验证该方法在 Multiple References 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleReferences() {
     Expression expr = or(and(equal("x", 7), lessThan("y", 100)), greaterThan("z", -100));
     TestHelpers.assertAllReferencesBound("Multiple references", Binder.bind(STRUCT, expr));
   }
 
+  /**
+   * 测试场景：And。
+   *
+   * <p>验证该方法在 And 条件下的行为是否符合预期。
+   */
   @Test
   public void testAnd() {
     Expression expr = and(equal("x", 7), lessThan("y", 100));
@@ -105,6 +147,11 @@ public class TestExpressionBinding {
     assertThat(right.term().ref().fieldId()).as("Should bind y correctly").isOne();
   }
 
+  /**
+   * 测试场景：Or。
+   *
+   * <p>验证该方法在 Or 条件下的行为是否符合预期。
+   */
   @Test
   public void testOr() {
     Expression expr = or(greaterThan("z", -100), lessThan("y", 100));
@@ -121,6 +168,11 @@ public class TestExpressionBinding {
     assertThat(right.term().ref().fieldId()).as("Should bind y correctly").isOne();
   }
 
+  /**
+   * 测试场景：Not。
+   *
+   * <p>验证该方法在 Not 条件下的行为是否符合预期。
+   */
   @Test
   public void testNot() {
     Expression expr = not(equal("x", 7));
@@ -135,6 +187,11 @@ public class TestExpressionBinding {
     assertThat(child.term().ref().fieldId()).as("Should bind x correctly").isZero();
   }
 
+  /**
+   * 测试场景：Starts With。
+   *
+   * <p>验证该方法在 Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testStartsWith() {
     StructType struct = StructType.of(required(0, "s", Types.StringType.get()));
@@ -149,6 +206,11 @@ public class TestExpressionBinding {
     assertThat(pred.term().ref().fieldId()).as("Should bind s correctly").isZero();
   }
 
+  /**
+   * 测试场景：Not Starts With。
+   *
+   * <p>验证该方法在 Not Starts With 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotStartsWith() {
     StructType struct = StructType.of(required(21, "s", Types.StringType.get()));
@@ -165,6 +227,11 @@ public class TestExpressionBinding {
         .isEqualTo(21);
   }
 
+  /**
+   * 测试场景：Always True。
+   *
+   * <p>验证该方法在 Always True 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlwaysTrue() {
     assertThat(Binder.bind(STRUCT, alwaysTrue()))
@@ -172,6 +239,11 @@ public class TestExpressionBinding {
         .isEqualTo(alwaysTrue());
   }
 
+  /**
+   * 测试场景：Always False。
+   *
+   * <p>验证该方法在 Always False 条件下的行为是否符合预期。
+   */
   @Test
   public void testAlwaysFalse() {
     assertThat(Binder.bind(STRUCT, alwaysFalse()))
@@ -179,6 +251,11 @@ public class TestExpressionBinding {
         .isEqualTo(alwaysFalse());
   }
 
+  /**
+   * 测试场景：Basic Simplification。
+   *
+   * <p>验证该方法在 Basic Simplification 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicSimplification() {
     // this tests that a basic simplification is done by calling the helpers in Expressions. those
@@ -199,6 +276,11 @@ public class TestExpressionBinding {
     assertThat(pred.term().ref().fieldId()).as("Should have the correct bound field").isOne();
   }
 
+  /**
+   * 测试场景：Transform Expression Binding。
+   *
+   * <p>验证该方法在 Transform Expression Binding 条件下的行为是否符合预期。
+   */
   @Test
   public void testTransformExpressionBinding() {
     Expression bound = Binder.bind(STRUCT, equal(bucket("x", 16), 10));

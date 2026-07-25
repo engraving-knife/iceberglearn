@@ -18,6 +18,12 @@
  */
 
 package org.apache.spark.sql.catalyst.plans.logical
+/**
+ * 所属模块：iceberg-spark-extensions v3.4
+ * <p>职责：分支选项载体，承载创建分支时的可选参数（如 retain、max-ref-age）。
+ * <p>设计意图：以不可变选项对象集中传递分支创建参数。
+ * <p>上下游关系：由 CreateOrReplaceBranch 使用。
+ */
 
 case class BranchOptions (snapshotId: Option[Long], numSnapshots: Option[Long],
                           snapshotRetain: Option[Long], snapshotRefRetain: Option[Long])

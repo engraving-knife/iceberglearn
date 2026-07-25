@@ -40,6 +40,32 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.Tag;
 
+/**
+ * S3FileIO 的配置属性持有类：管理 S3 文件 IO 的所有可配置项。
+ *
+ * <p>所属模块：iceberg-aws（Iceberg 与 AWS 服务集成模块，处于引擎层之下）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>定义并解析 S3 FileIO 的全部配置项（服务端加密、分片上传、端点、Access Point、 删除策略、标签、签名等）。
+ *   <li>提供 apply* 方法将配置链式应用到 S3ClientBuilder（凭证、服务配置、签名器、端点）。
+ *   <li>持有 write tags / delete tags 等对象标签配置，支持合规和数据生命周期管理。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>实现 Serializable 以支持分布式引擎序列化分发。
+ *   <li>配置项以静态常量形式定义属性键名，便于文档化和跨模块引用；实例字段为解析后的值。
+ *   <li>apply* 方法设计为可与 S3Client.builder().applyMutation() 链式组合， 与
+ *       AwsClientProperties、HttpClientProperties 等保持一致的配置模式。
+ *   <li>远程签名模式下使用 AnonymousCredentialsProvider（凭证由签名服务管理）， 并通过 S3V4RestSignerClient 将签名委托给远程 REST
+ *       服务。
+ * </ul>
+ *
+ * <p>上下游关系：被 {@link S3FileIO} 持有和使用，也被 {@link AwsClientFactories} 引用 以配置 S3 客户端。
+ */
 public class S3FileIOProperties implements Serializable {
   /**
    * This property is used to pass in the aws client factory implementation class for S3 FileIO. The
@@ -382,6 +408,11 @@ public class S3FileIOProperties implements Serializable {
   private String writeStorageClass;
   private final Map<String, String> allProperties;
 
+  /**
+   * 无参构造器：以默认值初始化所有属性。
+   *
+   * <p>校验 accessKeyId 和 secretAccessKey 必须同时设置或同时不设置。
+   */
   public S3FileIOProperties() {
     this.sseType = SSE_TYPE_NONE;
     this.sseKey = null;
@@ -417,6 +448,15 @@ public class S3FileIOProperties implements Serializable {
         "S3 client access key ID and secret access key must be set at the same time");
   }
 
+  /**
+   * 从配置 Map 解析所有 S3 FileIO 属性。
+   *
+   * <p>逻辑：逐项读取加密类型、凭证、分片上传参数、删除策略、标签、端点、Access Point 映射等， 并执行必要的校验（如 SSE-C 必须提供 key、accessKeyId 和
+   * secretAccessKey 必须同时设置、 分片大小和批量删除大小有上下限约束）。
+   *
+   * @param properties Iceberg catalog/FileIO 属性
+   * @throws IllegalArgumentException 配置项校验失败
+   */
   public S3FileIOProperties(Map<String, String> properties) {
     this.sseType = properties.getOrDefault(SSE_TYPE, SSE_TYPE_NONE);
     this.sseKey = properties.get(SSE_KEY);
@@ -688,6 +728,16 @@ public class S3FileIOProperties implements Serializable {
     return (accessKeyId == null) == (secretAccessKey == null);
   }
 
+  /**
+   * 将凭证配置应用到 S3 客户端构建器。
+   *
+   * <p>逻辑：若启用远程签名则使用 AnonymousCredentialsProvider（凭证由签名服务管理）； 否则委托 AwsClientProperties
+   * 按优先级选择凭证提供者（静态凭证 / 自定义类 / 默认链）。
+   *
+   * @param awsClientProperties AWS 客户端属性
+   * @param builder S3 客户端构建器
+   * @param <T> 构建器类型
+   */
   public <T extends S3ClientBuilder> void applyCredentialConfigurations(
       AwsClientProperties awsClientProperties, T builder) {
     builder.credentialsProvider(
@@ -697,14 +747,16 @@ public class S3FileIOProperties implements Serializable {
   }
 
   /**
-   * Configure services settings for an S3 client. The settings include: s3DualStack,
-   * s3UseArnRegion, s3PathStyleAccess, and s3Acceleration
+   * 将 S3 服务级配置应用到客户端构建器（dualstack、useArnRegion、pathStyleAccess、acceleration）。
    *
-   * <p>Sample usage:
+   * <p>示例用法：
    *
    * <pre>
-   *     S3Client.builder().applyMutation(s3FileIOProperties::applyS3ServiceConfigurations)
+   *     S3Client.builder().applyMutation(s3FileIOProperties::applyServiceConfigurations)
    * </pre>
+   *
+   * @param builder S3 客户端构建器
+   * @param <T> 构建器类型
    */
   public <T extends S3ClientBuilder> void applyServiceConfigurations(T builder) {
     builder
@@ -718,13 +770,18 @@ public class S3FileIOProperties implements Serializable {
   }
 
   /**
-   * Configure a signer for an S3 client.
+   * 为 S3 客户端配置签名器。
    *
-   * <p>Sample usage:
+   * <p>逻辑：若启用远程签名，则通过 S3V4RestSignerClient.create 创建 REST 签名器， 覆盖 SDK 默认的 SigV4 签名器，将签名请求委托给远程服务。
+   *
+   * <p>示例用法：
    *
    * <pre>
-   *     S3Client.builder().applyMutation(s3FileIOProperties::applyS3SignerConfiguration)
+   *     S3Client.builder().applyMutation(s3FileIOProperties::applySignerConfiguration)
    * </pre>
+   *
+   * @param builder S3 客户端构建器
+   * @param <T> 构建器类型
    */
   public <T extends S3ClientBuilder> void applySignerConfiguration(T builder) {
     if (isRemoteSigningEnabled) {
@@ -736,13 +793,18 @@ public class S3FileIOProperties implements Serializable {
   }
 
   /**
-   * Override the endpoint for an S3 client.
+   * 为 S3 客户端配置端点覆盖地址（用于 MinIO 等兼容存储或自定义网关）。
    *
-   * <p>Sample usage:
+   * <p>逻辑：仅当 endpoint 非空时调用 builder.endpointOverride(URI.create(endpoint))。
+   *
+   * <p>示例用法：
    *
    * <pre>
    *     S3Client.builder().applyMutation(s3FileIOProperties::applyEndpointConfigurations)
    * </pre>
+   *
+   * @param builder S3 客户端构建器
+   * @param <T> 构建器类型
    */
   public <T extends S3ClientBuilder> void applyEndpointConfigurations(T builder) {
     if (endpoint != null) {

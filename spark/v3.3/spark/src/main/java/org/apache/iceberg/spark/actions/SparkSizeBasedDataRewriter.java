@@ -30,6 +30,15 @@ import org.apache.iceberg.spark.ScanTaskSetManager;
 import org.apache.iceberg.spark.SparkTableCache;
 import org.apache.spark.sql.SparkSession;
 
+/**
+ * 基于 Spark 执行的 Iceberg 表维护动作的写入器，负责把 Spark 内部数据写入 Iceberg 底层存储。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 SparkSizeBasedDataRewriter。
+ *
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ *
+ * <p>上下游：由 SparkActions 创建，委托 Spark 作业执行实际数据处理。
+ */
 abstract class SparkSizeBasedDataRewriter extends SizeBasedDataRewriter {
 
   private final SparkSession spark;
@@ -42,12 +51,20 @@ abstract class SparkSizeBasedDataRewriter extends SizeBasedDataRewriter {
     this.spark = spark;
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected abstract void doRewrite(String groupId, List<FileScanTask> group);
 
+  /** 执行该方法的具体逻辑。 */
   protected SparkSession spark() {
     return spark;
   }
 
+  /**
+   * 重写计划或文件。
+   *
+   * @param group 参数
+   * @return 结果对象
+   */
   @Override
   public Set<DataFile> rewrite(List<FileScanTask> group) {
     String groupId = UUID.randomUUID().toString();

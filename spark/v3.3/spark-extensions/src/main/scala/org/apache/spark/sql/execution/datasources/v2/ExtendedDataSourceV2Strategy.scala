@@ -53,10 +53,22 @@ import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.datasources.DataSourceStrategy
 import scala.jdk.CollectionConverters._
 
+/**
+ * Spark 物理执行相关组件的策略实现，定义文件重写等动作的具体算法。
+ *
+ * <p>所属模块：iceberg-spark-extensions v3.3。
+ * 类型：样例类 ExtendedDataSourceV2Strategy。
+ * <p>设计意图：策略模式，可在运行时切换算法实现。
+ * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+ */
 case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy with PredicateHelper {
 
   import DataSourceV2Implicits._
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
     case c @ Call(procedure, args) =>
       val input = buildInternalRow(args)
@@ -131,6 +143,10 @@ case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy wi
     case _ => Nil
   }
 
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildInternalRow(exprs: Seq[Expression]): InternalRow = {
     val values = new Array[Any](exprs.size)
     for (index <- exprs.indices) {
@@ -143,6 +159,13 @@ case class ExtendedDataSourceV2Strategy(spark: SparkSession) extends Strategy wi
     spark.sharedState.cacheManager.recacheByPlan(spark, r)
   }
 
+  /**
+   * Spark 物理执行相关组件，实现 Spark 目录服务以加载和管理 Iceberg 表。
+   *
+   * <p>所属模块：iceberg-spark-extensions v3.3。
+   * 类型：对象 IcebergCatalogAndIdentifier。
+   * <p>上下游：被 SparkScan/SparkWrite 调用，依赖 Iceberg 文件格式读取/写入 API。
+   */
   private object IcebergCatalogAndIdentifier {
     def unapply(identifier: Seq[String]): Option[(TableCatalog, Identifier)] = {
       val catalogAndIdentifier = Spark3Util.catalogAndIdentifier(spark, identifier.asJava)

@@ -39,6 +39,13 @@ import software.amazon.awssdk.services.glue.model.DatabaseInput;
 import software.amazon.awssdk.services.glue.model.StorageDescriptor;
 import software.amazon.awssdk.services.glue.model.TableInput;
 
+/**
+ * 文件级说明：测试 TestIcebergToGlueConverter 的功能。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 TestIcebergToGlueConverter 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestIcebergToGlueConverter {
 
   private final Map<String, String> tableLocationProperties =
@@ -47,12 +54,22 @@ public class TestIcebergToGlueConverter {
           TableProperties.WRITE_METADATA_LOCATION, "s3://writeMetaDataLoc",
           TableProperties.WRITE_FOLDER_STORAGE_LOCATION, "s3://writeFolderStorageLoc");
 
+  /**
+   * 测试场景：To Database Name。
+   *
+   * <p>验证该方法在 To Database Name 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseName() {
     Assertions.assertThat(IcebergToGlueConverter.toDatabaseName(Namespace.of("db"), false))
         .isEqualTo("db");
   }
 
+  /**
+   * 测试场景：To Database Name Failure。
+   *
+   * <p>验证该方法在 To Database Name Failure 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseNameFailure() {
     List<Namespace> badNames =
@@ -73,6 +90,11 @@ public class TestIcebergToGlueConverter {
     }
   }
 
+  /**
+   * 测试场景：Skip Namespace Validation。
+   *
+   * <p>验证该方法在 Skip Namespace Validation 条件下的行为是否符合预期。
+   */
   @Test
   public void testSkipNamespaceValidation() {
     List<Namespace> acceptableNames =
@@ -83,6 +105,11 @@ public class TestIcebergToGlueConverter {
     }
   }
 
+  /**
+   * 测试场景：Skip Table Name Validation。
+   *
+   * <p>验证该方法在 Skip Table Name Validation 条件下的行为是否符合预期。
+   */
   @Test
   public void testSkipTableNameValidation() {
     List<TableIdentifier> acceptableIdentifiers =
@@ -96,6 +123,11 @@ public class TestIcebergToGlueConverter {
     }
   }
 
+  /**
+   * 测试场景：To Database Input。
+   *
+   * <p>验证该方法在 To Database Input 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseInput() {
     Map<String, String> properties =
@@ -120,6 +152,11 @@ public class TestIcebergToGlueConverter {
     Assertions.assertThat(databaseInput.name()).as("Database name should be set").isEqualTo("ns");
   }
 
+  /**
+   * 测试场景：To Database Input No Parameter。
+   *
+   * <p>验证该方法在 To Database Input No Parameter 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseInputNoParameter() {
     DatabaseInput input = DatabaseInput.builder().name("db").parameters(ImmutableMap.of()).build();
@@ -129,6 +166,11 @@ public class TestIcebergToGlueConverter {
         .isEqualTo(input);
   }
 
+  /**
+   * 测试场景：To Database Input Empty Location。
+   *
+   * <p>验证该方法在 To Database Input Empty Location 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseInputEmptyLocation() {
     Map<String, String> properties =
@@ -146,6 +188,11 @@ public class TestIcebergToGlueConverter {
     Assertions.assertThat(databaseInput.name()).as("Database name should be set").isEqualTo("ns");
   }
 
+  /**
+   * 测试场景：To Database Input Empty Description。
+   *
+   * <p>验证该方法在 To Database Input Empty Description 条件下的行为是否符合预期。
+   */
   @Test
   public void testToDatabaseInputEmptyDescription() {
     Map<String, String> properties =
@@ -162,6 +209,11 @@ public class TestIcebergToGlueConverter {
     Assertions.assertThat(databaseInput.name()).as("Database name should be set").isEqualTo("ns");
   }
 
+  /**
+   * 测试场景：Set Table Input Information。
+   *
+   * <p>验证该方法在 Set Table Input Information 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetTableInputInformation() {
     // Actual TableInput
@@ -224,6 +276,11 @@ public class TestIcebergToGlueConverter {
         .isEqualTo(expectedTableInput.storageDescriptor().columns());
   }
 
+  /**
+   * 测试场景：Set Table Input Information With Removed Columns。
+   *
+   * <p>验证该方法在 Set Table Input Information With Removed Columns 条件下的行为是否符合预期。
+   */
   @Test
   public void testSetTableInputInformationWithRemovedColumns() {
     // Actual TableInput

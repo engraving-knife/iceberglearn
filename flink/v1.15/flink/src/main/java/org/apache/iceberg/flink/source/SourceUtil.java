@@ -26,6 +26,13 @@ import org.apache.iceberg.flink.FlinkConfigOptions;
 import org.apache.iceberg.hadoop.Util;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
+/**
+ * Source 工具类，提供读取侧公共辅助方法。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：封装表加载、schema 转换等公共逻辑。
+ *
+ * <p>设计意图：工具类 + 静态方法；被 source 各类调用。
+ */
 class SourceUtil {
   private SourceUtil() {}
 

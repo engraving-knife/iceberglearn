@@ -25,24 +25,35 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkCachedTableCatalog 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 Spark缓存表目录 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkCachedTableCatalog extends SparkTestBaseWithCatalog {
 
   private static final SparkTableCache TABLE_CACHE = SparkTableCache.get();
 
+  /** 初始化缓存表目录。 */
   @BeforeClass
   public static void setupCachedTableCatalog() {
     spark.conf().set("spark.sql.catalog.testcache", SparkCachedTableCatalog.class.getName());
   }
 
+  /** unset缓存表目录。 */
   @AfterClass
   public static void unsetCachedTableCatalog() {
     spark.conf().unset("spark.sql.catalog.testcache");
   }
 
+  /** 测试Spark缓存表目录。 */
   public TestSparkCachedTableCatalog() {
     super(SparkCatalogConfig.HIVE);
   }
 
+  /** 测试时间旅行场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTimeTravel() {
     sql("CREATE TABLE %s (id INT, dep STRING) USING iceberg", tableName);

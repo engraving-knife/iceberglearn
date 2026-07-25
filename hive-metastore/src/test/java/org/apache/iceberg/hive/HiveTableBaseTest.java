@@ -37,6 +37,13 @@ import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+/**
+ * 文件级说明：测试 HiveTableBaseTest 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 HiveTableBaseTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class HiveTableBaseTest extends HiveMetastoreTest {
 
   static final String TABLE_NAME = "tbl";
@@ -56,12 +63,14 @@ public class HiveTableBaseTest extends HiveMetastoreTest {
 
   private Path tableLocation;
 
+  /** 辅助方法：createTestTable。 */
   @BeforeEach
   public void createTestTable() {
     this.tableLocation =
         new Path(catalog.createTable(TABLE_IDENTIFIER, schema, partitionSpec).location());
   }
 
+  /** 辅助方法：dropTestTable。 */
   @AfterEach
   public void dropTestTable() throws Exception {
     // drop the table data
@@ -69,37 +78,45 @@ public class HiveTableBaseTest extends HiveMetastoreTest {
     catalog.dropTable(TABLE_IDENTIFIER, false /* metadata only, location was already deleted */);
   }
 
+  /** 辅助方法：getTableBasePath。 */
   private static String getTableBasePath(String tableName) {
     String databasePath = metastore.getDatabasePath(DB_NAME);
     return Paths.get(databasePath, tableName).toAbsolutePath().toString();
   }
 
+  /** 辅助方法：getTableLocationPath。 */
   protected static Path getTableLocationPath(String tableName) {
     return new Path("file", null, Paths.get(getTableBasePath(tableName)).toString());
   }
 
+  /** 辅助方法：getTableLocation。 */
   protected static String getTableLocation(String tableName) {
     return getTableLocationPath(tableName).toString();
   }
 
+  /** 辅助方法：metadataLocation。 */
   protected static String metadataLocation(String tableName) {
     return Paths.get(getTableBasePath(tableName), "metadata").toString();
   }
 
+  /** 辅助方法：metadataFiles。 */
   private static List<String> metadataFiles(String tableName) {
     return Arrays.stream(new File(metadataLocation(tableName)).listFiles())
         .map(File::getAbsolutePath)
         .collect(Collectors.toList());
   }
 
+  /** 辅助方法：metadataVersionFiles。 */
   protected static List<String> metadataVersionFiles(String tableName) {
     return filterByExtension(tableName, getFileExtension(TableMetadataParser.Codec.NONE));
   }
 
+  /** 辅助方法：manifestFiles。 */
   protected static List<String> manifestFiles(String tableName) {
     return filterByExtension(tableName, ".avro");
   }
 
+  /** 辅助方法：filterByExtension。 */
   private static List<String> filterByExtension(String tableName, String extension) {
     return metadataFiles(tableName).stream()
         .filter(f -> f.endsWith(extension))

@@ -25,28 +25,13 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * An iterator that removes the carry-over rows from changelog tables within a single Spark task. It
- * assumes that rows are partitioned by identifier(or all) columns, and it is sorted by both
- * identifier(or all) columns and change type.
+ * 所属模块：iceberg-spark v3.5
  *
- * <p>Carry-over rows are the result of a removal and insertion of the same row within an operation
- * because of the copy-on-write mechanism. For example, given a file which contains row1 (id=1,
- * data='a') and row2 (id=2, data='b'). A copy-on-write delete of row2 would require erasing this
- * file and preserving row1 in a new file. The change-log table would report this as follows,
- * despite it not being an actual change to the table.
+ * <p>职责：去除 carryover 行的迭代器，过滤 changelog 中同时出现 delete+insert 的过渡行（旧版语义）。
  *
- * <ul>
- *   <li>(id=1, data='a', op='DELETE')
- *   <li>(id=1, data='a', op='INSERT')
- *   <li>(id=2, data='b', op='DELETE')
- * </ul>
+ * <p>设计意图：在行级 changelog 合并后清理冗余过渡行，避免下游重复处理。
  *
- * The iterator finds the carry-over rows and removes them from the result. For example, the above
- * rows will be converted to:
- *
- * <ul>
- *   <li>(id=2, data='b', op='DELETE')
- * </ul>
+ * <p>上下游关系：由 ChangelogRowReader 使用。
  */
 class RemoveCarryoverIterator extends ChangelogIterator {
   private final int[] indicesToIdentifySameRow;
@@ -59,7 +44,7 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     super(rowIterator, rowType);
     this.indicesToIdentifySameRow = generateIndicesToIdentifySameRow();
   }
-
+  /** 判断是否有下一个元素。 */
   @Override
   public boolean hasNext() {
     if (hasCachedDeleteRow() || cachedNextRecord != null) {
@@ -67,7 +52,7 @@ class RemoveCarryoverIterator extends ChangelogIterator {
     }
     return rowIterator().hasNext();
   }
-
+  /** 返回下一个元素。 */
   @Override
   public Row next() {
     Row currentRow;
@@ -132,15 +117,15 @@ class RemoveCarryoverIterator extends ChangelogIterator {
   private boolean returnCachedDeleteRow() {
     return hitBoundary() && hasCachedDeleteRow();
   }
-
+  /** 执行 hitBoundary 相关操作。 */
   private boolean hitBoundary() {
     return !rowIterator().hasNext() || cachedNextRecord != null;
   }
-
+  /** 判断是否存在 CachedDeleteRow。 */
   private boolean hasCachedDeleteRow() {
     return cachedDeletedRow != null;
   }
-
+  /** 执行 generateIndicesToIdentifySameRow 相关操作。 */
   private int[] generateIndicesToIdentifySameRow() {
     Set<Integer> metadataColumnIndices = Sets.newHashSet(changeTypeIndex());
     return generateIndicesToIdentifySameRow(rowType().size(), metadataColumnIndices);

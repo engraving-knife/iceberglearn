@@ -31,8 +31,13 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Class to adapt a Spark {@code InternalRow} to Iceberg {@link StructLike} for uses like {@link
- * org.apache.iceberg.PartitionKey#partition(StructLike)}
+ * 所属模块：iceberg-spark v3.4
+ *
+ * <p>职责：Spark InternalRow 的 StructLike 包装器，使 Spark 行可在需要 StructLike 的 Iceberg API 中使用。
+ *
+ * <p>设计意图：适配器模式，按 Schema 索引访问行字段。
+ *
+ * <p>上下游关系：由 SparkAppenderFactory / 分区写入等场景使用。
  */
 class InternalRowWrapper implements StructLike {
   private final DataType[] types;
@@ -49,7 +54,7 @@ class InternalRowWrapper implements StructLike {
     this.row = internalRow;
     return this;
   }
-
+  /** 返回大小。 */
   @Override
   public int size() {
     return types.length;
@@ -70,7 +75,7 @@ class InternalRowWrapper implements StructLike {
   public <T> void set(int pos, T value) {
     row.update(pos, value);
   }
-
+  /** 执行 getter 相关操作。 */
   private static BiFunction<InternalRow, Integer, ?> getter(DataType type) {
     if (type instanceof StringType) {
       return (row, pos) -> row.getUTF8String(pos).toString();

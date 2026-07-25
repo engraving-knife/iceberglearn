@@ -21,11 +21,23 @@ package org.apache.iceberg.flink.source.enumerator;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestEnumerationHistory 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.15）。职责：验证 TestEnumerationHistory 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestEnumerationHistory {
   private static final int MAX_HISTORY_SIZE = 3;
   private static final int FEW_PENDING_SPLITS = 2;
   private static final int TOO_MANY_PENDING_SPLITS = 100;
 
+  /**
+   * 测试场景：Empty History。
+   *
+   * <p>验证该方法在 Empty History 条件下的行为是否符合预期。
+   */
   @Test
   public void testEmptyHistory() {
     EnumerationHistory history = new EnumerationHistory(MAX_HISTORY_SIZE);
@@ -33,6 +45,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：Not Full History。
+   *
+   * <p>验证该方法在 Not Full History 条件下的行为是否符合预期。
+   */
   @Test
   public void testNotFullHistory() {
     EnumerationHistory history = new EnumerationHistory(3);
@@ -42,6 +59,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：Exact Full History。
+   *
+   * <p>验证该方法在 Exact Full History 条件下的行为是否符合预期。
+   */
   @Test
   public void testExactFullHistory() {
     EnumerationHistory history = new EnumerationHistory(3);
@@ -52,6 +74,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：One More Than Full History。
+   *
+   * <p>验证该方法在 One More Than Full History 条件下的行为是否符合预期。
+   */
   @Test
   public void testOneMoreThanFullHistory() {
     EnumerationHistory history = new EnumerationHistory(3);
@@ -63,6 +90,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：Two More Than Full History。
+   *
+   * <p>验证该方法在 Two More Than Full History 条件下的行为是否符合预期。
+   */
   @Test
   public void testTwoMoreThanFullHistory() {
     EnumerationHistory history = new EnumerationHistory(3);
@@ -75,6 +107,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：Three More Than Full History。
+   *
+   * <p>验证该方法在 Three More Than Full History 条件下的行为是否符合预期。
+   */
   @Test
   public void testThreeMoreThanFullHistory() {
     EnumerationHistory history = new EnumerationHistory(3);
@@ -88,6 +125,11 @@ public class TestEnumerationHistory {
     testHistory(history, expectedHistorySnapshot);
   }
 
+  /**
+   * 测试场景：History。
+   *
+   * <p>验证该方法在 History 条件下的行为是否符合预期。
+   */
   private void testHistory(EnumerationHistory history, int[] expectedHistorySnapshot) {
     Assert.assertFalse(history.shouldPauseSplitDiscovery(FEW_PENDING_SPLITS));
     if (history.hasFullHistory()) {
@@ -114,6 +156,11 @@ public class TestEnumerationHistory {
     }
   }
 
+  /**
+   * 测试场景：Restore Different Size。
+   *
+   * <p>验证该方法在 Restore Different Size 条件下的行为是否符合预期。
+   */
   @Test
   public void testRestoreDifferentSize() {
     EnumerationHistory history = new EnumerationHistory(3);

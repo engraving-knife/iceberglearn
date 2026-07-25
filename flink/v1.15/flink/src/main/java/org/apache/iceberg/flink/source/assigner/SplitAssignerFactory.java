@@ -22,6 +22,13 @@ import java.io.Serializable;
 import java.util.Collection;
 import org.apache.iceberg.flink.source.split.IcebergSourceSplitState;
 
+/**
+ * 分片分配器工厂接口，按类型创建 SplitAssigner。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：抽象 assigner 创建逻辑，支持简单/有序等策略。
+ *
+ * <p>设计意图：工厂接口；被 IcebergSource 调用。
+ */
 public interface SplitAssignerFactory extends Serializable {
 
   SplitAssigner createAssigner();

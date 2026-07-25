@@ -80,15 +80,23 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
 /**
- * A Flink Catalog implementation that wraps an Iceberg {@link Catalog}.
+ * 文件级说明：包装 Iceberg {@link Catalog} 的 Flink Catalog 实现。
  *
- * <p>The mapping between Flink database and Iceberg namespace: Supplying a base namespace for a
- * given catalog, so if you have a catalog that supports a 2-level namespace, you would supply the
- * first level in the catalog configuration and the second level would be exposed as Flink
- * databases.
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块根包）。
  *
- * <p>The Iceberg table manages its partitions by itself. The partition of the Iceberg table is
- * independent of the partition of Flink.
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>实现 Flink 的 {@link org.apache.flink.table.catalog.AbstractCatalog} 接口， 把 Iceberg Catalog 适配为
+ *       Flink 可识别的目录。
+ *   <li>提供 Flink database 到 Iceberg namespace 的映射——通过 baseNamespace 配置 基命名空间，剩余层级暴露为 Flink 数据库。
+ *   <li>支持表/库的 CRUD、分区信息查询、Schema 变更等操作。
+ * </ul>
+ *
+ * <p>设计意图：Flink 与 Iceberg 的命名空间层级可能不同，本类通过 baseNamespace 解决 层级差问题；Iceberg 表自管理分区，与 Flink 分区概念相互独立。
+ *
+ * <p>上下游关系：上游为 Flink CatalogManager，下游为 Iceberg 的 {@link Catalog} 与 {@link
+ * org.apache.iceberg.catalog.SupportsNamespaces}。
  */
 public class FlinkCatalog extends AbstractCatalog {
   private final CatalogLoader catalogLoader;

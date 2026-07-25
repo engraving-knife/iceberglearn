@@ -44,13 +44,21 @@ import org.apache.iceberg.types.Types;
 import org.junit.Assume;
 import org.junit.Test;
 
-/** Test {@link FlinkInputFormat}. */
+/**
+ * 文件级说明：测试 TestFlinkInputFormat 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.17）。职责：验证 TestFlinkInputFormat 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestFlinkInputFormat extends TestFlinkSource {
 
+  /** 辅助方法：TestFlinkInputFormat，Flink Input Format。 */
   public TestFlinkInputFormat(String fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   protected List<Row> run(
       FlinkSource.Builder formatBuilder,
@@ -61,6 +69,11 @@ public class TestFlinkInputFormat extends TestFlinkSource {
     return runFormat(formatBuilder.tableLoader(tableLoader()).buildFormat());
   }
 
+  /**
+   * 测试场景：Nested Projection。
+   *
+   * <p>验证该方法在 Nested Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testNestedProjection() throws Exception {
     Schema schema =
@@ -106,6 +119,11 @@ public class TestFlinkInputFormat extends TestFlinkSource {
     TestHelpers.assertRows(result, expected);
   }
 
+  /**
+   * 测试场景：Basic Projection。
+   *
+   * <p>验证该方法在 Basic Projection 条件下的行为是否符合预期。
+   */
   @Test
   public void testBasicProjection() throws IOException {
     Schema writeSchema =
@@ -140,6 +158,11 @@ public class TestFlinkInputFormat extends TestFlinkSource {
     TestHelpers.assertRows(result, expected);
   }
 
+  /**
+   * 测试场景：Read Partition Column。
+   *
+   * <p>验证该方法在 Read Partition Column 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadPartitionColumn() throws Exception {
     Assume.assumeTrue("Temporary skip ORC", FileFormat.ORC != fileFormat);
@@ -186,6 +209,7 @@ public class TestFlinkInputFormat extends TestFlinkSource {
     TestHelpers.assertRows(result, expected);
   }
 
+  /** 辅助方法：runFormat，run Format。 */
   private List<Row> runFormat(FlinkInputFormat inputFormat) throws IOException {
     RowType rowType = FlinkSchemaUtil.convert(inputFormat.projectedSchema());
     return TestHelpers.readRows(inputFormat, rowType);

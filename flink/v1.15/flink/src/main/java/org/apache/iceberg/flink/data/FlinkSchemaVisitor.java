@@ -29,12 +29,27 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
+/**
+ * Iceberg schema 与 Flink {@link LogicalType} 之间的结构化访问者基类。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：以 Iceberg 类型结构为骨架，按 struct/map/list/primitive 递归遍历 Flink
+ * LogicalType，并在每个节点回调子类构造的结果。
+ *
+ * <p>设计意图：访问者模式，将类型遍历与具体构造逻辑解耦；上下游：被 Parquet/Avro 读写器调用， 上游接收 Iceberg {@link Schema} 与 Flink {@link
+ * RowType}。
+ */
 abstract class FlinkSchemaVisitor<T> {
 
+  /** 入口方法：以 schema 的 struct 形式开始遍历。 */
   static <T> T visit(RowType flinkType, Schema schema, FlinkSchemaVisitor<T> visitor) {
     return visit(flinkType, schema.asStruct(), visitor);
   }
 
+  /**
+   * 按 Iceberg 类型分支递归遍历 Flink 类型。
+   *
+   * <p>逻辑：根据 iType 的类型 ID 分派到 record/map/list/primitive 四种处理方式。
+   */
   private static <T> T visit(LogicalType flinkType, Type iType, FlinkSchemaVisitor<T> visitor) {
     switch (iType.typeId()) {
       case STRUCT:
@@ -84,6 +99,7 @@ abstract class FlinkSchemaVisitor<T> {
     }
   }
 
+  /** 遍历 struct 类型，按字段名匹配 RowType 中的字段并递归。 */
   private static <T> T visitRecord(
       LogicalType flinkType, Types.StructType struct, FlinkSchemaVisitor<T> visitor) {
     Preconditions.checkArgument(flinkType instanceof RowType, "%s is not a RowType.", flinkType);
@@ -115,46 +131,58 @@ abstract class FlinkSchemaVisitor<T> {
     return visitor.record(struct, results, fieldTypes);
   }
 
+  /** 处理 struct 类型结果，默认返回 null，由子类覆盖。 */
   public T record(Types.StructType iStruct, List<T> results, List<LogicalType> fieldTypes) {
     return null;
   }
 
+  /** 处理 list 类型结果，默认返回 null，由子类覆盖。 */
   public T list(Types.ListType iList, T element, LogicalType elementType) {
     return null;
   }
 
+  /** 处理 map 类型结果，默认返回 null，由子类覆盖。 */
   public T map(Types.MapType iMap, T key, T value, LogicalType keyType, LogicalType valueType) {
     return null;
   }
 
+  /** 处理 primitive 类型结果，默认返回 null，由子类覆盖。 */
   public T primitive(Type.PrimitiveType iPrimitive, LogicalType flinkPrimitive) {
     return null;
   }
 
+  /** 进入字段前的回调钩子，默认空实现。 */
   public void beforeField(Types.NestedField field) {}
 
+  /** 离开字段后的回调钩子，默认空实现。 */
   public void afterField(Types.NestedField field) {}
 
+  /** 进入 list 元素字段前的回调。 */
   public void beforeListElement(Types.NestedField elementField) {
     beforeField(elementField);
   }
 
+  /** 离开 list 元素字段后的回调。 */
   public void afterListElement(Types.NestedField elementField) {
     afterField(elementField);
   }
 
+  /** 进入 map key 字段前的回调。 */
   public void beforeMapKey(Types.NestedField keyField) {
     beforeField(keyField);
   }
 
+  /** 离开 map key 字段后的回调。 */
   public void afterMapKey(Types.NestedField keyField) {
     afterField(keyField);
   }
 
+  /** 进入 map value 字段前的回调。 */
   public void beforeMapValue(Types.NestedField valueField) {
     beforeField(valueField);
   }
 
+  /** 离开 map value 字段后的回调。 */
   public void afterMapValue(Types.NestedField valueField) {
     afterField(valueField);
   }

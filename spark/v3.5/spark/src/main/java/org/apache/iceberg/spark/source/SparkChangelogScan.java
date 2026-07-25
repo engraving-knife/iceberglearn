@@ -43,6 +43,15 @@ import org.apache.spark.sql.connector.read.Statistics;
 import org.apache.spark.sql.connector.read.SupportsReportStatistics;
 import org.apache.spark.sql.types.StructType;
 
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：变更日志扫描，构建基于快照差异的 changelog 扫描。
+ *
+ * <p>设计意图：计算快照区间并构建变更读取任务，输出带变更类型的行。
+ *
+ * <p>上下游关系：由 SparkChangelogTable / CreateChangelogViewProcedure 使用。
+ */
 class SparkChangelogScan implements Scan, SupportsReportStatistics {
 
   private static final Types.StructType EMPTY_GROUPING_KEY_TYPE = Types.StructType.of();
@@ -83,14 +92,14 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
       this.taskGroups = Collections.emptyList();
     }
   }
-
+  /** 执行 estimateStatistics 相关操作。 */
   @Override
   public Statistics estimateStatistics() {
     long rowsCount = taskGroups().stream().mapToLong(ScanTaskGroup::estimatedRowsCount).sum();
     long sizeInBytes = SparkSchemaUtil.estimateSize(readSchema(), rowsCount);
     return new Stats(sizeInBytes, rowsCount);
   }
-
+  /** 执行 readSchema 相关操作。 */
   @Override
   public StructType readSchema() {
     if (expectedSparkType == null) {
@@ -99,7 +108,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
 
     return expectedSparkType;
   }
-
+  /** 转换为 Batch。 */
   @Override
   public Batch toBatch() {
     return new SparkBatch(
@@ -111,7 +120,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         expectedSchema,
         hashCode());
   }
-
+  /** 执行 taskGroups 相关操作。 */
   private List<ScanTaskGroup<ChangelogScanTask>> taskGroups() {
     if (taskGroups == null) {
       try (CloseableIterable<ScanTaskGroup<ChangelogScanTask>> groups = scan.planTasks()) {
@@ -123,14 +132,14 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
 
     return taskGroups;
   }
-
+  /** 返回描述。 */
   @Override
   public String description() {
     return String.format(
         "%s [fromSnapshotId=%d, toSnapshotId=%d, filters=%s]",
         table, startSnapshotId, endSnapshotId, Spark3Util.describe(filters));
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(
@@ -141,7 +150,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         endSnapshotId,
         Spark3Util.describe(filters));
   }
-
+  /** 判断是否相等。 */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -159,7 +168,7 @@ class SparkChangelogScan implements Scan, SupportsReportStatistics {
         && Objects.equals(startSnapshotId, that.startSnapshotId)
         && Objects.equals(endSnapshotId, that.endSnapshotId);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(

@@ -24,8 +24,20 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.projectnessie.model.CommitMeta;
 
+/**
+ * 文件级说明：测试 TestNessieUtil 的功能。
+ *
+ * <p>所属模块：iceberg-nessie。职责：验证 TestNessieUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestNessieUtil {
 
+  /**
+   * 测试场景：Building Commit Metadata With Null Catalog Options。
+   *
+   * <p>验证该方法在 Building Commit Metadata With Null Catalog Options 条件下的行为是否符合预期。
+   */
   @Test
   public void testBuildingCommitMetadataWithNullCatalogOptions() {
     Assertions.assertThatThrownBy(() -> NessieUtil.buildCommitMetadata("msg", null))
@@ -33,6 +45,11 @@ public class TestNessieUtil {
         .hasMessage("catalogOptions must not be null");
   }
 
+  /**
+   * 测试场景：Spark App Id And User Is Set On Commit Metadata。
+   *
+   * <p>验证该方法在 Spark App Id And User Is Set On Commit Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testSparkAppIdAndUserIsSetOnCommitMetadata() {
     String commitMsg = "commit msg";
@@ -51,6 +68,11 @@ public class TestNessieUtil {
         .isEqualTo(appId);
   }
 
+  /**
+   * 测试场景：Author Is Set On Commit Metadata。
+   *
+   * <p>验证该方法在 Author Is Set On Commit Metadata 条件下的行为是否符合预期。
+   */
   @Test
   public void testAuthorIsSetOnCommitMetadata() {
     String commitMsg = "commit msg";
@@ -62,6 +84,11 @@ public class TestNessieUtil {
         .isEqualTo("iceberg");
   }
 
+  /**
+   * 测试场景：Author Is Null Without Jvm User。
+   *
+   * <p>验证该方法在 Author Is Null Without Jvm User 条件下的行为是否符合预期。
+   */
   @Test
   public void testAuthorIsNullWithoutJvmUser() {
     String jvmUserName = System.getProperty("user.name");

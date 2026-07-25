@@ -43,6 +43,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+/**
+ * 文件级说明：测试 TestOrcRowIterator 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestOrcRowIterator 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestOrcRowIterator {
 
   private static final Schema DATA_SCHEMA = new Schema(required(100, "id", Types.LongType.get()));
@@ -63,6 +70,7 @@ public class TestOrcRowIterator {
 
   private File testFile;
 
+  /** 辅助方法：writeFile。 */
   @Before
   public void writeFile() throws IOException {
     testFile = temp.newFile();
@@ -83,6 +91,11 @@ public class TestOrcRowIterator {
     }
   }
 
+  /**
+   * 测试场景：Read All Stripes。
+   *
+   * <p>验证该方法在 Read All Stripes 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadAllStripes() throws IOException {
     // With default batch size of 1024, will read the following batches
@@ -91,6 +104,11 @@ public class TestOrcRowIterator {
     readAndValidate(Expressions.alwaysTrue(), DATA_ROWS);
   }
 
+  /**
+   * 测试场景：Read Filtered Row Group In Middle。
+   *
+   * <p>验证该方法在 Read Filtered Row Group In Middle 条件下的行为是否符合预期。
+   */
   @Test
   public void testReadFilteredRowGroupInMiddle() throws IOException {
     // We skip the 2nd row group [1000, 2000] in Stripe 1
@@ -102,6 +120,7 @@ public class TestOrcRowIterator {
             Iterables.concat(DATA_ROWS.subList(0, 1000), DATA_ROWS.subList(2000, 4000))));
   }
 
+  /** 辅助方法：readAndValidate。 */
   private void readAndValidate(Expression filter, List<Record> expected) throws IOException {
     List<Record> rows;
     try (CloseableIterable<Record> reader =

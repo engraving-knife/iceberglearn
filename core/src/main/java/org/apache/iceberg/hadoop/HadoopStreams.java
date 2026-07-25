@@ -35,9 +35,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Convenience methods to get Parquet abstractions for Hadoop data streams.
+ * 文件级说明：Hadoop 数据流与 Iceberg 抽象流之间的适配工具类。
  *
- * <p>This class is based on Parquet's HadoopStreams.
+ * <p>所属模块：iceberg-core 的 hadoop 包。
+ *
+ * <p>职责：提供 {@link FSDataInputStream} ↔ {@link SeekableInputStream}、 {@link FSDataOutputStream} ↔
+ * {@link PositionOutputStream}、 以及 {@link SeekableInputStream} → {@link FSInputStream} 的双向包装方法。
+ *
+ * <p>设计意图：基于 Parquet 的 HadoopStreams 实现。Iceberg 上层读写 API 仅依赖 {@link SeekableInputStream}/{@link
+ * PositionOutputStream} 抽象，本类负责把它们与 Hadoop 原生流互转。包装类在 {@code finalize} 中检测未关闭的流并打印创建堆栈告警， 帮助排查资源泄漏。
+ *
+ * <p>上下游关系：被 {@link HadoopInputFile}、{@link HadoopOutputFile} 等同包类用于 创建读写流；上层 Parquet/ORC/Avro
+ * 读写器通过这些抽象流访问 Hadoop 文件系统。
  */
 public class HadoopStreams {
 
@@ -46,39 +55,42 @@ public class HadoopStreams {
   private static final Logger LOG = LoggerFactory.getLogger(HadoopStreams.class);
 
   /**
-   * Wraps a {@link FSDataInputStream} in a {@link SeekableInputStream} implementation for readers.
+   * 把 Hadoop {@link FSDataInputStream} 包装为 Iceberg {@link SeekableInputStream}，供读取器使用。
    *
-   * @param stream a Hadoop FSDataInputStream
-   * @return a SeekableInputStream
+   * @param stream Hadoop 数据输入流
+   * @return 可定位的输入流
    */
   static SeekableInputStream wrap(FSDataInputStream stream) {
     return new HadoopSeekableInputStream(stream);
   }
 
   /**
-   * Wraps a {@link FSDataOutputStream} in a {@link PositionOutputStream} implementation for
-   * writers.
+   * 把 Hadoop {@link FSDataOutputStream} 包装为 Iceberg {@link PositionOutputStream}，供写入器使用。
    *
-   * @param stream a Hadoop FSDataOutputStream
-   * @return a PositionOutputStream
+   * @param stream Hadoop 数据输出流
+   * @return 可定位的输出流
    */
   static PositionOutputStream wrap(FSDataOutputStream stream) {
     return new HadoopPositionOutputStream(stream);
   }
 
   /**
-   * Wraps a {@link SeekableInputStream} in a {@link FSDataOutputStream} implementation for readers.
+   * 把 Iceberg {@link SeekableInputStream} 包装为 Hadoop {@link FSInputStream}。
    *
-   * @param stream a SeekableInputStream
-   * @return a FSDataOutputStream
+   * <p>用途：当某些 Hadoop 内置组件需要 {@link FSInputStream} 时，可借此桥接回 Iceberg 流。
+   *
+   * @param stream Iceberg 可定位输入流
+   * @return 适配为 Hadoop {@link FSInputStream} 的视图
    */
   public static FSInputStream wrap(SeekableInputStream stream) {
     return new WrappedSeekableInputStream(stream);
   }
 
   /**
-   * SeekableInputStream implementation for FSDataInputStream that implements ByteBufferReadable in
-   * Hadoop 2.
+   * 内部类：将 Hadoop {@link FSDataInputStream} 适配为 Iceberg {@link SeekableInputStream}。
+   *
+   * <p>设计要点：记录构造时的堆栈用于泄漏告警；{@code finalize} 检测未关闭时打印告警并尽力释放资源。 在 Hadoop 2 上还提供 {@code
+   * read(ByteBuffer)} 能力。
    */
   private static class HadoopSeekableInputStream extends SeekableInputStream
       implements DelegatingInputStream {
@@ -127,6 +139,11 @@ public class HadoopStreams {
       return stream.read(buf);
     }
 
+    /**
+     * GC 回收时若仍未关闭，则尝试关闭并打印创建堆栈，用于排查流泄漏。
+     *
+     * <p>设计意图：资源释放优先于告警，避免因告警失败而泄漏句柄。
+     */
     @SuppressWarnings("checkstyle:NoFinalizer")
     @Override
     protected void finalize() throws Throwable {
@@ -140,7 +157,11 @@ public class HadoopStreams {
     }
   }
 
-  /** PositionOutputStream implementation for FSDataOutputStream. */
+  /**
+   * 内部类：将 Hadoop {@link FSDataOutputStream} 适配为 Iceberg {@link PositionOutputStream}。
+   *
+   * <p>与 {@link HadoopSeekableInputStream} 类似，记录创建堆栈并在 finalize 中检测未关闭情况。
+   */
   private static class HadoopPositionOutputStream extends PositionOutputStream
       implements DelegatingOutputStream {
     private final FSDataOutputStream stream;
@@ -189,6 +210,7 @@ public class HadoopStreams {
       this.closed = true;
     }
 
+    /** GC 回收时若仍未关闭，则尝试关闭并打印创建堆栈，用于排查流泄漏。 */
     @SuppressWarnings("checkstyle:NoFinalizer")
     @Override
     protected void finalize() throws Throwable {
@@ -202,6 +224,12 @@ public class HadoopStreams {
     }
   }
 
+  /**
+   * 内部类：把 Iceberg {@link SeekableInputStream} 包装为 Hadoop {@link FSInputStream}， 用于反向桥接给需要 Hadoop
+   * 流的组件。
+   *
+   * <p>{@code seekToNewSource} 不支持，抛出 {@link UnsupportedOperationException}。
+   */
   private static class WrappedSeekableInputStream extends FSInputStream
       implements DelegatingInputStream {
     private final SeekableInputStream inputStream;

@@ -27,8 +27,25 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.JsonUtil;
 
+/**
+ * 更新前置要求（{@link UpdateRequirement}）的 JSON 序列化/反序列化器。
+ *
+ * <p>所属模块：iceberg-core。职责：把提交时附带的前置断言（assert-table-uuid、assert-ref-snapshot-id 等） 与 JSON 互转，用于 REST
+ * catalog 提交时校验基线。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>按 type 分发：每种断言类型对应一个 fromJson/toJson 分支。
+ *   <li>常量键名：所有断言类型字符串与字段键以常量定义。
+ *   <li>与 {@link UpdateRequirements} 配合：后者构造要求，本类负责序列化。
+ * </ul>
+ *
+ * <p>上下游关系：被 REST catalog 提交路径调用；依赖 {@link JsonUtil} 与 {@link SnapshotRefParser}。
+ */
 public class UpdateRequirementParser {
 
+  /** 私有构造：工具类禁止实例化。 */
   private UpdateRequirementParser() {}
 
   private static final String TYPE = "type";
@@ -79,14 +96,33 @@ public class UpdateRequirementParser {
           .put(UpdateRequirement.AssertDefaultSortOrderID.class, ASSERT_DEFAULT_SORT_ORDER_ID)
           .buildOrThrow();
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param updateRequirement 参数
+   * @return 返回值
+   */
   public static String toJson(UpdateRequirement updateRequirement) {
     return toJson(updateRequirement, false);
   }
 
+  /**
+   * 把对象序列化为 JSON 字符串。
+   *
+   * @param updateRequirement 参数
+   * @param pretty 参数
+   * @return 返回值
+   */
   public static String toJson(UpdateRequirement updateRequirement, boolean pretty) {
     return JsonUtil.generate(gen -> toJson(updateRequirement, gen), pretty);
   }
 
+  /**
+   * 把对象写入 JSON 生成器。
+   *
+   * @param updateRequirement 参数
+   * @param generator 参数
+   */
   public static void toJson(UpdateRequirement updateRequirement, JsonGenerator generator)
       throws IOException {
     String requirementType = TYPES.get(updateRequirement.getClass());
@@ -136,7 +172,9 @@ public class UpdateRequirementParser {
   }
 
   /**
-   * Read MetadataUpdate from a JSON string.
+   * 从 JSON 解析对象。
+   *
+   * <p>Read MetadataUpdate from a JSON string.
    *
    * @param json a JSON string of a MetadataUpdate
    * @return a MetadataUpdate object
@@ -145,6 +183,12 @@ public class UpdateRequirementParser {
     return JsonUtil.parse(json, UpdateRequirementParser::fromJson);
   }
 
+  /**
+   * 从 JSON 解析对象。
+   *
+   * @param jsonNode 参数
+   * @return 返回值
+   */
   public static UpdateRequirement fromJson(JsonNode jsonNode) {
     Preconditions.checkArgument(
         jsonNode != null && jsonNode.isObject(),
@@ -222,41 +266,90 @@ public class UpdateRequirementParser {
 
   @SuppressWarnings(
       "unused") // Keep same signature in case this requirement class evolves and gets fields
+
+  /**
+   * 读取"断言表不存在"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertTableDoesNotExist(JsonNode node) {
     return new UpdateRequirement.AssertTableDoesNotExist();
   }
 
+  /**
+   * 读取"断言表 UUID 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertTableUUID(JsonNode node) {
     String uuid = JsonUtil.getString(UUID, node);
     return new UpdateRequirement.AssertTableUUID(uuid);
   }
 
+  /**
+   * 读取"断言快照引用 id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertRefSnapshotId(JsonNode node) {
     String name = JsonUtil.getString(NAME, node);
     Long snapshotId = JsonUtil.getLongOrNull(SNAPSHOT_ID, node);
     return new UpdateRequirement.AssertRefSnapshotID(name, snapshotId);
   }
 
+  /**
+   * 读取"断言最后分配的字段 id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertLastAssignedFieldId(JsonNode node) {
     int lastAssignedFieldId = JsonUtil.getInt(LAST_ASSIGNED_FIELD_ID, node);
     return new UpdateRequirement.AssertLastAssignedFieldId(lastAssignedFieldId);
   }
 
+  /**
+   * 读取"断言当前 schema id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertCurrentSchemaId(JsonNode node) {
     int schemaId = JsonUtil.getInt(SCHEMA_ID, node);
     return new UpdateRequirement.AssertCurrentSchemaID(schemaId);
   }
 
+  /**
+   * 读取"断言最后分配的分区 id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertLastAssignedPartitionId(JsonNode node) {
     int lastAssignedPartitionId = JsonUtil.getInt(LAST_ASSIGNED_PARTITION_ID, node);
     return new UpdateRequirement.AssertLastAssignedPartitionId(lastAssignedPartitionId);
   }
 
+  /**
+   * 读取"断言默认分区规范 id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertDefaultSpecId(JsonNode node) {
     int specId = JsonUtil.getInt(SPEC_ID, node);
     return new UpdateRequirement.AssertDefaultSpecID(specId);
   }
 
+  /**
+   * 读取"断言默认排序顺序 id 一致"要求。
+   *
+   * @param node 参数
+   * @return 返回值
+   */
   private static UpdateRequirement readAssertDefaultSortOrderId(JsonNode node) {
     int sortOrderId = JsonUtil.getInt(SORT_ORDER_ID, node);
     return new UpdateRequirement.AssertDefaultSortOrderID(sortOrderId);

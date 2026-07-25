@@ -90,6 +90,11 @@ public class TestMetricsEvaluatorsNaNHandling {
   private static final Set<BiFunction<String, Number, Expression>> GREATER_THAN_EXPRESSIONS =
       ImmutableSet.of(Expressions::greaterThan, Expressions::greaterThanOrEqual);
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator Less Than And Less Than Or Equal。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator Less Than And Less Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorLessThanAndLessThanOrEqual() {
     for (BiFunction<String, Number, Expression> func : LESS_THAN_EXPRESSIONS) {
@@ -126,6 +131,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     }
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator Greater Than And Greater Than Or Equal。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator Greater Than And Greater Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorGreaterThanAndGreaterThanOrEqual() {
     for (BiFunction<String, Number, Expression> func : GREATER_THAN_EXPRESSIONS) {
@@ -167,6 +177,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     }
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator Equals。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorEquals() {
     boolean shouldRead =
@@ -205,6 +220,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should not match: 30 is greater than upper bound").isFalse();
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator Not Equals。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator Not Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorNotEquals() {
     boolean shouldRead =
@@ -242,6 +262,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should match: no visibility").isTrue();
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator In。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator In 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorIn() {
     boolean shouldRead =
@@ -274,6 +299,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should not match: 1 not within bounds").isFalse();
   }
 
+  /**
+   * 测试场景：Inclusive Metrics Evaluator Not In。
+   *
+   * <p>验证该方法在 Inclusive Metrics Evaluator Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testInclusiveMetricsEvaluatorNotIn() {
     boolean shouldRead =
@@ -310,6 +340,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should match: no visibility").isTrue();
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator Less Than And Less Than Or Equal。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator Less Than And Less Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorLessThanAndLessThanOrEqual() {
     for (BiFunction<String, Number, Expression> func : LESS_THAN_EXPRESSIONS) {
@@ -336,6 +371,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     }
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator Greater Than And Greater Than Or Equal。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator Greater Than And Greater Than Or Equal 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorGreaterThanAndGreaterThanOrEqual() {
     for (BiFunction<String, Number, Expression> func : GREATER_THAN_EXPRESSIONS) {
@@ -365,6 +405,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     }
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator Not Equals。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator Not Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorNotEquals() {
     boolean shouldRead =
@@ -403,6 +448,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should match: 30 is greater than upper bound").isTrue();
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator Equals。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator Equals 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorEquals() {
     boolean shouldRead =
@@ -435,6 +485,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should not match: bounds not equal to given value").isFalse();
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator Not In。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator Not In 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorNotIn() {
     boolean shouldRead =
@@ -475,6 +530,11 @@ public class TestMetricsEvaluatorsNaNHandling {
     assertThat(shouldRead).as("Should match: 30 not within bounds").isTrue();
   }
 
+  /**
+   * 测试场景：Strict Metrics Evaluator In。
+   *
+   * <p>验证该方法在 Strict Metrics Evaluator In 条件下的行为是否符合预期。
+   */
   @Test
   public void testStrictMetricsEvaluatorIn() {
     boolean shouldRead =

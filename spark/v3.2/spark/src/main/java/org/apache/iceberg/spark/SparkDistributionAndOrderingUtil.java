@@ -40,6 +40,11 @@ import org.apache.spark.sql.connector.expressions.SortDirection;
 import org.apache.spark.sql.connector.expressions.SortOrder;
 import org.apache.spark.sql.connector.iceberg.write.RowLevelOperation.Command;
 
+/**
+ * Iceberg Spark 集成相关组件。
+ *
+ * <p>所属模块：iceberg-spark v3.2。 类型：类 SparkDistributionAndOrderingUtil。
+ */
 public class SparkDistributionAndOrderingUtil {
 
   private static final NamedReference SPEC_ID = Expressions.column(MetadataColumns.SPEC_ID.name());
@@ -63,8 +68,10 @@ public class SparkDistributionAndOrderingUtil {
   private static final SortOrder[] POSITION_DELETE_ORDERING =
       new SortOrder[] {SPEC_ID_ORDER, PARTITION_ORDER, FILE_PATH_ORDER, ROW_POSITION_ORDER};
 
+  /** 构造 SparkDistributionAndOrderingUtil 实例。 */
   private SparkDistributionAndOrderingUtil() {}
 
+  /** 构造并返回目标对象。 */
   public static Distribution buildRequiredDistribution(
       Table table, DistributionMode distributionMode) {
     switch (distributionMode) {
@@ -82,6 +89,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   public static SortOrder[] buildRequiredOrdering(Table table, Distribution distribution) {
     if (distribution instanceof OrderedDistribution) {
       OrderedDistribution orderedDistribution = (OrderedDistribution) distribution;
@@ -91,6 +99,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   public static Distribution buildCopyOnWriteDistribution(
       Table table, Command command, DistributionMode distributionMode) {
     if (command == DELETE || command == UPDATE) {
@@ -100,6 +109,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   private static Distribution buildCopyOnWriteDeleteUpdateDistribution(
       Table table, DistributionMode distributionMode) {
     switch (distributionMode) {
@@ -125,6 +135,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   public static SortOrder[] buildCopyOnWriteOrdering(
       Table table, Command command, Distribution distribution) {
     if (command == DELETE || command == UPDATE) {
@@ -134,6 +145,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   private static SortOrder[] buildCopyOnWriteDeleteUpdateOrdering(
       Table table, Distribution distribution) {
     if (distribution instanceof UnspecifiedDistribution) {
@@ -157,6 +169,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   public static Distribution buildPositionDeltaDistribution(
       Table table, Command command, DistributionMode distributionMode) {
     if (command == DELETE || command == UPDATE) {
@@ -166,6 +179,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   private static Distribution buildPositionMergeDistribution(
       Table table, DistributionMode distributionMode) {
     switch (distributionMode) {
@@ -198,6 +212,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   private static Distribution buildPositionDeleteUpdateDistribution(
       DistributionMode distributionMode) {
     switch (distributionMode) {
@@ -217,6 +232,7 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 构造并返回目标对象。 */
   public static SortOrder[] buildPositionDeltaOrdering(Table table, Command command) {
     if (command == DELETE || command == UPDATE) {
       return POSITION_DELETE_ORDERING;
@@ -227,12 +243,14 @@ public class SparkDistributionAndOrderingUtil {
     }
   }
 
+  /** 把输入转换为另一种表示。 */
   public static SortOrder[] convert(org.apache.iceberg.SortOrder sortOrder) {
     List<SortOrder> converted =
         SortOrderVisitor.visit(sortOrder, new SortOrderToSpark(sortOrder.schema()));
     return converted.toArray(new SortOrder[0]);
   }
 
+  /** 构造并返回目标对象。 */
   private static SortOrder[] buildTableOrdering(Table table) {
     return convert(SortOrderUtil.buildSortOrder(table));
   }

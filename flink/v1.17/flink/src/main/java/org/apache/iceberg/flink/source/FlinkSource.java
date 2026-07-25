@@ -48,6 +48,25 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 文件级说明：Iceberg 的 Flink legacy source 入口与构建器。
+ *
+ * <p>所属模块：iceberg-flink v1.17（Iceberg 与 Flink v1.17 集成模块的 source 子包）。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>提供 {@link #forRowData()} 等入口构建读取 RowData 的 DataStream。
+ *   <li>支持有界（批）与无界（流）两种模式：无 startSnapshotId 或同时有 start/end 时为有界； 有 startSnapshotId 且无 endSnapshotId
+ *       时为无界。
+ *   <li>聚合表加载器、投影 schema、过滤、limit、监控间隔等参数构建 {@link ScanContext}。
+ * </ul>
+ *
+ * <p>设计意图：作为 legacy source 的统一入口，把扫描参数封装为不可变 {@link ScanContext} 后由具体算子（{@link
+ * StreamingMonitorFunction}、{@code StreamingReaderOperator} 等）消费。
+ *
+ * <p>上下游关系：上游为 {@link IcebergTableSource} 或用户直接调用， 下游为 {@link ScanContext} 与具体的 source 算子实现。
+ */
 public class FlinkSource {
   private static final Logger LOG = LoggerFactory.getLogger(FlinkSource.class);
 

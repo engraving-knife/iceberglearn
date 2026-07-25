@@ -55,12 +55,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSystemFunctionPushDownDQL 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.4）。职责：验证 Iceberg 表在 Spark 引擎下 system函数下推dql 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
+  /** 测试system函数下推dql。 */
   public TestSystemFunctionPushDownDQL(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -72,28 +81,33 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     };
   }
 
+  /** 前。 */
   @Before
   public void before() {
     sql("USE %s", catalogName);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试years函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testYearsFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testYearsFunction(false);
   }
 
+  /** 测试years函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testYearsFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "years(ts)");
     testYearsFunction(true);
   }
 
+  /** 测试years函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testYearsFunction(boolean partitioned) {
     int targetYears = timestampStrToYearOrdinal("2017-11-22T00:00:00.000000+00:00");
     String query =
@@ -110,18 +124,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(5);
   }
 
+  /** 测试months函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMonthsFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testMonthsFunction(false);
   }
 
+  /** 测试months函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMonthsFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "months(ts)");
     testMonthsFunction(true);
   }
 
+  /** 测试months函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testMonthsFunction(boolean partitioned) {
     int targetMonths = timestampStrToMonthOrdinal("2017-11-22T00:00:00.000000+00:00");
     String query =
@@ -138,18 +155,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(5);
   }
 
+  /** 测试days函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDaysFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testDaysFunction(false);
   }
 
+  /** 测试days函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDaysFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "days(ts)");
     testDaysFunction(true);
   }
 
+  /** 测试days函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testDaysFunction(boolean partitioned) {
     String timestamp = "2018-11-20T00:00:00.000000+00:00";
     int targetDays = timestampStrToDayOrdinal(timestamp);
@@ -168,18 +188,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(5);
   }
 
+  /** 测试hours函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHoursFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testHoursFunction(false);
   }
 
+  /** 测试hours函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testHoursFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "hours(ts)");
     testHoursFunction(true);
   }
 
+  /** 测试hours函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testHoursFunction(boolean partitioned) {
     int targetHours = timestampStrToHourOrdinal("2017-11-22T06:02:09.243857+00:00");
     String query =
@@ -196,18 +219,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(8);
   }
 
+  /** 测试桶长整型函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketLongFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testBucketLongFunction(false);
   }
 
+  /** 测试桶长整型函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketLongFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "bucket(5, id)");
     testBucketLongFunction(true);
   }
 
+  /** 测试桶长整型函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testBucketLongFunction(boolean partitioned) {
     int target = 2;
     String query =
@@ -224,18 +250,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(5);
   }
 
+  /** 测试桶字符串函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketStringFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testBucketStringFunction(false);
   }
 
+  /** 测试桶字符串函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testBucketStringFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "bucket(5, data)");
     testBucketStringFunction(true);
   }
 
+  /** 测试桶字符串函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testBucketStringFunction(boolean partitioned) {
     int target = 2;
     String query =
@@ -252,18 +281,21 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(8);
   }
 
+  /** 测试截断函数上非分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateFunctionOnUnpartitionedTable() {
     createUnpartitionedTable(spark, tableName);
     testTruncateFunction(false);
   }
 
+  /** 测试截断函数上分区表场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateFunctionOnPartitionedTable() {
     createPartitionedTable(spark, tableName, "truncate(4, data)");
     testTruncateFunction(true);
   }
 
+  /** 测试截断函数场景：验证该方法在对应输入下的行为与断言结果。 */
   private void testTruncateFunction(boolean partitioned) {
     String target = "data";
     String query =
@@ -281,6 +313,7 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     Assertions.assertThat(actual.size()).isEqualTo(5);
   }
 
+  /** 检查表达式。 */
   private void checkExpressions(
       LogicalPlan optimizedPlan, boolean partitioned, String expectedFunctionName) {
     List<Expression> staticInvokes =
@@ -301,6 +334,7 @@ public class TestSystemFunctionPushDownDQL extends SparkExtensionsTestBase {
     }
   }
 
+  /** 检查pushed过滤器。 */
   private void checkPushedFilters(
       LogicalPlan optimizedPlan, org.apache.iceberg.expressions.Expression expected) {
     List<org.apache.iceberg.expressions.Expression> pushedFilters =

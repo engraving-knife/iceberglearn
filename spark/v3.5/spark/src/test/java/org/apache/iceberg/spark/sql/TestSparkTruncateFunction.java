@@ -28,14 +28,24 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestSparkTruncateFunction 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 Spark截断函数 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
+  /** 测试Spark截断函数。 */
   public TestSparkTruncateFunction() {}
 
+  /** use目录。 */
   @Before
   public void useCatalog() {
     sql("USE %s", catalogName);
   }
 
+  /** 测试截断tinyint场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateTinyInt() {
     Assert.assertEquals((byte) 0, scalarSql("SELECT system.truncate(10, 0Y)"));
@@ -57,6 +67,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(2, CAST(null AS tinyint))"));
   }
 
+  /** 测试截断smallint场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateSmallInt() {
     Assert.assertEquals((short) 0, scalarSql("SELECT system.truncate(10, 0S)"));
@@ -78,6 +89,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(2, CAST(null AS smallint))"));
   }
 
+  /** 测试截断int场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateInt() {
     Assert.assertEquals(0, scalarSql("SELECT system.truncate(10, 0)"));
@@ -99,6 +111,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         "Null input should return null", scalarSql("SELECT system.truncate(2, CAST(null AS int))"));
   }
 
+  /** 测试截断bigint场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateBigInt() {
     Assert.assertEquals(0L, scalarSql("SELECT system.truncate(10, 0L)"));
@@ -120,6 +133,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(2, CAST(null AS bigint))"));
   }
 
+  /** 测试截断十进制场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateDecimal() {
     // decimal truncation works by applying the decimal scale to the width: ie 10 scale 2 = 0.10
@@ -169,6 +183,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(2, CAST(null AS decimal))"));
   }
 
+  /** 测试截断字符串场景：验证该方法在对应输入下的行为与断言结果。 */
   @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   @Test
   public void testTruncateString() {
@@ -236,6 +251,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(4, CAST('测试raul试测' AS char(8)))"));
   }
 
+  /** 测试截断二进制场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateBinary() {
     Assert.assertArrayEquals(
@@ -263,6 +279,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(3, CAST(null AS binary))"));
   }
 
+  /** 测试截断使用dataframe用于width带varyingwidth场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testTruncateUsingDataframeForWidthWithVaryingWidth() {
     // This situation is atypical but allowed. Typically, width is static as data is partitioned on
@@ -282,6 +299,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         numNonZero);
   }
 
+  /** 测试widthacceptsshort与byte场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWidthAcceptsShortAndByte() {
     Assert.assertEquals(
@@ -295,6 +313,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
         scalarSql("SELECT system.truncate(5Y, 1)"));
   }
 
+  /** 测试wrongnumber的参数场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testWrongNumberOfArguments() {
     Assertions.assertThatThrownBy(() -> scalarSql("SELECT system.truncate()"))
@@ -313,6 +332,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
             "Function 'truncate' cannot process input: (int, bigint, int): Wrong number of inputs (expected width and value)");
   }
 
+  /** 测试invalid类型cannot被used用于width场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidTypesCannotBeUsedForWidth() {
     Assertions.assertThatThrownBy(
@@ -341,6 +361,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
             "Function 'truncate' cannot process input: (interval day to second, int): Expected truncation width to be tinyint, shortint or int");
   }
 
+  /** 测试invalid类型用于truncation列场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidTypesForTruncationColumn() {
     Assertions.assertThatThrownBy(
@@ -385,6 +406,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
             "Function 'truncate' cannot process input: (int, interval day to second): Expected truncation col to be tinyint, shortint, int, bigint, decimal, string, or binary");
   }
 
+  /** 测试magic函数resolve用于tinyint与smallintwidths场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMagicFunctionsResolveForTinyIntAndSmallIntWidths() {
     // Magic functions have staticinvoke in the explain output. Nonmagic calls use
@@ -403,6 +425,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
             "staticinvoke(class org.apache.iceberg.spark.functions.TruncateFunction$TruncateBigInt");
   }
 
+  /** 测试thatmagic函数areinvoked场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testThatMagicFunctionsAreInvoked() {
     // Magic functions have `staticinvoke` in the explain output.
@@ -459,6 +482,7 @@ public class TestSparkTruncateFunction extends SparkTestBaseWithCatalog {
             "staticinvoke(class org.apache.iceberg.spark.functions.TruncateFunction$TruncateBinary");
   }
 
+  /** 作为bytes字面量。 */
   private String asBytesLiteral(String value) {
     byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
     return "X'" + BaseEncoding.base16().encode(bytes) + "'";

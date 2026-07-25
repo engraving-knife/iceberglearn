@@ -31,6 +31,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
+/**
+ * 文件级说明：测试 HiveMetastoreTest 的功能。
+ *
+ * <p>所属模块：iceberg-hive-metastore。职责：验证 HiveMetastoreTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class HiveMetastoreTest {
 
   protected static final String DB_NAME = "hivedb";
@@ -41,11 +48,13 @@ public abstract class HiveMetastoreTest {
   protected static HiveConf hiveConf;
   protected static TestHiveMetastore metastore;
 
+  /** 辅助方法：startMetastore。 */
   @BeforeAll
   public static void startMetastore() throws Exception {
     startMetastore(Collections.emptyMap());
   }
 
+  /** 辅助方法：startMetastore。 */
   public static void startMetastore(Map<String, String> hiveConfOverride) throws Exception {
     HiveMetastoreTest.metastore = new TestHiveMetastore();
     HiveConf hiveConfWithOverrides = new HiveConf(TestHiveMetastore.class);
@@ -72,6 +81,7 @@ public abstract class HiveMetastoreTest {
                 hiveConfWithOverrides);
   }
 
+  /** 辅助方法：stopMetastore。 */
   @AfterAll
   public static void stopMetastore() throws Exception {
     HiveMetastoreTest.catalog = null;

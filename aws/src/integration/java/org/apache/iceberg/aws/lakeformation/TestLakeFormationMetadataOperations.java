@@ -33,7 +33,19 @@ import org.junit.Test;
 import software.amazon.awssdk.services.glue.model.AccessDeniedException;
 import software.amazon.awssdk.services.lakeformation.model.Permission;
 
+/**
+ * 文件级说明：TestLakeFormationMetadataOperations 集成测试。
+ *
+ * <p>所属模块：iceberg-aws。职责：验证 lakeformation元数据操作 相关功能，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 JUnit 框架，在真实集成环境（如云存储、元数据服务、计算引擎集群）下验证端到端行为。 运行前需配置相应的环境变量、凭证与测试资源。
+ */
 public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
+  /**
+   * 测试场景：创建and删除数据库successful。
+   *
+   * <p>验证该方法在 创建and删除数据库successful 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateAndDropDatabaseSuccessful() {
     String testDbName = getRandomDbName();
@@ -45,6 +57,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     glueCatalogPrivilegedRole.dropNamespace(Namespace.of(testDbName));
   }
 
+  /**
+   * 测试场景：创建数据库noprivileges。
+   *
+   * <p>验证该方法在 创建数据库noprivileges 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateDatabaseNoPrivileges() {
     String testDbName = getRandomDbName();
@@ -55,6 +72,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
         () -> glueCatalogPrivilegedRole.createNamespace(Namespace.of(testDbName)));
   }
 
+  /**
+   * 测试场景：删除数据库noprivileges。
+   *
+   * <p>验证该方法在 删除数据库noprivileges 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropDatabaseNoPrivileges() {
     String testDbName = getRandomDbName();
@@ -70,6 +92,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：show数据库successful。
+   *
+   * <p>验证该方法在 show数据库successful 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testShowDatabasesSuccessful() {
     String testDbName = getRandomDbName();
@@ -83,6 +110,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：创建表no创建表permission。
+   *
+   * <p>验证该方法在 创建表no创建表permission 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableNoCreateTablePermission() {
     String testDbName = getRandomDbName();
@@ -108,6 +140,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：show表successful。
+   *
+   * <p>验证该方法在 show表successful 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testShowTablesSuccessful() {
     String testDbName = getRandomDbName();
@@ -125,6 +162,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：show表noprivileges。
+   *
+   * <p>验证该方法在 show表noprivileges 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testShowTablesNoPrivileges() {
     String testDbName = getRandomDbName();
@@ -143,6 +185,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：创建表no数据路径permission。
+   *
+   * <p>验证该方法在 创建表no数据路径permission 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableNoDataPathPermission() {
     String testDbName = getRandomDbName();
@@ -166,6 +213,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：创建表success。
+   *
+   * <p>验证该方法在 创建表success 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testCreateTableSuccess() {
     String testDbName = getRandomDbName();
@@ -188,6 +240,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：删除表success当purgeisfalse。
+   *
+   * <p>验证该方法在 删除表success当purgeisfalse 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropTableSuccessWhenPurgeIsFalse() {
     String testDbName = getRandomDbName();
@@ -202,6 +259,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：删除表no删除permission。
+   *
+   * <p>验证该方法在 删除表no删除permission 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testDropTableNoDropPermission() {
     String testDbName = getRandomDbName();
@@ -223,6 +285,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：修改表集合属性successful。
+   *
+   * <p>验证该方法在 修改表集合属性successful 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testAlterTableSetPropertiesSuccessful() {
     String testDbName = getRandomDbName();
@@ -248,6 +315,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：修改表集合属性no数据路径access。
+   *
+   * <p>验证该方法在 修改表集合属性no数据路径access 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testAlterTableSetPropertiesNoDataPathAccess() {
     String testDbName = getRandomDbName();
@@ -276,6 +348,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：修改表集合属性noprivileges。
+   *
+   * <p>验证该方法在 修改表集合属性noprivileges 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testAlterTableSetPropertiesNoPrivileges() {
     String testDbName = getRandomDbName();
@@ -297,6 +374,11 @@ public class TestLakeFormationMetadataOperations extends LakeFormationTestBase {
     }
   }
 
+  /**
+   * 测试场景：修改表集合属性no修改permission。
+   *
+   * <p>验证该方法在 修改表集合属性no修改permission 条件下的行为与断言结果是否符合预期。
+   */
   @Test
   public void testAlterTableSetPropertiesNoAlterPermission() {
     String testDbName = getRandomDbName();

@@ -21,7 +21,15 @@ package org.apache.spark.sql.connector.iceberg.catalog;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 
-/** An interface representing a stored procedure available for execution. */
+/**
+ * 所属模块：iceberg-spark v3.5
+ *
+ * <p>职责：Iceberg 存储过程接口，定义可通过 CALL 语句调用的命名过程及其参数与返回列。
+ *
+ * <p>设计意图：抽象存储过程契约，使 Spark 可统一调用 Iceberg 维护操作。
+ *
+ * <p>上下游关系：由各 Procedure 实现（如 RewriteDataFilesProcedure）；由 CallExec 执行。
+ */
 public interface Procedure {
   /** Returns the input parameters of this procedure. */
   ProcedureParameter[] parameters();

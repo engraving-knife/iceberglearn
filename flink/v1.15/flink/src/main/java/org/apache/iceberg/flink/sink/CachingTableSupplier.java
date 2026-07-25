@@ -29,9 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A table loader that will only reload a table after a certain interval has passed. WARNING: This
- * table loader should be used carefully when used with writer tasks. It could result in heavy load
- * on a catalog for jobs with many writers.
+ * 带缓存的 Table 供应器，延迟加载并缓存 Iceberg Table 实例。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：按需加载 Table，避免每次操作重复打开。
+ *
+ * <p>设计意图：供应者模式 + 缓存；被 committer/writer 调用。
  */
 class CachingTableSupplier implements SerializableSupplier<Table> {
 

@@ -22,8 +22,20 @@ import java.time.ZonedDateTime;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 文件级说明：测试 TestDateTimeUtil 的功能。
+ *
+ * <p>所属模块：iceberg-api。职责：验证 TestDateTimeUtil 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class TestDateTimeUtil {
 
+  /**
+   * 测试场景：format Timestamp Millis。
+   *
+   * <p>验证该方法在 format Timestamp Millis 条件下的行为是否符合预期。
+   */
   @Test
   public void formatTimestampMillis() {
     String timestamp = "1970-01-01T00:00:00.001+00:00";

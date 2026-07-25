@@ -30,9 +30,22 @@ import org.apache.iceberg.expressions.Literal;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：TestMetricsTruncation，用于验证 Metrics Truncation 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Metrics Truncation 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 @SuppressWarnings("checkstyle:LocalVariableName")
 public class TestMetricsTruncation {
 
+  /**
+   * 测试场景：truncate binary。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTruncateBinary() {
     ByteBuffer original = ByteBuffer.wrap(new byte[] {1, 1, (byte) 0xFF, 2});
@@ -69,6 +82,11 @@ public class TestMetricsTruncation {
         .hasMessage("Truncate length should be non-negative");
   }
 
+  /**
+   * 测试场景：truncate binary min。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTruncateBinaryMin() {
     ByteBuffer test1 = ByteBuffer.wrap(new byte[] {1, 1, (byte) 0xFF, 2});
@@ -98,6 +116,11 @@ public class TestMetricsTruncation {
         .isEqualTo(0);
   }
 
+  /**
+   * 测试场景：truncate binary max。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTruncateBinaryMax() {
     ByteBuffer test1 = ByteBuffer.wrap(new byte[] {1, 1, 2});
@@ -140,6 +163,11 @@ public class TestMetricsTruncation {
         .isEqualTo(0);
   }
 
+  /**
+   * 测试场景：truncate string min。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   @Test
   public void testTruncateStringMin() {
@@ -191,6 +219,11 @@ public class TestMetricsTruncation {
         .isEqualTo(0);
   }
 
+  /**
+   * 测试场景：truncate string max。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   @Test
   public void testTruncateStringMax() {

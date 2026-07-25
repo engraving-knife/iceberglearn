@@ -66,6 +66,14 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 测试类：CatalogTests，用于验证 Catalog Tests 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 Catalog Tests 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
+ */
 public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
   private static final Namespace NS = Namespace.of("newdb");
   protected static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
@@ -137,32 +145,44 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
           .withRecordCount(2) // needs at least one record or else metrics will filter it out
           .build();
 
+  /** 辅助方法：catalog。 */
   protected abstract C catalog();
 
+  /** 辅助方法：supports namespace properties。 */
   protected boolean supportsNamespaceProperties() {
     return true;
   }
 
+  /** 辅助方法：supports nested namespaces。 */
   protected boolean supportsNestedNamespaces() {
     return false;
   }
 
+  /** 辅助方法：requires namespace create。 */
   protected boolean requiresNamespaceCreate() {
     return false;
   }
 
+  /** 辅助方法：supports server side retry。 */
   protected boolean supportsServerSideRetry() {
     return false;
   }
 
+  /** 辅助方法：overrides requested location。 */
   protected boolean overridesRequestedLocation() {
     return false;
   }
 
+  /** 辅助方法：supports names with slashes。 */
   protected boolean supportsNamesWithSlashes() {
     return true;
   }
 
+  /**
+   * 测试场景：create namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespace() {
     C catalog = catalog();
@@ -176,6 +196,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.namespaceExists(NS)).as("Namespace should exist").isTrue();
   }
 
+  /**
+   * 测试场景：create existing namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateExistingNamespace() {
     C catalog = catalog();
@@ -192,6 +217,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.namespaceExists(NS)).as("Namespace should still exist").isTrue();
   }
 
+  /**
+   * 测试场景：create namespace with properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateNamespaceWithProperties() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -211,6 +241,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsExactlyInAnyOrderElementsOf(createProps.entrySet());
   }
 
+  /**
+   * 测试场景：load namespace metadata。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadNamespaceMetadata() {
     C catalog = catalog();
@@ -228,6 +263,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     // note that there are no requirements for the properties returned by the catalog
   }
 
+  /**
+   * 测试场景：set namespace properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetNamespaceProperties() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -245,6 +285,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsAll(properties.entrySet());
   }
 
+  /**
+   * 测试场景：update namespace properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateNamespaceProperties() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -271,6 +316,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsAll(updatedProperties.entrySet());
   }
 
+  /**
+   * 测试场景：update and set namespace properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateAndSetNamespaceProperties() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -298,6 +348,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsAll(updatedProperties.entrySet());
   }
 
+  /**
+   * 测试场景：set namespace properties namespace does not exist。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testSetNamespacePropertiesNamespaceDoesNotExist() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -309,6 +364,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .hasMessageStartingWith("Namespace does not exist: newdb");
   }
 
+  /**
+   * 测试场景：remove namespace properties。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveNamespaceProperties() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -330,6 +390,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsExactlyInAnyOrderElementsOf(ImmutableMap.of("owner", "user").entrySet());
   }
 
+  /**
+   * 测试场景：remove namespace properties namespace does not exist。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRemoveNamespacePropertiesNamespaceDoesNotExist() {
     Assumptions.assumeTrue(supportsNamespaceProperties());
@@ -341,6 +406,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .hasMessageStartingWith("Namespace does not exist: newdb");
   }
 
+  /**
+   * 测试场景：drop namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropNamespace() {
     C catalog = catalog();
@@ -355,6 +425,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.namespaceExists(NS)).as("Namespace should not exist").isFalse();
   }
 
+  /**
+   * 测试场景：drop nonexistent namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropNonexistentNamespace() {
     C catalog = catalog();
@@ -364,6 +439,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：list namespaces。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListNamespaces() {
     C catalog = catalog();
@@ -394,6 +474,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isTrue();
   }
 
+  /**
+   * 测试场景：list nested namespaces。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListNestedNamespaces() {
     Assumptions.assumeTrue(
@@ -442,6 +527,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEmpty();
   }
 
+  /**
+   * 测试场景：namespace with slash。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceWithSlash() {
     Assumptions.assumeTrue(supportsNamesWithSlashes());
@@ -467,6 +557,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：namespace with dot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testNamespaceWithDot() {
     C catalog = catalog();
@@ -490,6 +585,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：basic create table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicCreateTable() {
     C catalog = catalog();
@@ -518,6 +618,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(table.properties()).as("Should have table properties").isNotNull();
   }
 
+  /**
+   * 测试场景：table name with slash。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableNameWithSlash() {
     Assumptions.assumeTrue(supportsNamesWithSlashes());
@@ -544,6 +649,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.tableExists(ident)).as("Table should not exist").isFalse();
   }
 
+  /**
+   * 测试场景：table name with dot。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testTableNameWithDot() {
     C catalog = catalog();
@@ -568,6 +678,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.tableExists(ident)).as("Table should not exist").isFalse();
   }
 
+  /**
+   * 测试场景：basic create table that already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testBasicCreateTableThatAlreadyExists() {
     C catalog = catalog();
@@ -593,6 +708,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(TABLE_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：complete create table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateTable() {
     C catalog = catalog();
@@ -636,6 +756,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsAll(properties.entrySet());
   }
 
+  /**
+   * 测试场景：load table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadTable() {
     C catalog = catalog();
@@ -680,6 +805,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .containsAll(properties.entrySet());
   }
 
+  /**
+   * 测试场景：load metadata table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadMetadataTable() {
     C catalog = catalog();
@@ -703,6 +833,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(table.name()).isEqualTo(catalog.name() + "." + metaIdent);
   }
 
+  /**
+   * 测试场景：load missing table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testLoadMissingTable() {
     C catalog = catalog();
@@ -715,6 +850,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .hasMessageStartingWith("Table does not exist: ns.table");
   }
 
+  /**
+   * 测试场景：rename table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameTable() {
     C catalog = catalog();
@@ -748,6 +888,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertEmpty("Should not contain table after drop", catalog, NS);
   }
 
+  /**
+   * 测试场景：rename table missing source table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameTableMissingSourceTable() {
     C catalog = catalog();
@@ -772,6 +917,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：rename table destination table already exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRenameTableDestinationTableAlreadyExists() {
     C catalog = catalog();
@@ -816,6 +966,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isNotEqualTo(destinationTableUUID);
   }
 
+  /**
+   * 测试场景：drop table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTable() {
     C catalog = catalog();
@@ -840,6 +995,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：drop table with purge。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTableWithPurge() {
     C catalog = catalog();
@@ -864,6 +1024,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：drop table without purge。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropTableWithoutPurge() {
     C catalog = catalog();
@@ -895,6 +1060,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .as("Should have one metadata file");
   }
 
+  /**
+   * 测试场景：drop missing table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDropMissingTable() {
     C catalog = catalog();
@@ -912,6 +1082,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isFalse();
   }
 
+  /**
+   * 测试场景：list tables。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testListTables() {
     C catalog = catalog();
@@ -976,6 +1151,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertEmpty("Should not contain ns_2.table_1 after drop", catalog, ns2);
   }
 
+  /**
+   * 测试场景：update table schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSchema() {
     C catalog = catalog();
@@ -998,6 +1178,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：uuid validation。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUUIDValidation() {
     C catalog = catalog();
@@ -1024,6 +1209,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(OTHER_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：update table schema server side retry。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSchemaServerSideRetry() {
     Assumptions.assumeTrue(
@@ -1052,6 +1242,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：update table schema conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSchemaConflict() {
     C catalog = catalog();
@@ -1082,6 +1277,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：update table schema assignment conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSchemaAssignmentConflict() {
     C catalog = catalog();
@@ -1115,6 +1315,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.asStruct());
   }
 
+  /**
+   * 测试场景：update table schema then revert。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSchemaThenRevert() {
     C catalog = catalog();
@@ -1139,6 +1344,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(TABLE_SCHEMA.asStruct());
   }
 
+  /**
+   * 测试场景：update table spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSpec() {
     C catalog = catalog();
@@ -1162,6 +1372,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table spec server side retry。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSpecServerSideRetry() {
     Assumptions.assumeTrue(
@@ -1195,6 +1410,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table spec conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSpecConflict() {
     C catalog = catalog();
@@ -1231,6 +1451,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table assignment spec conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableAssignmentSpecConflict() {
     C catalog = catalog();
@@ -1266,6 +1491,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table spec then revert。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSpecThenRevert() {
     C catalog = catalog();
@@ -1295,6 +1525,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(TABLE_SPEC);
   }
 
+  /**
+   * 测试场景：update table sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSortOrder() {
     C catalog = catalog();
@@ -1318,6 +1553,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table sort order server side retry。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableSortOrderServerSideRetry() {
     Assumptions.assumeTrue(
@@ -1352,6 +1592,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(expected.fields());
   }
 
+  /**
+   * 测试场景：update table order then revert。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTableOrderThenRevert() {
     C catalog = catalog();
@@ -1371,6 +1616,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(TABLE_WRITE_ORDER);
   }
 
+  /**
+   * 测试场景：append。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testAppend() throws IOException {
     C catalog = catalog();
@@ -1390,6 +1640,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(table, FILE_A);
   }
 
+  /**
+   * 测试场景：concurrent append empty table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentAppendEmptyTable() {
     C catalog = catalog();
@@ -1414,6 +1669,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(catalog.loadTable(TABLE), FILE_A, FILE_B);
   }
 
+  /**
+   * 测试场景：concurrent append non empty table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentAppendNonEmptyTable() {
     C catalog = catalog();
@@ -1443,6 +1703,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(catalog.loadTable(TABLE), FILE_A, FILE_B, FILE_C);
   }
 
+  /**
+   * 测试场景：update transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testUpdateTransaction() {
     C catalog = catalog();
@@ -1479,6 +1744,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(loaded, 1);
   }
 
+  /**
+   * 测试场景：create transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateTransaction() {
     C catalog = catalog();
@@ -1509,6 +1779,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：complete create transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateTransaction() {
     C catalog = catalog();
@@ -1567,6 +1842,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：complete create transaction multiple schemas。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateTransactionMultipleSchemas() {
     C catalog = catalog();
@@ -1666,6 +1946,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：complete create transaction 2。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateTransactionV2() {
     C catalog = catalog();
@@ -1734,6 +2019,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：concurrent create transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentCreateTransaction() {
     C catalog = catalog();
@@ -1773,6 +2063,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertNoFiles(table);
   }
 
+  /**
+   * 测试场景：create or replace transaction create。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateOrReplaceTransactionCreate() {
     C catalog = catalog();
@@ -1804,6 +2099,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：complete create or replace transaction create。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateOrReplaceTransactionCreate() {
     C catalog = catalog();
@@ -1864,6 +2164,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(table, 0);
   }
 
+  /**
+   * 测试场景：create or replace replace transaction replace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateOrReplaceReplaceTransactionReplace() {
     C catalog = catalog();
@@ -1914,6 +2219,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(loaded, 1);
   }
 
+  /**
+   * 测试场景：complete create or replace transaction replace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteCreateOrReplaceTransactionReplace() {
     C catalog = catalog();
@@ -1993,6 +2303,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(loaded, 1);
   }
 
+  /**
+   * 测试场景：create or replace transaction concurrent create。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCreateOrReplaceTransactionConcurrentCreate() {
     Assumptions.assumeTrue(
@@ -2035,6 +2350,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertNoFiles(table);
   }
 
+  /**
+   * 测试场景：replace transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransaction() {
     C catalog = catalog();
@@ -2084,6 +2404,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(loaded, 1);
   }
 
+  /**
+   * 测试场景：complete replace transaction。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testCompleteReplaceTransaction() {
     C catalog = catalog();
@@ -2165,6 +2490,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertPreviousMetadataFileCount(loaded, 1);
   }
 
+  /**
+   * 测试场景：replace transaction requires table exists。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testReplaceTransactionRequiresTableExists() {
     C catalog = catalog();
@@ -2178,6 +2508,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .hasMessageStartingWith("Table does not exist: newdb.table");
   }
 
+  /**
+   * 测试场景：concurrent replace transactions。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactions() {
     C catalog = catalog();
@@ -2229,6 +2564,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction schema。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionSchema() {
     C catalog = catalog();
@@ -2268,6 +2608,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction schema 2。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionSchema2() {
     C catalog = catalog();
@@ -2307,6 +2652,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction schema conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionSchemaConflict() {
     Assumptions.assumeTrue(supportsServerSideRetry(), "Schema conflicts are detected server-side");
@@ -2347,6 +2697,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
             "Commit failed: Requirement failed: last assigned field id changed");
   }
 
+  /**
+   * 测试场景：concurrent replace transaction partition spec。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionPartitionSpec() {
     C catalog = catalog();
@@ -2387,6 +2742,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction partition spec 2。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionPartitionSpec2() {
     C catalog = catalog();
@@ -2427,6 +2787,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction partition spec conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionPartitionSpecConflict() {
     Assumptions.assumeTrue(supportsServerSideRetry(), "Spec conflicts are detected server-side");
@@ -2467,6 +2832,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
             "Commit failed: Requirement failed: last assigned partition id changed");
   }
 
+  /**
+   * 测试场景：concurrent replace transaction sort order。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionSortOrder() {
     C catalog = catalog();
@@ -2507,6 +2877,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：concurrent replace transaction sort order conflict。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testConcurrentReplaceTransactionSortOrderConflict() {
     C catalog = catalog();
@@ -2552,6 +2927,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     assertFiles(afterSecondReplace, FILE_C);
   }
 
+  /**
+   * 测试场景：metadata file locations removal after commit。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testMetadataFileLocationsRemovalAfterCommit() {
     C catalog = catalog();
@@ -2605,6 +2985,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /**
+   * 测试场景：table creation without namespace。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void tableCreationWithoutNamespace() {
     Assumptions.assumeTrue(requiresNamespaceCreate());
@@ -2616,6 +3001,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .hasMessageContaining("Namespace does not exist: non-existing");
   }
 
+  /**
+   * 测试场景：register table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRegisterTable() {
     C catalog = catalog();
@@ -2681,6 +3071,11 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.tableExists(TABLE)).isFalse();
   }
 
+  /**
+   * 测试场景：register existing table。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testRegisterExistingTable() {
     C catalog = catalog();
@@ -2701,6 +3096,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     Assertions.assertThat(catalog.dropTable(identifier)).isTrue();
   }
 
+  /** 辅助方法：assert empty。 */
   private static void assertEmpty(String context, Catalog catalog, Namespace ns) {
     try {
       Assertions.assertThat(catalog.listTables(ns)).as(context).isEmpty();
@@ -2709,12 +3105,14 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /** 辅助方法：assert uui ds match。 */
   public void assertUUIDsMatch(Table expected, Table actual) {
     Assertions.assertThat(((BaseTable) actual).operations().current().uuid())
         .as("Table UUID should not change")
         .isEqualTo(((BaseTable) expected).operations().current().uuid());
   }
 
+  /** 辅助方法：assert previous metadata file count。 */
   public void assertPreviousMetadataFileCount(Table table, int metadataFileCount) {
     TableOperations ops = ((BaseTable) table).operations();
     Assertions.assertThat(ops.current().previousFiles().size())
@@ -2722,6 +3120,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
         .isEqualTo(metadataFileCount);
   }
 
+  /** 辅助方法：assert no files。 */
   public void assertNoFiles(Table table) {
     try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
       Assertions.assertThat(tasks).as("Should contain no files").isEmpty();
@@ -2730,6 +3129,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /** 辅助方法：assert files。 */
   public void assertFiles(Table table, DataFile... files) {
     try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
       List<CharSequence> paths =
@@ -2748,6 +3148,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /** 辅助方法：assert file partition spec。 */
   public void assertFilePartitionSpec(Table table, DataFile dataFile, int specId) {
     try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
       Streams.stream(tasks)
@@ -2763,6 +3164,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /** 辅助方法：assert files partition spec。 */
   public void assertFilesPartitionSpec(Table table) {
     try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
       Streams.stream(tasks)
@@ -2777,6 +3179,7 @@ public abstract class CatalogTests<C extends Catalog & SupportsNamespaces> {
     }
   }
 
+  /** 辅助方法：concat。 */
   private List<Namespace> concat(List<Namespace> starting, Namespace... additional) {
     List<Namespace> namespaces = Lists.newArrayList();
     namespaces.addAll(starting);

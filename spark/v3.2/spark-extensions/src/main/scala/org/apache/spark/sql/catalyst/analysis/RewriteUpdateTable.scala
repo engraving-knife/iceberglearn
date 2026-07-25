@@ -43,15 +43,19 @@ import org.apache.spark.sql.connector.write.RowLevelOperationTable
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 
 /**
- * Assigns a rewrite plan for v2 tables that support rewriting data to handle UPDATE statements.
+ * Spark Catalyst 分析阶段的规则或检查的写入组件，负责数据写入与提交。
  *
- * This rule assumes the commands have been fully resolved and all assignments have been aligned.
- * That's why it must be run after AlignRowLevelCommandAssignments.
- *
- * This rule also must be run in the same batch with DeduplicateRelations in Spark.
+ * <p>所属模块：iceberg-spark-extensions v3.2。
+ * 类型：对象 RewriteUpdateTable。
+ * <p>设计意图：Catalyst 规则，通过 transformation 介入计划处理。
+ * <p>上下游：由 Spark SparkSessionExtensions 注册，作用于 Catalyst 计划。
  */
 object RewriteUpdateTable extends RewriteRowLevelCommand {
 
+  /**
+   * 执行核心逻辑。
+   * @return 结果对象
+   */
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case u @ UpdateIcebergTable(aliasedTable, assignments, cond, None) if u.resolved && u.aligned =>
       EliminateSubqueryAliases(aliasedTable) match {
@@ -76,6 +80,10 @@ object RewriteUpdateTable extends RewriteRowLevelCommand {
 
   // build a rewrite plan for sources that support replacing groups of data (e.g. files, partitions)
   // if the condition does NOT contain a subquery
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildReplaceDataPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -98,6 +106,10 @@ object RewriteUpdateTable extends RewriteRowLevelCommand {
 
   // build a rewrite plan for sources that support replacing groups of data (e.g. files, partitions)
   // if the condition contains a subquery
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildReplaceDataWithUnionPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -129,6 +141,10 @@ object RewriteUpdateTable extends RewriteRowLevelCommand {
   }
 
   // build a rewrite plan for sources that support row deltas
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildWriteDeltaPlan(
       relation: DataSourceV2Relation,
       operationTable: RowLevelOperationTable,
@@ -157,6 +173,10 @@ object RewriteUpdateTable extends RewriteRowLevelCommand {
 
   // this method assumes the assignments have been already aligned before
   // the condition passed to this method may be different from the UPDATE condition
+  /**
+   * 构造并返回目标对象。
+   * @return 结果对象
+   */
   private def buildUpdateProjection(
       plan: LogicalPlan,
       assignments: Seq[Assignment],

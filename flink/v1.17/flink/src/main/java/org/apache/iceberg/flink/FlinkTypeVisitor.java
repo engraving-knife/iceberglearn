@@ -29,9 +29,25 @@ import org.apache.flink.table.types.logical.SymbolType;
 import org.apache.flink.table.types.logical.YearMonthIntervalType;
 import org.apache.flink.table.types.logical.ZonedTimestampType;
 
+/**
+ * 文件级说明：Flink {@link LogicalType} 访问器基类，对所有不支持的类型统一抛出异常。
+ *
+ * <p>所属模块：iceberg-flink（Flink 集成模块），实现 Flink 的 {@link LogicalTypeVisitor} 接口。
+ *
+ * <p>职责：为 Iceberg 不支持的 Flink 类型提供默认实现（抛出 UnsupportedOperationException）， 使子类只需重写支持的类型方法。
+ *
+ * <p>设计意图：模板方法模式。Iceberg 不支持 Flink 的 ZonedTimestampType、YearMonthIntervalType、
+ * DayTimeIntervalType、DistinctType、StructuredType、NullType、RawType、SymbolType 等类型， 本类将这些类型的 visit
+ * 方法统一实现为抛异常，避免子类重复编写。
+ *
+ * <p>上下游关系：被各 schema 访问器（如 {@link FlinkSchemaVisitor}）继承使用。
+ *
+ * @param <T> 访问返回类型
+ */
 public abstract class FlinkTypeVisitor<T> implements LogicalTypeVisitor<T> {
 
-  // ------------------------- Unsupported types ------------------------------
+  // ------------------------- 不支持的类型：以下方法统一抛出 UnsupportedOperationException
+  // ------------------------------
 
   @Override
   public T visit(ZonedTimestampType zonedTimestampType) {

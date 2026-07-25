@@ -33,8 +33,16 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestAlterTablePartitionFields 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.5）。职责：验证 Iceberg 表在 Spark 引擎下 修改表分区字段 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogConfig = {0}, formatVersion = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -45,16 +53,19 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
 
   private final int formatVersion;
 
+  /** 测试修改表分区字段。 */
   public TestAlterTablePartitionFields(SparkCatalogConfig catalogConfig, int formatVersion) {
     super(catalogConfig.catalogName(), catalogConfig.implementation(), catalogConfig.properties());
     this.formatVersion = formatVersion;
   }
 
+  /** 移除表。 */
   @After
   public void removeTable() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试添加恒等分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddIdentityPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -72,6 +83,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加桶分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddBucketPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -92,6 +104,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加截断分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddTruncatePartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -112,6 +125,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加years分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddYearsPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -129,6 +143,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加months分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddMonthsPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -146,6 +161,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加days分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddDaysPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -163,6 +179,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加hours分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddHoursPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -180,6 +197,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试添加year分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddYearPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -199,6 +217,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assertions.assertThat(table.spec()).as("Should have new spec field").isEqualTo(expected);
   }
 
+  /** 测试添加month分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddMonthPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -218,6 +237,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assertions.assertThat(table.spec()).as("Should have new spec field").isEqualTo(expected);
   }
 
+  /** 测试添加day分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddDayPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -237,6 +257,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assertions.assertThat(table.spec()).as("Should have new spec field").isEqualTo(expected);
   }
 
+  /** 测试添加hour分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddHourPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -256,6 +277,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assertions.assertThat(table.spec()).as("Should have new spec field").isEqualTo(expected);
   }
 
+  /** 测试添加命名分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testAddNamedPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -273,6 +295,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     Assert.assertEquals("Should have new spec field", expected, table.spec());
   }
 
+  /** 测试删除恒等分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropIdentityPartition() {
     createTable("id bigint NOT NULL, category string, data string", "category");
@@ -297,6 +320,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试删除days分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropDaysPartition() {
     createTable("id bigint NOT NULL, ts timestamp, data string", "days(ts)");
@@ -318,6 +342,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试删除桶分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropBucketPartition() {
     createTable("id bigint NOT NULL, data string", "bucket(16, id)");
@@ -342,6 +367,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试删除分区通过name场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropPartitionByName() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -369,6 +395,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     }
   }
 
+  /** 测试替换分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplacePartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -408,6 +435,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         "Should changed from daily to hourly partitioned field", expected, table.spec());
   }
 
+  /** 测试替换分区与重命名场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplacePartitionAndRename() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -447,6 +475,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         "Should changed from daily to hourly partitioned field", expected, table.spec());
   }
 
+  /** 测试替换命名分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceNamedPartition() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -486,6 +515,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         "Should changed from daily to hourly partitioned field", expected, table.spec());
   }
 
+  /** 测试替换命名分区与重命名differently场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testReplaceNamedPartitionAndRenameDifferently() {
     createTable("id bigint NOT NULL, category string, ts timestamp, data string");
@@ -525,6 +555,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         "Should changed from daily to hourly partitioned field", expected, table.spec());
   }
 
+  /** 测试Spark表添加删除分区场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testSparkTableAddDropPartitions() throws Exception {
     createTable("id bigint NOT NULL, ts timestamp, data string");
@@ -552,6 +583,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         "spark table partition should be empty", 0, sparkTable().partitioning().length);
   }
 
+  /** 测试删除列的旧分区字段v1场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropColumnOfOldPartitionFieldV1() {
     // default table created in v1 format
@@ -564,6 +596,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     sql("ALTER TABLE %s DROP COLUMN day_of_ts", tableName);
   }
 
+  /** 测试删除列的旧分区字段v2场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testDropColumnOfOldPartitionFieldV2() {
     sql(
@@ -575,6 +608,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     sql("ALTER TABLE %s DROP COLUMN day_of_ts", tableName);
   }
 
+  /** 断言partitioningequals。 */
   private void assertPartitioningEquals(SparkTable table, int len, String transform) {
     Assert.assertEquals("spark table partition should be " + len, len, table.partitioning().length);
     Assert.assertEquals(
@@ -583,6 +617,7 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
         table.partitioning()[len - 1].toString());
   }
 
+  /** Spark表。 */
   private SparkTable sparkTable() throws Exception {
     validationCatalog.loadTable(tableIdent).refresh();
     CatalogManager catalogManager = spark.sessionState().catalogManager();
@@ -591,10 +626,12 @@ public class TestAlterTablePartitionFields extends SparkExtensionsTestBase {
     return (SparkTable) catalog.loadTable(identifier);
   }
 
+  /** 创建表。 */
   private void createTable(String schema) {
     createTable(schema, null);
   }
 
+  /** 创建表。 */
   private void createTable(String schema, String spec) {
     if (spec == null) {
       sql(

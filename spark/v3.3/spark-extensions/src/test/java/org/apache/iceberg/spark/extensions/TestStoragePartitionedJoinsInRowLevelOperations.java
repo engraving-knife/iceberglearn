@@ -35,6 +35,13 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestStoragePartitionedJoinsInRowLevelOperations 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 storage分区连接在行级别操作 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestStoragePartitionedJoinsInRowLevelOperations extends SparkExtensionsTestBase {
 
   private static final String OTHER_TABLE_NAME = "other_table";
@@ -64,6 +71,7 @@ public class TestStoragePartitionedJoinsInRowLevelOperations extends SparkExtens
           SparkSQLProperties.PRESERVE_DATA_GROUPING,
           "true");
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -75,27 +83,32 @@ public class TestStoragePartitionedJoinsInRowLevelOperations extends SparkExtens
     };
   }
 
+  /** 测试storage分区连接在行级别操作。 */
   public TestStoragePartitionedJoinsInRowLevelOperations(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
     sql("DROP TABLE IF EXISTS %s", tableName(OTHER_TABLE_NAME));
   }
 
+  /** 测试复制上写删除无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCopyOnWriteDeleteWithoutShuffles() {
     checkDelete(COPY_ON_WRITE);
   }
 
+  /** 测试合并上读删除无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeOnReadDeleteWithoutShuffles() {
     checkDelete(MERGE_ON_READ);
   }
 
+  /** 检查删除。 */
   private void checkDelete(RowLevelOperationMode mode) {
     String createTableStmt =
         "CREATE TABLE %s (id INT, salary INT, dep STRING)"
@@ -149,16 +162,19 @@ public class TestStoragePartitionedJoinsInRowLevelOperations extends SparkExtens
         sql("SELECT * FROM %s ORDER BY id, salary", tableName));
   }
 
+  /** 测试复制上写更新无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCopyOnWriteUpdateWithoutShuffles() {
     checkUpdate(COPY_ON_WRITE);
   }
 
+  /** 测试合并上读更新无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeOnReadUpdateWithoutShuffles() {
     checkUpdate(MERGE_ON_READ);
   }
 
+  /** 检查更新。 */
   private void checkUpdate(RowLevelOperationMode mode) {
     String createTableStmt =
         "CREATE TABLE %s (id INT, salary INT, dep STRING)"
@@ -213,16 +229,19 @@ public class TestStoragePartitionedJoinsInRowLevelOperations extends SparkExtens
         sql("SELECT * FROM %s ORDER BY id, salary", tableName));
   }
 
+  /** 测试复制上写合并无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testCopyOnWriteMergeWithoutShuffles() {
     checkMerge(COPY_ON_WRITE);
   }
 
+  /** 测试合并上读合并无shuffles场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testMergeOnReadMergeWithoutShuffles() {
     checkMerge(MERGE_ON_READ);
   }
 
+  /** 检查合并。 */
   private void checkMerge(RowLevelOperationMode mode) {
     String createTableStmt =
         "CREATE TABLE %s (id INT, salary INT, dep STRING)"

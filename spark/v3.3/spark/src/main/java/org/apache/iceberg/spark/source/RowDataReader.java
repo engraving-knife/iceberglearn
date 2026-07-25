@@ -40,6 +40,13 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Iceberg 表在 Spark DataSource V2 中的实现的读取器，负责从底层读取数据并转换为 Spark 内部格式。
+ *
+ * <p>所属模块：iceberg-spark v3.3。 类型：类 RowDataReader。
+ *
+ * <p>上下游：被 SparkCatalog 创建，依赖 Iceberg Table API 与底层扫描/写入组件。
+ */
 class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionReader<InternalRow> {
   private static final Logger LOG = LoggerFactory.getLogger(RowDataReader.class);
 
@@ -67,6 +74,11 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     LOG.debug("Reading {} file split(s) for table {}", numSplits, table.name());
   }
 
+  /**
+   * 执行该方法的具体逻辑。
+   *
+   * @return 结果对象
+   */
   @Override
   public CustomTaskMetric[] currentMetricsValues() {
     return new CustomTaskMetric[] {
@@ -74,11 +86,13 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     };
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected Stream<ContentFile<?>> referencedFiles(FileScanTask task) {
     return Stream.concat(Stream.of(task.file()), task.deletes().stream());
   }
 
+  /** 执行该方法的具体逻辑。 */
   @Override
   protected CloseableIterator<InternalRow> open(FileScanTask task) {
     String filePath = task.file().path().toString();
@@ -95,6 +109,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     return deleteFilter.filter(open(task, requiredSchema, idToConstant)).iterator();
   }
 
+  /** 执行该方法的具体逻辑。 */
   protected CloseableIterable<InternalRow> open(
       FileScanTask task, Schema readSchema, Map<Integer, ?> idToConstant) {
     if (task.isDataTask()) {
@@ -114,6 +129,7 @@ class RowDataReader extends BaseRowReader<FileScanTask> implements PartitionRead
     }
   }
 
+  /** 执行该方法的具体逻辑。 */
   private CloseableIterable<InternalRow> newDataIterable(DataTask task, Schema readSchema) {
     StructInternalRow row = new StructInternalRow(readSchema.asStruct());
     return CloseableIterable.transform(task.asDataTask().rows(), row::setStruct);

@@ -53,11 +53,19 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+/**
+ * 文件级说明：测试 TestSparkReadProjection 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.2）。职责：验证 Iceberg 表在 Spark 引擎下 Spark读投影 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 @RunWith(Parameterized.class)
 public class TestSparkReadProjection extends TestReadProjection {
 
   private static SparkSession spark = null;
 
+  /** 参数。 */
   @Parameterized.Parameters(name = "format = {0}, vectorized = {1}")
   public static Object[][] parameters() {
     return new Object[][] {
@@ -72,12 +80,14 @@ public class TestSparkReadProjection extends TestReadProjection {
   private final FileFormat format;
   private final boolean vectorized;
 
+  /** 测试Spark读投影。 */
   public TestSparkReadProjection(String format, boolean vectorized) {
     super(format);
     this.format = FileFormat.fromString(format);
     this.vectorized = vectorized;
   }
 
+  /** 启动Spark。 */
   @BeforeClass
   public static void startSpark() {
     TestSparkReadProjection.spark = SparkSession.builder().master("local[2]").getOrCreate();
@@ -94,6 +104,7 @@ public class TestSparkReadProjection extends TestReadProjection {
         (key, value) -> spark.conf().set("spark.sql.catalog.spark_catalog." + key, value));
   }
 
+  /** 停止Spark。 */
   @AfterClass
   public static void stopSpark() {
     SparkSession currentSpark = TestSparkReadProjection.spark;
@@ -101,6 +112,7 @@ public class TestSparkReadProjection extends TestReadProjection {
     currentSpark.stop();
   }
 
+  /** 写与读。 */
   @Override
   protected Record writeAndRead(String desc, Schema writeSchema, Schema readSchema, Record record)
       throws IOException {
@@ -159,6 +171,7 @@ public class TestSparkReadProjection extends TestReadProjection {
     }
   }
 
+  /** 所有ids。 */
   private List<Integer> allIds(Schema schema) {
     List<Integer> ids = Lists.newArrayList();
     TypeUtil.visit(
@@ -186,6 +199,7 @@ public class TestSparkReadProjection extends TestReadProjection {
     return ids;
   }
 
+  /** 辅助方法：reassignIds。 */
   private Schema reassignIds(Schema schema, Map<Integer, Integer> idMapping) {
     return new Schema(
         TypeUtil.visit(

@@ -29,8 +29,32 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 Hive3 的无时区时间戳 ObjectInspector（{@link IcebergTimestampObjectInspectorHive3}）。
+ *
+ * <p>所属模块：iceberg-hive3。职责：验证 Iceberg 的无时区 Timestamp（{@link LocalDateTime}）
+ * 与 Hive3 的 {@link Timestamp}/{@link TimestampWritableV2} 之间的双向转换正确性，
+ * 包括类型分类、TypeInfo、Java/Writable 类映射、null 处理、时间戳值转换与对象拷贝。
+ *
+ * <p>测试策略：构造已知 epochMilli + 纳秒的 {@link LocalDateTime}，断言转换后得到对应的
+ * Hive {@link Timestamp}；验证 convert 反向转换、copyObject 返回独立副本、preferWritable=false。
+ */
 public class TestIcebergTimestampObjectInspectorHive3 {
 
+  /**
+   * 测试无时区时间戳 ObjectInspector 的全部行为。
+   *
+   * <p>逻辑：
+   * <ol>
+   *   <li>断言 Category=PRIMITIVE、PrimitiveCategory=TIMESTAMP；</li>
+   *   <li>断言 TypeInfo/TypeName 正确；</li>
+   *   <li>断言 Java 类={@link Timestamp}、Writable 类={@link TimestampWritableV2}；</li>
+   *   <li>断言 null 输入返回 null；</li>
+   *   <li>构造 epochMilli=1601471970000 + 34000 纳秒的 LocalDateTime，断言转换得到对应 Hive Timestamp；</li>
+   *   <li>断言 copyObject 返回值相等但非同一对象；</li>
+   *   <li>断言 preferWritable=false；convert(Timestamp) 返回原始 LocalDateTime。</li>
+   * </ol>
+   */
   @Test
   public void testIcebergTimestampObjectInspector() {
     IcebergTimestampObjectInspectorHive3 oi = IcebergTimestampObjectInspectorHive3.get();

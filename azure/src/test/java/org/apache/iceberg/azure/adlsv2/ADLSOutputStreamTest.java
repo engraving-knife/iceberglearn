@@ -33,11 +33,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * 文件级说明：测试 ADLSOutputStreamTest 的功能。
+ *
+ * <p>所属模块：iceberg-azure。职责：验证 ADLSOutputStreamTest 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public class ADLSOutputStreamTest extends BaseAzuriteTest {
 
   private final Random random = new Random(1);
   private final AzureProperties azureProperties = new AzureProperties();
 
+  /**
+   * 测试场景：Write。
+   *
+   * <p>验证该方法在 Write 条件下的行为是否符合预期。
+   */
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testWrite(boolean arrayWrite) {
@@ -48,6 +60,11 @@ public class ADLSOutputStreamTest extends BaseAzuriteTest {
     writeAndVerify(randomData(10 * 1024 * 1024), arrayWrite);
   }
 
+  /**
+   * 测试场景：Multiple Close。
+   *
+   * <p>验证该方法在 Multiple Close 条件下的行为是否符合预期。
+   */
   @Test
   public void testMultipleClose() throws IOException {
     DataLakeFileClient fileClient = AZURITE_CONTAINER.fileClient(randomPath());
@@ -57,6 +74,7 @@ public class ADLSOutputStreamTest extends BaseAzuriteTest {
     stream.close();
   }
 
+  /** 辅助方法：writeAndVerify。 */
   private void writeAndVerify(byte[] data, boolean arrayWrite) {
     String path = randomPath();
     DataLakeFileClient fileClient = AZURITE_CONTAINER.fileClient(path);
@@ -87,10 +105,12 @@ public class ADLSOutputStreamTest extends BaseAzuriteTest {
     assertThat(actual).isEqualTo(data);
   }
 
+  /** 辅助方法：randomPath。 */
   private String randomPath() {
     return "dir/" + UUID.randomUUID();
   }
 
+  /** 辅助方法：randomData。 */
   private byte[] randomData(int size) {
     byte[] result = new byte[size];
     random.nextBytes(result);

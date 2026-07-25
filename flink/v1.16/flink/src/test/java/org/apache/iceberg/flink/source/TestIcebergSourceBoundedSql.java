@@ -31,13 +31,23 @@ import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.flink.FlinkConfigOptions;
 import org.junit.Before;
 
+/**
+ * 文件级说明：测试 TestIcebergSourceBoundedSql 的功能。
+ *
+ * <p>所属模块：iceberg-flink（flink v1.16）。职责：验证 TestIcebergSourceBoundedSql 在各类场景下的行为是否符合预期，
+ * 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 Flink TableEnvironment + JUnit，通过构造测试数据、执行 SQL/Table API 操作、 断言结果来覆盖正常路径与边界情况。
+ */
 public class TestIcebergSourceBoundedSql extends TestIcebergSourceBounded {
   private volatile TableEnvironment tEnv;
 
+  /** 辅助方法：TestIcebergSourceBoundedSql，Iceberg Source Bounded Sql。 */
   public TestIcebergSourceBoundedSql(String fileFormat) {
     super(fileFormat);
   }
 
+  /** 辅助方法：before，before。 */
   @Before
   public void before() throws IOException {
     Configuration tableConf = getTableEnv().getConfig().getConfiguration();
@@ -53,6 +63,7 @@ public class TestIcebergSourceBoundedSql extends TestIcebergSourceBounded {
         .set(TableConfigOptions.TABLE_DYNAMIC_TABLE_OPTIONS_ENABLED, true);
   }
 
+  /** 辅助方法：getTableEnv，get Table Env。 */
   private TableEnvironment getTableEnv() {
     if (tEnv == null) {
       synchronized (this) {
@@ -65,6 +76,7 @@ public class TestIcebergSourceBoundedSql extends TestIcebergSourceBounded {
     return tEnv;
   }
 
+  /** 辅助方法：run，run。 */
   @Override
   protected List<Row> run(
       Schema projectedSchema,

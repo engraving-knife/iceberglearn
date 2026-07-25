@@ -34,17 +34,27 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * 文件级说明：测试 TestRewritePositionDeleteFilesProcedure 相关功能。
+ *
+ * <p>所属模块：iceberg-spark（spark v3.3）。职责：验证 Iceberg 表在 Spark 引擎下 重写位置删除文件存储过程 相关行为，覆盖正常路径与边界场景。
+ *
+ * <p>测试策略：基于 SparkSession + JUnit，通过构造测试数据、执行 SQL/DataFrame 操作并断言结果， 覆盖正常路径与边界情况。
+ */
 public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTestBase {
 
+  /** 测试重写位置删除文件存储过程。 */
   public TestRewritePositionDeleteFilesProcedure(
       String catalogName, String implementation, Map<String, String> config) {
     super(catalogName, implementation, config);
   }
 
+  /** 创建表。 */
   private void createTable() throws Exception {
     createTable(false);
   }
 
+  /** 创建表。 */
   private void createTable(boolean partitioned) throws Exception {
     String partitionStmt = partitioned ? "PARTITIONED BY (id)" : "";
     sql(
@@ -79,11 +89,13 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
         .append();
   }
 
+  /** 移除表。 */
   @After
   public void removeTables() {
     sql("DROP TABLE IF EXISTS %s", tableName);
   }
 
+  /** 测试过期删除文件所有场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireDeleteFilesAll() throws Exception {
     createTable();
@@ -117,6 +129,7 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
     Assert.assertEquals(1, TestHelpers.deleteFiles(table).size());
   }
 
+  /** 测试过期删除文件no选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireDeleteFilesNoOption() throws Exception {
     createTable();
@@ -148,6 +161,7 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
         output);
   }
 
+  /** 测试过期删除文件过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testExpireDeleteFilesFilter() throws Exception {
     createTable(true);
@@ -187,6 +201,7 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
     Assert.assertEquals(4, TestHelpers.deleteFiles(table).size());
   }
 
+  /** 测试invalid选项场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testInvalidOption() throws Exception {
     createTable();
@@ -203,6 +218,7 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
                 catalogName, tableIdent));
   }
 
+  /** 测试重写带untranslated或unconverted过滤器场景：验证该方法在对应输入下的行为与断言结果。 */
   @Test
   public void testRewriteWithUntranslatedOrUnconvertedFilter() throws Exception {
     createTable();
@@ -223,6 +239,7 @@ public class TestRewritePositionDeleteFilesProcedure extends SparkExtensionsTest
         .hasMessageContaining("Cannot convert Spark filter");
   }
 
+  /** 快照summary。 */
   private Map<String, String> snapshotSummary() {
     return validationCatalog.loadTable(tableIdent).currentSnapshot().summary();
   }

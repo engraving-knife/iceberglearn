@@ -132,6 +132,7 @@ public class ArrowReaderTest {
   private String tableLocation;
   private List<GenericRecord> rowsWritten;
 
+  /** 辅助方法：before。 */
   @BeforeEach
   public void before() {
     tableLocation = tempDir.toURI().toString();
@@ -300,6 +301,7 @@ public class ArrowReaderTest {
     readAndCheckArrowResult(scan, numRowsPerRoot, expectedTotalRows, columns);
   }
 
+  /** 辅助方法：readAndCheckColumnarBatch。 */
   private void readAndCheckColumnarBatch(TableScan scan, int numRowsPerRoot, List<String> columns)
       throws IOException {
     int rowIndex = 0;
@@ -313,6 +315,7 @@ public class ArrowReaderTest {
     }
   }
 
+  /** 辅助方法：readAndCheckArrowResult。 */
   private void readAndCheckArrowResult(
       TableScan scan, int numRowsPerRoot, int expectedTotalRows, List<String> columns)
       throws IOException {
@@ -334,6 +337,7 @@ public class ArrowReaderTest {
     assertThat(totalRows).isEqualTo(expectedTotalRows);
   }
 
+  /** 辅助方法：readAndCheckHasNextIsIdempotent。 */
   private void readAndCheckHasNextIsIdempotent(
       TableScan scan,
       int numRowsPerRoot,
@@ -367,6 +371,7 @@ public class ArrowReaderTest {
     assertThat(totalRows).isEqualTo(expectedTotalRows);
   }
 
+  /** 辅助方法：checkColumnarBatch。 */
   @SuppressWarnings("MethodLength")
   private void checkColumnarBatch(
       int expectedNumRows,
@@ -636,6 +641,7 @@ public class ArrowReaderTest {
         (array, i) -> array.getDecimal(i, 9, 2));
   }
 
+  /** 辅助方法：checkColumnarArrayValues。 */
   private static void checkColumnarArrayValues(
       int expectedNumRows,
       List<GenericRecord> expectedRows,
@@ -658,14 +664,17 @@ public class ArrowReaderTest {
     }
   }
 
+  /** 辅助方法：writeTableWithConstantRecords。 */
   private void writeTableWithConstantRecords() throws Exception {
     writeTable(true);
   }
 
+  /** 辅助方法：writeTableWithIncrementalRecords。 */
   private void writeTableWithIncrementalRecords() throws Exception {
     writeTable(false);
   }
 
+  /** 辅助方法：writeTable。 */
   private void writeTable(boolean constantRecords) throws Exception {
     rowsWritten = Lists.newArrayList();
     tables = new HadoopTables();
@@ -725,6 +734,7 @@ public class ArrowReaderTest {
     tableLatest.updateSchema().updateColumn("int_promotion", Types.LongType.get()).commit();
   }
 
+  /** 辅助方法：createExpectedArrowSchema。 */
   private static org.apache.arrow.vector.types.pojo.Schema createExpectedArrowSchema(
       Set<String> columnSet) {
     List<Field> allFields =
@@ -791,6 +801,7 @@ public class ArrowReaderTest {
     return new org.apache.arrow.vector.types.pojo.Schema(filteredFields);
   }
 
+  /** 辅助方法：createIncrementalRecordsForDate。 */
   private List<GenericRecord> createIncrementalRecordsForDate(
       Schema schema, LocalDateTime datetime) {
     List<GenericRecord> records = Lists.newArrayList();
@@ -832,6 +843,7 @@ public class ArrowReaderTest {
     return records;
   }
 
+  /** 辅助方法：createConstantRecordsForDate。 */
   private List<GenericRecord> createConstantRecordsForDate(Schema schema, LocalDateTime datetime) {
     List<GenericRecord> records = Lists.newArrayList();
     for (int i = 0; i < NUM_ROWS_PER_MONTH; i++) {
@@ -871,6 +883,7 @@ public class ArrowReaderTest {
     return records;
   }
 
+  /** 辅助方法：writeParquetFile。 */
   private DataFile writeParquetFile(Table table, List<GenericRecord> records) throws IOException {
     rowsWritten.addAll(records);
     File parquetFile = File.createTempFile("junit", null, tempDir);
@@ -897,16 +910,19 @@ public class ArrowReaderTest {
         .build();
   }
 
+  /** 辅助方法：timestampToMicros。 */
   private static long timestampToMicros(LocalDateTime value) {
     Instant instant = value.toInstant(ZoneOffset.UTC);
     return ChronoUnit.MICROS.between(Instant.EPOCH, instant);
   }
 
+  /** 辅助方法：timestampToMicros。 */
   private static long timestampToMicros(OffsetDateTime value) {
     Instant instant = value.toInstant();
     return ChronoUnit.MICROS.between(Instant.EPOCH, instant);
   }
 
+  /** 辅助方法：timestampFromMicros。 */
   private static LocalDateTime timestampFromMicros(long micros) {
     return LocalDateTime.ofEpochSecond(
         TimeUnit.MICROSECONDS.toSeconds(micros),
@@ -914,10 +930,12 @@ public class ArrowReaderTest {
         ZoneOffset.UTC);
   }
 
+  /** 辅助方法：dateFromDay。 */
   private static LocalDate dateFromDay(int day) {
     return LocalDate.ofEpochDay(day);
   }
 
+  /** 辅助方法：checkAllVectorTypes。 */
   private void checkAllVectorTypes(VectorSchemaRoot root, Set<String> columnSet) {
     assertEqualsForField(root, columnSet, "timestamp", TimeStampMicroVector.class);
     assertEqualsForField(root, columnSet, "timestamp_nullable", TimeStampMicroVector.class);
@@ -948,6 +966,7 @@ public class ArrowReaderTest {
     assertEqualsForField(root, columnSet, "decimal_nullable", DecimalVector.class);
   }
 
+  /** 辅助方法：assertEqualsForField。 */
   private void assertEqualsForField(
       VectorSchemaRoot root, Set<String> columnSet, String columnName, Class<?> expected) {
     if (columnSet.contains(columnName)) {
@@ -955,6 +974,7 @@ public class ArrowReaderTest {
     }
   }
 
+  /** 辅助方法：checkAllVectorValues。 */
   @SuppressWarnings("MethodLength")
   private void checkAllVectorValues(
       int expectedNumRows,
@@ -1188,6 +1208,7 @@ public class ArrowReaderTest {
         (vector, i) -> ((DecimalVector) vector).getObject(i));
   }
 
+  /** 辅助方法：checkVectorValues。 */
   private static void checkVectorValues(
       int expectedNumRows,
       List<GenericRecord> expectedRows,
@@ -1218,11 +1239,13 @@ public class ArrowReaderTest {
       this.row = row;
     }
 
+    /** 辅助方法：size。 */
     @Override
     public int size() {
       return row.size();
     }
 
+    /** 辅助方法：get。 */
     @Override
     public <T> T get(int pos, Class<T> javaClass) {
       Object value = row.get(pos);
@@ -1241,6 +1264,7 @@ public class ArrowReaderTest {
       }
     }
 
+    /** 辅助方法：set。 */
     @Override
     public <T> void set(int pos, T value) {
       row.set(pos, value);

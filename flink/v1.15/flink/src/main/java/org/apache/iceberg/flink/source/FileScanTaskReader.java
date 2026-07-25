@@ -30,6 +30,13 @@ import org.apache.iceberg.io.CloseableIterator;
  * @param <T> is the output data type returned by this iterator.
  */
 @Internal
+/**
+ * 文件扫描任务读取器接口，定义按 FileScanTask 读取记录的契约。
+ *
+ * <p>所属模块：iceberg-flink v1.15。职责：抽象读取逻辑，支持不同输出类型（RowData/Avro 等）。
+ *
+ * <p>设计意图：策略接口；被读取算子调用。
+ */
 public interface FileScanTaskReader<T> extends Serializable {
   CloseableIterator<T> open(FileScanTask fileScanTask, InputFilesDecryptor inputFilesDecryptor);
 }

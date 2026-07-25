@@ -51,16 +51,48 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampNTZType$;
 import org.apache.spark.sql.types.TimestampType$;
 
+/**
+ * 按Spark 请求的列投影对 Iceberg schema 进行裁剪，并按请求顺序重排字段。
+ *
+ * <p>所属模块：iceberg-spark（核心包，服务于读取时的列裁剪与下推）。
+ *
+ * <p>职责：根据 Spark 请求的 {@link StructType} 与过滤条件引用的字段，裁剪 Iceberg schema， 仅保留需要的列；同时按 Spark
+ * 请求顺序重排结构体字段，并保证过滤引用但未显式投影的字段也被保留。
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>继承 {@link TypeUtil.CustomOrderSchemaVisitor} 按结构遍历 Iceberg 类型树， 利用 {@code current}
+ *       字段在遍历时跟踪当前对应的 Spark 类型，实现两边按名匹配。
+ *   <li>字段按名解析（Spark 只看当前表 schema），裁剪后返回投影类型；未变化时返回原类型以减少对象创建。
+ *   <li>过滤条件引用的字段即使不在请求投影中也会被保留，以保证过滤可执行。
+ * </ul>
+ *
+ * <p>上下游关系：被 Spark 读取路径在列裁剪阶段调用，产出裁剪后的 Iceberg schema 供读取器使用。
+ */
 public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisitor<Type> {
   private final StructType requestedType;
   private final Set<Integer> filterRefs;
   private DataType current = null;
 
+  /**
+   * 构造列裁剪访问器。
+   *
+   * @param requestedType Spark 请求投影的结构类型
+   * @param filterRefs 过滤条件引用的字段 ID 集合，这些字段需被保留
+   */
   PruneColumnsWithReordering(StructType requestedType, Set<Integer> filterRefs) {
     this.requestedType = requestedType;
     this.filterRefs = filterRefs;
   }
 
+  /**
+   * schema 入口：将当前 Spark 类型设为请求类型后递归处理结构体，结束后复位。
+   *
+   * @param schema 原 schema
+   * @param structResult 结构体处理结果的延迟计算
+   * @return 裁剪后的 schema 类型
+   */
   @Override
   public Type schema(Schema schema, Supplier<Type> structResult) {
     this.current = requestedType;
@@ -71,6 +103,22 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 裁剪结构体：按各字段处理结果裁剪类型，并按 Spark 请求顺序重排字段。
+   *
+   * <p>逻辑：
+   *
+   * <ol>
+   *   <li>遍历原字段与对应处理结果，结果为 null 表示该字段被裁剪；类型变化则构造新字段（保留必选/可选属性）。
+   *   <li>按 Spark 请求字段顺序从投影字段映射中取出字段构造新列表，实现重排。
+   *   <li>未被请求但属于过滤引用的剩余字段追加到末尾。
+   *   <li>若发生重排或变化则返回新结构体，否则返回原结构体。
+   * </ol>
+   *
+   * @param struct 原结构体类型
+   * @param fieldResults 各字段裁剪结果的迭代器
+   * @return 裁剪并重排后的结构体类型
+   */
   @Override
   public Type struct(Types.StructType struct, Iterable<Type> fieldResults) {
     Preconditions.checkNotNull(
@@ -132,6 +180,15 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     return struct;
   }
 
+  /**
+   * 处理单个字段：若字段不在请求投影中则按是否为过滤引用决定保留或裁剪（返回 null）； 在请求中则切换当前 Spark 类型为该字段类型后递归处理。
+   *
+   * <p>设计要点：字段按名解析；可选字段不能投影为非空；处理异常包装为更明确的字段级错误。
+   *
+   * @param field 原字段
+   * @param fieldResult 字段类型处理结果的延迟计算
+   * @return 裁剪后的字段类型，裁剪时返回 null
+   */
   @Override
   public Type field(Types.NestedField field, Supplier<Type> fieldResult) {
     Preconditions.checkArgument(current instanceof StructType, "Not a struct: %s", current);
@@ -165,6 +222,13 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 处理列表类型：切换当前 Spark 类型为数组元素类型后递归处理元素，按需构造新列表类型。
+   *
+   * @param list 原列表类型
+   * @param elementResult 元素类型处理结果的延迟计算
+   * @return 裁剪后的列表类型
+   */
   @Override
   public Type list(Types.ListType list, Supplier<Type> elementResult) {
     Preconditions.checkArgument(current instanceof ArrayType, "Not an array: %s", current);
@@ -193,6 +257,14 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 处理 Map 类型：键类型不被裁剪（始终保留），值类型按请求投影递归处理。
+   *
+   * @param map 原 Map 类型
+   * @param keyResult 键类型处理结果的延迟计算
+   * @param valueResult 值类型处理结果的延迟计算
+   * @return 裁剪后的 Map 类型
+   */
   @Override
   public Type map(Types.MapType map, Supplier<Type> keyResult, Supplier<Type> valueResult) {
     Preconditions.checkArgument(current instanceof MapType, "Not a map: %s", current);
@@ -224,6 +296,12 @@ public class PruneColumnsWithReordering extends TypeUtil.CustomOrderSchemaVisito
     }
   }
 
+  /**
+   * 处理基本类型：校验当前 Spark 类型与 Iceberg 基本类型兼容，未变化时返回原类型。
+   *
+   * @param primitive 原基本类型
+   * @return 裁剪后的基本类型
+   */
   @Override
   public Type primitive(Type.PrimitiveType primitive) {
     Set<Class<? extends DataType>> expectedType = TYPES.get(primitive.typeId());

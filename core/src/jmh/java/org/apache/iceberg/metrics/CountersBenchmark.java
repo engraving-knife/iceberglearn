@@ -34,6 +34,14 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Timeout;
 import org.openjdk.jmh.infra.Blackhole;
 
+/**
+ * 测试类：CountersBenchmark，用于验证 Counters Benchmark 相关功能。
+ *
+ * <p>所属模块：iceberg-core（基准测试目录 src/jmh）。 职责：针对 Counters Benchmark 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入，
+ * 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JMH 基准测试框架，通过构造典型数据集与读取场景， 测量清单读取/指标计数等操作的性能基线。
+ */
 @Fork(1)
 @State(Scope.Benchmark)
 @Measurement(iterations = 25)
@@ -45,6 +53,7 @@ public class CountersBenchmark {
   private static final int WORKER_POOL_SIZE = 16;
   private static final int INCREMENT_AMOUNT = 10_000;
 
+  /** 辅助方法：default counter multiple threads。 */
   @Benchmark
   @Threads(1)
   public void defaultCounterMultipleThreads(Blackhole blackhole) {
@@ -68,6 +77,7 @@ public class CountersBenchmark {
     blackhole.consume(counter);
   }
 
+  /** 辅助方法：default counter single thread。 */
   @Benchmark
   @Threads(1)
   public void defaultCounterSingleThread(Blackhole blackhole) {

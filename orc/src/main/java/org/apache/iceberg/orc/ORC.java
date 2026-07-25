@@ -89,6 +89,36 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.Writer;
 import org.apache.orc.storage.ql.exec.vector.VectorizedRowBatch;
 
+/**
+ * ORC 文件格式的读写入口与 Builder 工厂。
+ *
+ * <p>所属模块：iceberg-orc（模块入口类）。本类是 Iceberg 与 Apache ORC 之间的核心桥接层， 提供 ORC 文件的创建、写入、读取、删除文件写入等 Builder
+ * API。
+ *
+ * <p>职责：
+ *
+ * <ul>
+ *   <li>{@link WriteBuilder}：构建通用 ORC {@link FileAppender}，配置压缩/stripe/block/bloom filter 等。
+ *   <li>{@link DataWriteBuilder}：构建 {@link DataWriter}，写入数据文件（含分区/排序/加密元数据）。
+ *   <li>{@link DeleteWriteBuilder}：构建 {@link EqualityDeleteWriter} 或 {@link PositionDeleteWriter}。
+ *   <li>{@link ReadBuilder}：构建 {@link OrcIterable}，配置投影/过滤/split/NameMapping 等。
+ *   <li>{@link #newFileReader}/{@link #newFileWriter}：底层 ORC Reader/Writer 创建，适配 Iceberg
+ *       InputFile/OutputFile。
+ * </ul>
+ *
+ * <p>设计意图：
+ *
+ * <ul>
+ *   <li>Builder 模式：各配置项通过链式调用设置，build() 时校验并组装。
+ *   <li>Context 内部类：统一管理 ORC 写入参数（stripe/block/compression/bloom filter）， dataContext 与
+ *       deleteContext 分别提供数据文件和删除文件的默认值覆盖。
+ *   <li>属性优先级：Iceberg 自定义属性（ORC_*）优先于 ORC 原生属性（OrcConf.*），通过 PropertyUtil 链式回退。
+ *   <li>FileIO 适配：非 HadoopInputFile 时用 {@link FileIOFSUtil} 包装为 Hadoop FileSystem。
+ * </ul>
+ *
+ * <p>上下游关系：被 iceberg-core 的 {@code GenericFileAppenderFactory}、{@code FileReaderFactory} 等调用；内部依赖
+ * {@link ORCSchemaUtil}、{@link OrcFileAppender}、{@link OrcIterable}、{@link OrcMetrics}。
+ */
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
 public class ORC {
 
@@ -97,10 +127,21 @@ public class ORC {
 
   private ORC() {}
 
+  /**
+   * 创建 ORC 写入 Builder。
+   *
+   * @param file 目标输出文件
+   * @return {@link WriteBuilder} 实例
+   */
   public static WriteBuilder write(OutputFile file) {
     return new WriteBuilder(file);
   }
 
+  /**
+   * ORC 写入参数构建器：配置 schema、压缩、stripe/block 大小、bloom filter、写入函数等， build() 返回 {@link FileAppender}。
+   *
+   * <p>设计意图：同时服务数据写入和删除写入（通过 createContextFunc 切换 Context）， 删除写入由 {@link DeleteWriteBuilder} 委托本类。
+   */
   public static class WriteBuilder {
     private final OutputFile file;
     private final Configuration conf;
@@ -175,6 +216,15 @@ public class ORC {
       return this;
     }
 
+    /**
+     * 构建 ORC FileAppender。
+     *
+     * <p>逻辑：把 config 写入 Hadoop Configuration；处理旧属性兼容（VECTOR_ROW_BATCH_SIZE）； 通过 createContextFunc
+     * 获取 Context（data 或 delete）；把 Iceberg 参数映射到 OrcConf； 最终构造 {@link OrcFileAppender}。
+     *
+     * @param <D> 行数据类型
+     * @return {@link FileAppender} 实例
+     */
     public <D> FileAppender<D> build() {
       Preconditions.checkNotNull(schema, "Schema is required");
 
@@ -208,6 +258,12 @@ public class ORC {
           metricsConfig);
     }
 
+    /**
+     * ORC 写入参数上下文：封装 stripe/block 大小、批大小、压缩、bloom filter 等配置。
+     *
+     * <p>设计意图：dataContext 从表属性读取数据文件配置；deleteContext 在 dataContext
+     * 基础上覆盖删除文件专属属性（DELETE_ORC_*），实现配置继承与覆盖。
+     */
     private static class Context {
       private final long stripeSize;
       private final long blockSize;
@@ -262,6 +318,13 @@ public class ORC {
         this.bloomFilterFpp = bloomFilterFpp;
       }
 
+      /**
+       * 从配置构建数据文件 Context。
+       *
+       * <p>逻辑：逐项读取 stripeSize/blockSize/vectorizedRowBatchSize/compressionKind/
+       * compressionStrategy/bloomFilterColumns/bloomFilterFpp，Iceberg 属性优先于 OrcConf 属性， 每项校验合法性后构造
+       * Context。
+       */
       static Context dataContext(Map<String, String> config) {
         long stripeSize =
             PropertyUtil.propertyAsLong(
@@ -322,6 +385,11 @@ public class ORC {
             bloomFilterFpp);
       }
 
+      /**
+       * 从配置构建删除文件 Context。
+       *
+       * <p>逻辑：先取 dataContext 作为基线，再用 DELETE_ORC_* 系列属性覆盖对应项， 未设置则继承数据文件配置。
+       */
       static Context deleteContext(Map<String, String> config) {
         Context dataContext = dataContext(config);
 
@@ -378,10 +446,12 @@ public class ORC {
     }
   }
 
+  /** 创建数据文件写入 Builder。 */
   public static DataWriteBuilder writeData(OutputFile file) {
     return new DataWriteBuilder(file);
   }
 
+  /** 数据文件写入 Builder：在 WriteBuilder 基础上增加分区/排序/加密元数据， build() 返回 {@link DataWriter}。 */
   public static class DataWriteBuilder {
     private final WriteBuilder appenderBuilder;
     private final String location;
@@ -463,6 +533,12 @@ public class ORC {
       return this;
     }
 
+    /**
+     * 构建 {@link DataWriter}。
+     *
+     * <p>逻辑：校验 spec 和 partition；委托 WriteBuilder 构建 FileAppender； 组装为
+     * DataWriter（含格式/位置/分区/排序/加密元数据）。
+     */
     public <T> DataWriter<T> build() {
       Preconditions.checkArgument(spec != null, "Cannot create data writer without spec");
       Preconditions.checkArgument(
@@ -475,10 +551,17 @@ public class ORC {
     }
   }
 
+  /** 创建删除文件写入 Builder。 */
   public static DeleteWriteBuilder writeDeletes(OutputFile file) {
     return new DeleteWriteBuilder(file);
   }
 
+  /**
+   * 删除文件写入 Builder：支持构建等值删除（{@link EqualityDeleteWriter}）和位置删除 （{@link PositionDeleteWriter}）两种写入器。
+   *
+   * <p>设计意图：根据 equalityFieldIds 是否设置决定构建哪种删除写入器； 位置删除可选择是否写入被删除行的数据（rowSchema + createWriterFunc
+   * 同时设置时写入）。
+   */
   public static class DeleteWriteBuilder {
     private final WriteBuilder appenderBuilder;
     private final String location;
@@ -579,6 +662,13 @@ public class ORC {
       return this;
     }
 
+    /**
+     * 构建等值删除写入器。
+     *
+     * <p>逻辑：校验 rowSchema/equalityFieldIds/createWriterFunc/spec/partition； 写入 delete-type=equality
+     * 和 delete-field-ids 元数据； 设置 appender schema 为 rowSchema 并切换 Context 为 deleteContext； 组装为
+     * EqualityDeleteWriter。
+     */
     public <T> EqualityDeleteWriter<T> buildEqualityWriter() {
       Preconditions.checkState(
           rowSchema != null, "Cannot create equality delete file without a schema");
@@ -616,6 +706,13 @@ public class ORC {
           equalityFieldIds);
     }
 
+    /**
+     * 构建位置删除写入器。
+     *
+     * <p>逻辑：校验无 equalityFieldIds；写 delete-type=position 元数据； 若 rowSchema+createWriterFunc
+     * 同时设置，构造含被删行数据的 schema（path+pos+row）， 用 {@link GenericOrcWriters#positionDelete} 包装；否则仅写
+     * path+pos 两列。 切换 Context 为 deleteContext 后组装为 PositionDeleteWriter。
+     */
     public <T> PositionDeleteWriter<T> buildPositionWriter() {
       Preconditions.checkState(
           equalityFieldIds == null, "Cannot create position delete file using delete field ids");
@@ -656,10 +753,23 @@ public class ORC {
     }
   }
 
+  /**
+   * 创建 ORC 读取 Builder。
+   *
+   * @param file 输入文件
+   * @return {@link ReadBuilder} 实例
+   */
   public static ReadBuilder read(InputFile file) {
     return new ReadBuilder(file);
   }
 
+  /**
+   * ORC 读取参数构建器：配置投影 schema、过滤表达式、split 范围、批大小、NameMapping、 reader/batchReader 函数等，build() 返回
+   * {@link CloseableIterable}。
+   *
+   * <p>设计意图：readerFunc 与 batchedReaderFunc 互斥，分别对应逐行和向量化读取模式。 默认关闭 positional schema
+   * evolution（使用基于列名的 schema evolution 做投影）。
+   */
   public static class ReadBuilder {
     private final InputFile file;
     private final Configuration conf;
@@ -749,6 +859,11 @@ public class ORC {
       return this;
     }
 
+    /**
+     * 构建 {@link OrcIterable} 作为读取结果的可迭代。
+     *
+     * <p>逻辑：校验 schema 非空后，把所有参数透传给 {@link OrcIterable} 构造。
+     */
     public <D> CloseableIterable<D> build() {
       Preconditions.checkNotNull(schema, "Schema is required");
       return new OrcIterable<>(
@@ -766,6 +881,17 @@ public class ORC {
     }
   }
 
+  /**
+   * 创建底层 ORC {@link Reader}。
+   *
+   * <p>逻辑：构建 ReaderOptions 并启用 UTC 时间戳；若为 HadoopInputFile 则用其 FileSystem， 否则用 {@link
+   * FileIOFSUtil.InputFileSystem} 包装并设 maxLength 避免 stat 调用。
+   *
+   * @param file Iceberg 输入文件
+   * @param config Hadoop 配置
+   * @return ORC Reader
+   * @throws RuntimeIOException 打开文件失败
+   */
   static Reader newFileReader(InputFile file, Configuration config) {
     ReaderOptions readerOptions = OrcFile.readerOptions(config).useUTCTimestamp(true);
     if (file instanceof HadoopInputFile) {
@@ -783,6 +909,18 @@ public class ORC {
     }
   }
 
+  /**
+   * 创建底层 ORC {@link Writer} 并写入用户元数据。
+   *
+   * <p>逻辑：若为 HadoopOutputFile 则用其 FileSystem，否则用 {@link FileIOFSUtil.OutputFileSystem} 包装； 调用
+   * OrcFile.createWriter 创建 writer；把 metadata 逐项写入 writer 的用户元数据。
+   *
+   * @param file Iceberg 输出文件
+   * @param options ORC WriterOptions
+   * @param metadata 用户元数据键值对
+   * @return ORC Writer
+   * @throws RuntimeIOException 创建文件失败
+   */
   static Writer newFileWriter(
       OutputFile file, OrcFile.WriterOptions options, Map<String, byte[]> metadata) {
     if (file instanceof HadoopOutputFile) {

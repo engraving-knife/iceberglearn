@@ -52,8 +52,11 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
 /**
- * * Exercises the RESTClient interface, specifically over a mocked-server using the actual
- * HttpRESTClient code.
+ * 测试类：TestHTTPClient，用于验证 HTTP Client 相关功能。
+ *
+ * <p>所属模块：iceberg-core（测试目录 src/test）。 职责：针对 HTTP Client 的核心行为构造多种场景，覆盖正常路径、边界条件与异常输入， 确保实现与预期语义一致。
+ *
+ * <p>测试策略：基于 JUnit（必要时配合参数化执行器）搭建表/目录等测试基座， 通过构造输入、执行被测方法并断言结果或状态来验证功能点。
  */
 public class TestHTTPClient {
 
@@ -67,6 +70,7 @@ public class TestHTTPClient {
   private static ClientAndServer mockServer;
   private static RESTClient restClient;
 
+  /** 辅助方法：before class。 */
   @BeforeAll
   public static void beforeClass() {
     mockServer = startClientAndServer(PORT);
@@ -75,52 +79,98 @@ public class TestHTTPClient {
     icebergBuildFullVersion = IcebergBuild.fullVersion();
   }
 
+  /** 辅助方法：stop server。 */
   @AfterAll
   public static void stopServer() throws IOException {
     mockServer.stop();
     restClient.close();
   }
 
+  /**
+   * 测试场景：post success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPostSuccess() throws Exception {
     testHttpMethodOnSuccess(HttpMethod.POST);
   }
 
+  /**
+   * 测试场景：post failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testPostFailure() throws Exception {
     testHttpMethodOnFailure(HttpMethod.POST);
   }
 
+  /**
+   * 测试场景：get success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGetSuccess() throws Exception {
     testHttpMethodOnSuccess(HttpMethod.GET);
   }
 
+  /**
+   * 测试场景：get failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testGetFailure() throws Exception {
     testHttpMethodOnFailure(HttpMethod.GET);
   }
 
+  /**
+   * 测试场景：delete success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteSuccess() throws Exception {
     testHttpMethodOnSuccess(HttpMethod.DELETE);
   }
 
+  /**
+   * 测试场景：delete failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDeleteFailure() throws Exception {
     testHttpMethodOnFailure(HttpMethod.DELETE);
   }
 
+  /**
+   * 测试场景：head success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testHeadSuccess() throws JsonProcessingException {
     testHttpMethodOnSuccess(HttpMethod.HEAD);
   }
 
+  /**
+   * 测试场景：head failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testHeadFailure() throws JsonProcessingException {
     testHttpMethodOnFailure(HttpMethod.HEAD);
   }
 
+  /**
+   * 测试场景：dynamic http request interceptor loading。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   @Test
   public void testDynamicHttpRequestInterceptorLoading() {
     Map<String, String> properties = ImmutableMap.of("key", "val");
@@ -133,6 +183,11 @@ public class TestHTTPClient {
     assertThat(((TestHttpRequestInterceptor) interceptor).properties).isEqualTo(properties);
   }
 
+  /**
+   * 测试场景：http method on success。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   public static void testHttpMethodOnSuccess(HttpMethod method) throws JsonProcessingException {
     Item body = new Item(0L, "hank");
     int statusCode = 200;
@@ -154,6 +209,11 @@ public class TestHTTPClient {
     verify(onError, never()).accept(any());
   }
 
+  /**
+   * 测试场景：http method on failure。
+   *
+   * <p>验证逻辑：针对该场景调用被测方法，断言返回结果或表/快照状态符合预期。
+   */
   public static void testHttpMethodOnFailure(HttpMethod method) throws JsonProcessingException {
     Item body = new Item(0L, "hank");
     int statusCode = 404;
@@ -223,6 +283,7 @@ public class TestHTTPClient {
     return path;
   }
 
+  /** 辅助方法：do execute request。 */
   private static Item doExecuteRequest(
       HttpMethod method,
       String path,
@@ -253,19 +314,23 @@ public class TestHTTPClient {
     @SuppressWarnings("unused")
     public Item() {}
 
+    /** 辅助方法：item。 */
     public Item(Long id, String data) {
       this.id = id;
       this.data = data;
     }
 
+    /** 辅助方法：validate。 */
     @Override
     public void validate() {}
 
+    /** 辅助方法：hash code。 */
     @Override
     public int hashCode() {
       return Objects.hash(id, data);
     }
 
+    /** 辅助方法：equals。 */
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -282,10 +347,12 @@ public class TestHTTPClient {
   public static class TestHttpRequestInterceptor implements HttpRequestInterceptor {
     private Map<String, String> properties;
 
+    /** 辅助方法：initialize。 */
     public void initialize(Map<String, String> props) {
       this.properties = props;
     }
 
+    /** 辅助方法：process。 */
     @Override
     public void process(
         org.apache.hc.core5.http.HttpRequest request, EntityDetails entity, HttpContext context)

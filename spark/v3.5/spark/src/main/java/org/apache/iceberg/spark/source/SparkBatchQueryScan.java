@@ -57,6 +57,20 @@ import org.apache.spark.sql.connector.read.SupportsRuntimeV2Filtering;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Spark 批量查询扫描：支持快照指定与运行时分区过滤的批量读取扫描。
+ *
+ * <p>所属模块：iceberg-spark（source 子包，Spark 数据源批量读取计划层）。
+ *
+ * <p>职责：基于 Iceberg 扫描构建批量读取任务，支持按 snapshotId、时间戳、tag/branch 选择快照，并实现 {@link
+ * SupportsRuntimeV2Filtering} 在运行时接收广播的分区过滤条件 进一步裁剪任务。
+ *
+ * <p>设计意图：批量扫描通常在计划阶段应用静态过滤，但 join 场景下分区键值可能到运行时才确定， 因此实现运行时过滤接口，由 Spark 在运行时下发 IN
+ * 过滤，扫描端按分区值二次裁剪任务， 避免无效数据读取。
+ *
+ * <p>上下游关系：继承 {@link SparkPartitioningAwareScan}，由 {@link SparkScanBuilder} 构造， 产出 {@link
+ * SparkInputPartition} 供读取执行层消费。
+ */
 class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
     implements SupportsRuntimeV2Filtering {
 
@@ -90,12 +104,17 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
   Long snapshotId() {
     return snapshotId;
   }
-
+  /** 执行 taskJavaClass 相关操作。 */
   @Override
   protected Class<PartitionScanTask> taskJavaClass() {
     return PartitionScanTask.class;
   }
 
+  /**
+   * 返回可参与运行时过滤的分区字段引用。
+   *
+   * <p>设计要点：扫描已计划，运行时过滤只能作用于投影中存在的分区源字段； 优化器会在 join 中寻找与这些属性的等值条件作为广播过滤。
+   */
   @Override
   public NamedReference[] filterAttributes() {
     Set<Integer> partitionFieldSourceIds = Sets.newHashSet();
@@ -118,6 +137,14 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         .toArray(NamedReference[]::new);
   }
 
+  /**
+   * 应用运行时分区过滤，裁剪不匹配的扫描任务。
+   *
+   * <p>逻辑：将谓词转换为 Iceberg 表达式后，按各分区规格做 inclusive 投影并构造求值器；
+   * 对每个任务按其分区值求值，保留匹配任务；若过滤有效则重置任务集，并记录过滤表达式用于 equals/hashCode。
+   *
+   * @param predicates Spark 运行时下发的 V2 谓词数组
+   */
   @Override
   public void filter(Predicate[] predicates) {
     Expression runtimeFilterExpr = convertRuntimeFilters(predicates);
@@ -158,6 +185,11 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
     }
   }
 
+  /**
+   * 将 Spark V2 谓词转换为绑定到期望 schema 的 Iceberg 运行时过滤表达式。
+   *
+   * <p>设计要点：当前 Spark 仅下发单属性的 IN 过滤，多属性会拆分为多个 IN 过滤； 绑定失败或不支持的谓词会被跳过并告警。
+   */
   // at this moment, Spark can only pass IN filters for a single attribute
   // if there are multiple filter attributes, Spark will pass two separate IN filters
   private Expression convertRuntimeFilters(Predicate[] predicates) {
@@ -180,6 +212,11 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
     return runtimeFilterExpr;
   }
 
+  /**
+   * 估算扫描统计信息（行数、字节数），用于 Spark 优化器成本估算。
+   *
+   * <p>逻辑：按优先级解析目标快照——显式 snapshotId、asOfTimestamp、branch、tag， 最后回退到当前快照，并基于该快照估算。
+   */
   @Override
   public Statistics estimateStatistics() {
     if (scan() == null) {
@@ -207,7 +244,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
       return estimateStatistics(snapshot);
     }
   }
-
+  /** 判断是否相等。 */
   @Override
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
   public boolean equals(Object o) {
@@ -231,7 +268,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         && Objects.equals(asOfTimestamp, that.asOfTimestamp)
         && Objects.equals(tag, that.tag);
   }
-
+  /** 返回哈希码。 */
   @Override
   public int hashCode() {
     return Objects.hash(
@@ -246,7 +283,7 @@ class SparkBatchQueryScan extends SparkPartitioningAwareScan<PartitionScanTask>
         asOfTimestamp,
         tag);
   }
-
+  /** 返回字符串表示。 */
   @Override
   public String toString() {
     return String.format(

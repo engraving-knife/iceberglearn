@@ -49,6 +49,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+/**
+ * 文件级说明：测试 TestMergingMetrics 的功能。
+ *
+ * <p>所属模块：iceberg-data。职责：验证 TestMergingMetrics 在各类场景下的行为是否符合预期， 包括正常路径与边界条件。
+ *
+ * <p>测试策略：使用 JUnit 框架，通过构造输入、调用方法、断言结果来覆盖功能点。
+ */
 public abstract class TestMergingMetrics<T> {
 
   // all supported fields, except for UUID which is on deprecation path: see
@@ -112,19 +119,27 @@ public abstract class TestMergingMetrics<T> {
 
   protected final FileFormat fileFormat;
 
+  /** 辅助方法：parameters。 */
   @Parameterized.Parameters(name = "fileFormat = {0}")
   public static Object[] parameters() {
     return new Object[] {FileFormat.PARQUET, FileFormat.ORC};
   }
 
+  /** 辅助方法：TestMergingMetrics。 */
   public TestMergingMetrics(FileFormat fileFormat) {
     this.fileFormat = fileFormat;
   }
 
+  /** 辅助方法：writeAndGetAppender。 */
   protected abstract FileAppender<T> writeAndGetAppender(List<Record> records) throws Exception;
 
   @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+  /**
+   * 测试场景：verify Single Record Metric。
+   *
+   * <p>验证该方法在 verify Single Record Metric 条件下的行为是否符合预期。
+   */
   @Test
   public void verifySingleRecordMetric() throws Exception {
     Record record = GenericRecord.create(SCHEMA);
@@ -166,6 +181,11 @@ public abstract class TestMergingMetrics<T> {
     assertBoundValueMatch(0D, lowerBounds, MAP_FIELD_2);
   }
 
+  /**
+   * 测试场景：verify Randomly Generated Records Metric。
+   *
+   * <p>验证该方法在 verify Randomly Generated Records Metric 条件下的行为是否符合预期。
+   */
   @Test
   public void verifyRandomlyGeneratedRecordsMetric() throws Exception {
     // too big of the record count will more likely to make all upper/lower bounds +/-infinity,
@@ -196,6 +216,7 @@ public abstract class TestMergingMetrics<T> {
                     "NaN count for field %s should be null", metrics.nanValueCounts().get(id)));
   }
 
+  /** 辅助方法：assertNaNCountMatch。 */
   private void assertNaNCountMatch(
       Long expected, Map<Integer, Long> nanValueCount, Types.NestedField field) {
     Assert.assertEquals(
@@ -204,6 +225,7 @@ public abstract class TestMergingMetrics<T> {
         nanValueCount.get(FIELDS_WITH_NAN_COUNT_TO_ID.get(field)));
   }
 
+  /** 辅助方法：assertBoundValueMatch。 */
   private void assertBoundValueMatch(
       Number expected, Map<Integer, ByteBuffer> boundMap, Types.NestedField field) {
     if (field.type().isNestedType() && fileFormat == FileFormat.ORC) {
@@ -220,6 +242,7 @@ public abstract class TestMergingMetrics<T> {
         byteBuffer == null ? null : Conversions.fromByteBuffer(type, byteBuffer));
   }
 
+  /** 辅助方法：populateExpectedValues。 */
   private void populateExpectedValues(
       List<Record> records,
       Map<Types.NestedField, AtomicReference<Number>> upperBounds,
@@ -263,6 +286,7 @@ public abstract class TestMergingMetrics<T> {
     }
   }
 
+  /** 辅助方法：updateExpectedValueFromRecords。 */
   private <T1 extends Number> void updateExpectedValueFromRecords(
       Map<Types.NestedField, AtomicReference<Number>> upperBounds,
       Map<Types.NestedField, AtomicReference<Number>> lowerBounds,
@@ -285,6 +309,7 @@ public abstract class TestMergingMetrics<T> {
     minOptional.ifPresent(min -> updateBound(key, min, lowerBounds, false));
   }
 
+  /** 辅助方法：updateExpectedValuePerRecord。 */
   private void updateExpectedValuePerRecord(
       Map<Types.NestedField, AtomicReference<Number>> upperBounds,
       Map<Types.NestedField, AtomicReference<Number>> lowerBounds,
@@ -299,6 +324,7 @@ public abstract class TestMergingMetrics<T> {
     }
   }
 
+  /** 辅助方法：updateBound。 */
   private void updateBound(
       Types.NestedField key,
       Number val,
@@ -309,6 +335,7 @@ public abstract class TestMergingMetrics<T> {
         .updateAndGet(old -> getMinOrMax(old, val, isMax));
   }
 
+  /** 辅助方法：getMinOrMax。 */
   private Number getMinOrMax(Number val1, Number val2, boolean isMax) {
     if (val1 instanceof Double) {
       return isMax
